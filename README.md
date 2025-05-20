@@ -1,199 +1,80 @@
-# GeneCoder
+# GeneCoder: Simulated DNA Data Encoding & Exploration
 
-## 1. Vision & Core Concept
-
-Create an open, educational software toolkit that **encodes arbitrary text or binary files into simulated DNA sequences** and decodes them back, illustrating the promises and challenges of DNA data storage without touching real wet‑lab biology.
-
-*Why it matters*: DNA offers theoretical densities far beyond magnetic or silicon media (\~10^18 bytes per gram). By simulating the pipeline, learners grasp compression, channel coding, bioinformatics file formats, and the error‑prone reality of molecular data.
+**An open, educational software toolkit for simulating DNA data encoding and decoding, bringing the concepts of molecular data storage to your fingertips.**
 
 ---
 
-## 2. Naming – Alternate Title Ideas
+## Current Status: Genesis Stage! 🌱
 
-| Rank | Candidate     | Rationale                                          |
-| ---- | ------------- | -------------------------------------------------- |
-| ⭐    | **DNA‑Forge** | Evokes crafting & transformation of data into DNA. |
-| 2    | HelixVault    | Focus on archival/storage angle.                   |
-| 3    | GeneCoder     | Straightforward, classroom‑friendly.               |
-| 4    | CodonCache    | Playful, hints at caching data in codons.          |
-| 5    | HelixHub      | Short, brandable, community vibe.                  |
+**GeneCoder is a brand new project, freshly conceived and initialized!** (As of May 20, 2025)
+
+The code is not yet written, but the blueprint is ready. This repository will soon house the source code and documentation as development kicks off. Stay tuned!
 
 ---
 
-## 3. Feature Breakdown (Phase 1 → Phase 3)
+## Vision & Core Concept
 
-### 3.1 Input Handling
+GeneCoder aims to demystify the fascinating world of DNA-based data storage. Our goal is to provide an accessible, hands-on tool that allows users to:
 
-* **Text (UTF‑8)** via CLI arg or drag‑and‑drop (later GUI).
-* **Binary files** ≤ 5 MB for MVP (scales later).
-* Auto‑detect mime‑type & display summary (size, entropy).
+* **Encode** arbitrary text or binary files into simulated DNA sequences (A, T, C, G).
+* **Decode** these sequences back into their original data form.
+* **Explore** different encoding strategies and understand their trade-offs.
+* **Learn** about fundamental concepts like data compression, channel coding, bioinformatics file formats (like FASTA), and the error-prone nature of molecular data – all without needing a wet lab!
 
-### 3.2 Encoding Engine
-
-| Scheme                  | Educational Value                                                      | Status  |
-| ----------------------- | ---------------------------------------------------------------------- | ------- |
-| **Huffman‑4** (primary) | Introduces variable‑length coding & optimality; maps bits → {A,T,C,G}. | MVP     |
-| Base‑4 direct           | Shows naïve 2 bits/nt mapping, baseline.                               | MVP     |
-| Ternary + parity        | Demonstrates trade‑offs in alphabet size vs. density.                  | Phase 2 |
-| GC‑balanced mapping     | Shows biochemical constraints (avoid homopolymers).                    | Phase 3 |
-
-**Huffman‑4 Mapping Sketch**
-
-1. Build classic binary Huffman tree.
-2. Re‑encode resulting codewords in base‑4 (00→A, 01→C, 10→G, 11→T).
-3. Concatenate; optionally pad with terminal symbol to reach full codon.
-
-### 3.3 Output
-
-* Raw DNA string (stdout or clipboard).
-* **FASTA** file export: `>filename|scheme=HUF4|len=1234|date=2025‑05‑20`.
-
-### 3.4 Decoding Engine
-
-* Reverse mapping table persisted in FASTA header or sidecar json.
-* Detect illegal bases; raise descriptive error.
-
-### 3.5 Error‑Resilience (Simulated)
-
-| Technique                                       | Difficulty | Pedagogical Point       |
-| ----------------------------------------------- | ---------- | ----------------------- |
-| Parity nucleotide every *k* nts                 | Easy       | Error detection.        |
-| Triple‑repeat voting                            | Medium     | Redundancy vs. density. |
-| (Phase 3) Simplified Hamming(7,4) in quaternary | Hard       | Forward‑error‑corr.     |
-
-### 3.6 Analysis & Metrics
-
-* **Compression ratio** = original\_bytes / encoded\_nts·0.25.
-* **Bits per nt** achieved.
-* Histogram of codeword lengths (optional matplotlib).
+**Why does this matter?** DNA boasts theoretical storage densities orders of magnitude greater than current magnetic or silicon-based media (potentially ~1 exabyte per gram!). By simulating the encoding/decoding pipeline, GeneCoder will help learners and enthusiasts grasp both the incredible promise and the inherent challenges of this revolutionary technology.
 
 ---
 
-## 4. UI / UX Recommendation
+## Planned Features (Starting with an MVP)
 
-| Option                            | Library          | Effort | Pros                                | Cons                              |
-| --------------------------------- | ---------------- | ------ | ----------------------------------- | --------------------------------- |
-| **CLI First (argparse / click)**  | Built‑in / click | ⭐ Low  | Fast to ship, scriptable, testable. | Less friendly for non‑tech users. |
-| Minimal GUI (Tkinter or **Flet**) | Std / pip        | Medium | Cross‑platform, drag‑and‑drop.      | UI polish time.                   |
+The initial development phase (MVP - Minimum Viable Product) will focus on delivering core functionality via a Command-Line Interface (CLI):
 
-📌 **Recommendation**: Ship CLI MVP. Add Flet‑based GUI in Phase 2 (browser‑rendered, Python‑only).
-
----
-
-## 5. Technical Stack
-
-* **Language**: Python ≥ 3.10 — ample libraries, your fluency.
-* **Core Libs**
-
-  * `heapq` for Huffman tree.
-  * `bitarray` for bit‑level packing.
-  * `pathlib`, `argparse`/`click` for I/O.
-* **Optional**
-
-  * `numpy` & `matplotlib` for metric plots.
-  * `rich` for colourful CLI progress.
-* **Dev Tools**: `pytest`, `black`, `ruff`, GitHub Actions CI.
-
-Your rig (7800X3D | 32 GB RAM | NVMe) easily handles multi‑GB in memory; cap demo files to highlight speed.
+* **Input Handling:**
+    * Accept text (UTF-8) and small binary files (e.g., ≤ 5MB for MVP).
+    * Basic file type detection and summary.
+* **Encoding Engine (Phase 1 Schemes):**
+    * **Base-4 Direct Mapping:** A straightforward 2-bits-per-nucleotide scheme.
+    * **Huffman-4 Coding:** An optimized scheme mapping input symbols to variable-length DNA codons, illustrating compression principles.
+* **Decoding Engine:**
+    * Reliable decoding of the implemented schemes.
+    * Error detection for invalid DNA characters.
+* **Output:**
+    * Raw DNA sequence string.
+    * Export to FASTA file format, including metadata in the header.
+* **Basic Analysis & Metrics:**
+    * Calculation of compression ratio.
+    * Achieved bits per nucleotide.
 
 ---
 
-## 6. Efficiency Analysis
+## Technology Stack (Planned)
 
-| Aspect                 | Insight                                                                                                                      |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Theoretical limit**  | 2 bits/nt with 4‑base alphabet (Shannon).                                                                                    |
-| **Huffman efficiency** | Approaches entropy of input; overhead from variable‑length coding & padding; expect 1.6–1.9 bits/nt on typical English text. |
-| **Complexity**         | Building Huffman tree O(n log σ); encoding/decoding O(n).                                                                    |
-| **Perf factors**       | File size, entropy (affects tree depth), Python interpreter overhead.                                                        |
-| **Optimizations**      |                                                                                                                              |
-
-* Cache frequency table with `collections.Counter`.
-* Use `bitarray` instead of Python strings for interim bitstream.
-* Stream encode large files in chunks to bound memory.
-* Parallel decode with `concurrent.futures` (file sections). |
+* **Language:** Python (≥ 3.10)
+* **Core Libraries (anticipated):** `heapq` (for Huffman trees), `bitarray`, `pathlib`, `argparse`/`click`.
+* **Optional (for later enhancements):** `numpy`, `matplotlib` (for visualizations), `rich` (for CLI).
 
 ---
 
-## 7. Monetization Paths
+## Development Roadmap (High-Level)
 
-1. **Freemium**: CLI & 2 schemes free; GUI, GC‑balancing, batch mode in "DNA‑Forge Pro" (\$10‑15).
-2. **Educational Site License**: bundle lesson plans + instructor dashboard.
-3. **Paid Workshops / Consulting**: demo biotech‑adjacent startups.
-4. **Patreon/GitHub Sponsors**: behind‑the‑scenes dev diaries, vote on new features.
-5. **Niche verticals**: puzzle designers, ARG creators, digital art embeds.
+1.  **MVP (Weeks 1-2 of development):** CLI-based encoding/decoding with Base-4 and Huffman-4 schemes, FASTA output, and basic metrics.
+2.  **Phase 2:** Introduce basic error-resilience simulation (e.g., parity checks), develop a simple GUI (potentially using Flet), and add plotting for metrics.
+3.  **Phase 3 & Beyond:** Explore more advanced concepts like GC-balanced encoding, simplified error correction codes (e.g., Hamming), batch processing, and potentially a plug-in API for new encoding schemes.
 
 ---
 
-## 8. Development Roadmap
+## Contributing
 
-### MVP (Weeks 1‑2)
+GeneCoder is envisioned as an open-source educational project. While development is just beginning, contributions will be very welcome in the future!
 
-* ☐ Text + binary input via CLI.
-* ☐ Base‑4 & Huffman‑4 encode/decode.
-* ☐ FASTA export.
-* ☐ Basic metrics printout.
-
-### Phase 2 (Weeks 3‑4)
-
-* ☐ Parity error detection.
-* ☐ Flet GUI prototype (drag‑drop).
-* ☐ Plotting dashboard.
-
-### Phase 3 (Month 2)
-
-* ☐ GC‑balanced encoder.
-* ☐ Simplified Hamming ECC.
-* ☐ Batch processing & multithreading.
-
-### Phase 4 (Stretch)
-
-* ☐ Plug‑in API for community schemes.
-* ☐ Cloud notebook demo (Binder / Codespaces).
+Once the foundational code is in place, look out for issues tagged `good first issue` or feel free to discuss your ideas by opening a new issue. (Detailed contribution guidelines will be added as the project matures).
 
 ---
 
-## 9. Modular Architecture
+## License
 
-```
-/ dna_forge
-├── cli.py          # entry‑point
-├── core/
-│   ├── encode.py   # strategy pattern for schemes
-│   ├── decode.py
-│   ├── schemes/
-│   │   ├── base4.py
-│   │   └── huff4.py
-│   └── errors.py   # parity, ecc
-├── io/
-│   ├── fasta.py
-│   └── detect.py   # mime & helpers
-├── metrics.py      # compression stats
-├── gui/            # added later
-└── tests/
-```
+*(License to be determined and added here - likely MIT or Apache 2.0, aligning with open educational goals.)*
 
 ---
 
-## 10. Documentation & QA
-
-* Docstring every public function (Google style).
-* `README.md` with quick‑start, examples, GIF.
-* Unit tests ≥ 80 % coverage (pytest‑cov).
-* GitHub Actions: lint, test on ubuntu‑latest & windows‑latest.
-
----
-
-## 11. Next Steps for You
-
-1. Scaffold repo structure (`cookiecutter` recommended).
-2. Implement frequency counter + Huffman tree.
-3. Write CLI encode/decode commands.
-4. Add metrics and FASTA writer.
-5. Push to GitHub → share link for review!
-
-> **Tip**: Start tiny ("hello world" string), validate round‑trip before handling files.
-
----
-
-*Crafted for George Pike, May 20 2025. Happy forging!*
+Happy Forging (or rather, Happy Coding)! We're excited to bring GeneCoder to life.
