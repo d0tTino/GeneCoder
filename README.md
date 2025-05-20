@@ -73,7 +73,7 @@ Once the foundational code is in place, look out for issues tagged `good first i
 
 ## License
 
-*(License to be determined and added here - likely MIT or Apache 2.0, aligning with open educational goals.)*
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
