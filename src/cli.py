@@ -12,6 +12,7 @@ import json
 from genecoder.encoders import encode_base4_direct, decode_base4_direct
 from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman, decode_huffman
+from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T # Import parity constant
 
 def main() -> None:
     """Parses command-line arguments and executes the requested GeneCoder command.
@@ -46,6 +47,25 @@ def main() -> None:
         choices=['base4_direct', 'huffman'], 
         help='Encoding method to use (default: base4_direct).'
     )
+    # Parity arguments for encode
+    encode_parser.add_argument(
+        '--add-parity',
+        action='store_true',
+        help='Add parity bits to the encoded sequence (applies to base4_direct and huffman).'
+    )
+    encode_parser.add_argument(
+        '--k-value',
+        type=int,
+        default=7,
+        help='Size of data blocks for parity calculation (default: 7).'
+    )
+    encode_parser.add_argument(
+        '--parity-rule',
+        type=str,
+        default=PARITY_RULE_GC_EVEN_A_ODD_T,
+        choices=[PARITY_RULE_GC_EVEN_A_ODD_T], # Add more rules here in future
+        help='Parity rule to use (default: GC_even_A_odd_T).'
+    )
 
     # Decode command parser
     decode_parser = subparsers.add_parser('decode', help='Decode a DNA sequence back to data.')
@@ -68,6 +88,25 @@ def main() -> None:
         choices=['base4_direct', 'huffman'], 
         help='Decoding method to use (default: base4_direct).'
     )
+    # Parity arguments for decode
+    decode_parser.add_argument(
+        '--check-parity',
+        action='store_true',
+        help='Check parity bits during decoding (applies to base4_direct and huffman).'
+    )
+    decode_parser.add_argument(
+        '--k-value',
+        type=int,
+        default=7,
+        help='Size of data blocks for parity checking (default: 7).'
+    )
+    decode_parser.add_argument(
+        '--parity-rule',
+        type=str,
+        default=PARITY_RULE_GC_EVEN_A_ODD_T,
+        choices=[PARITY_RULE_GC_EVEN_A_ODD_T], # Add more rules here in future
+        help='Parity rule used during encoding (default: GC_even_A_odd_T).'
+    )
 
     args = parser.parse_args()
 
@@ -77,24 +116,58 @@ def main() -> None:
                 input_data = f_in.read()
 
             if args.method == 'base4_direct':
-                encoded_dna_sequence = encode_base4_direct(input_data) # Renamed to encoded_dna_sequence
-                fasta_header = f"method={args.method} input_file={args.input_file}"
+                if args.add_parity and args.k_value <= 0:
+                    print("Error: --k-value must be positive when adding parity.")
+                    sys.exit(1)
+                encoded_dna_sequence = encode_base4_direct(
+                    input_data, 
+                    add_parity=args.add_parity, 
+                    k_value=args.k_value, 
+                    parity_rule=args.parity_rule
+                )
+                fasta_header_parts = [
+                    f"method={args.method}",
+                    f"input_file={args.input_file}"
+                ]
+                if args.add_parity:
+                    fasta_header_parts.append(f"parity_k={args.k_value}")
+                    fasta_header_parts.append(f"parity_rule={args.parity_rule}")
+                fasta_header = " ".join(fasta_header_parts)
                 fasta_output = to_fasta(encoded_dna_sequence, fasta_header, line_width=80)
             
             elif args.method == 'huffman':
-                encoded_dna_sequence, huffman_table, num_padding_bits = encode_huffman(input_data)
+                if args.add_parity and args.k_value <= 0:
+                    print("Error: --k-value must be positive when adding parity for Huffman.")
+                    sys.exit(1)
+                encoded_dna_sequence, huffman_table, num_padding_bits = encode_huffman(
+                    input_data,
+                    add_parity=args.add_parity,
+                    k_value=args.k_value,
+                    parity_rule=args.parity_rule
+                )
                 # Serialize Huffman table (keys to str) and padding bits for FASTA header
                 serializable_huffman_table = {str(k): v for k, v in huffman_table.items()}
                 huffman_params = {
                     "table": serializable_huffman_table, 
                     "padding": num_padding_bits
+                    # Parity info for Huffman is implicitly part of the DNA sequence if added,
+                    # and rule/k-value are passed during decode.
+                    # We could also add explicit parity_k and parity_rule to huffman_params if desired
+                    # for more self-documenting FASTA, but it's not strictly needed for decoding
+                    # if CLI provides them. For now, CLI drives parity for Huffman decode.
                 }
                 huffman_params_json = json.dumps(huffman_params)
-                # Construct FASTA header including method, input file, and Huffman parameters
-                fasta_header = (
-                    f"method=huffman input_file={args.input_file} "
+                
+                fasta_header_parts = [
+                    f"method=huffman",
+                    f"input_file={args.input_file}",
                     f"huffman_params={huffman_params_json}"
-                )
+                ]
+                if args.add_parity: # Add parity info to header if used with Huffman
+                    fasta_header_parts.append(f"parity_k={args.k_value}")
+                    fasta_header_parts.append(f"parity_rule={args.parity_rule}")
+                fasta_header = " ".join(fasta_header_parts)
+
                 fasta_output = to_fasta(encoded_dna_sequence, fasta_header, line_width=80)
             
             else: # Should not happen due to argparse choices
@@ -158,12 +231,29 @@ def main() -> None:
             header, dna_sequence = parsed_records[0] # Process only the first record
 
             if args.method == 'base4_direct':
-                # For Base-4 Direct, the FASTA sequence is directly the DNA data.
-                # No special parameters are expected in the header beyond what from_fasta provides.
-                decoded_data = decode_base4_direct(dna_sequence)
+                if args.check_parity and args.k_value <= 0:
+                    print("Error: --k-value must be positive when checking parity.")
+                    sys.exit(1)
+                
+                # The `dna_sequence` from `from_fasta` is already a single string of sequence characters.
+                # Parity parameters are taken from CLI args for base4_direct.
+                # Header for base4_direct might contain parity info, but we use CLI args to decide if/how to check.
+                decoded_data, parity_errors = decode_base4_direct(
+                    dna_sequence,
+                    check_parity=args.check_parity,
+                    k_value=args.k_value,
+                    parity_rule=args.parity_rule
+                )
+                if args.check_parity and parity_errors:
+                    print(f"Warning: Parity errors detected in the following 0-based data blocks: {parity_errors}")
             
             elif args.method == 'huffman':
+                if args.check_parity and args.k_value <= 0:
+                    print("Error: --k-value must be positive when checking parity for Huffman.")
+                    sys.exit(1)
+                
                 # For Huffman, extract parameters (Huffman table, padding) from the FASTA header.
+                # Parity parameters (k_value, rule) are taken from CLI args for Huffman.
                 try:
                     # Attempt to find the 'huffman_params={...}' field in the header.
                     # This parsing is basic and assumes the JSON string is the last part of 
@@ -225,7 +315,17 @@ def main() -> None:
                     print(f"Error parsing Huffman parameters from FASTA header: {e}")
                     sys.exit(1)
                 
-                decoded_data = decode_huffman(dna_sequence, huffman_table, num_padding_bits)
+                
+                decoded_data, parity_errors = decode_huffman(
+                    dna_sequence, 
+                    huffman_table, 
+                    num_padding_bits,
+                    check_parity=args.check_parity,
+                    k_value=args.k_value,
+                    parity_rule=args.parity_rule
+                )
+                if args.check_parity and parity_errors:
+                    print(f"Warning: Parity errors detected in the following 0-based data blocks: {parity_errors}")
             
             else: # Should not happen due to argparse choices
                 # This case is theoretically unreachable.

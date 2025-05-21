@@ -2,8 +2,11 @@ import sys
 sys.path.insert(0, 'src') # Add src directory to Python path
 
 import unittest
-from collections import Counter
+# collections.Counter is not directly used in these tests, but it's fundamental
+# to the huffman_coding module itself. Keep if needed for other tests, or remove if strictly not used.
+# from collections import Counter 
 from genecoder.huffman_coding import encode_huffman, decode_huffman
+from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 
 class TestHuffmanCoding(unittest.TestCase):
 
@@ -74,80 +77,129 @@ class TestHuffmanCoding(unittest.TestCase):
         self.assertEqual(len(dna) * 2, len(binary_str) + pad)
 
 
-    # Test Round-Trip Consistency
-    def _assert_round_trip(self, data_bytes, msg=None):
-        dna, table, pad = encode_huffman(data_bytes)
-        decoded_data = decode_huffman(dna, table, pad)
-        self.assertEqual(data_bytes, decoded_data, msg or f"Round trip failed for {data_bytes!r}")
+    # Test Round-Trip Consistency (No Parity)
+    def _assert_round_trip_no_parity(self, data_bytes, msg=None):
+        # Test without parity first
+        dna_no_parity, table_no_parity, pad_no_parity = encode_huffman(data_bytes, add_parity=False)
+        decoded_data_no_parity, errors_no_parity = decode_huffman(
+            dna_no_parity, table_no_parity, pad_no_parity, check_parity=False
+        )
+        self.assertEqual(data_bytes, decoded_data_no_parity, msg or f"Round trip (no parity) failed for {data_bytes!r}")
+        self.assertEqual(errors_no_parity, [], "Errors should be empty for no_parity round trip")
 
     def test_round_trip_empty(self):
+        # Renamed from test_round_trip_empty to avoid conflict if we add a parity version
+        self._assert_round_trip_no_parity(b"")
         self._assert_round_trip(b"")
 
     def test_round_trip_single_byte(self):
-        self._assert_round_trip(b"A") # Test case from prompt
+        self._assert_round_trip_no_parity(b"A")
 
     def test_round_trip_repeated_bytes(self):
-        self._assert_round_trip(b"BBBBBB")
+        self._assert_round_trip_no_parity(b"BBBBBB")
 
     def test_round_trip_simple_string(self):
-        self._assert_round_trip(b"hello world")
+        self._assert_round_trip_no_parity(b"hello world")
 
     def test_round_trip_varied_frequencies(self):
-        self._assert_round_trip(b"aaabbc")
+        self._assert_round_trip_no_parity(b"aaabbc")
 
     def test_round_trip_all_bytes(self):
-        self._assert_round_trip(bytes(range(256)))
+        self._assert_round_trip_no_parity(bytes(range(256)))
 
     def test_round_trip_long_string(self):
         long_data = b"This is a longer test string with many characters and varying frequencies to robustly test Huffman coding." * 5
-        self._assert_round_trip(long_data)
+        self._assert_round_trip_no_parity(long_data)
     
     def test_round_trip_two_chars_need_padding(self):
-        # E.g. "AB", A:0, B:1 -> "01", len 2, pad 0. DNA: T
-        # E.g. "AAAB", A:0, B:1 -> "0001", len 4, pad 0. DNA: AT
-        # If A:0, B:10, C:11. Data "AC" -> "011". Pad 1. DNA: "0110" -> TC
-        self._assert_round_trip(b"AC") # Will likely need padding for one code
+        self._assert_round_trip_no_parity(b"AC")
 
-    # Test decode_huffman Error Handling
+    # Test decode_huffman Error Handling (No Parity Check context)
     def test_decode_invalid_dna_character(self):
-        # Minimal valid table for some byte, e.g., 0 -> '0'
-        # This table is not from encode_huffman so care is needed.
-        # encode_huffman for b"A" gives table {65:'0'}, dna "A" (from "00" after padding "0")
-        dna, table, pad = encode_huffman(b"A") # dna="A", table={65:'0'}, pad=1
-        self.assertRaisesRegex(ValueError, "Invalid DNA character 'X' in sequence.",
-                               decode_huffman, "AGCX", table, 0) # pad 0 for simplicity here if dna is fixed
+        dna_no_parity, table_no_parity, pad_no_parity = encode_huffman(b"A", add_parity=False)
+        with self.assertRaisesRegex(ValueError, "Invalid DNA character 'X' in sequence."):
+            decode_huffman("AGCX", table_no_parity, pad_no_parity, check_parity=False)
 
     def test_decode_invalid_padding_too_large(self):
-        # dna "AA" means binary "0000". If pad is 5, it's an error.
-        self.assertRaisesRegex(ValueError, "Invalid padding: 3 padding bits claimed, but only 2 bits available.",
-                               decode_huffman, "A", {65: '0'}, 3) # "A" is "00", pad 3
+        with self.assertRaisesRegex(ValueError, "Invalid padding: 3 padding bits claimed, but only 2 bits available."):
+            decode_huffman("A", {65: '0'}, 3, check_parity=False)
 
     def test_decode_invalid_padding_non_zero_bit(self):
-        # Data b"A" -> table {65:'0'}, encoded "0", padded "00", dna "A", pad 1
-        # If received DNA "T" (binary "01") with pad 1, the padding bit '1' is invalid.
-        table_for_A = {65: '0'} # Byte 65 ('A') maps to Huffman code '0'
-        self.assertRaisesRegex(ValueError, "Invalid padding bits: expected '0's but found '1'.",
-                               decode_huffman, "T", table_for_A, 1)
+        table_for_A = {65: '0'} 
+        with self.assertRaisesRegex(ValueError, "Invalid padding bits: expected '0's but found '1'."):
+            decode_huffman("T", table_for_A, 1, check_parity=False)
 
     def test_decode_code_not_in_table(self):
-        # Encode "A", get table {65:'0'}, pad 1, dna "A" ("00")
-        # If we try to decode "G" ("11") with this table, '1' or '11' is not in table.
-        dna, table, pad = encode_huffman(b"A") # dna="A", table={65:'0'}, pad=1
-        # "G" is "11" binary. Unpadded "1" (if pad=1). '1' is not in table { '0': 65 }
-        self.assertRaisesRegex(ValueError, "Corrupted data or incorrect Huffman table: remaining unparsed bits '1'.",
-                               decode_huffman, "G", table, pad)
+        dna_no_parity, table_no_parity, pad_no_parity = encode_huffman(b"A", add_parity=False)
+        with self.assertRaisesRegex(ValueError, "Corrupted data or incorrect Huffman table: remaining unparsed bits '1'."):
+            decode_huffman("G", table_no_parity, pad_no_parity, check_parity=False) # "G" is "11", unpadded "1"
 
     def test_decode_incomplete_code_at_end(self):
-        # table {'A': "01", 'B': "00"}
-        # dna_sequence implying "0" (e.g. "A" if pad=1)
-        # This is tricky. Let's setup:
-        # data = b"AB", codes could be A:0, B:1. Binary "01". DNA "T". pad 0.
-        # If table is A:"00", B:"01". Data "A" -> "00". DNA "A". pad 0.
-        # If we try to decode DNA "A" (binary "00") with table {"X": "001"}, "00" is not a full code.
-        custom_table = {88: "001"} # 'X' -> "001"
-        # DNA "A" is binary "00". This is a prefix of "001" but not the full code.
-        self.assertRaisesRegex(ValueError, "Corrupted data or incorrect Huffman table: remaining unparsed bits '00'.",
-                               decode_huffman, "A", custom_table, 0)
+        custom_table = {ord('X'): "001"} 
+        with self.assertRaisesRegex(ValueError, "Corrupted data or incorrect Huffman table: remaining unparsed bits '00'."):
+            decode_huffman("A", custom_table, 0, check_parity=False) # "A" is "00"
+
+    # --- Tests for Huffman with Parity ---
+    def test_encode_huffman_with_parity(self):
+        data = b"aabbc" # Freq: a:2, b:2, c:1
+        k_val = 4
+        dna_no_parity, _, _ = encode_huffman(data, add_parity=False)
+        dna_with_parity, _, _ = encode_huffman(data, add_parity=True, k_value=k_val, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T)
+        
+        # Expected length increase: for each k_val block of original DNA, one parity bit is added.
+        expected_parity_bits = (len(dna_no_parity) + k_val - 1) // k_val if dna_no_parity else 0
+        self.assertEqual(len(dna_with_parity), len(dna_no_parity) + expected_parity_bits)
+        # Further structural checks could be done, but exact match is hard due to Huffman table variations.
+
+    def test_decode_huffman_with_parity_no_errors(self):
+        data = b"hello"
+        k_val = 3
+        dna_with_parity, table, pad = encode_huffman(
+            data, add_parity=True, k_value=k_val, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
+        )
+        decoded_data, errors = decode_huffman(
+            dna_with_parity, table, pad, check_parity=True, k_value=k_val, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
+        )
+        self.assertEqual(decoded_data, data)
+        self.assertEqual(errors, [])
+
+    def test_decode_huffman_with_parity_with_errors(self):
+        data = b"worlddata"
+        k_val = 3
+        dna_with_parity, table, pad = encode_huffman(
+            data, add_parity=True, k_value=k_val, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
+        )
+        
+        # Corrupt a parity bit (e.g., the first one at index k_val)
+        if len(dna_with_parity) > k_val:
+            original_char = dna_with_parity[k_val]
+            corrupted_char = 'A' if original_char != 'A' else 'T' # Flip it
+            corrupted_dna = dna_with_parity[:k_val] + corrupted_char + dna_with_parity[k_val+1:]
+            
+            decoded_data, errors = decode_huffman(
+                corrupted_dna, table, pad, check_parity=True, k_value=k_val, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
+            )
+            self.assertEqual(decoded_data, data, "Data should still decode correctly")
+            self.assertIn(0, errors, "Error should be detected in the first block")
+        else:
+            self.skipTest("DNA sequence too short to corrupt a parity bit meaningfully.")
+
+    def _assert_round_trip_with_parity(self, data_bytes, k_value, msg=None):
+        dna, table, pad = encode_huffman(
+            data_bytes, add_parity=True, k_value=k_value, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
+        )
+        decoded_data, errors = decode_huffman(
+            dna, table, pad, check_parity=True, k_value=k_value, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
+        )
+        self.assertEqual(data_bytes, decoded_data, msg or f"Round trip (with parity, k={k_value}) failed for {data_bytes!r}")
+        self.assertEqual(errors, [], f"No errors expected for clean round trip (with parity, k={k_value}) for {data_bytes!r}")
+
+    def test_round_trip_huffman_with_parity_various_k(self):
+        self._assert_round_trip_with_parity(b"Parity test for Huffman!", k_value=3)
+        self._assert_round_trip_with_parity(b"Another example with different k.", k_value=5)
+        self._assert_round_trip_with_parity(b"Short", k_value=2) # Test with small k
+        self._assert_round_trip_with_parity(b"", k_value=3) # Empty string
+        self._assert_round_trip_with_parity(b"X", k_value=1) # Single byte, small k
 
 
 if __name__ == '__main__':

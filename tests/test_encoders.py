@@ -3,6 +3,7 @@ sys.path.insert(0, 'src') # Add src directory to Python path for module import
 
 import unittest
 from genecoder.encoders import encode_base4_direct, decode_base4_direct
+from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 
 class TestBase4DirectMapping(unittest.TestCase):
 
@@ -83,47 +84,68 @@ class TestBase4DirectMapping(unittest.TestCase):
 
     # Tests for decode_base4_direct
     def test_decode_empty(self):
-        self.assertEqual(decode_base4_direct(""), b'')
+        decoded_data, errors = decode_base4_direct("")
+        self.assertEqual(decoded_data, b'')
+        self.assertEqual(errors, [])
 
     def test_decode_valid_sequence_aaaa(self):
-        self.assertEqual(decode_base4_direct("AAAA"), b'\x00')
+        decoded_data, errors = decode_base4_direct("AAAA")
+        self.assertEqual(decoded_data, b'\x00')
+        self.assertEqual(errors, [])
 
     def test_decode_valid_sequence_gggg(self):
-        self.assertEqual(decode_base4_direct("GGGG"), b'\xff')
+        decoded_data, errors = decode_base4_direct("GGGG")
+        self.assertEqual(decoded_data, b'\xff')
+        self.assertEqual(errors, [])
 
     def test_decode_ascii_char_reverse(self):
         # Corresponds to b'A' (01000001) which encodes to "TAAT"
-        self.assertEqual(decode_base4_direct("TAAT"), b'A')
+        decoded_data, errors = decode_base4_direct("TAAT")
+        self.assertEqual(decoded_data, b'A')
+        self.assertEqual(errors, [])
 
     def test_decode_multiple_bytes_reverse(self):
         # Corresponds to b'Hi' which encodes to "TACATCCT"
-        self.assertEqual(decode_base4_direct("TACATCCT"), b'Hi')
+        decoded_data, errors = decode_base4_direct("TACATCCT")
+        self.assertEqual(decoded_data, b'Hi')
+        self.assertEqual(errors, [])
 
     def test_decode_byte_sequence_reverse(self):
         # Corresponds to b'\x12\x34\xAB\xCD' which encodes to "ATACAGTACCCGGAGT"
-        self.assertEqual(decode_base4_direct("ATACAGTACCCGGAGT"), b'\x12\x34\xAB\xCD')
+        decoded_data, errors = decode_base4_direct("ATACAGTACCCGGAGT")
+        self.assertEqual(decoded_data, b'\x12\x34\xAB\xCD')
+        self.assertEqual(errors, [])
 
-    # Test encode-decode consistency (round trip)
-    def test_round_trip_empty(self):
+    # Test encode-decode consistency (round trip) - no parity
+    def test_round_trip_empty_no_parity(self):
         data = b''
-        self.assertEqual(decode_base4_direct(encode_base4_direct(data)), data)
+        encoded = encode_base4_direct(data)
+        decoded, errors = decode_base4_direct(encoded)
+        self.assertEqual(decoded, data)
+        self.assertEqual(errors, [])
 
-    def test_round_trip_simple_string(self):
+    def test_round_trip_simple_string_no_parity(self):
         data = b'Hello GeneCoder!'
-        self.assertEqual(decode_base4_direct(encode_base4_direct(data)), data)
+        encoded = encode_base4_direct(data)
+        decoded, errors = decode_base4_direct(encoded)
+        self.assertEqual(decoded, data)
+        self.assertEqual(errors, [])
 
-    def test_round_trip_various_bytes(self):
-        data = b'\x00\x01\xFA\x80\x7F\xff' # Added \xff for completeness
-        self.assertEqual(decode_base4_direct(encode_base4_direct(data)), data)
+    def test_round_trip_various_bytes_no_parity(self):
+        data = b'\x00\x01\xFA\x80\x7F\xff'
+        encoded = encode_base4_direct(data)
+        decoded, errors = decode_base4_direct(encoded)
+        self.assertEqual(decoded, data)
+        self.assertEqual(errors, [])
 
-    # Test decode_base4_direct error handling
+    # Test decode_base4_direct error handling (no parity check)
     def test_decode_invalid_character(self):
         with self.assertRaises(ValueError):
-            decode_base4_direct("AGCX") # X is invalid
+            decode_base4_direct("AGCX") 
 
     def test_decode_invalid_character_lowercase(self):
         with self.assertRaises(ValueError):
-            decode_base4_direct("agct") # lowercase is invalid
+            decode_base4_direct("agct")
 
     def test_decode_invalid_length_short(self):
         with self.assertRaises(ValueError):
@@ -132,6 +154,68 @@ class TestBase4DirectMapping(unittest.TestCase):
     def test_decode_invalid_length_long(self):
         with self.assertRaises(ValueError):
             decode_base4_direct("AGCTA")
+
+    # --- Tests for Parity Integration ---
+    def test_encode_base4_with_parity(self):
+        # b'\x12\x34' -> "ATACAGTA" (corrected from "AATAACTA" in prompt based on current encoder)
+        # Parity for "ATA" (0 GC) -> A.
+        # Parity for "CAG" (1 GC) -> T.
+        # Parity for "TA" (0 GC) -> A.
+        # Expected: "ATAA CAGT TAA"
+        # Let's re-verify \x12\x34 with my encoder:
+        # \x12 (00010010): 00(A) 01(T) 00(A) 10(C) -> "ATAC"
+        # \x34 (00110100): 00(A) 11(G) 01(T) 00(A) -> "AGTA"
+        # Raw DNA: "ATACAGTA"
+        # k_value=3
+        # Block 1: "ATA" (GC=0, even) -> Parity 'A'. Output: "ATAA"
+        # Block 2: "CAG" (GC=1, odd)  -> Parity 'T'. Output: "CAGT"
+        # Block 3: "TA"  (GC=0, even) -> Parity 'A'. Output: "TAA"
+        # Expected DNA with parity: "ATAACAGTTAA"
+        expected_dna_with_parity = "ATAACAGTTAA"
+        actual_dna_with_parity = encode_base4_direct(
+            b'\x12\x34', add_parity=True, k_value=3, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
+        )
+        self.assertEqual(actual_dna_with_parity, expected_dna_with_parity)
+
+    def test_decode_base4_with_parity_no_errors(self):
+        # Using the corrected expected_dna_with_parity from above
+        dna_with_parity = "ATAACAGTTAA" # Corresponds to b'\x12\x34' with k=3 parity
+        original_data = b'\x12\x34'
+        
+        decoded_data, errors = decode_base4_direct(
+            dna_with_parity, check_parity=True, k_value=3, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
+        )
+        self.assertEqual(decoded_data, original_data)
+        self.assertEqual(errors, [])
+
+    def test_decode_base4_with_parity_with_errors(self):
+        # dna_with_parity = "ATAACAGTTAA" (correct)
+        # Corrupt first parity bit: "ATATCAGTTAA" (A -> T)
+        # Block 1: "ATA", Parity "T". Expected for "ATA" (0 GC, even) is "A". Error.
+        # Block 2: "CAG", Parity "T". Expected for "CAG" (1 GC, odd) is "T". OK.
+        # Block 3: "TA",  Parity "A". Expected for "TA"  (0 GC, even) is "A". OK.
+        corrupted_dna = "ATATCAGTTAA" 
+        original_data_stripped = b'\x12\x34' # This should still be decodable
+        
+        decoded_data, errors = decode_base4_direct(
+            corrupted_dna, check_parity=True, k_value=3, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
+        )
+        self.assertEqual(decoded_data, original_data_stripped)
+        self.assertEqual(errors, [0]) # Error expected in the first block (index 0)
+
+    def test_round_trip_base4_with_parity(self):
+        data = b"TestParity!"
+        k_val = 5
+        
+        encoded_dna = encode_base4_direct(
+            data, add_parity=True, k_value=k_val, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
+        )
+        decoded_data, errors = decode_base4_direct(
+            encoded_dna, check_parity=True, k_value=k_val, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
+        )
+        
+        self.assertEqual(decoded_data, data)
+        self.assertEqual(errors, [], "No parity errors should be detected on a clean round trip.")
 
 if __name__ == '__main__':
     unittest.main()

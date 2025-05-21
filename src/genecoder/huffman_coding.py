@@ -7,10 +7,16 @@ This module provides functions to:
     and a subsequent 2-bit-per-nucleotide mapping.
 4.  Decode a DNA sequence back to the original byte data, given the Huffman
     table and padding information.
+5.  Optionally, add and check parity bits for basic error detection with Huffman-encoded sequences.
 """
 import collections
 import heapq
-from typing import Dict, Tuple, List, Union # For type hints within _generate_codes_from_tree
+from typing import Dict, Tuple, List, Union # For type hints
+from genecoder.error_detection import (
+    add_parity_to_sequence, 
+    strip_and_verify_parity, 
+    PARITY_RULE_GC_EVEN_A_ODD_T
+)
 
 # Type alias for Huffman tree nodes used internally
 HuffmanNode = Union[int, List[Union[int, 'HuffmanNode', List['HuffmanNode']]]] # type: ignore
@@ -126,8 +132,16 @@ def _build_huffman_tree_and_codes(frequencies: collections.Counter) -> Dict[int,
 
 # --- Main Encoding Function ---
 
-def encode_huffman(data: bytes) -> Tuple[str, Dict[int, str], int]:
+def encode_huffman(
+    data: bytes,
+    add_parity: bool = False,
+    k_value: int = 7,
+    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T
+) -> Tuple[str, Dict[int, str], int]:
     """Encodes a byte string using Huffman coding and maps to a DNA sequence.
+
+    Optionally, parity nucleotides can be added to the DNA sequence for error
+    detection using the specified rule and k-value.
 
     The process involves:
     1.  Calculating byte frequencies in the input data.
@@ -144,17 +158,29 @@ def encode_huffman(data: bytes) -> Tuple[str, Dict[int, str], int]:
           - "01" -> 'T'
           - "10" -> 'C'
           - "11" -> 'G'
+    7.  If `add_parity` is True, the generated DNA sequence is further processed
+        to include parity bits.
 
     Args:
         data (bytes): The byte string to encode.
+        add_parity (bool): If True, add parity nucleotides to the encoded DNA
+                           sequence. Defaults to False.
+        k_value (int): The size of each data block for parity calculation if
+                       `add_parity` is True. Defaults to 7. Must be positive.
+        parity_rule (str): The parity rule to use if `add_parity` is True.
+                           Defaults to `PARITY_RULE_GC_EVEN_A_ODD_T`.
 
     Returns:
         Tuple[str, Dict[int, str], int]: A tuple containing:
-            - dna_sequence (str): The final DNA sequence.
-            - huffman_table (Dict[int, str]): A dictionary mapping each original 
-              byte (as an integer) to its Huffman code (binary string).
-            - num_padding_bits (int): The number of '0' bits added to the end 
-              of the binary string before DNA conversion (0 or 1).
+            - dna_sequence (str): The final DNA sequence, possibly with parity
+                                  nucleotides interleaved.
+            - huffman_table (Dict[int, str]): The Huffman table used for encoding.
+            - num_padding_bits (int): Number of '0's added to the binary string
+                                      before DNA mapping.
+    
+    Raises:
+        ValueError: If `add_parity` is True and `k_value` is not positive.
+        NotImplementedError: If `add_parity` is True and `parity_rule` is unknown.
     """
     if not data:
         return ("", {}, 0)
@@ -191,13 +217,28 @@ def encode_huffman(data: bytes) -> Tuple[str, Dict[int, str], int]:
 
     dna_sequence = "".join(dna_sequence_parts)
 
+    if add_parity:
+        if k_value <= 0:
+            raise ValueError("k_value must be positive for parity addition.")
+        dna_sequence = add_parity_to_sequence(dna_sequence, k_value, parity_rule)
+
     return dna_sequence, huffman_table, num_padding_bits
 
 
 # --- Main Decoding Function ---
 
-def decode_huffman(dna_sequence: str, huffman_table: Dict[int, str], num_padding_bits: int) -> bytes:
+def decode_huffman(
+    dna_sequence: str, 
+    huffman_table: Dict[int, str], 
+    num_padding_bits: int,
+    check_parity: bool = False,
+    k_value: int = 7,
+    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T
+) -> Tuple[bytes, List[int]]:
     """Decodes a Huffman-encoded DNA sequence back into the original byte string.
+
+    Optionally, this function can check for parity errors if the sequence was
+    encoded with parity bits.
 
     The process involves:
     1.  Converting the DNA sequence back into its binary string representation 
@@ -210,16 +251,24 @@ def decode_huffman(dna_sequence: str, huffman_table: Dict[int, str], num_padding
         the inverted Huffman codes to reconstruct the original bytes.
 
     Args:
-        dna_sequence (str): The DNA sequence string to decode.
-        huffman_table (Dict[int, str]): A dictionary mapping each original byte 
-            (as an integer) to its Huffman code (binary string). This is the 
-            same table returned by the `encode_huffman` function.
-        num_padding_bits (int): The number of '0' bits that were added as 
-            padding during encoding (0 or 1). This is also returned by 
-            `encode_huffman`.
+        dna_sequence (str): The DNA sequence string to decode, possibly
+                            including parity bits.
+        huffman_table (Dict[int, str]): The Huffman table used for encoding.
+        num_padding_bits (int): The number of '0's added to the binary string
+                                before DNA mapping during encoding.
+        check_parity (bool): If True, verify parity and report errors.
+                             Defaults to False.
+        k_value (int): The size of data blocks used during parity encoding if
+                       `check_parity` is True. Defaults to 7. Must be positive.
+        parity_rule (str): The parity rule used if `check_parity` is True.
+                           Defaults to `PARITY_RULE_GC_EVEN_A_ODD_T`.
 
     Returns:
-        bytes: A byte string representing the original data.
+        Tuple[bytes, List[int]]: A tuple containing:
+            - bytes: The decoded byte string.
+            - List[int]: A list of 0-based indices of data blocks where parity
+                         errors were detected. Empty if `check_parity` is False
+                         or no errors were found.
 
     Raises:
         ValueError:
@@ -236,33 +285,47 @@ def decode_huffman(dna_sequence: str, huffman_table: Dict[int, str], num_padding
               bits in the binary string that do not form a complete, valid 
               Huffman code.
     """
-    # Handle consistent empty input: empty sequence, empty table, zero padding.
-    if not dna_sequence and not huffman_table and num_padding_bits == 0:
-        return b""
+    parity_errors: List[int] = []
+    sequence_for_huffman_decode = dna_sequence
 
-    # 1. Convert DNA sequence to its binary string representation.
+    if check_parity:
+        if k_value <= 0:
+            raise ValueError("k_value must be positive for parity checking.")
+        # strip_and_verify_parity may raise ValueError or NotImplementedError
+        sequence_for_huffman_decode, parity_errors = strip_and_verify_parity(
+            dna_sequence, k_value, parity_rule
+        )
+
+    # Handle consistent empty input: empty sequence, empty table, zero padding.
+    # This check should use sequence_for_huffman_decode if parity was stripped.
+    if not sequence_for_huffman_decode and not huffman_table and num_padding_bits == 0:
+        # If parity checking resulted in an empty sequence, and other params match empty,
+        # it's a valid empty decode. Parity errors list will be returned as is.
+        return b"", parity_errors
+
+
+    # 1. Convert DNA sequence (potentially stripped of parity) to its binary string.
     binary_digits_list: List[str] = []
     dna_to_binary_map = {'A': "00", 'T': "01", 'C': "10", 'G': "11"}
-    for char_dna in dna_sequence:
+    for char_dna in sequence_for_huffman_decode: # Use the (potentially) stripped sequence
         binary_pair = dna_to_binary_map.get(char_dna)
         if binary_pair is None:
-            raise ValueError(f"Invalid DNA character '{char_dna}' in sequence.")
+            raise ValueError(
+                f"Invalid DNA character '{char_dna}' in sequence for Huffman decoding."
+            )
         binary_digits_list.append(binary_pair)
     encoded_binary_string = "".join(binary_digits_list)
 
     # Handle if DNA conversion results in an empty binary string.
     if not encoded_binary_string:
-        # If also consistent with empty input parameters, return empty bytes.
         if not huffman_table and num_padding_bits == 0: 
-            return b""
-        # Otherwise, it's an inconsistency (e.g., non-empty DNA was all invalid chars,
-        # or empty DNA with a non-empty table).
+            return b"", parity_errors # Return parity_errors as well
         raise ValueError(
-            "Empty binary string derived from DNA, but Huffman table or padding "
-            "suggests data was expected."
+            "Empty binary string derived from (potentially parity-stripped) DNA, "
+            "but Huffman table or padding suggests data was expected."
         )
 
-    # 2. Remove padding bits.
+    # 2. Remove Huffman padding bits.
     unpadded_binary_string: str
     if num_padding_bits < 0:
         raise ValueError("num_padding_bits cannot be negative.")
@@ -285,11 +348,12 @@ def decode_huffman(dna_sequence: str, huffman_table: Dict[int, str], num_padding
 
     # Handle if unpadded binary string is empty.
     if not unpadded_binary_string:
-        # If the Huffman table is also empty, it's consistent with empty original data.
         if not huffman_table: 
-            return b""
-        # If table is not empty, it's an inconsistency (e.g. original data was one
-        # unique byte like 'A', its code '0', padded to '00'. If num_padding_bits
+            return b"", parity_errors # Return parity_errors
+        raise ValueError(
+            "Unpadded binary string is empty, but Huffman table is not empty, "
+            "implying all data was removed as padding."
+        )
         # was then given as 2, unpadded becomes empty, but table {'A':'0'} exists).
         # This implies all original data was represented by bits that were then
         # considered padding.
@@ -331,4 +395,4 @@ def decode_huffman(dna_sequence: str, huffman_table: Dict[int, str], num_padding
             f"remaining unparsed bits '{"".join(current_code_buffer)}'."
         )
 
-    return b"".join(decoded_bytes_list)
+    return b"".join(decoded_bytes_list), parity_errors

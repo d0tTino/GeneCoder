@@ -5,9 +5,22 @@ Each 2-bit segment of a byte corresponds to one nucleotide. The processing
 occurs from the Most Significant Bit (MSB) to the Least Significant Bit (LSB)
 of each byte.
 """
+from typing import Tuple, List # For type hints
+from genecoder.error_detection import (
+    add_parity_to_sequence, 
+    strip_and_verify_parity, 
+    PARITY_RULE_GC_EVEN_A_ODD_T
+)
 
-def encode_base4_direct(data: bytes) -> str:
+def encode_base4_direct(
+    data: bytes, 
+    add_parity: bool = False, 
+    k_value: int = 7, 
+    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T
+) -> str:
   """Encodes a byte string into a DNA sequence using Base-4 Direct Mapping.
+
+  Optionally, parity nucleotides can be added to the sequence for error detection.
 
   The mapping from 2-bit binary pairs to DNA nucleotides is as follows:
     - `00` (binary) -> 'A'
@@ -27,9 +40,20 @@ def encode_base4_direct(data: bytes) -> str:
 
   Args:
     data (bytes): The byte string to encode.
+    add_parity (bool): If True, add parity nucleotides to the encoded sequence.
+                       Defaults to False.
+    k_value (int): The size of each data block for parity calculation.
+                   Defaults to 7. Must be positive if `add_parity` is True.
+    parity_rule (str): The parity rule to use if `add_parity` is True.
+                       Defaults to `PARITY_RULE_GC_EVEN_A_ODD_T`.
 
   Returns:
-    str: A string representing the DNA sequence.
+    str: A string representing the DNA sequence, possibly with parity
+         nucleotides interleaved.
+  
+  Raises:
+    ValueError: If `add_parity` is True and `k_value` is not positive.
+    NotImplementedError: If `add_parity` is True and `parity_rule` is unknown.
   """
   dna_sequence_parts: list[str] = []
   # Mapping of 2-bit integers to DNA characters.
@@ -59,11 +83,28 @@ def encode_base4_direct(data: bytes) -> str:
     for pair_val in pairs:
       dna_sequence_parts.append(mapping[pair_val])
 
-  return "".join(dna_sequence_parts)
+  encoded_dna = "".join(dna_sequence_parts)
+
+  if add_parity:
+    if k_value <= 0:
+      raise ValueError("k_value must be a positive integer when adding parity.")
+    # Assuming PARITY_RULE_GC_EVEN_A_ODD_T is the only one for now,
+    # add_parity_to_sequence will raise NotImplementedError for others.
+    encoded_dna = add_parity_to_sequence(encoded_dna, k_value, parity_rule)
+
+  return encoded_dna
 
 
-def decode_base4_direct(dna_sequence: str) -> bytes:
+def decode_base4_direct(
+    dna_sequence: str,
+    check_parity: bool = False,
+    k_value: int = 7,
+    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T
+) -> Tuple[bytes, List[int]]:
   """Decodes a DNA sequence string into a byte string using Base-4 Direct Mapping.
+
+  Optionally, this function can check for parity errors if the sequence was
+  encoded with parity bits.
 
   This function reverses the `encode_base4_direct` process. The mapping from
   DNA nucleotides to 2-bit binary pairs is:
@@ -83,23 +124,48 @@ def decode_base4_direct(dna_sequence: str) -> bytes:
   This results in the byte `0b01000001` (ASCII 'A', decimal 65).
 
   Args:
-    dna_sequence (str): The DNA sequence string to decode. Must only contain
-      'A', 'T', 'C', 'G' characters, and its length must be a multiple of 4.
+    dna_sequence (str): The DNA sequence string to decode.
+    check_parity (bool): If True, verify parity and report errors.
+                         Defaults to False.
+    k_value (int): The size of each data block used during parity encoding.
+                   Defaults to 7. Must be positive if `check_parity` is True.
+    parity_rule (str): The parity rule used during encoding if `check_parity` is True.
+                       Defaults to `PARITY_RULE_GC_EVEN_A_ODD_T`.
 
   Returns:
-    bytes: A byte string representing the original data.
-
+    Tuple[bytes, List[int]]: A tuple containing:
+      - bytes: The decoded byte string.
+      - List[int]: A list of 0-based indices of data blocks where parity
+                   errors were detected. Empty if `check_parity` is False
+                   or no errors were found.
+  
   Raises:
-    ValueError: If the input sequence contains invalid characters (not 'A', 'T', 
-      'C', 'G') or if its length is not a multiple of 4.
+    ValueError: If `check_parity` is True and `k_value` is not positive,
+                or if the input sequence (after potential stripping) contains 
+                invalid characters or its length is not a multiple of 4.
+    NotImplementedError: If `check_parity` is True and `parity_rule` is unknown.
   """
-  # Input validation
-  if not all(c in 'ATCG' for c in dna_sequence):
-    raise ValueError(
-        "Invalid character in DNA sequence. Only 'A', 'T', 'C', 'G' are allowed."
+  parity_errors: List[int] = []
+  sequence_to_decode = dna_sequence
+
+  if check_parity:
+    if k_value <= 0:
+      raise ValueError("k_value must be a positive integer when checking parity.")
+    # strip_and_verify_parity will raise NotImplementedError for unknown rules
+    # or ValueError for malformed sequences (e.g. length inconsistency)
+    sequence_to_decode, parity_errors = strip_and_verify_parity(
+        dna_sequence, k_value, parity_rule
     )
-  if len(dna_sequence) % 4 != 0:
-    raise ValueError("DNA sequence length must be a multiple of 4.")
+
+  # Input validation for the (potentially stripped) sequence to decode
+  if not all(c in 'ATCG' for c in sequence_to_decode):
+    raise ValueError(
+        "Invalid character in sequence to decode. Only 'A', 'T', 'C', 'G' are allowed."
+    )
+  if len(sequence_to_decode) % 4 != 0:
+    raise ValueError(
+        "Length of sequence to decode must be a multiple of 4."
+    )
 
   decoded_bytes: list[int] = [] 
   # Mapping of DNA characters to their 2-bit integer values.
@@ -125,4 +191,4 @@ def decode_base4_direct(dna_sequence: str) -> bytes:
     current_byte_val |= reverse_mapping[chars[3]] << 0 # 4th char is LSB pair
     decoded_bytes.append(current_byte_val)
 
-  return bytes(decoded_bytes)
+  return bytes(decoded_bytes), parity_errors
