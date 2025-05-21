@@ -1,134 +1,104 @@
+"""Provides functions for formatting data into and parsing data from FASTA format.
+
+FASTA is a text-based format for representing nucleotide sequences or peptide
+sequences, where nucleotides or amino acids are represented using single-letter
+codes. A sequence in FASTA format consists of a single-line description (header),
+followed by lines of sequence data.
+"""
+from typing import List, Tuple # For type hints
+
 def to_fasta(dna_sequence: str, header: str, line_width: int = 60) -> str:
-    """
-    Formats a DNA sequence into FASTA format.
+    """Formats a DNA sequence into a FASTA formatted string.
 
     Args:
-        dna_sequence: The DNA sequence string.
-        header: The header string for the FASTA sequence (without the leading '>').
-        line_width: The maximum number of characters per line for the sequence.
-                    Must be a positive integer. Defaults to 60.
+        dna_sequence (str): The DNA sequence string (e.g., "ATGC...").
+        header (str): The header string for the FASTA sequence, which will be
+            prefixed with ">". Do not include ">" in this argument.
+        line_width (int): The maximum number of characters per line for the 
+            sequence data. Defaults to 60. Must be a positive integer.
 
     Returns:
-        A string representing the DNA sequence in FASTA format.
+        str: A string representing the DNA sequence in FASTA format.
+             Each line of the sequence, including the last, is followed by a
+             newline character. An empty sequence results in only the header
+             line followed by a newline.
 
     Raises:
-        ValueError: If line_width is not a positive integer.
+        ValueError: If `line_width` is not a positive integer.
     """
     if not isinstance(line_width, int) or line_width <= 0:
-        # As per instructions, for simplicity, assume valid positive line_width.
-        # However, adding a check for robustness. Can be removed if strictly following prompt.
-        # Or default to 60 as mentioned: line_width = 60
         raise ValueError("line_width must be a positive integer.")
 
     fasta_string = f">{header}\n"
     
+    if not dna_sequence: # Handle empty sequence explicitly for clarity
+        return fasta_string
+
     for i in range(0, len(dna_sequence), line_width):
         fasta_string += dna_sequence[i:i+line_width] + "\n"
         
     return fasta_string
 
-# Example usage (can be commented out or removed)
-# if __name__ == '__main__':
-#     print(to_fasta("ATGCATGC", "seq1", 4))
-#     # Expected:
-#     # >seq1
-#     # ATGC
-#     # ATGC
-#     #
-#     print(to_fasta("ATGCATGCATGCATGC", "seq2_long_header_id", 5))
-#     # Expected:
-#     # >seq2_long_header_id
-#     # ATGCAT
-#     # GCATGC
-#     # ATGC
-#     #
-#     print(to_fasta("ATGC", "seq3_short_seq", 80))
-#     # Expected:
-#     # >seq3_short_seq
-#     # ATGC
-#     #
-#     print(to_fasta("", "seq4_empty_seq", 60))
-#     # Expected:
-#     # >seq4_empty_seq
-#     #
-#     # (Note: an empty sequence would just be the header followed by a newline)
-#     # The current implementation adds an extra newline if sequence is empty.
-#     # Let's refine: if dna_sequence is empty, it should just be ">header\n"
-#     # No, the loop range(0, 0, line_width) will not run, so it will be correct.
-#     # If dna_sequence is empty, range(0,0,60) is empty, fasta_string remains ">header\n"
-#     # What if the dna_sequence is shorter than line_width? dna_sequence[0:len(dna_sequence)] + "\n" - Correct.
-#     # What if dna_sequence length is exact multiple of line_width? Correct.
-#     # What if dna_sequence is empty?
-#     # fasta_string = f">{header}\n"
-#     # loop range(0, len(""), 60) -> range(0,0,60) doesn't run.
-#     # returns ">header\n" which is correct.
-#     #
-#     # The example `to_fasta("ATGCATGC", "seq1", 4)` should return `">seq1\nATGC\nATGC\n"`.
-#     # My code:
-#     # >seq1
-#     # ATGC
-#     # ATGC
-#     # This is correct.
-#
-#     # Test with a sequence that is not a multiple of line_width
-#     print(to_fasta("ATGCATGCA", "seq5", 4))
-#     # >seq5
-#     # ATGC
-#     # ATGC
-#     # A
-#     # This is also correct.
-#
-#     # Test ValueError for line_width
-#     try:
-#         print(to_fasta("ATGC", "seq_err", 0))
-#     except ValueError as e:
-#         print(e)
-#     try:
-#         print(to_fasta("ATGC", "seq_err", -1))
-#     except ValueError as e:
-#         print(e)
-#     try:
-#         print(to_fasta("ATGC", "seq_err", "abc"))
-#     except ValueError as e: # This would be TypeError, not ValueError
-#         print(e) # Actually, my check `isinstance(line_width, int)` handles this.
-#
-#     # The instruction "For simplicity, assume valid positive line_width." means
-#     # I can remove the ValueError check. I'll keep it for robustness but note this.
-#
-# The requirement is "Each line of the sequence should be followed by a newline character."
-# This means even the last line of the sequence. My code does this.
-#
-# Example: to_fasta("ATGCATGC", "seq1", 4) should return ">seq1\nATGC\nATGC\n".
-# My function output for this:
-# header_line = ">seq1\n"
-# i=0: fasta_string += "ATGC" + "\n" -> ">seq1\nATGC\n"
-# i=4: fasta_string += "ATGC" + "\n" -> ">seq1\nATGC\nATGC\n"
-# Returns ">seq1\nATGC\nATGC\n". This matches.
-#
-# Example: to_fasta("", "empty_seq")
-# header_line = ">empty_seq\n"
-# loop does not run.
-# returns ">empty_seq\n". This is correct.
-#
-#
-# One edge case: if dna_sequence is empty, the loop `for i in range(0, len(dna_sequence), line_width):`
-# will not execute. So `fasta_string` will just be `f">{header}\n"`. This is the correct FASTA format
-# for an empty sequence.
-#
-# The problem statement says: "assume valid positive line_width".
-# I will remove the explicit ValueError check to adhere to this.
-# If line_width is not positive, the behavior of range() or slicing might be weird,
-# but the problem asks to assume it's valid.
-# For example, line_width=0 would cause a ZeroDivisionError in range step.
-# Let's re-add a minimal check as it's good practice and was in my initial thought.
-# The prompt says "if not, it could default to a sensible value like 60 or raise an error."
-# Raising an error is fine.
-#
-# Final check of the logic:
-# to_fasta("A", "h", 3) -> ">h\nA\n" Correct.
-# to_fasta("ABCDEFG", "h", 3) -> ">h\nABC\nDEF\nG\n" Correct.
-#
-# Looks good. I'll remove the example usage block from the final file.Okay, I have created `src/genecoder/formats.py` and defined the `to_fasta` function with a docstring and basic error checking for `line_width`.
 
-Now, I will modify `src/cli.py` to import and use this function.
-First, I'll read the content of `src/cli.py`.
+def from_fasta(fasta_content: str) -> List[Tuple[str, str]]:
+    """Parses content in FASTA format and extracts sequence records.
+
+    A FASTA record consists of a header line starting with ">" followed by
+    one or more lines of sequence data. This function can parse multiple
+    FASTA records from a single string input. Lines not part of a valid
+    record structure (e.g., text before the first header) are ignored.
+
+    Sequence lines are processed by first stripping leading/trailing whitespace,
+    then removing all internal whitespace before concatenation. For example,
+    a line "  AT GC  " becomes "ATGC".
+
+    Args:
+        fasta_content (str): A string containing the entire FASTA formatted data.
+
+    Returns:
+        List[Tuple[str, str]]: A list of tuples, where each tuple contains 
+        `(header, sequence)`.
+        - `header` (str): The header string (content after the initial ">", 
+          stripped of leading/trailing whitespace).
+        - `sequence` (str): The concatenated sequence data, with all internal
+          whitespace removed from each original sequence line.
+        Returns an empty list if no valid FASTA records (lines starting with ">")
+        are found.
+    
+    Example:
+        >>> fasta_data = ">seq1 description1\\nAT GC\\nCGTA\\n>seq2\\nTT TT\\nAAAA"
+        >>> from_fasta(fasta_data)
+        [('seq1 description1', 'ATGCCGTA'), ('seq2', 'TTTTAAAA')]
+    """
+    records: List[Tuple[str, str]] = []
+    current_header: str | None = None
+    current_sequence_parts: List[str] = []
+
+    lines = fasta_content.splitlines()
+
+    for line_text in lines: # Renamed 'line' to 'line_text' for clarity
+        stripped_line = line_text.strip()
+        if not stripped_line: # Skip empty or whitespace-only lines
+            continue
+
+        if stripped_line.startswith(">"):
+            # If a previous record was being processed, finalize and save it.
+            if current_header is not None:
+                records.append((current_header, "".join(current_sequence_parts)))
+            
+            current_header = stripped_line[1:].strip() # Store header without ">"
+            current_sequence_parts = [] # Reset for the new sequence
+        elif current_header is not None: 
+            # This is a sequence line for the current active header.
+            # Remove all whitespace (leading, trailing, and internal) from the sequence line.
+            processed_sequence_line = "".join(stripped_line.split())
+            current_sequence_parts.append(processed_sequence_line)
+        # else: If line_text does not start with ">" and no current_header is active,
+        #       it's considered content outside a valid FASTA record (e.g., text
+        #       before the first header) and is ignored.
+
+    # After the loop, save the last processed record, if any.
+    if current_header is not None:
+        records.append((current_header, "".join(current_sequence_parts)))
+
+    return records

@@ -4,11 +4,11 @@
 
 ---
 
-## Current Status: Genesis Stage! 🌱
+## Current Status: MVP Functionality Achieved! 🎉
 
-**GeneCoder is a brand new project, freshly conceived and initialized!** (As of May 20, 2025)
+**GeneCoder's Minimum Viable Product (MVP) is now functional!** (As of latest update)
 
-The code is not yet written, but the blueprint is ready. This repository will soon house the source code and documentation as development kicks off. Stay tuned!
+The core command-line interface for encoding and decoding data using initial schemes is implemented. You can now experiment with converting files into simulated DNA and back.
 
 ---
 
@@ -25,49 +25,111 @@ GeneCoder aims to demystify the fascinating world of DNA-based data storage. Our
 
 ---
 
-## Planned Features (Starting with an MVP)
+## Implemented MVP Features
 
-The initial development phase (MVP - Minimum Viable Product) will focus on delivering core functionality via a Command-Line Interface (CLI):
+The current version of GeneCoder, built around a Command-Line Interface (CLI), delivers the following core functionalities:
 
-* **Input Handling:**
-    * Accept text (UTF-8) and small binary files (e.g., ≤ 5MB for MVP).
-    * Basic file type detection and summary.
-* **Encoding Engine (Phase 1 Schemes):**
-    * **Base-4 Direct Mapping:** A straightforward 2-bits-per-nucleotide scheme.
-    * **Huffman-4 Coding:** An optimized scheme mapping input symbols to variable-length DNA codons, illustrating compression principles.
-* **Decoding Engine:**
-    * Reliable decoding of the implemented schemes.
-    * Error detection for invalid DNA characters.
-* **Output:**
-    * Raw DNA sequence string.
-    * Export to FASTA file format, including metadata in the header.
-* **Basic Analysis & Metrics:**
-    * Calculation of compression ratio.
-    * Achieved bits per nucleotide.
+*   **CLI for Encoding & Decoding:** A user-friendly CLI (`src/cli.py`) to perform encoding and decoding operations.
+*   **Input Handling:**
+    *   Accepts arbitrary binary files as input for encoding (UTF-8 text files are also handled as binary).
+*   **Encoding Methods:**
+    *   **Base-4 Direct Mapping:**
+        *   A straightforward scheme where each byte of input data is converted into four DNA nucleotides.
+        *   Each 2-bit pair from the input byte (processed Most Significant Bit first) maps directly to a nucleotide:
+            *   `00` -> `A`
+            *   `01` -> `T`
+            *   `10` -> `C`
+            *   `11` -> `G`
+    *   **Huffman-4 Coding:**
+        *   An adaptive encoding method that first calculates byte frequencies in the input data.
+        *   Builds a Huffman tree to generate variable-length binary codes for each input byte (more frequent bytes get shorter codes).
+        *   These binary codes are concatenated, padded with '0's if necessary to ensure an even length, and then mapped to DNA using the same 2-bit to nucleotide mapping as Base-4 Direct.
+*   **Decoding Engine:**
+    *   Reliable decoding for both `base4_direct` and `huffman` methods.
+    *   Error detection for invalid DNA characters during decoding.
+*   **Output Format:**
+    *   **Encoded Data:** Output is in FASTA format (`.fasta`).
+        *   The FASTA header line includes metadata: encoding method used and the original input file name.
+        *   For the `huffman` method, the header also contains a JSON string with the specific Huffman table (mapping original byte values to binary codes) and the number of padding bits used. This information is crucial for correct decoding.
+    *   **Decoded Data:** The output is the original binary file.
+*   **Encoding Metrics Display:**
+    *   When encoding, the CLI displays:
+        *   Original file size (bytes).
+        *   Encoded DNA length (nucleotides).
+        *   Compression ratio (original bytes / DNA bytes equivalent, where 1 nucleotide = 2 bits = 0.25 bytes).
+        *   Achieved bits per nucleotide (total bits in original data / number of nucleotides in encoded sequence).
 
 ---
 
-## Technology Stack (Planned)
+## Usage
 
-* **Language:** Python (≥ 3.10)
-* **Core Libraries (anticipated):** `heapq` (for Huffman trees), `bitarray`, `pathlib`, `argparse`/`click`.
-* **Optional (for later enhancements):** `numpy`, `matplotlib` (for visualizations), `rich` (for CLI).
+To use GeneCoder, navigate to the project's root directory in your terminal. The main script is `src/cli.py`.
+
+**General Command Structure:**
+`python src/cli.py <command> --input-file <input_path> --output-file <output_path> --method <method_name>`
+
+**Examples:**
+
+1.  **Encode using Base-4 Direct Mapping:**
+    ```bash
+    python src/cli.py encode --input-file path/to/your_document.txt --output-file path/to/encoded_base4.fasta --method base4_direct
+    ```
+
+2.  **Decode using Base-4 Direct Mapping:**
+    ```bash
+    python src/cli.py decode --input-file path/to/encoded_base4.fasta --output-file path/to/decoded_document.txt --method base4_direct
+    ```
+
+3.  **Encode using Huffman-4 Coding:**
+    ```bash
+    python src/cli.py encode --input-file path/to/your_image.png --output-file path/to/encoded_huffman.fasta --method huffman
+    ```
+    *Output for this command will include encoding metrics printed to the console. The `encoded_huffman.fasta` file will have a header containing the Huffman table and padding information required for decoding.*
+
+4.  **Decode using Huffman-4 Coding:**
+    ```bash
+    python src/cli.py decode --input-file path/to/encoded_huffman.fasta --output-file path/to/decoded_image.png --method huffman
+    ```
+    *This command relies on the Huffman parameters stored in the FASTA header of `encoded_huffman.fasta`.*
+
+---
+
+## Technology Stack (Used for MVP)
+
+*   **Language:** Python (≥ 3.10 recommended)
+*   **Core Libraries (Python Standard Library):**
+    *   `argparse` (for CLI argument parsing)
+    *   `json` (for serializing Huffman table in FASTA headers)
+    *   `collections.Counter` (for frequency analysis in Huffman coding)
+    *   `heapq` (for building Huffman trees)
+    *   `pathlib` (implicitly used for path handling, though not explicitly imported in current code)
 
 ---
 
 ## Development Roadmap (High-Level)
 
-1.  **MVP (Weeks 1-2 of development):** CLI-based encoding/decoding with Base-4 and Huffman-4 schemes, FASTA output, and basic metrics.
-2.  **Phase 2:** Introduce basic error-resilience simulation (e.g., parity checks), develop a simple GUI (potentially using Flet), and add plotting for metrics.
-3.  **Phase 3 & Beyond:** Explore more advanced concepts like GC-balanced encoding, simplified error correction codes (e.g., Hamming), batch processing, and potentially a plug-in API for new encoding schemes.
+1.  **MVP - Foundation Implemented:**
+    *   CLI-based encoding and decoding.
+    *   Encoding methods: Base-4 Direct Mapping and Huffman-4 Coding.
+    *   FASTA formatted output with metadata (including Huffman parameters).
+    *   Display of encoding metrics (original size, DNA length, compression ratio, bits/nt).
+    *   Robust FASTA parsing for decoding.
+    *   Comprehensive unit tests for core logic.
+2.  **Phase 2 (Future):** Introduce basic error-resilience simulation (e.g., simple parity checks or triple modular redundancy concepts), develop a simple GUI (potentially using a lightweight framework like Tkinter or Flet), and add plotting for metrics comparison.
+3.  **Phase 3 & Beyond (Future):** Explore more advanced concepts like GC-content balancing in encoding, simplified error correction codes (e.g., Hamming codes), support for larger files through streaming/batch processing, and potentially a plug-in API for users to experiment with their own encoding schemes.
 
 ---
 
 ## Contributing
 
-GeneCoder is envisioned as an open-source educational project. While development is just beginning, contributions will be very welcome in the future!
+GeneCoder is an open-source educational project. Contributions are welcome! Now that the foundational MVP is in place, there are many avenues for improvement and expansion.
 
-Once the foundational code is in place, look out for issues tagged `good first issue` or feel free to discuss your ideas by opening a new issue. (Detailed contribution guidelines will be added as the project matures).
+Feel free to:
+*   Tackle an existing issue (look for `good first issue` or `help wanted` tags in the future).
+*   Propose new features or improvements by opening an issue.
+*   Submit pull requests for bug fixes or enhancements.
+
+(Detailed contribution guidelines will be added as the project matures).
 
 ---
 
@@ -77,4 +139,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Happy Forging (or rather, Happy Coding)! We're excited to bring GeneCoder to life.
+Happy Forging (or rather, Happy Coding)! We're excited to see how GeneCoder evolves with community input.
