@@ -117,7 +117,7 @@ def main() -> None:
 
             if args.method == 'base4_direct':
                 if args.add_parity and args.k_value <= 0:
-                    print("Error: --k-value must be positive when adding parity.")
+                    print("Error: Parity k-value must be a positive integer when --add-parity is used.", file=sys.stderr)
                     sys.exit(1)
                 encoded_dna_sequence = encode_base4_direct(
                     input_data, 
@@ -137,7 +137,7 @@ def main() -> None:
             
             elif args.method == 'huffman':
                 if args.add_parity and args.k_value <= 0:
-                    print("Error: --k-value must be positive when adding parity for Huffman.")
+                    print("Error: Parity k-value must be a positive integer when --add-parity is used with Huffman encoding.", file=sys.stderr)
                     sys.exit(1)
                 encoded_dna_sequence, huffman_table, num_padding_bits = encode_huffman(
                     input_data,
@@ -172,7 +172,7 @@ def main() -> None:
             
             else: # Should not happen due to argparse choices
                 # This case is theoretically unreachable due to `argparse` choices constraint.
-                print(f"Error: Encoding method '{args.method}' is not supported.")
+                print(f"Error: Unknown encoding method '{args.method}'. Supported methods are 'base4_direct' and 'huffman'.", file=sys.stderr)
                 sys.exit(1)
 
             with open(args.output_file, 'w', encoding='utf-8') as f_out:
@@ -202,16 +202,16 @@ def main() -> None:
             print(f"Successfully encoded '{args.input_file}' to '{args.output_file}' in FASTA format using '{args.method}' method.")
 
         except FileNotFoundError:
-            print(f"Error: Input file '{args.input_file}' not found.")
+            print(f"Error: Input file '{args.input_file}' not found. Please check the file path.", file=sys.stderr)
             sys.exit(1)
         except IOError as e:
-            print(f"Error during file operation: {e}")
+            print(f"Error: An I/O error occurred with file '{args.input_file}' or '{args.output_file}': {e}", file=sys.stderr)
             sys.exit(1)
         except (ValueError, json.JSONDecodeError) as e: 
-            print(f"Error during encoding or FASTA formatting/JSON processing: {e}")
+            print(f"Error: Data processing or parameter error during encoding: {e}", file=sys.stderr)
             sys.exit(1)
         except Exception as e:
-            print(f"An unexpected error occurred during encoding: {e}")
+            print(f"An unexpected critical error occurred during encoding: {e}", file=sys.stderr)
             sys.exit(1)
 
     elif args.command == 'decode':
@@ -232,7 +232,7 @@ def main() -> None:
 
             if args.method == 'base4_direct':
                 if args.check_parity and args.k_value <= 0:
-                    print("Error: --k-value must be positive when checking parity.")
+                    print("Error: Parity k-value must be a positive integer when --check-parity is used.", file=sys.stderr)
                     sys.exit(1)
                 
                 # The `dna_sequence` from `from_fasta` is already a single string of sequence characters.
@@ -245,11 +245,11 @@ def main() -> None:
                     parity_rule=args.parity_rule
                 )
                 if args.check_parity and parity_errors:
-                    print(f"Warning: Parity errors detected in the following 0-based data blocks: {parity_errors}")
+                    print(f"Warning: Parity errors detected in the following 0-indexed data blocks: {parity_errors}", file=sys.stderr)
             
             elif args.method == 'huffman':
                 if args.check_parity and args.k_value <= 0:
-                    print("Error: --k-value must be positive when checking parity for Huffman.")
+                    print("Error: Parity k-value must be a positive integer when --check-parity is used with Huffman decoding.", file=sys.stderr)
                     sys.exit(1)
                 
                 # For Huffman, extract parameters (Huffman table, padding) from the FASTA header.
@@ -312,7 +312,7 @@ def main() -> None:
                     
                 except (ValueError, json.JSONDecodeError, KeyError, TypeError) as e:
                     # Catch specific errors from parsing logic, json.loads, or dict access.
-                    print(f"Error parsing Huffman parameters from FASTA header: {e}")
+                    print(f"Error: Invalid or corrupt Huffman parameters in FASTA header: {e}", file=sys.stderr)
                     sys.exit(1)
                 
                 
@@ -325,11 +325,11 @@ def main() -> None:
                     parity_rule=args.parity_rule
                 )
                 if args.check_parity and parity_errors:
-                    print(f"Warning: Parity errors detected in the following 0-based data blocks: {parity_errors}")
+                    print(f"Warning: Parity errors detected in the following 0-indexed data blocks: {parity_errors}", file=sys.stderr)
             
-            else: # Should not happen due to argparse choices
-                # This case is theoretically unreachable.
-                print(f"Error: Decoding method '{args.method}' is not supported.")
+            else: 
+                # This case is theoretically unreachable due to argparse `choices`.
+                print(f"Error: Unknown decoding method '{args.method}'. Supported methods are 'base4_direct' and 'huffman'.", file=sys.stderr)
                 sys.exit(1)
 
             with open(args.output_file, 'wb') as f_out:
@@ -338,16 +338,16 @@ def main() -> None:
             print(f"Successfully decoded '{args.input_file}' to '{args.output_file}' using '{args.method}' method.")
             
         except FileNotFoundError:
-            print(f"Error: Input file '{args.input_file}' not found.")
+            print(f"Error: Input file '{args.input_file}' not found. Please check the file path.", file=sys.stderr)
             sys.exit(1)
         except IOError as e:
-            print(f"Error during file operation: {e}")
+            print(f"Error: An I/O error occurred with file '{args.input_file}' or '{args.output_file}': {e}", file=sys.stderr)
             sys.exit(1)
         except (ValueError, json.JSONDecodeError) as e: # Catch errors from decoder, JSON, or header parsing
-            print(f"Error during decoding: {e}")
+            print(f"Error: Data processing or parameter error during decoding: {e}", file=sys.stderr)
             sys.exit(1)
         except Exception as e:
-            print(f"An unexpected error occurred during decoding: {e}")
+            print(f"An unexpected critical error occurred during decoding: {e}", file=sys.stderr)
             sys.exit(1)
 
 if __name__ == '__main__':
