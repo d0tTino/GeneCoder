@@ -7,10 +7,17 @@ of each byte.
 """
 from typing import Tuple, List # For type hints
 from genecoder.error_detection import (
-    add_parity_to_sequence, 
-    strip_and_verify_parity, 
+    add_parity_to_sequence,
+    strip_and_verify_parity,
     PARITY_RULE_GC_EVEN_A_ODD_T
 )
+from .gc_constrained_encoder import (
+    encode_gc_balanced, 
+    decode_gc_balanced, 
+    calculate_gc_content,
+    get_max_homopolymer_length
+)
+from genecoder.error_correction import encode_triple_repeat, decode_triple_repeat
 
 def encode_base4_direct(
     data: bytes, 
