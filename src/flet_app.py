@@ -22,10 +22,13 @@ from genecoder.plotting import (
     prepare_huffman_codeword_length_data,
     generate_codeword_length_histogram,
     prepare_nucleotide_frequency_data,
-    generate_nucleotide_frequency_plot
+    generate_nucleotide_frequency_plot,
+    calculate_windowed_gc_content,  # New import
+    identify_homopolymer_regions,  # New import
+    generate_sequence_analysis_plot # New import
 )
 
-encode_fasta_data_to_save_ref = ft.Ref[str]() 
+encode_fasta_data_to_save_ref = ft.Ref[str]()
 decoded_bytes_to_save: bytes = b"" 
 
 def main(page: ft.Page):
@@ -47,6 +50,10 @@ def main(page: ft.Page):
     nucleotide_freq_image = ft.Image(
         width=500, height=350, fit=ft.ImageFit.CONTAIN, 
         tooltip="Nucleotide Frequency Distribution"
+    )
+    sequence_analysis_plot_image = ft.Image( # New image control
+        width=600, height=400, fit=ft.ImageFit.CONTAIN, 
+        tooltip="Sequence GC & Homopolymer Analysis"
     )
     analysis_status_text = ft.Text("Encode data to view analysis plots.", italic=True)
 
@@ -175,6 +182,7 @@ def main(page: ft.Page):
         
         codeword_hist_image.src_base64 = None
         nucleotide_freq_image.src_base64 = None
+        sequence_analysis_plot_image.src_base64 = None # Clear new plot
         analysis_status_text.value = "Encode data to view analysis plots."
         if len(app_tabs.tabs) > 2: 
             app_tabs.tabs[2].disabled = True
@@ -329,18 +337,59 @@ def main(page: ft.Page):
                         analysis_tab_is_enabled = True
                 except Exception as plot_ex: current_analysis_status_messages.append(f"Nucleotide plot error: {plot_ex}")
             else: current_analysis_status_messages.append("Empty sequence for nucleotide plot.")
+
+            # Generate and display new sequence analysis plot
+            sequence_analysis_plot_image.src_base64 = None
+            if final_encoded_dna: # Use final_encoded_dna for this plot as well
+                try:
+                    window_size = 50 
+                    step = 10
+                    min_homopolymer_len = 4 # Default min length for homopolymer display
+                    
+                    gc_data = await asyncio.to_thread(
+                        calculate_windowed_gc_content, final_encoded_dna, window_size, step
+                    )
+                    homopolymer_data = await asyncio.to_thread(
+                        identify_homopolymer_regions, final_encoded_dna, min_homopolymer_len
+                    )
+                    
+                    # Check if gc_data or homopolymer_data has meaningful content before plotting
+                    # generate_sequence_analysis_plot should handle empty inputs, but good to be defensive
+                    if (gc_data and gc_data[0]) or homopolymer_data : # Check if there's any data to plot
+                        plot_buf = await asyncio.to_thread(
+                            generate_sequence_analysis_plot, gc_data, homopolymer_data, len(final_encoded_dna)
+                        )
+                        sequence_analysis_plot_image.src_base64 = base64.b64encode(plot_buf.getvalue()).decode('utf-8')
+                        plot_buf.close()
+                        analysis_tab_is_enabled = True # Enable tab if this plot is generated
+                        current_analysis_status_messages.append("Sequence analysis plot generated.")
+                    else:
+                        current_analysis_status_messages.append("No significant data for sequence analysis plot (GC/Homopolymers).")
+                        
+                except Exception as plot_ex:
+                    current_analysis_status_messages.append(f"Sequence analysis plot error: {plot_ex}")
+                    sequence_analysis_plot_image.src_base64 = None
+            else:
+                current_analysis_status_messages.append("Empty sequence for sequence analysis plot.")
+
             
             final_analysis_status = " | ".join(msg for msg in current_analysis_status_messages if msg and msg.strip()).strip()
-            # ... (rest of analysis status logic as before)
             if not final_analysis_status and analysis_tab_is_enabled : 
-                 analysis_status_text.value = "Analysis plots generated successfully."
+                 analysis_status_text.value = "All analysis plots generated successfully."
                  analysis_status_text.color = ft.colors.GREEN_700
             elif not analysis_tab_is_enabled and not final_analysis_status : 
                  analysis_status_text.value = "No analysis plots applicable or generated for the selected options."
-                 analysis_status_text.color = ft.colors.ORANGE_ACCENT_700
+                 analysis_status_text.color = ft.colors.ORANGE_ACCENT_700 # Or some neutral info color
             else: 
                 analysis_status_text.value = final_analysis_status
-                analysis_status_text.color = ft.colors.ORANGE_ACCENT_700 if "Error" in final_analysis_status else ft.colors.BLUE_GREY_400
+                # Determine overall color based on presence of "error" or "warning" keywords
+                if "error" in final_analysis_status.lower():
+                    analysis_status_text.color = ft.colors.RED_ACCENT_700
+                elif "warning" in final_analysis_status.lower() or "empty" in final_analysis_status.lower() or "no significant data" in final_analysis_status.lower():
+                    analysis_status_text.color = ft.colors.ORANGE_ACCENT_700
+                else: # Success or partial success messages
+                    analysis_status_text.color = ft.colors.GREEN_700 if "generated" in final_analysis_status else ft.colors.BLUE_GREY_400
+
 
             if len(app_tabs.tabs) > 2: app_tabs.tabs[2].disabled = not analysis_tab_is_enabled
 
@@ -659,6 +708,9 @@ def main(page: ft.Page):
             ft.Divider(),
             ft.Text("Nucleotide Frequency Distribution (Encoded Sequence):", weight=ft.FontWeight.BOLD),
             nucleotide_freq_image,
+            ft.Divider(), # New divider
+            ft.Text("Sequence GC & Homopolymer Analysis:", weight=ft.FontWeight.BOLD), # New title
+            sequence_analysis_plot_image, # New plot image
         ],
         spacing=10,
         scroll=ft.ScrollMode.AUTO,

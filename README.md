@@ -47,8 +47,14 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
         *   During decoding, it uses a majority vote on each triplet to correct single errors within that triplet.
         *   If FEC was used, the FASTA header will include `fec=triple_repeat`.
         *   The decoder reports the number of corrected and uncorrectable errors found in triplets.
+    *   **Hamming(7,4) FEC (`--fec hamming_7_4`):**
+        *   A block code that processes 4 bits of binary data into 7-bit codewords, capable of correcting single-bit errors within each 7-bit block.
+        *   This FEC is applied to the *binary data* before it is converted into a DNA sequence.
+        *   The FASTA header will include `fec=hamming_7_4` and `fec_padding_bits=<number>`, where `fec_padding_bits` indicates the number of zero-bits added to the end of the Hamming-encoded bitstream to make its total length a multiple of 8 before byte packing.
+        *   The decoder uses these header fields to correctly apply Hamming decoding to the binary data (after DNA decoding) and reports the total number of corrected errors.
+        *   Note: If Hamming(7,4) FEC is selected, DNA-level parity (`--add-parity`) is currently ignored as Hamming provides stronger error correction at the binary level.
 *   **Error Detection (Parity):**
-    *   Optional parity bit addition for `base4_direct` and `huffman` methods using `--add-parity` (details on rules like `GC_even_A_odd_T` can be found in `error_detection.py`). Parity info is stored in the FASTA header.
+    *   Optional parity bit addition for `base4_direct` and `huffman` methods using `--add-parity` (details on rules like `GC_even_A_odd_T` can be found in `error_detection.py`). Parity info is stored in the FASTA header. This is typically used if Hamming(7,4) FEC is not active.
 *   **Decoding Engine:**
     *   Reliable decoding for all supported methods and FEC combinations.
     *   Error detection for invalid DNA characters.
@@ -64,9 +70,12 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
     *   For `gc_balanced`: Actual GC content and max homopolymer length of the payload (pre-FEC).
 *   **Graphical User Interface (GUI):**
     *   A Flet-based GUI (`src/flet_app.py`) provides an interactive way to use most encoding/decoding features.
-    *   Includes options for GC-Balanced encoding and Triple-Repeat FEC.
+    *   Includes options for GC-Balanced encoding and Triple-Repeat FEC. (Note: Hamming(7,4) FEC integration in the GUI is currently deferred due to a temporary technical issue and is planned for a future update).
     *   GUI operations are now asynchronous for improved responsiveness.
-    *   Displays encoding metrics and analysis plots (Huffman codeword lengths, nucleotide frequencies).
+    *   Displays encoding metrics and analysis plots:
+        *   Huffman codeword lengths histogram.
+        *   Nucleotide frequency distribution.
+        *   Sequence GC & Homopolymer Analysis: Visualizes GC content distribution across the sequence (using a sliding window) and highlights significant homopolymer regions.
 
 ---
 
@@ -101,19 +110,25 @@ To use GeneCoder CLI, navigate to the project's root directory. The main script 
     ```
     *Metrics and FEC application details will be printed. FASTA header will include Huffman params, parity info, and `fec=triple_repeat`.*
 
-4.  **Decode a file encoded with Huffman and Triple-Repeat FEC:**
+4.  **Encode with Base-4 Direct and Hamming(7,4) FEC:**
     ```bash
-    python src/cli.py decode --input-files encoded_output/my_data.bin.fasta --output-file decoded_data.bin --method huffman
+    python src/cli.py encode --input-files path/to/important_data.txt --output-dir encoded_hamming/ --method base4_direct --fec hamming_7_4
     ```
-    *The decoder will automatically detect FEC from the header and apply it before Huffman decoding. Parity checks (if `--check-parity` is added and info exists) occur after FEC and before primary decoding.*
+    *The FASTA header will include `fec=hamming_7_4` and `fec_padding_bits`. DNA-level parity (`--add-parity`) would be ignored in this case.*
 
-5.  **Batch encode multiple files using GC-Balanced method to a specified directory:**
+5.  **Decode a file encoded with Base-4 Direct and Hamming(7,4) FEC:**
+    ```bash
+    python src/cli.py decode --input-files encoded_hamming/important_data.txt.fasta --output-file decoded_important_data.txt --method base4_direct
+    ```
+    *The decoder reads `fec=hamming_7_4` and `fec_padding_bits` from the header to correctly decode the binary data after DNA decoding. Corrected error counts will be printed.*
+
+6.  **Batch encode multiple files using GC-Balanced method to a specified directory:**
     ```bash
     python src/cli.py encode --input-files file1.txt notes.md image.png --output-dir gc_encoded_batch/ --method gc_balanced
     ```
     *Output: `gc_encoded_batch/file1.txt.fasta`, `gc_encoded_batch/notes.md.fasta`, etc.*
 
-6.  **Batch decode multiple FASTA files from a directory:**
+7.  **Batch decode multiple FASTA files from a directory:**
     ```bash
     python src/cli.py decode --input-files gc_encoded_batch/*.fasta --output-dir decoded_batch/ --method gc_balanced
     ```
@@ -151,7 +166,7 @@ The GUI provides controls for most encoding methods, parity, and Triple-Repeat F
 1.  **Foundation & Enhancements (Implemented):**
     *   CLI-based encoding and decoding.
     *   Encoding methods: Base-4 Direct, Huffman-4, GC-Balanced.
-    *   Error handling: Parity checks, Triple-Repeat FEC.
+    *   Error handling: Parity checks, Triple-Repeat FEC (on DNA), Hamming(7,4) FEC (on binary via CLI).
     *   FASTA output with comprehensive metadata.
     *   Display of encoding metrics.
     *   Batch processing for CLI.
