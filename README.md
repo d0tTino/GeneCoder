@@ -1,3 +1,6 @@
+![Python CI](https://github.com/YOUR_USERNAME/YOUR_REPOSITORY/actions/workflows/python-ci.yml/badge.svg)
+<!-- IMPORTANT: Replace YOUR_USERNAME and YOUR_REPOSITORY with the actual GitHub username and repository name for the badge to work. -->
+
 # GeneCoder: Simulated DNA Data Encoding & Exploration
 
 **An open, educational software toolkit for simulating DNA data encoding and decoding, bringing the concepts of molecular data storage to your fingertips.**
@@ -69,6 +72,37 @@ GeneCoder is envisioned as an open-source educational project. While development
 
 Once the foundational code is in place, look out for issues tagged `good first issue` or feel free to discuss your ideas by opening a new issue. (Detailed contribution guidelines will be added as the project matures).
 
+---
+
+## Code Quality and Continuous Integration
+
+This project uses GitHub Actions to automatically run tests, lint code, and check formatting on every push and pull request to the `main` branch.
+
+The following tools are used:
+- **Flake8**: For linting Python code against PEP 8 and common errors.
+- **Black**: For automated code formatting, ensuring a consistent style.
+- **unittest**: Python's built-in library for running unit tests.
+
+### Local Development
+
+To ensure your contributions pass CI checks, you can run the tools locally before committing:
+
+1.  Install development dependencies:
+    ```bash
+    pip install -r requirements-dev.txt
+    ```
+2.  Run Flake8:
+    ```bash
+    flake8 .
+    ```
+3.  Run Black to format your code (or `black --check .` to just check):
+    ```bash
+    black .
+    ```
+4.  Run unit tests:
+    ```bash
+    python -m unittest discover -s tests -p 'test_*.py'
+    ```
 ---
 
 ## License
