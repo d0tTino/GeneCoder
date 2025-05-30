@@ -157,3 +157,182 @@ def generate_nucleotide_frequency_plot(nucleotide_counts: collections.Counter) -
         plt.close(fig)
 
     return buf
+
+
+# --- New functions for sequence analysis plotting ---
+
+def calculate_windowed_gc_content(dna_sequence: str, window_size: int, step: int) -> tuple[list[int], list[float]]:
+    """Calculates GC content for each sliding window along a DNA sequence.
+
+    Only 'A', 'T', 'C', 'G' characters are considered for GC calculation
+    within each window (for both numerator and effective window length).
+
+    Args:
+        dna_sequence: The DNA sequence string.
+        window_size: The size of the sliding window.
+        step: The step size to move the window.
+
+    Returns:
+        A tuple containing two lists:
+            - window_starts: A list of 0-based start indices for each window.
+            - gc_values: A list of corresponding GC content values (0.0 to 1.0).
+                         Returns ([], []) if the sequence is shorter than window_size.
+
+    Raises:
+        ValueError: If `window_size` or `step` are not positive integers.
+    """
+    if not isinstance(window_size, int) or window_size <= 0:
+        raise ValueError("window_size must be a positive integer.")
+    if not isinstance(step, int) or step <= 0:
+        raise ValueError("step must be a positive integer.")
+
+    upper_sequence = dna_sequence.upper()
+    seq_len = len(upper_sequence)
+    window_starts: list[int] = []
+    gc_values: list[float] = []
+
+    if seq_len < window_size:
+        return window_starts, gc_values
+
+    for i in range(0, seq_len - window_size + 1, step):
+        window = upper_sequence[i:i + window_size]
+
+        gc_count = 0
+        atcg_count = 0
+        for base in window:
+            if base == 'G' or base == 'C':
+                gc_count += 1
+                atcg_count += 1
+            elif base == 'A' or base == 'T':
+                atcg_count += 1
+
+        if atcg_count == 0: # Window contains no ATCG characters
+            gc_content = 0.0
+        else:
+            gc_content = gc_count / atcg_count
+
+        window_starts.append(i)
+        gc_values.append(gc_content)
+
+    return window_starts, gc_values
+
+
+def identify_homopolymer_regions(dna_sequence: str, min_len: int) -> list[tuple[int, int, str]]:
+    """Identifies homopolymer regions of a minimum length in a DNA sequence.
+
+    Args:
+        dna_sequence: The DNA sequence string.
+        min_len: The minimum length for a homopolymer region to be identified.
+                 Must be 2 or greater.
+
+    Returns:
+        A list of tuples, where each tuple is (start_index, end_index, base_char).
+        `end_index` is the index of the last base in the homopolymer.
+        Returns an empty list if no such regions are found or if the sequence is too short.
+
+    Raises:
+        ValueError: If `min_len` is less than 2.
+    """
+    if not isinstance(min_len, int) or min_len < 2:
+        raise ValueError("min_len must be an integer greater than or equal to 2.")
+
+    regions: list[tuple[int, int, str]] = []
+    seq_len = len(dna_sequence)
+    if seq_len < min_len:
+        return regions
+
+    upper_sequence = dna_sequence.upper() # Process case-insensitively
+
+    current_streak_char = ''
+    current_streak_len = 0
+    current_streak_start = -1
+
+    for i, base in enumerate(upper_sequence):
+        if base == current_streak_char:
+            current_streak_len += 1
+        else:
+            # End of a streak (or start of sequence)
+            if current_streak_len >= min_len:
+                regions.append((current_streak_start, i - 1, current_streak_char))
+
+            # Start new streak
+            current_streak_char = base
+            current_streak_len = 1
+            current_streak_start = i
+
+    # Check for a homopolymer at the end of the sequence
+    if current_streak_len >= min_len:
+        regions.append((current_streak_start, seq_len - 1, current_streak_char))
+
+    return regions
+
+
+def generate_sequence_analysis_plot(
+    gc_windows_data: tuple[list[int], list[float]],
+    homopolymers: list[tuple[int, int, str]],
+    sequence_length: int
+) -> io.BytesIO:
+    """Generates a plot showing windowed GC content and homopolymer regions.
+
+    Args:
+        gc_windows_data: Tuple from `calculate_windowed_gc_content`
+                         (list of window starts, list of GC values).
+        homopolymers: List of tuples from `identify_homopolymer_regions`
+                      ((start_index, end_index, base_char)).
+        sequence_length: The total length of the DNA sequence.
+
+    Returns:
+        io.BytesIO: A BytesIO buffer containing the PNG image data of the plot.
+    """
+    fig, ax1 = plt.subplots(figsize=(12, 6))
+
+    # Plot GC content
+    window_starts, gc_values = gc_windows_data
+    if window_starts and gc_values:
+        ax1.plot(window_starts, gc_values, label='Windowed GC Content', color='b', linestyle='-', marker='.')
+        ax1.set_xlabel("Sequence Position (bp)")
+        ax1.set_ylabel("GC Content", color='b')
+        ax1.tick_params(axis='y', labelcolor='b')
+        ax1.set_ylim(0, 1.05) # GC content is between 0 and 1
+    else:
+        ax1.set_xlabel("Sequence Position (bp)")
+        ax1.set_ylabel("GC Content", color='b')
+        ax1.text(0.5, 0.6, "No GC content data to display.",
+                 horizontalalignment='center', verticalalignment='center',
+                 transform=ax1.transAxes, fontsize=10, color='gray')
+
+    ax1.set_xlim(0, sequence_length)
+
+    # Overlay homopolymer regions
+    # We can use a secondary y-axis for visual separation if needed, but for axvspan it's not strictly necessary.
+    # For simplicity, we'll plot on the same axis area.
+    if homopolymers:
+        # Define colors for homopolymers or use a generic one
+        homopolymer_colors = {'A': 'lightcoral', 'T': 'lightgreen', 'C': 'lightskyblue', 'G': 'gold'}
+        default_color = 'lightgrey'
+
+        for start, end, base in homopolymers:
+            color = homopolymer_colors.get(base.upper(), default_color)
+            ax1.axvspan(start, end + 1, alpha=0.3, color=color, label=f'{base}-Homopolymer' if start == homopolymers[0][0] else None)
+            # The end+1 is because axvspan's xmax is exclusive for the highlighted region in some interpretations,
+            # but visually it should cover the 'end' base. Let's test this.
+            # Matplotlib axvspan: xmax is exclusive. So end + 1 is correct to include the end base.
+
+        # Create a legend for homopolymers if needed, but it can get crowded.
+        # A simpler approach is to just color them. For now, let's skip a complex legend for axvspan.
+        # If a legend is desired, one would collect unique labels.
+        # handles, labels = plt.gca().get_legend_handles_labels()
+        # by_label = dict(zip(labels, handles))
+        # plt.legend(by_label.values(), by_label.keys())
+
+    ax1.set_title("Sequence GC Content and Homopolymer Analysis")
+    fig.tight_layout() # otherwise the right y-label is slightly clipped
+
+    buf = io.BytesIO()
+    try:
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+    finally:
+        plt.close(fig)
+
+    return buf

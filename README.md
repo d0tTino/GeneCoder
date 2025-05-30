@@ -4,11 +4,11 @@
 
 ---
 
-## Current Status: MVP Functionality Achieved! 🎉
+## Current Status: Evolving with New Features! 🚀
 
-**GeneCoder's Minimum Viable Product (MVP) is now functional!** (As of latest update)
+**GeneCoder has been enhanced with new encoding strategies, error correction, batch processing, and an improved GUI!** (As of latest update)
 
-The core command-line interface for encoding and decoding data using initial schemes is implemented. You can now experiment with converting files into simulated DNA and back.
+The toolkit now offers more sophisticated ways to simulate DNA data storage, including GC-content balancing, triple-repeat error correction, and the ability to process multiple files efficiently. The Flet-based GUI has also been updated for better responsiveness and to include these new options.
 
 ---
 
@@ -33,68 +33,119 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
 *   **Input Handling:**
     *   Accepts arbitrary binary files as input for encoding (UTF-8 text files are also handled as binary).
 *   **Encoding Methods:**
-    *   **Base-4 Direct Mapping:**
-        *   A straightforward scheme where each byte of input data is converted into four DNA nucleotides.
-        *   Each 2-bit pair from the input byte (processed Most Significant Bit first) maps directly to a nucleotide:
-            *   `00` -> `A`
-            *   `01` -> `T`
-            *   `10` -> `C`
-            *   `11` -> `G`
-    *   **Huffman-4 Coding:**
-        *   An adaptive encoding method that first calculates byte frequencies in the input data.
-        *   Builds a Huffman tree to generate variable-length binary codes for each input byte (more frequent bytes get shorter codes).
-        *   These binary codes are concatenated, padded with '0's if necessary to ensure an even length, and then mapped to DNA using the same 2-bit to nucleotide mapping as Base-4 Direct.
+    *   **Base-4 Direct Mapping:** (As described before)
+    *   **Huffman-4 Coding:** (As described before)
+    *   **GC-Balanced Encoder (`gc_balanced`):**
+        *   Aims to produce DNA sequences within a target GC content range (currently fixed at 45-55%) and with a maximum homopolymer run length (currently fixed at 3).
+        *   It first attempts to encode data directly (using Base-4 Direct). If constraints are met, the sequence is prefixed with '0'.
+        *   If constraints are violated, the input data bits are inverted, re-encoded, and the sequence is prefixed with '1'. This provides an alternative sequence that might meet constraints.
+        *   The FASTA header includes `method=gc_balanced`, `gc_min`, `gc_max`, and `max_homopolymer` (target constraint values).
+        *   Metrics reported include actual GC content and actual maximum homopolymer length of the payload.
+*   **Forward Error Correction (FEC):**
+    *   **Triple-Repeat FEC (`--fec triple_repeat`):**
+        *   Encodes the output of any primary encoding method by repeating each nucleotide three times (e.g., "ATGC" becomes "AAATTTGGGCC").
+        *   During decoding, it uses a majority vote on each triplet to correct single errors within that triplet.
+        *   If FEC was used, the FASTA header will include `fec=triple_repeat`.
+        *   The decoder reports the number of corrected and uncorrectable errors found in triplets.
+    *   **Hamming(7,4) FEC (`--fec hamming_7_4`):**
+        *   A block code that processes 4 bits of binary data into 7-bit codewords, capable of correcting single-bit errors within each 7-bit block.
+        *   This FEC is applied to the *binary data* before it is converted into a DNA sequence.
+        *   The FASTA header will include `fec=hamming_7_4` and `fec_padding_bits=<number>`, where `fec_padding_bits` indicates the number of zero-bits added to the end of the Hamming-encoded bitstream to make its total length a multiple of 8 before byte packing.
+        *   The decoder uses these header fields to correctly apply Hamming decoding to the binary data (after DNA decoding) and reports the total number of corrected errors.
+        *   Note: If Hamming(7,4) FEC is selected, DNA-level parity (`--add-parity`) is currently ignored as Hamming provides stronger error correction at the binary level.
+*   **Error Detection (Parity):**
+    *   Optional parity bit addition for `base4_direct` and `huffman` methods using `--add-parity` (details on rules like `GC_even_A_odd_T` can be found in `error_detection.py`). Parity info is stored in the FASTA header. This is typically used if Hamming(7,4) FEC is not active.
 *   **Decoding Engine:**
-    *   Reliable decoding for both `base4_direct` and `huffman` methods.
-    *   Error detection for invalid DNA characters during decoding.
+    *   Reliable decoding for all supported methods and FEC combinations.
+    *   Error detection for invalid DNA characters.
 *   **Output Format:**
     *   **Encoded Data:** Output is in FASTA format (`.fasta`).
-        *   The FASTA header line includes metadata: encoding method used and the original input file name.
-        *   For the `huffman` method, the header also contains a JSON string with the specific Huffman table (mapping original byte values to binary codes) and the number of padding bits used. This information is crucial for correct decoding.
+        *   The FASTA header line includes metadata: encoding method, original input file name, and any relevant parameters (Huffman table, GC constraints, parity info, FEC method).
     *   **Decoded Data:** The output is the original binary file.
-*   **Encoding Metrics Display:**
-    *   When encoding, the CLI displays:
-        *   Original file size (bytes).
-        *   Encoded DNA length (nucleotides).
-        *   Compression ratio (original bytes / DNA bytes equivalent, where 1 nucleotide = 2 bits = 0.25 bytes).
-        *   Achieved bits per nucleotide (total bits in original data / number of nucleotides in encoded sequence).
+*   **Encoding Metrics Display (CLI):**
+    *   Original file size (bytes).
+    *   Final Encoded DNA length (nucleotides, after any FEC).
+    *   Compression ratio (original bytes / final DNA bytes equivalent).
+    *   Achieved bits per nucleotide (based on final DNA length).
+    *   For `gc_balanced`: Actual GC content and max homopolymer length of the payload (pre-FEC).
+*   **Graphical User Interface (GUI):**
+    *   A Flet-based GUI (`src/flet_app.py`) provides an interactive way to use most encoding/decoding features.
+    *   Includes options for GC-Balanced encoding and Triple-Repeat FEC. (Note: Hamming(7,4) FEC integration in the GUI is currently deferred due to a temporary technical issue and is planned for a future update).
+    *   GUI operations are now asynchronous for improved responsiveness.
+    *   Displays encoding metrics and analysis plots:
+        *   Huffman codeword lengths histogram.
+        *   Nucleotide frequency distribution.
+        *   Sequence GC & Homopolymer Analysis: Visualizes GC content distribution across the sequence (using a sliding window) and highlights significant homopolymer regions.
 
 ---
 
 ## Usage
 
-To use GeneCoder, navigate to the project's root directory in your terminal. The main script is `src/cli.py`.
+### Command-Line Interface (CLI)
 
-**General Command Structure:**
-`python src/cli.py <command> --input-file <input_path> --output-file <output_path> --method <method_name>`
+To use GeneCoder CLI, navigate to the project's root directory. The main script is `src/cli.py`.
 
-**Examples:**
+**General Command Structure (Batch and Single File):**
+`python src/cli.py <command> --input-files <path1> [<path2> ...] [--output-file <path>] [--output-dir <dir>] --method <method_name> [options]`
 
-1.  **Encode using Base-4 Direct Mapping:**
+*   `--input-files`: One or more input files.
+*   `--output-file`: Specify for a single input file if not using `--output-dir`.
+*   `--output-dir`: Specify for multiple input files, or for a single input if `--output-file` is not used. Output files are named based on input filenames.
+
+**CLI Examples:**
+
+1.  **Encode using Base-4 Direct Mapping (single file):**
     ```bash
-    python src/cli.py encode --input-file path/to/your_document.txt --output-file path/to/encoded_base4.fasta --method base4_direct
+    python src/cli.py encode --input-files path/to/your_document.txt --output-file path/to/encoded_base4.fasta --method base4_direct
     ```
 
-2.  **Decode using Base-4 Direct Mapping:**
+2.  **Decode using Base-4 Direct Mapping (single file):**
     ```bash
-    python src/cli.py decode --input-file path/to/encoded_base4.fasta --output-file path/to/decoded_document.txt --method base4_direct
+    python src/cli.py decode --input-files path/to/encoded_base4.fasta --output-file path/to/decoded_document.txt --method base4_direct
     ```
 
-3.  **Encode using Huffman-4 Coding:**
+3.  **Encode with Huffman, Parity, and Triple-Repeat FEC (single file to output directory):**
     ```bash
-    python src/cli.py encode --input-file path/to/your_image.png --output-file path/to/encoded_huffman.fasta --method huffman
+    python src/cli.py encode --input-files path/to/my_data.bin --output-dir encoded_output/ --method huffman --add-parity --fec triple_repeat
     ```
-    *Output for this command will include encoding metrics printed to the console. The `encoded_huffman.fasta` file will have a header containing the Huffman table and padding information required for decoding.*
+    *Metrics and FEC application details will be printed. FASTA header will include Huffman params, parity info, and `fec=triple_repeat`.*
 
-4.  **Decode using Huffman-4 Coding:**
+4.  **Encode with Base-4 Direct and Hamming(7,4) FEC:**
     ```bash
-    python src/cli.py decode --input-file path/to/encoded_huffman.fasta --output-file path/to/decoded_image.png --method huffman
+    python src/cli.py encode --input-files path/to/important_data.txt --output-dir encoded_hamming/ --method base4_direct --fec hamming_7_4
     ```
-    *This command relies on the Huffman parameters stored in the FASTA header of `encoded_huffman.fasta`.*
+    *The FASTA header will include `fec=hamming_7_4` and `fec_padding_bits`. DNA-level parity (`--add-parity`) would be ignored in this case.*
+
+5.  **Decode a file encoded with Base-4 Direct and Hamming(7,4) FEC:**
+    ```bash
+    python src/cli.py decode --input-files encoded_hamming/important_data.txt.fasta --output-file decoded_important_data.txt --method base4_direct
+    ```
+    *The decoder reads `fec=hamming_7_4` and `fec_padding_bits` from the header to correctly decode the binary data after DNA decoding. Corrected error counts will be printed.*
+
+6.  **Batch encode multiple files using GC-Balanced method to a specified directory:**
+    ```bash
+    python src/cli.py encode --input-files file1.txt notes.md image.png --output-dir gc_encoded_batch/ --method gc_balanced
+    ```
+    *Output: `gc_encoded_batch/file1.txt.fasta`, `gc_encoded_batch/notes.md.fasta`, etc.*
+
+7.  **Batch decode multiple FASTA files from a directory:**
+    ```bash
+    python src/cli.py decode --input-files gc_encoded_batch/*.fasta --output-dir decoded_batch/ --method gc_balanced
+    ```
+    *Output: `decoded_batch/file1_decoded.bin`, `decoded_batch/notes_decoded.bin`, etc. (assuming original input names were file1.txt, notes.md)*
+
+
+### Graphical User Interface (GUI)
+
+Run the Flet application:
+```bash
+python src/flet_app.py
+```
+The GUI provides controls for most encoding methods, parity, and Triple-Repeat FEC, along with metric displays and some visual analysis plots. GUI operations are asynchronous to keep the interface responsive.
 
 ---
 
-## Technology Stack (Used for MVP)
+## Technology Stack
 
 *   **Language:** Python (≥ 3.10 recommended)
 *   **Core Libraries (Python Standard Library):**
@@ -102,21 +153,27 @@ To use GeneCoder, navigate to the project's root directory in your terminal. The
     *   `json` (for serializing Huffman table in FASTA headers)
     *   `collections.Counter` (for frequency analysis in Huffman coding)
     *   `heapq` (for building Huffman trees)
-    *   `pathlib` (implicitly used for path handling, though not explicitly imported in current code)
+    *   `concurrent.futures` (for CLI batch processing)
+*   **GUI Framework:**
+    *   `Flet` (for the cross-platform graphical user interface)
+*   **Plotting (for GUI Analysis Tab):**
+    *   `Matplotlib` (used to generate plots, then displayed in Flet)
 
 ---
 
 ## Development Roadmap (High-Level)
 
-1.  **MVP - Foundation Implemented:**
+1.  **Foundation & Enhancements (Implemented):**
     *   CLI-based encoding and decoding.
-    *   Encoding methods: Base-4 Direct Mapping and Huffman-4 Coding.
-    *   FASTA formatted output with metadata (including Huffman parameters).
-    *   Display of encoding metrics (original size, DNA length, compression ratio, bits/nt).
-    *   Robust FASTA parsing for decoding.
-    *   Comprehensive unit tests for core logic.
-2.  **Phase 2 (Future):** Introduce basic error-resilience simulation (e.g., simple parity checks or triple modular redundancy concepts), develop a simple GUI (potentially using a lightweight framework like Tkinter or Flet), and add plotting for metrics comparison.
-3.  **Phase 3 & Beyond (Future):** Explore more advanced concepts like GC-content balancing in encoding, simplified error correction codes (e.g., Hamming codes), support for larger files through streaming/batch processing, and potentially a plug-in API for users to experiment with their own encoding schemes.
+    *   Encoding methods: Base-4 Direct, Huffman-4, GC-Balanced.
+    *   Error handling: Parity checks, Triple-Repeat FEC (on DNA), Hamming(7,4) FEC (on binary via CLI).
+    *   FASTA output with comprehensive metadata.
+    *   Display of encoding metrics.
+    *   Batch processing for CLI.
+    *   Flet-based GUI with asynchronous operations and new feature support.
+    *   Comprehensive unit tests.
+2.  **Phase 2 (Future):** Explore more advanced error correction codes (e.g., simplified Hamming codes), advanced GC balancing strategies, support for larger files through streaming, and potentially a plug-in API for custom encoding schemes.
+3.  **Phase 3 & Beyond (Future):** Deeper simulation of DNA synthesis/sequencing errors, integration with bioinformatics tools, and expanded educational modules.
 
 ---
 
