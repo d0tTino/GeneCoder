@@ -1,15 +1,9 @@
 
 import unittest
 import io
-import os
-import sys
 from collections import Counter
 import pytest
 
-
-SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
 
 from genecoder.plotting import (  # noqa: E402
     prepare_huffman_codeword_length_data,

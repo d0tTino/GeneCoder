@@ -1,13 +1,7 @@
 import unittest
-import os
-import sys
 # collections.Counter is not directly used in these tests, but it's fundamental
 # to the huffman_coding module itself. Keep if needed for other tests, or remove if strictly not used.
 # from collections import Counter
-
-SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
 
 from genecoder.huffman_coding import encode_huffman, decode_huffman  # noqa: E402
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T  # noqa: E402
