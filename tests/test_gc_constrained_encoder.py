@@ -1,5 +1,6 @@
 import pytest
-from unittest.mock import patch, call # call is needed for checking multiple calls to a mock
+import re
+from unittest.mock import patch, call  # call is needed for checking multiple calls to a mock
 
 from src.genecoder.gc_constrained_encoder import (
     calculate_gc_content,
@@ -15,14 +16,14 @@ from src.genecoder.gc_constrained_encoder import (
     ("ATATAT", 0.0),
     ("GCGCGC", 1.0),
     ("AGCT", 0.5),
-    ("GATTACA", 3/7), # Approx 0.42857, but use fraction for precision
-    ("AGCX", 0.25), # X is ignored, GC is 1 out of 4 (A,G,C,X) effectively, or 1/3 if X is fully ignored from length. Current function: 1/4
+    ("GATTACA", 2/7), # GC count is 2 of 7 characters
+    ("AGCX", 0.5),  # X counted in length but not GC -> 2 GC over 4
     ("agct", 0.5), # Test lowercase
     ("G", 1.0),
     ("A", 0.0),
     ("GGG", 1.0),
     ("AAA", 0.0),
-    ("GATTACA", 0.42857142857142855), # More precise
+    ("GATTACA", 2/7),  # More precise GC value
     ("N", 0.0), # Non-ATCG char
     ("GN", 0.5), # One G, one N
     ("AGCTN", 0.4) # 2 GC (G,C) / 5 total (A,G,C,T,N)
@@ -48,7 +49,7 @@ def test_calculate_gc_content(sequence, expected_gc):
     ("AGCT", 2, False),
     ("AAATTTCCCGGG", 3, False),
     ("AAATTTCCCGGG", 2, True), # AAA violates
-    ("GATTACA", 1, False),
+    ("GATTACA", 1, True),
     ("GATTACCA", 1, True), # CC violates
     ("aaaatttt", 3, True), # Lowercase test
 ])
@@ -175,12 +176,12 @@ def test_decode_gc_balanced_with_inversion(mock_decode_base4):
     ("AATGC", "Invalid signal bit: 'A'. Expected '0' or '1'."), # Another invalid signal bit
 ])
 def test_decode_gc_balanced_error_cases(invalid_sequence, error_message_match):
-    with pytest.raises(ValueError, match=error_message_match):
+    with pytest.raises(ValueError, match=re.escape(error_message_match)):
         decode_gc_balanced(invalid_sequence)
 
 # A few more specific GC content test cases based on problem description
 def test_calculate_gc_content_specific():
-    assert calculate_gc_content("GATTACA") == pytest.approx(3/7) # 0.42857142857142855
+    assert calculate_gc_content("GATTACA") == pytest.approx(2/7)
     # The case "AGCX" with result 0.25 is already covered by parametrize if X is not A,T,C,G.
     # If 'X' was a typo for 'C', "AGCC" would be 0.75.
     # The current function counts 'X' in length, so GC=1 ('G'), total_len=4, 1/4 = 0.25.
@@ -197,11 +198,11 @@ def test_calculate_gc_content_specific():
 
 # A few more specific check_homopolymer_length cases
 def test_check_homopolymer_length_specific():
-    assert check_homopolymer_length("CCCAAAATTTTGGGG", 3) == True # TTTT is > 3
-    assert check_homopolymer_length("AAAGGG", 3) == False # Max length is 3, so it's ok
-    assert check_homopolymer_length("AAAA", 3) == True # Length 4 > 3
-    assert check_homopolymer_length("GGGG", 3) == True # Length 4 > 3
-    assert check_homopolymer_length("AAGG", 1) == True # AA violates max_len=1
+    assert check_homopolymer_length("CCCAAAATTTTGGGG", 3)  # TTTT is > 3
+    assert not check_homopolymer_length("AAAGGG", 3)  # Max length is 3, so it's ok
+    assert check_homopolymer_length("AAAA", 3)  # Length 4 > 3
+    assert check_homopolymer_length("GGGG", 3)  # Length 4 > 3
+    assert check_homopolymer_length("AAGG", 1)  # AA violates max_len=1
 
 # A few more specific get_max_homopolymer_length cases
 def test_get_max_homopolymer_length_specific():

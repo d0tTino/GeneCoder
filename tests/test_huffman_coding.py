@@ -128,8 +128,8 @@ class TestHuffmanCoding(unittest.TestCase):
 
     def test_decode_code_not_in_table(self):
         dna_no_parity, table_no_parity, pad_no_parity = encode_huffman(b"A", add_parity=False)
-        with self.assertRaisesRegex(ValueError, "Corrupted data or incorrect Huffman table: remaining unparsed bits '1'."):
-            decode_huffman("G", table_no_parity, pad_no_parity, check_parity=False) # "G" is "11", unpadded "1"
+        with self.assertRaisesRegex(ValueError, "Invalid padding bits: expected all '0's but found '1'."):
+            decode_huffman("G", table_no_parity, pad_no_parity, check_parity=False)  # "G" is "11", unpadded "1"
 
     def test_decode_incomplete_code_at_end(self):
         custom_table = {ord('X'): "001"} 

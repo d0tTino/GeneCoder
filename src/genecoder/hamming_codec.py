@@ -1,75 +1,65 @@
 def encode_hamming_7_4_nibble(nibble: int) -> int:
-    """Encodes a 4-bit nibble into a 7-bit Hamming(7,4) codeword using a lookup table."""
+    """Encodes a 4-bit nibble into a 7-bit Hamming(7,4) codeword."""
     if not (0 <= nibble <= 15):
         raise ValueError("Input nibble must be between 0 and 15.")
 
-    HAMMING_CODEWORDS: list[int] = [
-        0b0000000,
-        0b1101001,
-        0b0101010,
-        0b1000011,
-        0b1011100,
-        0b0110101,
-        0b1110110,
-        0b0011111,
-        0b1111000,
-        0b0010001,
-        0b1010010,
-        0b0111011,
-        0b0100100,
-        0b1001101,
-        0b0001110,
-        0b1111111,
-    ]
+    d1 = (nibble >> 3) & 1
+    d2 = (nibble >> 2) & 1
+    d3 = (nibble >> 1) & 1
+    d4 = nibble & 1
 
-    return HAMMING_CODEWORDS[nibble]
+    p1 = d1 ^ d2 ^ d4
+    p2 = d1 ^ d3 ^ d4
+    p3 = d2 ^ d3 ^ d4
 
-def decode_hamming_7_4_codeword(codeword: int) -> tuple[int, bool]:
-    """Decodes a 7-bit Hamming(7,4) codeword using table lookup with single-bit error correction."""
-    if not (0 <= codeword <= 127):
-        raise ValueError("Input codeword must be between 0 and 127.")
+    return (
+        (p1 << 6)
+        | (p2 << 5)
+        | (d1 << 4)
+        | (p3 << 3)
+        | (d2 << 2)
+        | (d3 << 1)
+        | d4
+    )
 
-    HAMMING_CODEWORDS: list[int] = [
-        0b0000000,
-        0b1101001,
-        0b0101010,
-        0b1000011,
-        0b1011100,
-        0b0110101,
-        0b1110110,
-        0b0011111,
-        0b1111000,
-        0b0010001,
-        0b1010010,
-        0b0111011,
-        0b0100100,
-        0b1001101,
-        0b0001110,
-        0b1111111,
-    ]
 
-    # Build lookup for all single-bit error patterns
-    _ERROR_LOOKUP: dict[int, tuple[int, bool]] = {}
-    for nib, valid in enumerate(HAMMING_CODEWORDS):
+# Precompute the 16 valid Hamming codewords and an error lookup table
+_HAMMING_CODEWORDS: list[int] = [encode_hamming_7_4_nibble(n) for n in range(16)]
+_ERROR_LOOKUP: dict[int, tuple[int, bool]]
+
+
+def _build_lookup() -> None:
+    """Builds the lookup table for decoding, including single-bit errors."""
+    global _ERROR_LOOKUP
+    _ERROR_LOOKUP = {}
+    for nib, valid in enumerate(_HAMMING_CODEWORDS):
         _ERROR_LOOKUP[valid] = (nib, False)
         for i in range(7):
             erroneous = valid ^ (1 << i)
             if erroneous not in _ERROR_LOOKUP:
                 _ERROR_LOOKUP[erroneous] = (nib, True)
 
+def decode_hamming_7_4_codeword(codeword: int) -> tuple[int, bool]:
+    """Decodes a 7-bit Hamming(7,4) codeword with single-bit error correction."""
+    if not (0 <= codeword <= 127):
+        raise ValueError("Input codeword must be between 0 and 127.")
+
+    # Lazily build the lookup table on first use
+    if "_ERROR_LOOKUP" not in globals():
+        _build_lookup()
+
     if codeword in _ERROR_LOOKUP:
         return _ERROR_LOOKUP[codeword]
 
-    # Fallback: choose the codeword with the smallest Hamming distance
+    # Fallback to minimal-distance search (handles unexpected patterns)
     best_nibble = 0
     best_distance = 8
-    for nibble, valid in enumerate(HAMMING_CODEWORDS):
+    for nibble, valid in enumerate(_HAMMING_CODEWORDS):
         distance = bin(codeword ^ valid).count("1")
         if distance < best_distance:
             best_distance = distance
             best_nibble = nibble
-    corrected = best_distance > 0
-    return best_nibble, corrected
+    return best_nibble, best_distance > 0
 
 
 # --- Byte-level and data-level Hamming coding functions ---

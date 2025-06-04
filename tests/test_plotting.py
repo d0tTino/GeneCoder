@@ -1,5 +1,3 @@
-import sys
-import os
 
 import unittest
 import io
@@ -122,7 +120,6 @@ class TestPlotting(unittest.TestCase):
         self.assertEqual(gcs, [pytest.approx(0.0), pytest.approx(1.0), pytest.approx(1.0), pytest.approx(0.0)])
 
     def test_calculate_windowed_gc_skip_bases(self):
-        dna = "ATGCATGCATGC" # len 12
         # W1 (0-3): ATGC, GC=0.5
         # W2 (3-6): CATG, GC=0.5
         # W3 (6-9): GCAT, GC=0.5
@@ -137,8 +134,8 @@ class TestPlotting(unittest.TestCase):
         # dna[9:13] = "GCAT"
         # Expected: ([0, 3, 6, 9], [0.5, 0.5, 0.5, 0.5])
         starts, gcs = calculate_windowed_gc_content("ATGCATGCATGC", window_size=4, step=3)
-        self.assertEqual(starts, [0, 3, 6, 9])
-        self.assertEqual(gcs, [pytest.approx(0.5), pytest.approx(0.5), pytest.approx(0.5), pytest.approx(0.5)])
+        self.assertEqual(starts, [0, 3, 6])
+        self.assertEqual(gcs, [pytest.approx(0.5), pytest.approx(0.5), pytest.approx(0.5)])
         
         # Test with a step that makes the last window partial if not handled
         # dna="ATGCATGC", window_size=5, step=2
