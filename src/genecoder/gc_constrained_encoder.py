@@ -166,10 +166,10 @@ def decode_gc_balanced(
         raise ValueError("Input DNA sequence is too short (only signal bit found, no payload).")
 
     if signal_bit == "0":
-        decoded_data = decode_base4_direct(payload_dna_sequence, check_parity=False)
+        decoded_data, _ = decode_base4_direct(payload_dna_sequence, check_parity=False)
     elif signal_bit == "1":
         # Decode the payload first
-        temp_decoded_data = decode_base4_direct(payload_dna_sequence, check_parity=False)
+        temp_decoded_data, _ = decode_base4_direct(payload_dna_sequence, check_parity=False)
         # Then invert the bits of the decoded data
         decoded_data = bytes(b ^ 0xFF for b in temp_decoded_data)
     else:
