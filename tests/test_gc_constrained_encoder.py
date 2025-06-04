@@ -184,8 +184,7 @@ def test_calculate_gc_content_specific():
     assert calculate_gc_content("GATTACA") == pytest.approx(2/7)
     # The case "AGCX" with result 0.25 is already covered by parametrize if X is not A,T,C,G.
     # If 'X' was a typo for 'C', "AGCC" would be 0.75.
-    # The current function counts 'X' in length, so GC=1 ('G'), total_len=4, 1/4 = 0.25.
-    # This matches the behavior described in the subtask.
+    # The current function counts 'X' in length, so GC=2 (G and C), total_len=4 -> 0.5.
     # The problem statement says "implicitly ignores non-ATCG characters by not counting them in the total or GC count"
     # This is a slight misinterpretation. It *does* count them in total length, but not in GC count.
     # Let's re-verify:
@@ -193,7 +192,7 @@ def test_calculate_gc_content_specific():
     # gc_count = "AGCX".count('G') + "AGCX".count('C') = 1 + 1 = 2 (if X was C) -> this is wrong
     # gc_count = "AGCX".upper().count('G') + "AGCX".upper().count('C')
     # If X is not C or G, then gc_count = 1 (for G). len("AGCX") = 4. So 1/4 = 0.25. This is what the code does.
-    assert calculate_gc_content("AGCX") == 0.25 # Verified this behavior
+    assert calculate_gc_content("AGCX") == 0.5  # Verified this behavior
     assert calculate_gc_content("AGC") == pytest.approx(2/3) # 0.666...
 
 # A few more specific check_homopolymer_length cases

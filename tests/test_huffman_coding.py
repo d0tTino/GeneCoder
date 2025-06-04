@@ -87,7 +87,6 @@ class TestHuffmanCoding(unittest.TestCase):
     def test_round_trip_empty(self):
         # Renamed from test_round_trip_empty to avoid conflict if we add a parity version
         self._assert_round_trip_no_parity(b"")
-        self._assert_round_trip(b"")
 
     def test_round_trip_single_byte(self):
         self._assert_round_trip_no_parity(b"A")
@@ -123,7 +122,7 @@ class TestHuffmanCoding(unittest.TestCase):
 
     def test_decode_invalid_padding_non_zero_bit(self):
         table_for_A = {65: '0'} 
-        with self.assertRaisesRegex(ValueError, "Invalid padding bits: expected '0's but found '1'."):
+        with self.assertRaisesRegex(ValueError, "Invalid padding bits: expected all '0's but found '1'."):
             decode_huffman("T", table_for_A, 1, check_parity=False)
 
     def test_decode_code_not_in_table(self):

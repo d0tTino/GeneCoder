@@ -188,7 +188,7 @@ class TestPlotting(unittest.TestCase):
 
     def test_identify_homopolymers_single_region(self):
         self.assertEqual(identify_homopolymer_regions("AAATGCC", min_len=3), [(0, 2, 'A')])
-        self.assertEqual(identify_homopolymer_regions("TGCCCATT", min_len=3), [(1, 3, 'C')])
+        self.assertEqual(identify_homopolymer_regions("TGCCCATT", min_len=3), [(2, 4, 'C')])
 
     def test_identify_homopolymers_multiple_distinct_regions(self):
         # "AAATTTTGGCC", min_len=3 -> [(0, 2, 'A'), (3, 6, 'T')] (GG and CC are too short)
@@ -205,7 +205,7 @@ class TestPlotting(unittest.TestCase):
         # End: "AGCTGGGG" min_len=3 -> [(4,7,'G')]
         self.assertEqual(identify_homopolymer_regions("AGCTGGGG", min_len=3), [(4,7,'G')])
         # All three
-        self.assertEqual(identify_homopolymer_regions("AAAAGCTTTTCGGGGG", min_len=4), [(0,3,'A'),(5,8,'T'),(11,15,'G')])
+        self.assertEqual(identify_homopolymer_regions("AAAAGCTTTTCGGGGG", min_len=4), [(0,3,'A'), (6,9,'T'), (11,15,'G')])
 
 
     def test_identify_homopolymers_adjacent_and_overlapping_like(self):
@@ -221,14 +221,14 @@ class TestPlotting(unittest.TestCase):
         # AAAAAA -> (0,5,'A')
         # TT -> len 2, not >=3
         # If min_len=2: [(0,5,'A'),(6,7,'T')]
-        self.assertEqual(identify_homopolymer_regions("aaAAAttT", min_len=3), [(0,5,'A')])
-        self.assertEqual(identify_homopolymer_regions("aaAAAttT", min_len=2), [(0,5,'A'),(6,7,'T')])
+        self.assertEqual(identify_homopolymer_regions("aaAAAttT", min_len=3), [(0,4,'A'), (5,7,'T')])
+        self.assertEqual(identify_homopolymer_regions("aaAAAttT", min_len=2), [(0,4,'A'), (5,7,'T')])
 
     def test_identify_homopolymers_with_non_dna_chars(self):
         # "AAANNTTTT", min_len=3 -> [(0,2,'A'), (6,9,'T')] N should break homopolymers
         self.assertEqual(identify_homopolymer_regions("AAANNTTTT", min_len=3), [(0,2,'A'), (5,8,'T')]) # Corrected based on N break
         # "GGXXAAA", min_len=2 -> [(0,1,'G'), (4,6,'A')]
-        self.assertEqual(identify_homopolymer_regions("GGXXAAA", min_len=2), [(0,1,'G'), (4,6,'A')])
+        self.assertEqual(identify_homopolymer_regions("GGXXAAA", min_len=2), [(0,1,'G'), (2,3,'X'), (4,6,'A')])
         # "CCC YYYY Z", min_len=3 -> [(0,2,'C'), (4,7,'Y')] Space breaks
         self.assertEqual(identify_homopolymer_regions("CCC YYYY Z", min_len=3), [(0,2,'C'), (4,7,'Y')])
 

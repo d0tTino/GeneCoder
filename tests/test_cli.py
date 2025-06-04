@@ -19,7 +19,8 @@ def run_cli_command(command_args: list[str], env=None) -> subprocess.CompletedPr
     if env is None:
         env = os.environ.copy()
         # Ensure PYTHONPATH includes the project root so src.cli can be found
-        env['PYTHONPATH'] = str(PROJECT_ROOT) + os.pathsep + env.get('PYTHONPATH', '')
+        src_path = PROJECT_ROOT / "src"
+        env['PYTHONPATH'] = str(src_path) + os.pathsep + env.get('PYTHONPATH', '')
 
     # Construct the command
     # Using python -m src.cli is generally more robust for module resolution

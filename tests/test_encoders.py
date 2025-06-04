@@ -167,8 +167,8 @@ class TestBase4DirectMapping(unittest.TestCase):
         # Block 1: "ATA" (GC=0, even) -> Parity 'A'. Output: "ATAA"
         # Block 2: "CAG" (GC=1, odd)  -> Parity 'T'. Output: "CAGT"
         # Block 3: "TA"  (GC=0, even) -> Parity 'A'. Output: "TAA"
-        # Expected DNA with parity: "ATAACAGTTAA"
-        expected_dna_with_parity = "ATAACAGTTAA"
+        # Expected DNA with parity: "ATAACAGATAA"
+        expected_dna_with_parity = "ATAACAGATAA"
         actual_dna_with_parity = encode_base4_direct(
             b'\x12\x34', add_parity=True, k_value=3, parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T
         )
@@ -176,7 +176,7 @@ class TestBase4DirectMapping(unittest.TestCase):
 
     def test_decode_base4_with_parity_no_errors(self):
         # Using the corrected expected_dna_with_parity from above
-        dna_with_parity = "ATAACAGTTAA" # Corresponds to b'\x12\x34' with k=3 parity
+        dna_with_parity = "ATAACAGATAA"  # Corresponds to b'\x12\x34' with k=3 parity
         original_data = b'\x12\x34'
         
         decoded_data, errors = decode_base4_direct(
@@ -186,12 +186,12 @@ class TestBase4DirectMapping(unittest.TestCase):
         self.assertEqual(errors, [])
 
     def test_decode_base4_with_parity_with_errors(self):
-        # dna_with_parity = "ATAACAGTTAA" (correct)
-        # Corrupt first parity bit: "ATATCAGTTAA" (A -> T)
+        # dna_with_parity = "ATAACAGATAA" (correct)
+        # Corrupt first parity bit: "ATATCAGATAA" (A -> T)
         # Block 1: "ATA", Parity "T". Expected for "ATA" (0 GC, even) is "A". Error.
         # Block 2: "CAG", Parity "T". Expected for "CAG" (1 GC, odd) is "T". OK.
         # Block 3: "TA",  Parity "A". Expected for "TA"  (0 GC, even) is "A". OK.
-        corrupted_dna = "ATATCAGTTAA" 
+        corrupted_dna = "ATATCAGATAA"
         original_data_stripped = b'\x12\x34' # This should still be decodable
         
         decoded_data, errors = decode_base4_direct(
