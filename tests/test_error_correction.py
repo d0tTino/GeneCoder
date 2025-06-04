@@ -280,4 +280,4 @@ def test_decode_triple_repeat_valid_inputs_updated(input_seq, expected_output, e
 # uses `encode_triple_repeat("ATCGATCG")` which results in "AAATTTGGGCCCGGGAAATTTGGGCCCGGG".
 # So, the test `test_decode_triple_repeat_atcgatcg_from_description` is effectively testing this.
 # I'll keep the specific test name.
-print("All tests defined.")
+
