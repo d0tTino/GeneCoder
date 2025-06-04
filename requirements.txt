@@ -1,0 +1,5 @@
+flet
+matplotlib
+
+# Packages used for running the test suite
+pytest

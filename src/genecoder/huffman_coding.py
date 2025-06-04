@@ -391,8 +391,8 @@ def decode_huffman(
     # If there are remaining bits in the buffer, they don't form a valid code.
     if current_code_buffer: 
         raise ValueError(
-            f"Corrupted data or incorrect Huffman table: "
-            f"remaining unparsed bits '{"".join(current_code_buffer)}'."
+            "Corrupted data or incorrect Huffman table: "
+            f"remaining unparsed bits '{''.join(current_code_buffer)}'."
         )
 
     return b"".join(decoded_bytes_list), parity_errors

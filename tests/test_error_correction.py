@@ -1,14 +1,21 @@
 import pytest
-from src.genecoder.error_correction import encode_triple_repeat, decode_triple_repeat
+import os
+import sys
+
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from genecoder.error_correction import encode_triple_repeat, decode_triple_repeat  # noqa: E402
 
 # Tests for encode_triple_repeat
 @pytest.mark.parametrize("input_seq, expected_output", [
     ("", ""),
     ("A", "AAA"),
-    ("ATGC", "AAATTTGGGCC"),
-    ("GATTACA", "GGGAaattttttaaacccaaa"), # Test case with repetition of chars
-    ("AXGC", "AAAXXXGGGCC"), # Contains non-DNA character 'X'
-    ("123", "111222333") # Contains non-DNA characters
+    ("ATGC", "AAATTTGGGCCC"),
+    ("GATTACA", "GGGAAATTTTTTAAACCCAAA"),  # Triples each character
+    ("AXGC", "AAAXXXGGGCCC"),  # Contains non-DNA character 'X'
+    ("123", "111222333"),  # Contains non-DNA characters
 ])
 def test_encode_triple_repeat(input_seq, expected_output):
     # Note: The problem description for "GATTACA" was "GGGAATTTAAACCCAAA",
@@ -18,93 +25,6 @@ def test_encode_triple_repeat(input_seq, expected_output):
     assert encode_triple_repeat(input_seq) == expected_output
 
 # Tests for decode_triple_repeat
-@pytest.mark.parametrize("input_seq, expected_output, expected_corrected, expected_uncorrectable", [
-    ("", "", 0, 0), # Empty sequence
-    ("AAATTTGGGCC", "ATGC", 0, 0), # Perfect triple-repeated
-    ("AAAGTTCCC", "ATC", 1, 0),    # One correctable error (AAG -> A)
-    ("AGATTGCCC", "ATC", 2, 0),    # Two correctable errors (AGA -> A, TTG -> T)
-    ("GAATTCGGC", "AGC", 3, 0),    # Three correctable errors (GAA -> A, TTC -> C, GGC -> G) - wait, this is not right.
-                                   # GAA -> A (1 corrected)
-                                   # TTC -> T (1 corrected)
-                                   # GGC -> G (1 corrected)
-                                   # So, ("ATG", 3, 0) if input was "GAATTCTGC" to get "ATG"
-                                   # If input is "GAATTCGGC", expected "ATG", 3 corrected.
-                                   # Let's re-evaluate:
-                                   # GAA -> A (corrected)
-                                   # TTC -> T (corrected)
-                                   # GGC -> G (corrected)
-                                   # Expected: ("ATG", 3, 0)
-    ("AAATTFGGGCCC", "ATGC", 1, 0), # Example: TTF -> T (corrected)
-    ("AGCTTTCCC", "ATC", 0, 1),    # One uncorrectable (AGC -> A, assuming first)
-    ("AAGTGCCCC", "ACC", 1, 1),    # Mix: AAG -> A (corrected), TGC -> T (uncorrectable, assuming first) -> result should be ATC.
-                                   # AAG -> A (corrected = 1)
-                                   # TGC -> T (uncorrectable = 1)
-                                   # CCC -> C
-                                   # Expected: ("ATC", 1, 1)
-    ("AAABBBCCC", "ABC", 0, 0),    # Perfect, simple
-    ("AAX", "A", 1, 0),            # Non-DNA, correctable (AAX -> A)
-    ("AXX", "A", 0, 1),            # Non-DNA, uncorrectable (AXX -> A, first char chosen)
-    ("AYZ", "A", 0, 1),            # Non-DNA, uncorrectable (AYZ -> A, first char chosen)
-    ("XXXYYYZZZ", "XYZ", 0, 0),    # Non-DNA, perfect triplet
-    ("X Y Z ", "XYZ", 0, 0),       # Spaces are treated as chars. "X X" -> "X", "Y Y" -> "Y", "Z Z" -> "Z"
-                                   # Input: "X X Y Y Z Z " (length 9) -> "X Y Z "
-                                   # This needs to be "X XY YY ZZ " for length 9? No, "X X Y Y Z Z" is length 9.
-                                   # "X X" (len 3) -> X
-                                   # "Y Y" (len 3) -> Y
-                                   # "Z Z" (len 3) -> Z
-                                   # So, "X Y Z" is the output.
-    ("AAABBCYYZ", "ABC", 2, 0)     # AAG (A, corrected=1), BBC (B, corrected=1), CYZ (C, uncorrected=1)
-                                   # AA A -> A (0 corrected)
-                                   # BB C -> B (1 corrected)
-                                   # YY Z -> Y (1 corrected)
-                                   # Expected: ("ABY", 2, 0)
-])
-def test_decode_triple_repeat_valid_inputs(input_seq, expected_output, expected_corrected, expected_uncorrectable):
-    # Re-evaluating "GAATTCGGC" -> ("ATG", 3, 0)
-    # GAA -> A (corrected)
-    # TTC -> T (corrected)
-    # GGC -> G (corrected)
-    # This is correct.
-
-    # Re-evaluating "AAGTGCCCC" -> ("ACC", 1, 1)
-    # AAG -> A (corrected=1)
-    # TGC -> T (uncorrectable=1, T is chosen as first)
-    # CCC -> C
-    # Expected: ("ATC", 1, 1)
-    # The test case parameter `expected_output` for this was "ACC", it should be "ATC".
-
-    # Re-evaluating "AGCTTTCCC" -> ("ATC", 0, 1)
-    # AGC -> A (uncorrectable=1, A is chosen as first)
-    # TTT -> T
-    # CCC -> C
-    # Expected: ("ATC", 0, 1). This is correct.
-
-    # Re-evaluating "AAABBCYYZ"
-    # AAA -> A
-    # BBC -> B (corrected=1)
-    # YYZ -> Y (corrected=1)
-    # Expected: ("ABY", 2, 0). This is correct.
-
-    # Correcting "GAATTCGGC" based on the logic:
-    # GAA -> A (corrected)
-    # TTC -> T (corrected)
-    # GGC -> G (corrected)
-    # Output should be "ATG"
-    if input_seq == "GAATTCGGC" and expected_output == "AGC": # This is the problematic one from original list
-        expected_output = "ATG" # Correcting it based on my re-evaluation.
-
-    # Correcting "AAGTGCCCC" based on the logic:
-    # AAG -> A (corrected)
-    # TGC -> T (uncorrectable, T is chosen as first)
-    # CCC -> C
-    # Output should be "ATC"
-    if input_seq == "AAGTGCCCC" and expected_output == "ACC":
-        expected_output = "ATC"
-
-    decoded_seq, corrected, uncorrectable = decode_triple_repeat(input_seq)
-    assert decoded_seq == expected_output
-    assert corrected == expected_corrected
-    assert uncorrectable == expected_uncorrectable
 
 # Specific test for "GAATTCGGC"
 def test_decode_triple_repeat_GAATTCGGC():
@@ -163,11 +83,11 @@ def test_decode_triple_repeat_non_dna_specific():
     assert corrected == 1
     assert uncorrectable == 0
 
-    # AXX -> A (uncorrectable, A is first)
+    # AXX -> majority X -> corrected
     decoded_seq, corrected, uncorrectable = decode_triple_repeat("AXX")
-    assert decoded_seq == "A"
-    assert corrected == 0
-    assert uncorrectable == 1
+    assert decoded_seq == "X"
+    assert corrected == 1
+    assert uncorrectable == 0
     
     # AXY -> A (uncorrectable, A is first)
     decoded_seq, corrected, uncorrectable = decode_triple_repeat("AXY")
@@ -196,7 +116,7 @@ def test_decode_triple_repeat_non_dna_specific():
 # Test case from description: "GATTACA" for encode
 def test_encode_gattaca_specific():
     # GGG AAA TTT TTT AAA CCC AAA
-    assert encode_triple_repeat("GATTACA") == "GGGAaattttttaaacccaaa"
+    assert encode_triple_repeat("GATTACA") == "GGGAAATTTTTTAAACCCAAA"
 
 # Test case from description: "GAATTCGGC" for decode (already added as specific test)
 # Test case from description: "AAGTGCCCC" for decode (already added as specific test)
@@ -219,7 +139,7 @@ def test_decode_triple_repeat_atcgatcg_from_description():
 
 # Test case from description: "AXGC" for encode
 def test_encode_axgc_specific():
-    assert encode_triple_repeat("AXGC") == "AAAXXXGGGCC"
+    assert encode_triple_repeat("AXGC") == "AAAXXXGGGCCC"
 
 # Final check on problem statement's "GAATTCGGC" and "AAGTGCCCC" for decode
 # My manual trace for GAATTCGGC:
@@ -243,18 +163,17 @@ def test_encode_axgc_specific():
 
 # Updated parametrize for decode_triple_repeat_valid_inputs
 @pytest.mark.parametrize("input_seq, expected_output, expected_corrected, expected_uncorrectable", [
-    ("", "", 0, 0), # Empty sequence
-    ("AAATTTGGGCC", "ATGC", 0, 0), # Perfect triple-repeated
+    ("", "", 0, 0),  # Empty sequence
+    ("AAATTTGGGCCC", "ATGC", 0, 0),  # Perfect triple-repeated
     ("AAAGTTCCC", "ATC", 1, 0),    # One correctable error (AAG -> A)
     ("AGATTGCCC", "ATC", 2, 0),    # Two correctable errors (AGA -> A, TTG -> T)
     ("AAATTFGGGCCC", "ATGC", 1, 0), # Example: TTF -> T (corrected)
     ("AGCTTTCCC", "ATC", 0, 1),    # One uncorrectable (AGC -> A, assuming first)
     ("AAABBBCCC", "ABC", 0, 0),    # Perfect, simple
     ("AAX", "A", 1, 0),            # Non-DNA, correctable (AAX -> A)
-    ("AXX", "A", 0, 1),            # Non-DNA, uncorrectable (AXX -> A, first char chosen)
+    ("AXX", "X", 1, 0),            # Majority 'X' corrected
     ("AYZ", "A", 0, 1),            # Non-DNA, uncorrectable (AYZ -> A, first char chosen)
     ("XXXYYYZZZ", "XYZ", 0, 0),    # Non-DNA, perfect triplet
-    ("X XY YY ZZ ", "XYZ", 0, 0),  # Original: "X Y Z ", corrected to "X XY YY ZZ " (len 9) -> decodes to "XYZ"
     ("AAABBCYYZ", "ABY", 2, 0)     # AAA->A, BBC->B (corr), YYZ->Y (corr)
 ])
 def test_decode_triple_repeat_valid_inputs_updated(input_seq, expected_output, expected_corrected, expected_uncorrectable):
@@ -280,4 +199,4 @@ def test_decode_triple_repeat_valid_inputs_updated(input_seq, expected_output, e
 # uses `encode_triple_repeat("ATCGATCG")` which results in "AAATTTGGGCCCGGGAAATTTGGGCCCGGG".
 # So, the test `test_decode_triple_repeat_atcgatcg_from_description` is effectively testing this.
 # I'll keep the specific test name.
-print("All tests defined.")
+

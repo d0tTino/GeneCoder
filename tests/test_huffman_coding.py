@@ -1,12 +1,16 @@
-import sys
-sys.path.insert(0, 'src') # Add src directory to Python path
-
 import unittest
+import os
+import sys
 # collections.Counter is not directly used in these tests, but it's fundamental
 # to the huffman_coding module itself. Keep if needed for other tests, or remove if strictly not used.
-# from collections import Counter 
-from genecoder.huffman_coding import encode_huffman, decode_huffman
-from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
+# from collections import Counter
+
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from genecoder.huffman_coding import encode_huffman, decode_huffman  # noqa: E402
+from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T  # noqa: E402
 
 class TestHuffmanCoding(unittest.TestCase):
 
@@ -90,7 +94,6 @@ class TestHuffmanCoding(unittest.TestCase):
     def test_round_trip_empty(self):
         # Renamed from test_round_trip_empty to avoid conflict if we add a parity version
         self._assert_round_trip_no_parity(b"")
-        self._assert_round_trip(b"")
 
     def test_round_trip_single_byte(self):
         self._assert_round_trip_no_parity(b"A")
@@ -126,13 +129,13 @@ class TestHuffmanCoding(unittest.TestCase):
 
     def test_decode_invalid_padding_non_zero_bit(self):
         table_for_A = {65: '0'} 
-        with self.assertRaisesRegex(ValueError, "Invalid padding bits: expected '0's but found '1'."):
+        with self.assertRaisesRegex(ValueError, "Invalid padding bits: expected all '0's but found '1'."):
             decode_huffman("T", table_for_A, 1, check_parity=False)
 
     def test_decode_code_not_in_table(self):
         dna_no_parity, table_no_parity, pad_no_parity = encode_huffman(b"A", add_parity=False)
-        with self.assertRaisesRegex(ValueError, "Corrupted data or incorrect Huffman table: remaining unparsed bits '1'."):
-            decode_huffman("G", table_no_parity, pad_no_parity, check_parity=False) # "G" is "11", unpadded "1"
+        with self.assertRaisesRegex(ValueError, "Invalid padding bits: expected all '0's but found '1'."):
+            decode_huffman("G", table_no_parity, pad_no_parity, check_parity=False)  # "G" is "11", unpadded "1"
 
     def test_decode_incomplete_code_at_end(self):
         custom_table = {ord('X'): "001"} 

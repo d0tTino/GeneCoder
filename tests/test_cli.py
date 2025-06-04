@@ -1,9 +1,13 @@
 import pytest
 import subprocess
 import os
-import shutil
+import sys
 import tempfile
 from pathlib import Path
+
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
 
 # Helper to get the root of the project
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -19,7 +23,8 @@ def run_cli_command(command_args: list[str], env=None) -> subprocess.CompletedPr
     if env is None:
         env = os.environ.copy()
         # Ensure PYTHONPATH includes the project root so src.cli can be found
-        env['PYTHONPATH'] = str(PROJECT_ROOT) + os.pathsep + env.get('PYTHONPATH', '')
+        src_path = PROJECT_ROOT / "src"
+        env['PYTHONPATH'] = str(src_path) + os.pathsep + env.get('PYTHONPATH', '')
 
     # Construct the command
     # Using python -m src.cli is generally more robust for module resolution
@@ -66,7 +71,7 @@ def test_batch_encode_success(temp_dir: Path):
         assert expected_output_file.exists(), f"Output file {expected_output_file} was not created."
         # Optionally check content
         fasta_content = expected_output_file.read_text()
-        assert f"method=base4_direct" in fasta_content
+        assert "method=base4_direct" in fasta_content
         assert f"input_file={base_name}" in fasta_content
 
 def test_batch_encode_error_no_output_dir(temp_dir: Path):
@@ -192,5 +197,3 @@ def test_batch_decode_single_file_with_output_dir(temp_dir: Path):
     assert expected_output_file.exists(), f"Output file {expected_output_file} was not created."
     assert expected_output_file.read_text() == "single decode test"
 
-# Need to import sys for sys.executable in run_cli_command
-import sys

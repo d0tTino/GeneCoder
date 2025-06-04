@@ -179,7 +179,7 @@ def process_single_decode(input_file_path: str, output_file_path: str, args: arg
         parity_errors = [] # For DNA-level parity, not Hamming
         
         # Determine if DNA-level parity should be checked (only if Hamming not primary FEC)
-        should_check_dna_parity = args.check_parity and not ("fec=hamming_7_4" in header)
+        should_check_dna_parity = args.check_parity and "fec=hamming_7_4" not in header
 
         if args.method == 'base4_direct':
             if should_check_dna_parity and args.k_value <= 0:
@@ -193,23 +193,32 @@ def process_single_decode(input_file_path: str, output_file_path: str, args: arg
             if should_check_dna_parity and args.k_value <= 0:
                 print(f"Error for {input_file_path}: Parity k-value must be positive for Huffman DNA-level parity.", file=sys.stderr)
                 return
-            try: # Parsing Huffman params from header
+            try:  # Parsing Huffman params from header
                 json_param_field_start = header.find("huffman_params=")
-                if json_param_field_start == -1: raise ValueError("Huffman params field missing.")
+                if json_param_field_start == -1:
+                    raise ValueError("Huffman params field missing.")
                 json_part_with_key = header[json_param_field_start + len("huffman_params="):]
-                first_bracket = json_part_with_key.find('{')
-                if first_bracket == -1: raise ValueError("Huffman JSON object start missing.")
-                open_br = 0; json_end = -1
+                first_bracket = json_part_with_key.find("{")
+                if first_bracket == -1:
+                    raise ValueError("Huffman JSON object start missing.")
+                open_br = 0
+                json_end = -1
                 for i, char_h in enumerate(json_part_with_key[first_bracket:]):
-                    if char_h == '{': open_br +=1
-                    elif char_h == '}': open_br -=1
-                    if open_br == 0: json_end = first_bracket + i + 1; break
-                if json_end == -1: raise ValueError("Huffman JSON object end missing.")
+                    if char_h == "{":
+                        open_br += 1
+                    elif char_h == "}":
+                        open_br -= 1
+                    if open_br == 0:
+                        json_end = first_bracket + i + 1
+                        break
+                if json_end == -1:
+                    raise ValueError("Huffman JSON object end missing.")
                 params_json_str = json_part_with_key[first_bracket:json_end]
                 huffman_params = json.loads(params_json_str)
                 huffman_table = {int(k): v for k,v in huffman_params['table'].items()}
                 num_padding_bits = huffman_params['padding']
-                if huffman_table is None or num_padding_bits is None: raise ValueError("Huffman table/padding missing.")
+                if huffman_table is None or num_padding_bits is None:
+                    raise ValueError("Huffman table/padding missing.")
                 
                 intermediate_binary_data, parity_errors = decode_huffman(
                     dna_sequence_for_primary_decode, huffman_table, num_padding_bits,
@@ -218,17 +227,30 @@ def process_single_decode(input_file_path: str, output_file_path: str, args: arg
             except Exception as e:
                 print(f"Error for {input_file_path}: Invalid Huffman params in header: {e}", file=sys.stderr)
                 return
-        elif args.method == 'gc_balanced':
-            if should_check_dna_parity: # gc_balanced does not use this type of parity
-                 print(f"Warning for {input_file_path}: --check-parity is not applicable to 'gc_balanced' method's DNA layer.", file=sys.stderr)
-            try: # Parsing GC-Balanced params from header
-                gc_min = float(re.search(r"gc_min=([\d.]+)", header).group(1)) if re.search(r"gc_min=([\d.]+)", header) else None
-                gc_max = float(re.search(r"gc_max=([\d.]+)", header).group(1)) if re.search(r"gc_max=([\d.]+)", header) else None
-                max_hp = int(re.search(r"max_homopolymer=(\d+)", header).group(1)) if re.search(r"max_homopolymer=(\d+)", header) else None
+        elif args.method == "gc_balanced":
+            if should_check_dna_parity:
+                # gc_balanced does not use this type of parity
+                print(
+                    f"Warning for {input_file_path}: --check-parity is not applicable to 'gc_balanced' method's DNA layer.",
+                    file=sys.stderr,
+                )
+            try:  # Parsing GC-Balanced params from header
+                gc_min_match = re.search(r"gc_min=([\d.]+)", header)
+                gc_max_match = re.search(r"gc_max=([\d.]+)", header)
+                max_hp_match = re.search(r"max_homopolymer=(\d+)", header)
+                gc_min = float(gc_min_match.group(1)) if gc_min_match else None
+                gc_max = float(gc_max_match.group(1)) if gc_max_match else None
+                max_hp = int(max_hp_match.group(1)) if max_hp_match else None
                 if not all([gc_min, gc_max, max_hp]):
-                    print(f"Warning for {input_file_path}: Could not parse all GC constraint params from header for gc_balanced.", file=sys.stderr)
+                    print(
+                        f"Warning for {input_file_path}: Could not parse all GC constraint params from header for gc_balanced.",
+                        file=sys.stderr,
+                    )
                 intermediate_binary_data = decode_gc_balanced(
-                    dna_sequence_for_primary_decode, expected_gc_min=gc_min, expected_gc_max=gc_max, expected_max_homopolymer=max_hp
+                    dna_sequence_for_primary_decode,
+                    expected_gc_min=gc_min,
+                    expected_gc_max=gc_max,
+                    expected_max_homopolymer=max_hp,
                 )
             except Exception as e:
                 print(f"Error for {input_file_path}: GC-balanced decoding/param parsing: {e}", file=sys.stderr)

@@ -180,7 +180,8 @@ def strip_and_verify_parity(
             # If len(chunk) == 1, it's an error or malformed.
             # If len(chunk) == 0, loop doesn't run.
 
-            if not chunk: continue # Should not happen if len > 0
+        if not chunk:
+            continue  # Should not happen if len > 0
             
             if len(chunk) <= 1: # Malformed: cannot be data + parity
                 # This could be an error or simply a trailing part not part of parity logic.
@@ -209,7 +210,9 @@ def strip_and_verify_parity(
                 # is fine. The last `chunk` can be shorter.
                 pass # Chunk is shorter than k_value + 1. This chunk is data + parity.
 
-        if not chunk: continue # Should not happen with string slicing unless input is empty
+        if not chunk:
+            # Should not happen with string slicing unless input is empty
+            continue
 
         data_block = chunk[:-1]
         read_parity_nt = chunk[-1]

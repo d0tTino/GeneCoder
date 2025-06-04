@@ -19,6 +19,17 @@ from .gc_constrained_encoder import (
 )
 from genecoder.error_correction import encode_triple_repeat, decode_triple_repeat
 
+__all__ = [
+    "encode_base4_direct",
+    "decode_base4_direct",
+    "encode_gc_balanced",
+    "decode_gc_balanced",
+    "calculate_gc_content",
+    "get_max_homopolymer_length",
+    "encode_triple_repeat",
+    "decode_triple_repeat",
+]
+
 def encode_base4_direct(
     data: bytes, 
     add_parity: bool = False, 
@@ -181,8 +192,8 @@ def decode_base4_direct(
       'A': 0, 'T': 1, 'C': 2, 'G': 3
   }
 
-  for i in range(0, len(dna_sequence), 4):
-    chars = dna_sequence[i:i+4] # Get a 4-character block
+  for i in range(0, len(sequence_to_decode), 4):
+    chars = sequence_to_decode[i:i+4]  # Get a 4-character block from the (potentially stripped) sequence
     current_byte_val = 0
     # Convert the 4 DNA characters back into one byte.
     # Example: chars = "GACT" (G=0b11, A=0b00, C=0b10, T=0b01)

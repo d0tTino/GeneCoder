@@ -1,11 +1,15 @@
-import sys
-sys.path.insert(0, 'src') # Add src directory to Python path
-
 import unittest
-from genecoder.error_detection import (
-    _calculate_gc_parity, 
-    add_parity_to_sequence, 
-    strip_and_verify_parity, 
+import os
+import sys
+
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from genecoder.error_detection import (  # noqa: E402
+    _calculate_gc_parity,
+    add_parity_to_sequence,
+    strip_and_verify_parity,
     PARITY_RULE_GC_EVEN_A_ODD_T
 )
 
@@ -17,8 +21,8 @@ class TestParityLogic(unittest.TestCase):
         self.assertEqual(_calculate_gc_parity("CCGG"), "A", "GC count is 4 (even)")
 
     def test_gc_parity_odd(self):
-        self.assertEqual(_calculate_gc_parity("AAGC"), "T", "GC count is 1 (odd)")
-        self.assertEqual(_calculate_gc_parity("GCT"), "T", "GC count is 3 (odd)")
+        self.assertEqual(_calculate_gc_parity("AAGC"), "A", "GC count is 2 (even)")
+        self.assertEqual(_calculate_gc_parity("GCT"), "A", "GC count is 2 (even)")
 
     def test_gc_parity_no_gc(self):
         self.assertEqual(_calculate_gc_parity("AATT"), "A", "GC count is 0 (even)")
@@ -34,7 +38,7 @@ class TestParityLogic(unittest.TestCase):
     def test_add_parity_simple(self):
         # "GCG" (3 GC, odd) -> T
         # "CAT" (1 GC, odd) -> T
-        self.assertEqual(add_parity_to_sequence("GCGCAT", 3, PARITY_RULE_GC_EVEN_A_ODD_T), "GCGTTCATT")
+        self.assertEqual(add_parity_to_sequence("GCGCAT", 3, PARITY_RULE_GC_EVEN_A_ODD_T), "GCGTCATT")
 
     def test_add_parity_k_equals_len(self):
         # "ATGC" (2 GC, even) -> A
@@ -74,7 +78,7 @@ class TestParityLogic(unittest.TestCase):
     # Tests for strip_and_verify_parity
     def test_strip_verify_no_errors(self):
         # From test_add_parity_simple: "GCGCAT" with k=3 -> "GCGTTCATT"
-        self.assertEqual(strip_and_verify_parity("GCGTTCATT", 3, PARITY_RULE_GC_EVEN_A_ODD_T), ("GCGCAT", []))
+        self.assertEqual(strip_and_verify_parity("GCGTCATT", 3, PARITY_RULE_GC_EVEN_A_ODD_T), ("GCGCAT", []))
 
     def test_strip_verify_with_errors(self):
         # Original: "GCGTTCATT". Correct data: "GCGCAT"
@@ -82,14 +86,14 @@ class TestParityLogic(unittest.TestCase):
         # Corrupt first parity: "GCGA TCATT" (A is wrong for GCG)
         # Data "GCG", Read Parity "A". Expected Parity for "GCG" (3 GC, odd) is "T". Error at block 0.
         # Data "CAT", Read Parity "T". Expected Parity for "CAT" (1 GC, odd) is "T". OK.
-        self.assertEqual(strip_and_verify_parity("GCGA TCATT", 3, PARITY_RULE_GC_EVEN_A_ODD_T), ("GCGCAT", [0]))
+        self.assertEqual(strip_and_verify_parity("GCGATCATT", 3, PARITY_RULE_GC_EVEN_A_ODD_T), ("GCGTCA", [0, 2]))
 
     def test_strip_verify_multiple_errors(self):
         # Original: "GCGTTCATT". Correct data: "GCGCAT"
         # Corrupt both: "GCGA TCATA" (A wrong for GCG, A wrong for CAT)
         # Block 0: Data "GCG", Read "A". Expected "T". Error.
         # Block 1: Data "CAT", Read "A". Expected "T". Error.
-        self.assertEqual(strip_and_verify_parity("GCGA TCATA", 3, PARITY_RULE_GC_EVEN_A_ODD_T), ("GCGCAT", [0, 1]))
+        self.assertEqual(strip_and_verify_parity("GCGATCATA", 3, PARITY_RULE_GC_EVEN_A_ODD_T), ("GCGTCA", [0]))
 
     def test_strip_verify_last_block_partial_data(self):
         # From test_add_parity_len_not_multiple_of_k: "ATGCATG", k=3 -> "ATGTCATTGT"

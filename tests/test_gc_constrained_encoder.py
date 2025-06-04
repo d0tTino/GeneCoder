@@ -1,7 +1,14 @@
 import pytest
-from unittest.mock import patch, call # call is needed for checking multiple calls to a mock
+import re
+import os
+import sys
+from unittest.mock import patch, call  # call is needed for checking multiple calls to a mock
 
-from src.genecoder.gc_constrained_encoder import (
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from genecoder.gc_constrained_encoder import (  # noqa: E402
     calculate_gc_content,
     check_homopolymer_length,
     get_max_homopolymer_length,
@@ -15,14 +22,14 @@ from src.genecoder.gc_constrained_encoder import (
     ("ATATAT", 0.0),
     ("GCGCGC", 1.0),
     ("AGCT", 0.5),
-    ("GATTACA", 3/7), # Approx 0.42857, but use fraction for precision
-    ("AGCX", 0.25), # X is ignored, GC is 1 out of 4 (A,G,C,X) effectively, or 1/3 if X is fully ignored from length. Current function: 1/4
+    ("GATTACA", 2/7), # GC count is 2 of 7 characters
+    ("AGCX", 0.5),  # X counted in length but not GC -> 2 GC over 4
     ("agct", 0.5), # Test lowercase
     ("G", 1.0),
     ("A", 0.0),
     ("GGG", 1.0),
     ("AAA", 0.0),
-    ("GATTACA", 0.42857142857142855), # More precise
+    ("GATTACA", 2/7),  # More precise GC value
     ("N", 0.0), # Non-ATCG char
     ("GN", 0.5), # One G, one N
     ("AGCTN", 0.4) # 2 GC (G,C) / 5 total (A,G,C,T,N)
@@ -48,7 +55,7 @@ def test_calculate_gc_content(sequence, expected_gc):
     ("AGCT", 2, False),
     ("AAATTTCCCGGG", 3, False),
     ("AAATTTCCCGGG", 2, True), # AAA violates
-    ("GATTACA", 1, False),
+    ("GATTACA", 1, True),
     ("GATTACCA", 1, True), # CC violates
     ("aaaatttt", 3, True), # Lowercase test
 ])
@@ -72,7 +79,7 @@ def test_get_max_homopolymer_length(sequence, expected_len):
     assert get_max_homopolymer_length(sequence) == expected_len
 
 # Tests for encode_gc_balanced
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_meets_constraints(mock_encode_base4):
     dummy_data = b"test"
     initial_sequence = "ATGCATGC" # GC=0.5, max_homopolymer=1
@@ -88,7 +95,7 @@ def test_encode_gc_balanced_meets_constraints(mock_encode_base4):
     assert result[1:] == initial_sequence
     mock_encode_base4.assert_called_once_with(dummy_data, add_parity=False)
 
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_violates_gc_uses_alternative(mock_encode_base4):
     dummy_data = b"test"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
@@ -113,7 +120,7 @@ def test_encode_gc_balanced_violates_gc_uses_alternative(mock_encode_base4):
         call(inverted_dummy_data, add_parity=False)
     ])
 
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_violates_homopolymer_uses_alternative(mock_encode_base4):
     dummy_data = b"test"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
@@ -138,7 +145,7 @@ def test_encode_gc_balanced_violates_homopolymer_uses_alternative(mock_encode_ba
     ])
 
 # Tests for decode_gc_balanced
-@patch('src.genecoder.gc_constrained_encoder.decode_base4_direct')
+@patch('genecoder.encoders.decode_base4_direct')
 def test_decode_gc_balanced_no_inversion(mock_decode_base4):
     payload_dna = "ATGCATGC"
     input_sequence = "0" + payload_dna
@@ -151,7 +158,7 @@ def test_decode_gc_balanced_no_inversion(mock_decode_base4):
     assert result == expected_decoded_data
     mock_decode_base4.assert_called_once_with(payload_dna, check_parity=False)
 
-@patch('src.genecoder.gc_constrained_encoder.decode_base4_direct')
+@patch('genecoder.encoders.decode_base4_direct')
 def test_decode_gc_balanced_with_inversion(mock_decode_base4):
     payload_dna = "CGCGATC"
     input_sequence = "1" + payload_dna
@@ -175,16 +182,15 @@ def test_decode_gc_balanced_with_inversion(mock_decode_base4):
     ("AATGC", "Invalid signal bit: 'A'. Expected '0' or '1'."), # Another invalid signal bit
 ])
 def test_decode_gc_balanced_error_cases(invalid_sequence, error_message_match):
-    with pytest.raises(ValueError, match=error_message_match):
+    with pytest.raises(ValueError, match=re.escape(error_message_match)):
         decode_gc_balanced(invalid_sequence)
 
 # A few more specific GC content test cases based on problem description
 def test_calculate_gc_content_specific():
-    assert calculate_gc_content("GATTACA") == pytest.approx(3/7) # 0.42857142857142855
+    assert calculate_gc_content("GATTACA") == pytest.approx(2/7)
     # The case "AGCX" with result 0.25 is already covered by parametrize if X is not A,T,C,G.
     # If 'X' was a typo for 'C', "AGCC" would be 0.75.
-    # The current function counts 'X' in length, so GC=1 ('G'), total_len=4, 1/4 = 0.25.
-    # This matches the behavior described in the subtask.
+    # The current function counts 'X' in length, so GC=2 (G and C), total_len=4 -> 0.5.
     # The problem statement says "implicitly ignores non-ATCG characters by not counting them in the total or GC count"
     # This is a slight misinterpretation. It *does* count them in total length, but not in GC count.
     # Let's re-verify:
@@ -192,16 +198,16 @@ def test_calculate_gc_content_specific():
     # gc_count = "AGCX".count('G') + "AGCX".count('C') = 1 + 1 = 2 (if X was C) -> this is wrong
     # gc_count = "AGCX".upper().count('G') + "AGCX".upper().count('C')
     # If X is not C or G, then gc_count = 1 (for G). len("AGCX") = 4. So 1/4 = 0.25. This is what the code does.
-    assert calculate_gc_content("AGCX") == 0.25 # Verified this behavior
+    assert calculate_gc_content("AGCX") == 0.5  # Verified this behavior
     assert calculate_gc_content("AGC") == pytest.approx(2/3) # 0.666...
 
 # A few more specific check_homopolymer_length cases
 def test_check_homopolymer_length_specific():
-    assert check_homopolymer_length("CCCAAAATTTTGGGG", 3) == True # TTTT is > 3
-    assert check_homopolymer_length("AAAGGG", 3) == False # Max length is 3, so it's ok
-    assert check_homopolymer_length("AAAA", 3) == True # Length 4 > 3
-    assert check_homopolymer_length("GGGG", 3) == True # Length 4 > 3
-    assert check_homopolymer_length("AAGG", 1) == True # AA violates max_len=1
+    assert check_homopolymer_length("CCCAAAATTTTGGGG", 3)  # TTTT is > 3
+    assert not check_homopolymer_length("AAAGGG", 3)  # Max length is 3, so it's ok
+    assert check_homopolymer_length("AAAA", 3)  # Length 4 > 3
+    assert check_homopolymer_length("GGGG", 3)  # Length 4 > 3
+    assert check_homopolymer_length("AAGG", 1)  # AA violates max_len=1
 
 # A few more specific get_max_homopolymer_length cases
 def test_get_max_homopolymer_length_specific():
@@ -211,7 +217,7 @@ def test_get_max_homopolymer_length_specific():
     assert get_max_homopolymer_length("GATTACA") == 2 # TT and AA
 
 # Test for encode_gc_balanced when initial is fine, alternative might also be fine or not checked
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_initial_ok_alternative_not_used(mock_encode_base4):
     dummy_data = b"data"
     # Initial sequence: GC=0.5, max_hp=1. Both are fine.
@@ -224,7 +230,7 @@ def test_encode_gc_balanced_initial_ok_alternative_not_used(mock_encode_base4):
     mock_encode_base4.assert_called_once_with(dummy_data, add_parity=False)
 
 # Test for encode_gc_balanced when initial fails GC, alternative is used
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_initial_fails_gc_alternative_used(mock_encode_base4):
     dummy_data = b"data"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
@@ -243,7 +249,7 @@ def test_encode_gc_balanced_initial_fails_gc_alternative_used(mock_encode_base4)
     mock_encode_base4.assert_any_call(inverted_dummy_data, add_parity=False)
 
 # Test for encode_gc_balanced when initial fails homopolymer, alternative is used
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_initial_fails_homopolymer_alternative_used(mock_encode_base4):
     dummy_data = b"data"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
@@ -293,7 +299,7 @@ def test_get_max_homopolymer_length_single_char():
     assert get_max_homopolymer_length("G") == 1
 
 # Test encode_gc_balanced where both initial and alternative might fail (current logic picks alternative)
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4):
     dummy_data = b"test"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
@@ -318,7 +324,7 @@ def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4):
     ])
 
 # Test decode_gc_balanced with optional arguments passed (though not used by current logic)
-@patch('src.genecoder.gc_constrained_encoder.decode_base4_direct')
+@patch('genecoder.encoders.decode_base4_direct')
 def test_decode_gc_balanced_with_optional_args(mock_decode_base4):
     payload_dna = "ATGC"
     input_sequence = "0" + payload_dna
@@ -368,6 +374,3 @@ def test_decode_gc_balanced_with_optional_args(mock_decode_base4):
 # It's ignored for the GC count (numerator) but not for the length (denominator).
 # This seems fine.
 
-print("All tests defined.")
-# Note: The print statement is just for development and won't run with pytest.
-# It helps confirm the script was processed up to this point if run directly.
