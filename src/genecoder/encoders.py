@@ -19,6 +19,17 @@ from .gc_constrained_encoder import (
 )
 from genecoder.error_correction import encode_triple_repeat, decode_triple_repeat
 
+__all__ = [
+    "encode_base4_direct",
+    "decode_base4_direct",
+    "encode_gc_balanced",
+    "decode_gc_balanced",
+    "calculate_gc_content",
+    "get_max_homopolymer_length",
+    "encode_triple_repeat",
+    "decode_triple_repeat",
+]
+
 def encode_base4_direct(
     data: bytes, 
     add_parity: bool = False, 

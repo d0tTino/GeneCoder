@@ -1,7 +1,7 @@
 import pytest
 import subprocess
 import os
-import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -66,7 +66,7 @@ def test_batch_encode_success(temp_dir: Path):
         assert expected_output_file.exists(), f"Output file {expected_output_file} was not created."
         # Optionally check content
         fasta_content = expected_output_file.read_text()
-        assert f"method=base4_direct" in fasta_content
+        assert "method=base4_direct" in fasta_content
         assert f"input_file={base_name}" in fasta_content
 
 def test_batch_encode_error_no_output_dir(temp_dir: Path):
@@ -192,5 +192,3 @@ def test_batch_decode_single_file_with_output_dir(temp_dir: Path):
     assert expected_output_file.exists(), f"Output file {expected_output_file} was not created."
     assert expected_output_file.read_text() == "single decode test"
 
-# Need to import sys for sys.executable in run_cli_command
-import sys

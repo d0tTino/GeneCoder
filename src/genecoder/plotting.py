@@ -6,7 +6,7 @@ rendered to in-memory buffers for display in Flet or other GUI frameworks.
 """
 import io
 import collections
-from typing import Dict, List, Tuple # For older Python; can be dict, list, tuple for 3.9+
+from typing import Dict, List  # For older Python; can be dict, list for 3.9+
 
 import matplotlib
 matplotlib.use('Agg') # Set Matplotlib backend to Agg for headless environments
