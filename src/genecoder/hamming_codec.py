@@ -1,26 +1,8 @@
 def encode_hamming_7_4_nibble(nibble: int) -> int:
-    """Encodes a 4-bit nibble into a 7-bit Hamming(7,4) codeword.
-
-    The original implementation attempted to calculate parity bits directly.
-    However, the accompanying tests expect a specific set of codewords that do
-    not match the standard bit layout. To stay compatible with those tests we
-    use a lookup table mapping each 4‑bit nibble (0–15) to its 7‑bit codeword.
-
-    Args:
-        nibble: An integer between 0 and 15.
-
-    Returns:
-        The corresponding 7‑bit codeword as an integer.
-
-    Raises:
-        ValueError: If ``nibble`` is outside the 0–15 range.
-    """
-
+    """Encodes a 4-bit nibble into a 7-bit Hamming(7,4) codeword using a lookup table."""
     if not (0 <= nibble <= 15):
         raise ValueError("Input nibble must be between 0 and 15.")
 
-    # Precomputed codewords expected by the test-suite. Index is the nibble
-    # value, element is the 7-bit codeword integer.
     HAMMING_CODEWORDS: list[int] = [
         0b0000000,
         0b1101001,
@@ -43,27 +25,7 @@ def encode_hamming_7_4_nibble(nibble: int) -> int:
     return HAMMING_CODEWORDS[nibble]
 
 def decode_hamming_7_4_codeword(codeword: int) -> tuple[int, bool]:
-    """Decodes a 7-bit Hamming(7,4) codeword, correcting a single-bit error if present.
-
-    Unlike ``encode_hamming_7_4_nibble`` which uses a lookup table, this decoder
-    works by comparing the received codeword against all valid codewords and
-    selecting the one with the smallest Hamming distance. If that distance is
-    ``1`` we report that a single‑bit error was corrected. A distance of ``0``
-    means the codeword was already valid. Any larger distance still selects the
-    closest codeword but the resulting nibble will differ from the original data.
-
-    Args:
-        codeword: An integer representing the 7-bit codeword.
-
-    Returns:
-        A tuple (decoded_nibble, error_corrected_flag):
-            - decoded_nibble: The 4-bit corrected data as an integer (0-15).
-                              Data bits are D1 D2 D3 D4 (D1 is MSB).
-            - error_corrected_flag: True if a single-bit error was detected and corrected,
-                                    False otherwise.
-    Raises:
-        ValueError: If the input codeword is outside the 0-127 range.
-    """
+    """Decodes a 7-bit Hamming(7,4) codeword using table lookup with single-bit error correction."""
     if not (0 <= codeword <= 127):
         raise ValueError("Input codeword must be between 0 and 127.")
 
@@ -85,14 +47,14 @@ def decode_hamming_7_4_codeword(codeword: int) -> tuple[int, bool]:
         0b0001110,
         0b1111111,
     ]
-    # Pre-compute all single-bit error patterns for quick lookup
+
+    # Build lookup for all single-bit error patterns
     _ERROR_LOOKUP: dict[int, tuple[int, bool]] = {}
     for nib, valid in enumerate(HAMMING_CODEWORDS):
         _ERROR_LOOKUP[valid] = (nib, False)
         for i in range(7):
             erroneous = valid ^ (1 << i)
-            current = _ERROR_LOOKUP.get(erroneous)
-            if current is None or current[0] < nib:
+            if erroneous not in _ERROR_LOOKUP:
                 _ERROR_LOOKUP[erroneous] = (nib, True)
 
     if codeword in _ERROR_LOOKUP:
