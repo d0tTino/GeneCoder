@@ -36,7 +36,8 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
     *   **Base-4 Direct Mapping:** (As described before)
     *   **Huffman-4 Coding:** (As described before)
     *   **GC-Balanced Encoder (`gc_balanced`):**
-        *   Aims to produce DNA sequences within a target GC content range (currently fixed at 45-55%) and with a maximum homopolymer run length (currently fixed at 3).
+        *   Aims to produce DNA sequences within a target GC content range and with a maximum homopolymer run length.
+        *   These constraints can be tuned via `--gc-min`, `--gc-max`, and `--max-homopolymer` (defaults: `0.45`, `0.55`, `3`).
         *   It first attempts to encode data directly (using Base-4 Direct). If constraints are met, the sequence is prefixed with '0'.
         *   If constraints are violated, the input data bits are inverted, re-encoded, and the sequence is prefixed with '1'. This provides an alternative sequence that might meet constraints.
         *   The FASTA header includes `method=gc_balanced`, `gc_min`, `gc_max`, and `max_homopolymer` (target constraint values).
@@ -133,7 +134,9 @@ To use GeneCoder CLI, navigate to the project's root directory. The main script 
 
 6.  **Batch encode multiple files using GC-Balanced method to a specified directory:**
     ```bash
-    python src/cli.py encode --input-files file1.txt notes.md image.png --output-dir gc_encoded_batch/ --method gc_balanced
+    python src/cli.py encode --input-files file1.txt notes.md image.png \
+        --output-dir gc_encoded_batch/ --method gc_balanced \
+        --gc-min 0.40 --gc-max 0.60 --max-homopolymer 4
     ```
     *Output: `gc_encoded_batch/file1.txt.fasta`, `gc_encoded_batch/notes.md.fasta`, etc.*
 
