@@ -197,3 +197,29 @@ def test_batch_decode_single_file_with_output_dir(temp_dir: Path):
     assert expected_output_file.exists(), f"Output file {expected_output_file} was not created."
     assert expected_output_file.read_text() == "single decode test"
 
+
+def test_decode_method_mismatch(temp_dir: Path):
+    """Decoding should fail if --method does not match FASTA header."""
+    input_dir = temp_dir / "input_method_mismatch"
+    output_dir = temp_dir / "output_method_mismatch"
+    input_dir.mkdir()
+    output_dir.mkdir()
+
+    fasta_file = input_dir / "file1.fasta"
+    # Create FASTA with method base4_direct
+    create_dummy_fasta_file(fasta_file, "mismatch test", method="base4_direct")
+
+    cmd_args = [
+        "decode",
+        "--input-files",
+        str(fasta_file),
+        "--output-dir",
+        str(output_dir),
+        "--method",
+        "huffman",
+    ]
+    result = run_cli_command(cmd_args)
+
+    assert result.returncode != 0, "CLI decode should fail on method mismatch"
+    assert "FASTA header specifies method" in result.stderr
+

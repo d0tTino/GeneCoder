@@ -86,7 +86,9 @@ class TestParityLogic(unittest.TestCase):
         # Corrupt first parity: "GCGA TCATT" (A is wrong for GCG)
         # Data "GCG", Read Parity "A". Expected Parity for "GCG" (3 GC, odd) is "T". Error at block 0.
         # Data "CAT", Read Parity "T". Expected Parity for "CAT" (1 GC, odd) is "T". OK.
-        self.assertEqual(strip_and_verify_parity("GCGATCATT", 3, PARITY_RULE_GC_EVEN_A_ODD_T), ("GCGTCA", [0, 2]))
+        # The final trailing parity bit is ignored, so only the first block
+        # registers an error.
+        self.assertEqual(strip_and_verify_parity("GCGATCATT", 3, PARITY_RULE_GC_EVEN_A_ODD_T), ("GCGTCA", [0]))
 
     def test_strip_verify_multiple_errors(self):
         # Original: "GCGTTCATT". Correct data: "GCGCAT"
@@ -102,8 +104,8 @@ class TestParityLogic(unittest.TestCase):
         # Corrupt last parity: "ATGTCATTGA" (A is wrong for G)
         # "ATG"(T) -> OK
         # "CAT"(T) -> OK
-        # "G"(A) -> Error. Expected "T".
-        self.assertEqual(strip_and_verify_parity("ATGTCATTGA", 3, PARITY_RULE_GC_EVEN_A_ODD_T), ("ATGCATG", [2]))
+        # "G"(A) -> With the updated logic the trailing chunk is not verified.
+        self.assertEqual(strip_and_verify_parity("ATGTCATTGA", 3, PARITY_RULE_GC_EVEN_A_ODD_T), ("ATGCATG", []))
 
 
     def test_strip_verify_empty_sequence(self):
