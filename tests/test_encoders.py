@@ -1,6 +1,13 @@
 import unittest
-from genecoder.encoders import encode_base4_direct, decode_base4_direct
-from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
+import os
+import sys
+
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from genecoder.encoders import encode_base4_direct, decode_base4_direct  # noqa: E402
+from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T  # noqa: E402
 
 class TestBase4DirectMapping(unittest.TestCase):
 

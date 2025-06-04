@@ -1,5 +1,12 @@
 import pytest
-from src.genecoder.hamming_codec import (
+import os
+import sys
+
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from genecoder.hamming_codec import (  # noqa: E402
     encode_hamming_7_4_nibble,
     decode_hamming_7_4_codeword,
     bytes_to_nibbles,

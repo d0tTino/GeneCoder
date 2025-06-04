@@ -5,6 +5,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
 # Helper to get the root of the project
 PROJECT_ROOT = Path(__file__).parent.parent
 

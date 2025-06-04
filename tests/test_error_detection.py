@@ -1,8 +1,15 @@
 import unittest
-from genecoder.error_detection import (
-    _calculate_gc_parity, 
-    add_parity_to_sequence, 
-    strip_and_verify_parity, 
+import os
+import sys
+
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from genecoder.error_detection import (  # noqa: E402
+    _calculate_gc_parity,
+    add_parity_to_sequence,
+    strip_and_verify_parity,
     PARITY_RULE_GC_EVEN_A_ODD_T
 )
 

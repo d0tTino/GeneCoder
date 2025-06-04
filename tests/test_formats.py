@@ -1,5 +1,12 @@
 import unittest
-from genecoder.formats import to_fasta, from_fasta # Import from_fasta
+import os
+import sys
+
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from genecoder.formats import to_fasta, from_fasta  # noqa: E402 - Import from_fasta
 
 class TestFastaFormatting(unittest.TestCase):
 

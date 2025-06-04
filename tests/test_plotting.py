@@ -1,9 +1,17 @@
 
 import unittest
 import io
+import os
+import sys
 from collections import Counter
+import pytest
 
-from genecoder.plotting import (
+
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from genecoder.plotting import (  # noqa: E402
     prepare_huffman_codeword_length_data,
     generate_codeword_length_histogram,
     prepare_nucleotide_frequency_data,
@@ -11,7 +19,6 @@ from genecoder.plotting import (
     calculate_windowed_gc_content,
     identify_homopolymer_regions
 )
-import pytest # For new tests
 
 class TestPlotting(unittest.TestCase):
 
