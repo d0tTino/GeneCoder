@@ -1,7 +1,4 @@
 import flet as ft
-import os 
-import json 
-import flet as ft
 import os
 import json
 import base64 # For displaying matplotlib plots in Flet

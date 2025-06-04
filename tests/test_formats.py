@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, 'src') # Add src directory to Python path
-
 import unittest
 from genecoder.formats import to_fasta, from_fasta # Import from_fasta
 

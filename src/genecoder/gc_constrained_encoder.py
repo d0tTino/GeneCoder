@@ -1,5 +1,4 @@
 from typing import Optional
-from genecoder.encoders import encode_base4_direct, decode_base4_direct
 
 def calculate_gc_content(dna_sequence: str) -> float:
     """Calculates the GC content of a DNA sequence.
@@ -73,6 +72,8 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
     Returns:
         The encoded DNA sequence as a string, prefixed with "0" or "1".
     """
+    from .encoders import encode_base4_direct  # Local import to avoid circular dependency
+
     initial_sequence = encode_base4_direct(data, add_parity=False)
 
     gc_content_ok = target_gc_min <= calculate_gc_content(initial_sequence) <= target_gc_max
@@ -82,7 +83,7 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
         return "0" + initial_sequence
     else:
         # Invert data bits and re-encode
-        modified_data = bytes(b ^ 0xFF for b in data) # XOR each byte with 0xFF to flip all bits
+        modified_data = bytes(b ^ 0xFF for b in data)  # XOR each byte with 0xFF to flip all bits
         alternative_sequence = encode_base4_direct(modified_data, add_parity=False)
         # Here, we assume the alternative sequence is better or acceptable.
         # A more sophisticated approach might re-check constraints for the alternative
@@ -155,6 +156,8 @@ def decode_gc_balanced(
 
     if not dna_sequence or len(dna_sequence) < 1: # Sequence must have at least signal bit
         raise ValueError("Input DNA sequence is too short to decode (missing signal bit).")
+
+    from .encoders import decode_base4_direct  # Local import to avoid circular dependency
 
     signal_bit = dna_sequence[0]
     payload_dna_sequence = dna_sequence[1:]

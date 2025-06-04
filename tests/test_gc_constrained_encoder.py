@@ -72,7 +72,7 @@ def test_get_max_homopolymer_length(sequence, expected_len):
     assert get_max_homopolymer_length(sequence) == expected_len
 
 # Tests for encode_gc_balanced
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('src.genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_meets_constraints(mock_encode_base4):
     dummy_data = b"test"
     initial_sequence = "ATGCATGC" # GC=0.5, max_homopolymer=1
@@ -88,7 +88,7 @@ def test_encode_gc_balanced_meets_constraints(mock_encode_base4):
     assert result[1:] == initial_sequence
     mock_encode_base4.assert_called_once_with(dummy_data, add_parity=False)
 
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('src.genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_violates_gc_uses_alternative(mock_encode_base4):
     dummy_data = b"test"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
@@ -113,7 +113,7 @@ def test_encode_gc_balanced_violates_gc_uses_alternative(mock_encode_base4):
         call(inverted_dummy_data, add_parity=False)
     ])
 
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('src.genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_violates_homopolymer_uses_alternative(mock_encode_base4):
     dummy_data = b"test"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
@@ -138,7 +138,7 @@ def test_encode_gc_balanced_violates_homopolymer_uses_alternative(mock_encode_ba
     ])
 
 # Tests for decode_gc_balanced
-@patch('src.genecoder.gc_constrained_encoder.decode_base4_direct')
+@patch('src.genecoder.encoders.decode_base4_direct')
 def test_decode_gc_balanced_no_inversion(mock_decode_base4):
     payload_dna = "ATGCATGC"
     input_sequence = "0" + payload_dna
@@ -151,7 +151,7 @@ def test_decode_gc_balanced_no_inversion(mock_decode_base4):
     assert result == expected_decoded_data
     mock_decode_base4.assert_called_once_with(payload_dna, check_parity=False)
 
-@patch('src.genecoder.gc_constrained_encoder.decode_base4_direct')
+@patch('src.genecoder.encoders.decode_base4_direct')
 def test_decode_gc_balanced_with_inversion(mock_decode_base4):
     payload_dna = "CGCGATC"
     input_sequence = "1" + payload_dna
@@ -211,7 +211,7 @@ def test_get_max_homopolymer_length_specific():
     assert get_max_homopolymer_length("GATTACA") == 2 # TT and AA
 
 # Test for encode_gc_balanced when initial is fine, alternative might also be fine or not checked
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('src.genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_initial_ok_alternative_not_used(mock_encode_base4):
     dummy_data = b"data"
     # Initial sequence: GC=0.5, max_hp=1. Both are fine.
@@ -224,7 +224,7 @@ def test_encode_gc_balanced_initial_ok_alternative_not_used(mock_encode_base4):
     mock_encode_base4.assert_called_once_with(dummy_data, add_parity=False)
 
 # Test for encode_gc_balanced when initial fails GC, alternative is used
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('src.genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_initial_fails_gc_alternative_used(mock_encode_base4):
     dummy_data = b"data"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
@@ -243,7 +243,7 @@ def test_encode_gc_balanced_initial_fails_gc_alternative_used(mock_encode_base4)
     mock_encode_base4.assert_any_call(inverted_dummy_data, add_parity=False)
 
 # Test for encode_gc_balanced when initial fails homopolymer, alternative is used
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('src.genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_initial_fails_homopolymer_alternative_used(mock_encode_base4):
     dummy_data = b"data"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
@@ -293,7 +293,7 @@ def test_get_max_homopolymer_length_single_char():
     assert get_max_homopolymer_length("G") == 1
 
 # Test encode_gc_balanced where both initial and alternative might fail (current logic picks alternative)
-@patch('src.genecoder.gc_constrained_encoder.encode_base4_direct')
+@patch('src.genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4):
     dummy_data = b"test"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
@@ -318,7 +318,7 @@ def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4):
     ])
 
 # Test decode_gc_balanced with optional arguments passed (though not used by current logic)
-@patch('src.genecoder.gc_constrained_encoder.decode_base4_direct')
+@patch('src.genecoder.encoders.decode_base4_direct')
 def test_decode_gc_balanced_with_optional_args(mock_decode_base4):
     payload_dna = "ATGC"
     input_sequence = "0" + payload_dna

@@ -1,8 +1,5 @@
 import sys
 import os
-# Add src directory to Python path for module import
-# This assumes the tests are run from the project root.
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 import unittest
 import io

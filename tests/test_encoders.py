@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, 'src') # Add src directory to Python path for module import
-
 import unittest
 from genecoder.encoders import encode_base4_direct, decode_base4_direct
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T

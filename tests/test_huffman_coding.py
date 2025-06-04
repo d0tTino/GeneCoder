@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, 'src') # Add src directory to Python path
-
 import unittest
 # collections.Counter is not directly used in these tests, but it's fundamental
 # to the huffman_coding module itself. Keep if needed for other tests, or remove if strictly not used.

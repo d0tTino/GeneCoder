@@ -79,6 +79,15 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
 
 ---
 
+## Installation
+
+Clone the repository and install the required packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+
 ## Usage
 
 ### Command-Line Interface (CLI)

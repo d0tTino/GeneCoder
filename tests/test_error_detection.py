@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, 'src') # Add src directory to Python path
-
 import unittest
 from genecoder.error_detection import (
     _calculate_gc_parity, 
