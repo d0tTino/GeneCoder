@@ -489,7 +489,7 @@ def main(page: ft.Page):
         9. Applies the primary decoding method asynchronously.
         10. Updates status messages and re-enables UI controls in a `finally` block.
         """
-        nonlocal decoded_bytes_to_save 
+        global decoded_bytes_to_save
         
         decode_status_text.value = "Processing..."
         decode_fec_info_text.value = "" 
@@ -688,7 +688,7 @@ def main(page: ft.Page):
     decode_button.on_click = decode_file_data
 
     async def on_save_decoded_file_result(e: ft.FilePickerResultEvent): # Made async
-        nonlocal decoded_bytes_to_save
+        global decoded_bytes_to_save
         if e.path:
             try:
                 with open(e.path, "wb") as f_out: 

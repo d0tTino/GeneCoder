@@ -160,6 +160,16 @@ def process_single_decode(input_file_path: str, output_file_path: str, args: arg
             print(f"Warning for {input_file_path}: Multiple FASTA records found. Processing the first one only.", file=sys.stderr)
 
         header, sequence_from_fasta = parsed_records[0]
+
+        header_method_match = re.search(r"method=([\w_]+)", header)
+        if header_method_match:
+            header_method = header_method_match.group(1)
+            if header_method != args.method:
+                print(
+                    f"Error for {input_file_path}: FASTA header specifies method '{header_method}', but --method '{args.method}' was provided. Aborting.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
         
         # --- DNA-level FEC decoding (Triple Repeat) ---
         dna_sequence_for_primary_decode = sequence_from_fasta

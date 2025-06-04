@@ -25,7 +25,7 @@ def encode_hamming_7_4_nibble(nibble: int) -> int:
 
 # Precompute the 16 valid Hamming codewords and an error lookup table
 _HAMMING_CODEWORDS: list[int] = [encode_hamming_7_4_nibble(n) for n in range(16)]
-_ERROR_LOOKUP: dict[int, tuple[int, bool]]
+_ERROR_LOOKUP: dict[int, tuple[int, bool]] = {}
 
 
 def _build_lookup() -> None:
