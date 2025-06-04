@@ -2,13 +2,11 @@ import pytest
 import re
 from unittest.mock import patch, call  # call is needed for checking multiple calls to a mock
 
-from genecoder.gc_constrained_encoder import (  # noqa: E402
-    calculate_gc_content,
-    check_homopolymer_length,
-    get_max_homopolymer_length,
-    encode_gc_balanced,
-    decode_gc_balanced
-)
+from genecoder.encoders import encode_base4_direct  # noqa: E402
+
+SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
 
 # Test cases for calculate_gc_content
 @pytest.mark.parametrize("sequence, expected_gc", [
@@ -139,34 +137,30 @@ def test_encode_gc_balanced_violates_homopolymer_uses_alternative(mock_encode_ba
     ])
 
 # Tests for decode_gc_balanced
-@patch('genecoder.encoders.decode_base4_direct')
-def test_decode_gc_balanced_no_inversion(mock_decode_base4):
-    payload_dna = "ATGCATGC"
+def test_decode_gc_balanced_no_inversion():
+    original_data = b"test_data"
+    payload_dna = encode_base4_direct(original_data)
     input_sequence = "0" + payload_dna
-    expected_decoded_data = b"test_data"
-    mock_decode_base4.return_value = expected_decoded_data
 
     # Optional constraint args are not used by current decode logic, but pass them for completeness
-    result = decode_gc_balanced(input_sequence, expected_gc_min=0.4, expected_gc_max=0.6, expected_max_homopolymer=3)
+    result = decode_gc_balanced(
+        input_sequence,
+        expected_gc_min=0.4,
+        expected_gc_max=0.6,
+        expected_max_homopolymer=3,
+    )
 
-    assert result == expected_decoded_data
-    mock_decode_base4.assert_called_once_with(payload_dna, check_parity=False)
+    assert result == original_data
 
-@patch('genecoder.encoders.decode_base4_direct')
-def test_decode_gc_balanced_with_inversion(mock_decode_base4):
-    payload_dna = "CGCGATC"
+def test_decode_gc_balanced_with_inversion():
+    original_data = b"\x01\x02\x03\xff"
+    inverted_data = bytes(b ^ 0xFF for b in original_data)
+    payload_dna = encode_base4_direct(inverted_data)
     input_sequence = "1" + payload_dna
-    original_data_before_inversion = b"\x01\x02\x03\xff" # Example byte data
-    
-    # decode_base4_direct will return the data as if it was encoded from inverted original bytes
-    mock_decode_base4.return_value = original_data_before_inversion 
-    
-    expected_final_data = bytes(b ^ 0xFF for b in original_data_before_inversion)
 
-    result = decode_gc_balanced(input_sequence) # No need to pass optional args here
+    result = decode_gc_balanced(input_sequence)
 
-    assert result == expected_final_data
-    mock_decode_base4.assert_called_once_with(payload_dna, check_parity=False)
+    assert result == original_data
 
 @pytest.mark.parametrize("invalid_sequence, error_message_match", [
     ("", "Input DNA sequence is too short to decode (missing signal bit)."),
@@ -318,21 +312,18 @@ def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4):
     ])
 
 # Test decode_gc_balanced with optional arguments passed (though not used by current logic)
-@patch('genecoder.encoders.decode_base4_direct')
-def test_decode_gc_balanced_with_optional_args(mock_decode_base4):
-    payload_dna = "ATGC"
+def test_decode_gc_balanced_with_optional_args():
+    original_data = b"data"
+    payload_dna = encode_base4_direct(original_data)
     input_sequence = "0" + payload_dna
-    expected_decoded_data = b"data"
-    mock_decode_base4.return_value = expected_decoded_data
 
     result = decode_gc_balanced(
         input_sequence,
         expected_gc_min=0.4,
         expected_gc_max=0.6,
-        expected_max_homopolymer=3
+        expected_max_homopolymer=3,
     )
-    assert result == expected_decoded_data
-    mock_decode_base4.assert_called_once_with(payload_dna, check_parity=False)
+    assert result == original_data
 
 # Final check of GC content calculation for "AGCX"
 # The problem statement said:

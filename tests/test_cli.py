@@ -106,6 +106,64 @@ def test_batch_encode_single_file_with_output_dir(temp_dir: Path):
     expected_output_file = output_dir / ("file1.txt.fasta")
     assert expected_output_file.exists(), f"Output file {expected_output_file} was not created."
 
+
+def test_gc_balanced_params_in_header_default_and_custom(temp_dir: Path):
+    """Verify gc_balanced CLI parameters are parsed and appear in FASTA headers."""
+    input_dir = temp_dir / "input_gc"
+    output_dir = temp_dir / "output_gc"
+    input_dir.mkdir()
+    output_dir.mkdir()
+
+    # File for default parameters
+    default_file = input_dir / "default.txt"
+    default_file.write_text("default")
+
+    cmd_default = [
+        "encode",
+        "--input-files",
+        str(default_file),
+        "--output-dir",
+        str(output_dir),
+        "--method",
+        "gc_balanced",
+    ]
+    result_default = run_cli_command(cmd_default)
+    assert result_default.returncode == 0, f"Default encode failed: {result_default.stderr}"
+    default_out = output_dir / "default.txt.fasta"
+    assert default_out.exists()
+    header_default = default_out.read_text().splitlines()[0]
+    assert "gc_min=0.45" in header_default
+    assert "gc_max=0.55" in header_default
+    assert "max_homopolymer=3" in header_default
+
+    # File for custom parameters
+    custom_file = input_dir / "custom.txt"
+    custom_file.write_text("custom")
+
+    cmd_custom = [
+        "encode",
+        "--input-files",
+        str(custom_file),
+        "--output-dir",
+        str(output_dir),
+        "--method",
+        "gc_balanced",
+        "--gc-min",
+        "0.4",
+        "--gc-max",
+        "0.6",
+        "--max-homopolymer",
+        "4",
+    ]
+    result_custom = run_cli_command(cmd_custom)
+    assert result_custom.returncode == 0, f"Custom encode failed: {result_custom.stderr}"
+    custom_out = output_dir / "custom.txt.fasta"
+    assert custom_out.exists()
+    header_custom = custom_out.read_text().splitlines()[0]
+    assert "gc_min=0.4" in header_custom
+    assert "gc_max=0.6" in header_custom
+    assert "max_homopolymer=4" in header_custom
+
 # --- Test Scenarios for Batch Decoding ---
 
 def create_dummy_fasta_file(file_path: Path, content: str, method: str = "base4_direct", input_filename: str = "dummy.txt"):

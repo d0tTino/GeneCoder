@@ -77,7 +77,9 @@ def process_single_encode(input_file_path: str, output_file_path: str, args: arg
                 fasta_header_parts.extend([f"parity_k={args.k_value}", f"parity_rule={args.parity_rule}"])
 
         elif args.method == 'gc_balanced':
-            target_gc_min, target_gc_max, max_homopolymer_constraint = 0.45, 0.55, 3
+            target_gc_min = args.gc_min
+            target_gc_max = args.gc_max
+            max_homopolymer_constraint = args.max_homopolymer
             if should_add_parity: # Parity is not part of gc_balanced's core logic
                 print(f"Warning for {input_file_path}: --add-parity not directly used by 'gc_balanced' core logic.", file=sys.stderr)
             raw_encoded_dna = encode_gc_balanced(
@@ -351,6 +353,24 @@ def main() -> None:
         default=None,
         choices=[None, 'triple_repeat', 'hamming_7_4'], # Added hamming_7_4
         help='Forward Error Correction method to apply. Optional. (Note: hamming_7_4 is applied to binary data before DNA encoding; triple_repeat is applied to DNA sequence after encoding).'
+    )
+    encode_parser.add_argument(
+        "--gc-min",
+        type=float,
+        default=0.45,
+        help="Minimum GC content for gc_balanced encoding (default: 0.45)."
+    )
+    encode_parser.add_argument(
+        "--gc-max",
+        type=float,
+        default=0.55,
+        help="Maximum GC content for gc_balanced encoding (default: 0.55)."
+    )
+    encode_parser.add_argument(
+        "--max-homopolymer",
+        type=int,
+        default=3,
+        help="Maximum homopolymer length for gc_balanced encoding (default: 3)."
     )
 
     # Decode command parser
