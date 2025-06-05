@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import random
-from typing import Iterable
 
 NUCLEOTIDES = ["A", "T", "C", "G"]
 
