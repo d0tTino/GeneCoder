@@ -24,6 +24,11 @@ from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman, decode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T # Import parity constant
 from genecoder.error_simulation import introduce_errors
+from genecoder.plotting import (
+    calculate_windowed_gc_content,
+    identify_homopolymer_regions,
+    generate_sequence_analysis_plot,
+)
 
 # --- Helper function for single file encoding ---
 def process_single_encode(input_file_path: str, output_file_path: str, args: argparse.Namespace) -> None:
@@ -480,6 +485,39 @@ def main() -> None:
         help='Parity rule used during encoding (default: GC_even_A_odd_T).'
     )
 
+    # Analyze command parser
+    analyze_parser = subparsers.add_parser('analyze', help='Analyze DNA sequence files.')
+    analyze_parser.add_argument(
+        '--input-files',
+        type=str,
+        nargs='+',
+        required=True,
+        help='Path(s) to the input DNA file(s) to analyze (FASTA format expected).'
+    )
+    analyze_parser.add_argument(
+        '--window-size',
+        type=int,
+        default=50,
+        help='Window size for GC content calculations (default: 50).'
+    )
+    analyze_parser.add_argument(
+        '--step',
+        type=int,
+        default=10,
+        help='Step size for sliding window (default: 10).'
+    )
+    analyze_parser.add_argument(
+        '--min-homopolymer',
+        type=int,
+        default=3,
+        help='Minimum homopolymer length to highlight in plots (default: 3).'
+    )
+    analyze_parser.add_argument(
+        '--plot-dir',
+        type=str,
+        help='Directory to save analysis plots (optional).'
+    )
+
     # Simulate-errors command parser
     sim_parser = subparsers.add_parser(
         'simulate-errors',
@@ -593,6 +631,10 @@ def main() -> None:
         else: # Single file
             if tasks:
                 process_single_decode(tasks[0][0], tasks[0][1], tasks[0][2])
+
+    elif args.command == 'analyze':
+        for input_file_path in args.input_files:
+            process_single_analyze(input_file_path, args)
 
     elif args.command == 'simulate-errors':
         try:
