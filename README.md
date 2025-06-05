@@ -86,6 +86,7 @@ Clone the repository and install the required packages:
 
 ```bash
 pip install -r requirements.txt
+# For exact versions used in CI, see requirements.lock
 ```
 
 
@@ -159,7 +160,7 @@ The GUI provides controls for most encoding methods, parity, and Triple-Repeat F
 
 ## Technology Stack
 
-*   **Language:** Python (≥ 3.10 recommended)
+*   **Language:** Python 3.10 or 3.11 (tested)
 *   **Core Libraries (Python Standard Library):**
     *   `argparse` (for CLI argument parsing)
     *   `json` (for serializing Huffman table in FASTA headers)

@@ -1,0 +1,10 @@
+
+[tool.ruff]
+line-length = 88
+
+  [tool.ruff.lint]
+  extend-select = []
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
