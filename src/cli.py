@@ -10,6 +10,7 @@ import argparse
 import sys
 import json
 import os
+import random
 import re # For parsing header parameters
 import concurrent.futures
 from genecoder.encoders import (
@@ -22,6 +23,7 @@ from genecoder.hamming_codec import encode_data_with_hamming, decode_data_with_h
 from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman, decode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T # Import parity constant
+from genecoder.error_simulation import introduce_errors
 
 # --- Helper function for single file encoding ---
 def process_single_encode(input_file_path: str, output_file_path: str, args: argparse.Namespace) -> None:
@@ -419,8 +421,37 @@ def main() -> None:
         help='Parity rule used during encoding (default: GC_even_A_odd_T).'
     )
 
+    # Simulate-errors command parser
+    sim_parser = subparsers.add_parser(
+        'simulate-errors',
+        help='Introduce random errors into a FASTA sequence.'
+    )
+    sim_parser.add_argument(
+        '--input-file',
+        type=str,
+        required=True,
+        help='Path to the input FASTA file.'
+    )
+    sim_parser.add_argument(
+        '--output-file',
+        type=str,
+        required=True,
+        help='Path to save the corrupted FASTA file.'
+    )
+    sim_parser.add_argument('--sub-prob', type=float, default=0.01,
+                            help='Substitution probability per nucleotide.')
+    sim_parser.add_argument('--ins-prob', type=float, default=0.0,
+                            help='Insertion probability after each nucleotide.')
+    sim_parser.add_argument('--del-prob', type=float, default=0.0,
+                            help='Deletion probability per nucleotide.')
+    sim_parser.add_argument('--seed', type=int, default=None,
+                            help='Random seed for deterministic output.')
+
     args = parser.parse_args()
-    num_input_files = len(args.input_files)
+    if hasattr(args, 'input_files'):
+        num_input_files = len(args.input_files)
+    else:
+        num_input_files = 1
 
     if args.command == 'encode':
         if num_input_files > 1 and not args.output_dir:
@@ -502,6 +533,36 @@ def main() -> None:
         else: # Single file
             if tasks:
                 process_single_decode(tasks[0][0], tasks[0][1], tasks[0][2])
+
+    elif args.command == 'simulate-errors':
+        try:
+            with open(args.input_file, 'r', encoding='utf-8') as f_in:
+                fasta_str = f_in.read()
+            records = from_fasta(fasta_str)
+            if not records:
+                print(f"Error: No FASTA records found in {args.input_file}.", file=sys.stderr)
+                sys.exit(1)
+            header, seq = records[0]
+            rng = random.Random(args.seed)
+            corrupted = introduce_errors(
+                seq,
+                substitution_prob=args.sub_prob,
+                insertion_prob=args.ins_prob,
+                deletion_prob=args.del_prob,
+                rng=rng,
+            )
+            new_header = f"{header} sub_prob={args.sub_prob} ins_prob={args.ins_prob} del_prob={args.del_prob}"
+            fasta_out = to_fasta(corrupted, new_header, line_width=80)
+            os.makedirs(os.path.dirname(args.output_file) or '.', exist_ok=True)
+            with open(args.output_file, 'w', encoding='utf-8') as f_out:
+                f_out.write(fasta_out)
+            print(f"Corrupted FASTA sequence written to {args.output_file}")
+        except FileNotFoundError:
+            print(f"Error: Input file {args.input_file} not found.", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error during simulate-errors: {e}", file=sys.stderr)
+            sys.exit(1)
 
 if __name__ == '__main__':
     main()
