@@ -277,3 +277,44 @@ def test_decode_method_mismatch(temp_dir: Path):
     assert result.returncode != 0, "CLI decode should fail on method mismatch"
     assert "FASTA header specifies method" in result.stderr
 
+
+def create_simple_fasta(file_path: Path, seq: str, header: str = "seq1"):
+    from src.genecoder.formats import to_fasta
+    file_path.write_text(to_fasta(seq, header))
+
+
+def test_analyze_single_file(temp_dir: Path):
+    fasta_file = temp_dir / "test.fasta"
+    create_simple_fasta(fasta_file, "ATGCATGC")
+
+    cmd_args = [
+        "analyze",
+        "--input-files",
+        str(fasta_file),
+        "--window-size",
+        "4",
+        "--step",
+        "4",
+        "--min-homopolymer",
+        "2",
+    ]
+    result = run_cli_command(cmd_args)
+
+    assert result.returncode == 0
+    assert "GC content: 50.00%" in result.stdout
+    assert "Max homopolymer length: 1" in result.stdout
+
+
+def test_analyze_multiple_files(temp_dir: Path):
+    f1 = temp_dir / "s1.fasta"
+    f2 = temp_dir / "s2.fasta"
+    create_simple_fasta(f1, "AAAAACCCC")
+    create_simple_fasta(f2, "GGGGTTTT")
+
+    cmd_args = ["analyze", "--input-files", str(f1), str(f2)]
+    result = run_cli_command(cmd_args)
+
+    assert result.returncode == 0
+    # Should produce analysis for both files
+    assert result.stdout.count("Sequence length:") == 2
+

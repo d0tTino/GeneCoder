@@ -46,17 +46,6 @@ def check_homopolymer_length(dna_sequence: str, max_len: int) -> bool:
 def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, max_homopolymer: int) -> str:
     """Encodes binary data into a DNA sequence with GC content and homopolymer constraints.
 
-    Args:
-        data: The binary data to encode.
-        target_gc_min: The minimum target GC content (e.g., 0.4).
-        target_gc_max: The maximum target GC content (e.g., 0.6).
-        max_homopolymer: The maximum allowed homopolymer length.
-
-    Returns:
-        The encoded DNA sequence as a string. (Currently empty string)
-    """
-    """Encodes binary data into a DNA sequence with GC content and homopolymer constraints.
-
     Encoding Strategy:
     - Encodes data using `encode_base4_direct`.
     - If constraints (GC content, homopolymer length) are met, returns the sequence prefixed with "0".
@@ -174,5 +163,25 @@ def decode_gc_balanced(
         decoded_data = bytes(b ^ 0xFF for b in temp_decoded_data)
     else:
         raise ValueError(f"Invalid signal bit: '{signal_bit}'. Expected '0' or '1'.")
+
+    # Calculate constraints on the payload DNA sequence
+    gc_content = calculate_gc_content(payload_dna_sequence)
+    max_homopolymer_len = get_max_homopolymer_length(payload_dna_sequence)
+
+    if expected_gc_min is not None and gc_content < expected_gc_min:
+        raise ValueError(
+            f"GC content of decoded payload ({gc_content}) is lower than expected minimum {expected_gc_min}."
+        )
+    if expected_gc_max is not None and gc_content > expected_gc_max:
+        raise ValueError(
+            f"GC content of decoded payload ({gc_content}) exceeds expected maximum {expected_gc_max}."
+        )
+    if (
+        expected_max_homopolymer is not None
+        and max_homopolymer_len > expected_max_homopolymer
+    ):
+        raise ValueError(
+            f"Longest homopolymer in decoded payload ({max_homopolymer_len}) exceeds expected maximum {expected_max_homopolymer}."
+        )
 
     return decoded_data

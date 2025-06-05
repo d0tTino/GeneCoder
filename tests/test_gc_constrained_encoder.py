@@ -151,12 +151,14 @@ def test_decode_gc_balanced_no_inversion():
     payload_dna = encode_base4_direct(original_data)
     input_sequence = "0" + payload_dna
 
-    # Optional constraint args are not used by current decode logic, but pass them for completeness
+    gc_content = calculate_gc_content(payload_dna)
+    max_hp = get_max_homopolymer_length(payload_dna)
+
     result = decode_gc_balanced(
         input_sequence,
-        expected_gc_min=0.4,
-        expected_gc_max=0.6,
-        expected_max_homopolymer=3,
+        expected_gc_min=gc_content,
+        expected_gc_max=gc_content,
+        expected_max_homopolymer=max_hp,
     )
 
     assert result == original_data
@@ -325,14 +327,43 @@ def test_decode_gc_balanced_with_optional_args():
     original_data = b"data"
     payload_dna = encode_base4_direct(original_data)
     input_sequence = "0" + payload_dna
+    gc_content = calculate_gc_content(payload_dna)
+    max_hp = get_max_homopolymer_length(payload_dna)
 
     result = decode_gc_balanced(
         input_sequence,
-        expected_gc_min=0.4,
-        expected_gc_max=0.6,
-        expected_max_homopolymer=3,
+        expected_gc_min=gc_content,
+        expected_gc_max=gc_content,
+        expected_max_homopolymer=max_hp,
     )
     assert result == original_data
+
+# New tests verifying constraint checks during decoding
+def test_decode_gc_balanced_gc_constraint_violation():
+    data = b"abc"
+    payload_dna = encode_base4_direct(data)
+    input_sequence = "0" + payload_dna
+
+    gc_content = calculate_gc_content(payload_dna)
+    with pytest.raises(ValueError, match="GC content"):
+        decode_gc_balanced(
+            input_sequence,
+            expected_gc_min=gc_content + 0.1,
+            expected_gc_max=1.0,
+        )
+
+
+def test_decode_gc_balanced_homopolymer_constraint_violation():
+    data = b"abc"
+    payload_dna = encode_base4_direct(data)
+    input_sequence = "0" + payload_dna
+
+    hp = get_max_homopolymer_length(payload_dna)
+    with pytest.raises(ValueError, match="homopolymer"):
+        decode_gc_balanced(
+            input_sequence,
+            expected_max_homopolymer=hp - 1,
+        )
 
 # Final check of GC content calculation for "AGCX"
 # The problem statement said:
