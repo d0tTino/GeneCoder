@@ -164,4 +164,24 @@ def decode_gc_balanced(
     else:
         raise ValueError(f"Invalid signal bit: '{signal_bit}'. Expected '0' or '1'.")
 
+    # Calculate constraints on the payload DNA sequence
+    gc_content = calculate_gc_content(payload_dna_sequence)
+    max_homopolymer_len = get_max_homopolymer_length(payload_dna_sequence)
+
+    if expected_gc_min is not None and gc_content < expected_gc_min:
+        raise ValueError(
+            f"GC content of decoded payload ({gc_content}) is lower than expected minimum {expected_gc_min}."
+        )
+    if expected_gc_max is not None and gc_content > expected_gc_max:
+        raise ValueError(
+            f"GC content of decoded payload ({gc_content}) exceeds expected maximum {expected_gc_max}."
+        )
+    if (
+        expected_max_homopolymer is not None
+        and max_homopolymer_len > expected_max_homopolymer
+    ):
+        raise ValueError(
+            f"Longest homopolymer in decoded payload ({max_homopolymer_len}) exceeds expected maximum {expected_max_homopolymer}."
+        )
+
     return decoded_data
