@@ -49,10 +49,29 @@ def main(page: ft.Page):
         tooltip="Nucleotide Frequency Distribution"
     )
     sequence_analysis_plot_image = ft.Image( # New image control
-        width=600, height=400, fit=ft.ImageFit.CONTAIN, 
+        width=600, height=400, fit=ft.ImageFit.CONTAIN,
         tooltip="Sequence GC & Homopolymer Analysis"
     )
     analysis_status_text = ft.Text("Encode data to view analysis plots.", italic=True)
+
+    window_size_input = ft.TextField(
+        label="GC Window Size",
+        value="50",
+        width=120,
+        keyboard_type=ft.KeyboardType.NUMBER,
+    )
+    step_size_input = ft.TextField(
+        label="Step",
+        value="10",
+        width=100,
+        keyboard_type=ft.KeyboardType.NUMBER,
+    )
+    min_homopolymer_input = ft.TextField(
+        label="Min Homopolymer Length",
+        value="4",
+        width=180,
+        keyboard_type=ft.KeyboardType.NUMBER,
+    )
 
     # --- Encode Tab UI Controls ---
     encode_selected_input_file_text = ft.Text("No file selected.", italic=True)
@@ -342,9 +361,26 @@ def main(page: ft.Page):
             sequence_analysis_plot_image.src_base64 = None
             if final_encoded_dna: # Use final_encoded_dna for this plot as well
                 try:
-                    window_size = 50 
-                    step = 10
-                    min_homopolymer_len = 4 # Default min length for homopolymer display
+                    try:
+                        window_size = int(window_size_input.value) if window_size_input.value else 50
+                    except ValueError:
+                        window_size = 50
+                    if window_size <= 0:
+                        window_size = 50
+
+                    try:
+                        step = int(step_size_input.value) if step_size_input.value else 10
+                    except ValueError:
+                        step = 10
+                    if step <= 0:
+                        step = 10
+
+                    try:
+                        min_homopolymer_len = int(min_homopolymer_input.value) if min_homopolymer_input.value else 4
+                    except ValueError:
+                        min_homopolymer_len = 4
+                    if min_homopolymer_len < 2:
+                        min_homopolymer_len = 4
                     
                     gc_data = await asyncio.to_thread(
                         calculate_windowed_gc_content, final_encoded_dna, window_size, step
@@ -362,7 +398,9 @@ def main(page: ft.Page):
                         sequence_analysis_plot_image.src_base64 = base64.b64encode(plot_buf.getvalue()).decode('utf-8')
                         plot_buf.close()
                         analysis_tab_is_enabled = True # Enable tab if this plot is generated
-                        current_analysis_status_messages.append("Sequence analysis plot generated.")
+                        current_analysis_status_messages.append(
+                            f"Sequence analysis plot generated (window={window_size}, step={step}, min_hp={min_homopolymer_len})."
+                        )
                     else:
                         current_analysis_status_messages.append("No significant data for sequence analysis plot (GC/Homopolymers).")
                         
@@ -725,7 +763,7 @@ def main(page: ft.Page):
     # --- Layout for Analysis Tab ---
     analysis_tab_content_column = ft.Column(
         controls=[
-            analysis_status_text, 
+            analysis_status_text,
             ft.Divider(),
             ft.Text("Huffman Codeword Length Histogram:", weight=ft.FontWeight.BOLD),
             codeword_hist_image,
@@ -734,6 +772,11 @@ def main(page: ft.Page):
             nucleotide_freq_image,
             ft.Divider(), # New divider
             ft.Text("Sequence GC & Homopolymer Analysis:", weight=ft.FontWeight.BOLD), # New title
+            ft.Row([
+                window_size_input,
+                step_size_input,
+                min_homopolymer_input,
+            ], alignment=ft.MainAxisAlignment.START),
             sequence_analysis_plot_image, # New plot image
         ],
         spacing=10,
