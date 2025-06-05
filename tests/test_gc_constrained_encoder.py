@@ -1,8 +1,17 @@
+import os
+import sys
 import pytest
 import re
 from unittest.mock import patch, call  # call is needed for checking multiple calls to a mock
 
 from genecoder.encoders import encode_base4_direct  # noqa: E402
+from genecoder.gc_constrained_encoder import (
+    calculate_gc_content,
+    check_homopolymer_length,
+    get_max_homopolymer_length,
+    encode_gc_balanced,
+    decode_gc_balanced,
+)
 
 SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
 if SRC_PATH not in sys.path:
