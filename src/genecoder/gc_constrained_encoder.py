@@ -46,17 +46,6 @@ def check_homopolymer_length(dna_sequence: str, max_len: int) -> bool:
 def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, max_homopolymer: int) -> str:
     """Encodes binary data into a DNA sequence with GC content and homopolymer constraints.
 
-    Args:
-        data: The binary data to encode.
-        target_gc_min: The minimum target GC content (e.g., 0.4).
-        target_gc_max: The maximum target GC content (e.g., 0.6).
-        max_homopolymer: The maximum allowed homopolymer length.
-
-    Returns:
-        The encoded DNA sequence as a string. (Currently empty string)
-    """
-    """Encodes binary data into a DNA sequence with GC content and homopolymer constraints.
-
     Encoding Strategy:
     - Encodes data using `encode_base4_direct`.
     - If constraints (GC content, homopolymer length) are met, returns the sequence prefixed with "0".
