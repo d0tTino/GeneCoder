@@ -307,6 +307,65 @@ def process_single_decode(input_file_path: str, output_file_path: str, args: arg
         print(f"Error for {input_file_path}: Unexpected error during decoding: {e}", file=sys.stderr)
 
 
+# --- Helper function for single file analysis ---
+def process_single_analyze(input_file_path: str, args: argparse.Namespace) -> None:
+    """Analyzes a single FASTA file and prints summary statistics."""
+    print(f"\nProcessing analysis for input: {input_file_path}")
+    try:
+        with open(input_file_path, 'r', encoding='utf-8') as f_in:
+            file_content_str = f_in.read()
+
+        parsed_records = from_fasta(file_content_str)
+        if not parsed_records:
+            print(f"Error for {input_file_path}: No valid FASTA records found.", file=sys.stderr)
+            return
+
+        if len(parsed_records) > 1:
+            print(f"Warning for {input_file_path}: Multiple FASTA records found. Processing the first one only.", file=sys.stderr)
+
+        header, sequence = parsed_records[0]
+
+        gc_content = calculate_gc_content(sequence)
+        max_hp = get_max_homopolymer_length(sequence)
+        window_starts, gc_values = calculate_windowed_gc_content(
+            sequence,
+            args.window_size,
+            args.step,
+        )
+        avg_gc = sum(gc_values) / len(gc_values) if gc_values else 0.0
+
+        print(f"Sequence length: {len(sequence)} nucleotides")
+        print(f"GC content: {gc_content:.2%}")
+        print(f"Max homopolymer length: {max_hp}")
+        if gc_values:
+            print(
+                f"Windowed GC stats (window={args.window_size}, step={args.step}): "
+                f"min={min(gc_values):.2%}, max={max(gc_values):.2%}, avg={avg_gc:.2%}"
+            )
+        else:
+            print("Sequence shorter than window size; no windowed GC stats.")
+
+        if getattr(args, "plot_dir", None):
+            homopolymers = identify_homopolymer_regions(sequence, args.min_homopolymer)
+            buf = generate_sequence_analysis_plot(
+                (window_starts, gc_values),
+                homopolymers,
+                len(sequence),
+            )
+            os.makedirs(args.plot_dir, exist_ok=True)
+            base_name = os.path.basename(input_file_path)
+            plot_path = os.path.join(args.plot_dir, base_name + ".png")
+            with open(plot_path, "wb") as f_out:
+                f_out.write(buf.getvalue())
+            buf.close()
+            print(f"Plot saved to {plot_path}")
+
+    except FileNotFoundError:
+        print(f"Error for {input_file_path}: Input file not found.", file=sys.stderr)
+    except Exception as e:
+        print(f"Error for {input_file_path}: Unexpected error during analysis: {e}", file=sys.stderr)
+
+
 def main() -> None:
     """Parses command-line arguments and executes the requested GeneCoder command."""
     parser = argparse.ArgumentParser(
@@ -446,6 +505,7 @@ def main() -> None:
                             help='Deletion probability per nucleotide.')
     sim_parser.add_argument('--seed', type=int, default=None,
                             help='Random seed for deterministic output.')
+
 
     args = parser.parse_args()
     if hasattr(args, 'input_files'):
