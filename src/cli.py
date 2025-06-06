@@ -20,8 +20,8 @@ from genecoder.encoders import (
     encode_gc_balanced,
     decode_gc_balanced,
     calculate_gc_content,
-    get_max_homopolymer_length,
 )
+from genecoder.utils import get_max_homopolymer_length
 from genecoder.encoders import (
     encode_triple_repeat,
     decode_triple_repeat,
