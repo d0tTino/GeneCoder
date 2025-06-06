@@ -95,6 +95,7 @@ pip install -r requirements.txt
 ### Command-Line Interface (CLI)
 
 To use GeneCoder CLI, navigate to the project's root directory. The main script is `src/cli.py`.
+See [WORKFLOWS.md](WORKFLOWS.md) for a step-by-step overview of the encoding and decoding process.
 
 **General Command Structure (Batch and Single File):**
 `python src/cli.py <command> --input-files <path1> [<path2> ...] [--output-file <path>] [--output-dir <dir>] --method <method_name> [options]`
@@ -154,7 +155,7 @@ Run the Flet application:
 ```bash
 python src/flet_app.py
 ```
-The GUI provides controls for most encoding methods, parity, and Triple-Repeat FEC, along with metric displays and some visual analysis plots. GUI operations are asynchronous to keep the interface responsive.
+The GUI provides controls for most encoding methods, parity, and Triple-Repeat FEC, along with metric displays and some visual analysis plots. GUI operations are asynchronous to keep the interface responsive. See [WORKFLOWS.md](WORKFLOWS.md) for the underlying processing steps.
 
 ---
 
