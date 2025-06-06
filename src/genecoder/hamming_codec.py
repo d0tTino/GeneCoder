@@ -1,3 +1,17 @@
+"""Hamming(7,4) encoding and decoding utilities.
+
+The functions in this module implement classic Hamming error
+correction on 4-bit nibbles.  They convert nibbles to 7-bit codewords
+and back, and provide helpers to pack and unpack sequences of nibbles
+into bytes.  No external dependencies are required.
+
+Main functions
+--------------
+``encode_hamming_7_4_nibble`` and ``decode_hamming_7_4_codeword`` handle
+single nibble/codeword transformations. ``encode_data_with_hamming`` and
+``decode_data_with_hamming`` work on arbitrary byte strings.
+"""
+
 def encode_hamming_7_4_nibble(nibble: int) -> int:
     """Encodes a 4-bit nibble into a 7-bit Hamming(7,4) codeword."""
     if not (0 <= nibble <= 15):
