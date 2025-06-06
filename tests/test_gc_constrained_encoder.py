@@ -61,6 +61,7 @@ def test_calculate_gc_content(sequence, expected_gc):
     ("GATTACA", 1, True),
     ("GATTACCA", 1, True), # CC violates
     ("aaaatttt", 3, True), # Lowercase test
+    ("aAaAaA", 5, True), # Mixed-case violates length 5 (run of 6 As)
 ])
 def test_check_homopolymer_length(sequence, max_len, expected_bool):
     assert check_homopolymer_length(sequence, max_len) == expected_bool
@@ -77,6 +78,7 @@ def test_check_homopolymer_length(sequence, max_len, expected_bool):
     ("GG", 2),
     ("AAABBCDDDDEFF", 4), # DDDD
     ("aaabbcddddeff", 4), # Lowercase
+    ("AaAaAa", 6), # Mixed-case sequence
 ])
 def test_get_max_homopolymer_length(sequence, expected_len):
     assert get_max_homopolymer_length(sequence) == expected_len
