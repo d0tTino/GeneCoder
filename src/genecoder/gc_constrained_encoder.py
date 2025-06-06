@@ -75,39 +75,6 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
         # alternatives before falling back to this simple inversion.
         return "1" + alternative_sequence
 
-def get_max_homopolymer_length(dna_sequence: str) -> int:
-    """Calculates the length of the longest homopolymer in a DNA sequence.
-
-    Args:
-        dna_sequence: The DNA sequence string (e.g., "AAATTCGGGG").
-
-    Returns:
-        The length of the longest homopolymer. Returns 0 for an empty sequence.
-    """
-    if not dna_sequence:
-        return 0
-
-    dna_sequence = dna_sequence.upper()
-
-    max_len = 0
-    current_len = 0
-    if len(dna_sequence) > 0:
-        current_char = dna_sequence[0]
-        current_len = 1
-        max_len = 1
-
-    for i in range(1, len(dna_sequence)):
-        if dna_sequence[i] == current_char:
-            current_len += 1
-        else:
-            current_char = dna_sequence[i]
-            current_len = 1
-        
-        if current_len > max_len:
-            max_len = current_len
-            
-    return max_len if dna_sequence else 0
-
 
 
 def decode_gc_balanced(
