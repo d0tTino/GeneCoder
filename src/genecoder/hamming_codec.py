@@ -3,15 +3,23 @@ def encode_hamming_7_4_nibble(nibble: int) -> int:
     if not (0 <= nibble <= 15):
         raise ValueError("Input nibble must be between 0 and 15.")
 
+    # Break the nibble into individual data bits (d1..d4). ``d1`` is the most
+    # significant bit.  Shifts and masks are used to isolate each bit.
     d1 = (nibble >> 3) & 1
     d2 = (nibble >> 2) & 1
     d3 = (nibble >> 1) & 1
     d4 = nibble & 1
 
+    # Compute the parity bits placed at positions 1, 2 and 4 of the final
+    # codeword.  Each parity is the XOR of a subset of the data bits according
+    # to the Hamming(7,4) specification.
     p1 = d1 ^ d2 ^ d4
     p2 = d1 ^ d3 ^ d4
     p3 = d2 ^ d3 ^ d4
 
+    # Assemble the codeword. The bit layout from MSB to LSB is:
+    # p1 p2 d1 p3 d2 d3 d4
+    #      6  5  4  3  2  1  0 (bit positions)
     return (
         (p1 << 6)
         | (p2 << 5)
@@ -33,7 +41,12 @@ def _build_lookup() -> None:
     global _ERROR_LOOKUP
     _ERROR_LOOKUP = {}
     for nib, valid in enumerate(_HAMMING_CODEWORDS):
+        # Map the valid codeword back to its nibble with the ``corrected`` flag
+        # set to False.
         _ERROR_LOOKUP[valid] = (nib, False)
+        # Pre-compute all single-bit error variants of this codeword.  Each is
+        # associated with the original nibble and ``True`` to indicate a
+        # correction would be necessary.
         for i in range(7):
             erroneous = valid ^ (1 << i)
             if erroneous not in _ERROR_LOOKUP:
@@ -79,6 +92,7 @@ def bytes_to_nibbles(data: bytes) -> list[int]:
     """
     nibbles: list[int] = []
     for byte in data:
+        # Split each byte into its high and low 4-bit halves.
         msb_nibble = (byte >> 4) & 0x0F
         lsb_nibble = byte & 0x0F
         nibbles.append(msb_nibble)
@@ -103,9 +117,10 @@ def nibbles_to_bytes(nibbles: list[int]) -> bytes:
     Raises:
         ValueError: If any nibble is outside the 0-15 range.
     """
-    processed_nibbles = list(nibbles) # Create a copy to potentially modify
+    processed_nibbles = list(nibbles)  # Work on a copy so the input is unchanged
     if len(processed_nibbles) % 2 != 0:
-        processed_nibbles.append(0x0) # Pad with a zero nibble if odd length
+        # If the number of nibbles is odd, append a zero to form a final byte.
+        processed_nibbles.append(0x0)
 
     byte_list: list[int] = []
     for i in range(0, len(processed_nibbles), 2):
@@ -113,6 +128,7 @@ def nibbles_to_bytes(nibbles: list[int]) -> bytes:
         lsb_nibble = processed_nibbles[i+1]
         if not (0 <= msb_nibble <= 15 and 0 <= lsb_nibble <= 15):
             raise ValueError("All nibbles must be between 0 and 15.")
+        # Recombine the two nibbles into a single byte.
         byte_val = (msb_nibble << 4) | lsb_nibble
         byte_list.append(byte_val)
     return bytes(byte_list)
@@ -145,19 +161,24 @@ def encode_data_with_hamming(data: bytes) -> tuple[bytes, int]:
     if not codewords_7bit: # Handle empty input data
         return b'', 0
 
-    # Bit Packing
+    # Bit Packing. Each 7-bit codeword is concatenated into a single bit string
+    # before being split into bytes.
     bit_string = ""
     for codeword in codewords_7bit:
-        bit_string += format(codeword, '07b') # Convert 7-bit codeword to binary string
+        bit_string += format(codeword, "07b")  # Convert codeword to a 7-char string
 
     num_total_bits = len(bit_string)
+    # Calculate how many zero bits are required to align the bit stream to a
+    # whole byte.  ``num_padding_bits_at_end`` is in the range 0-7.
     num_padding_bits_at_end = (8 - (num_total_bits % 8)) % 8
-    
-    bit_string += '0' * num_padding_bits_at_end
+
+    # Append padding zeros so the string length becomes a multiple of eight.
+    bit_string += "0" * num_padding_bits_at_end
     
     encoded_bytes_list: list[int] = []
     for i in range(0, len(bit_string), 8):
         byte_str = bit_string[i:i+8]
+        # Convert each 8-bit chunk into an integer byte.
         encoded_bytes_list.append(int(byte_str, 2))
         
     return bytes(encoded_bytes_list), num_padding_bits_at_end
@@ -197,21 +218,29 @@ def decode_data_with_hamming(encoded_data: bytes, num_final_padding_bits: int) -
         raise ValueError("num_final_padding_bits must be between 0 and 7.")
 
     bit_string = ""
+    # Recreate the full bit stream from the encoded bytes.  Each byte is
+    # represented by eight binary characters.
     for byte_val in encoded_data:
-        bit_string += format(byte_val, '08b')
+        bit_string += format(byte_val, "08b")
 
     if num_final_padding_bits > 0:
+        # Strip the padding bits that were added during encoding.
         bit_string = bit_string[:-num_final_padding_bits]
 
+    # After removing padding the bit stream must be divisible into 7-bit
+    # codewords. Any remainder indicates corrupted or incorrectly padded data.
     if len(bit_string) % 7 != 0:
-        raise ValueError("Invalid data: length of bit string after removing padding "
-                         "is not a multiple of 7.")
+        raise ValueError(
+            "Invalid data: length of bit string after removing padding "
+            "is not a multiple of 7."
+        )
 
     if not bit_string: # Handle case where bit_string becomes empty after padding removal
         return b'', 0
 
     codewords_7bit_str: list[str] = []
     for i in range(0, len(bit_string), 7):
+        # Slice the stream into 7-bit segments representing individual codewords.
         codewords_7bit_str.append(bit_string[i:i+7])
 
     decoded_nibbles: list[int] = []
@@ -222,6 +251,8 @@ def decode_data_with_hamming(encoded_data: bytes, num_final_padding_bits: int) -
         nibble, corrected = decode_hamming_7_4_codeword(codeword_int)
         decoded_nibbles.append(nibble)
         if corrected:
+            # ``corrected`` is True when the lookup determined a single-bit
+            # error and returned the corrected nibble.
             corrected_errors_count += 1
             
     # The number of original data nibbles might have been odd.

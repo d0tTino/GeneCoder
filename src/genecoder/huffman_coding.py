@@ -52,9 +52,12 @@ def _build_huffman_tree_and_codes(frequencies: collections.Counter) -> Dict[int,
     if not frequencies:
         return {}
 
-    # Use a unique ID from a counter to ensure stable sorting in heapq for
-    # nodes that might have the same frequency. This makes tree construction
-    # deterministic for tie-breaking.
+    # heapq only guarantees a stable order for the first element of the tuple
+    # it sorts on.  When multiple bytes share the same frequency we still want
+    # deterministic behaviour.  To achieve this a monotonically increasing
+    # ``unique_id_counter`` is pushed as the second element of the tuple.  It
+    # does not affect the Huffman algorithm itself but ensures that ties are
+    # resolved consistently across runs.
     unique_id_counter = 0
     
     # The heap stores tuples: (frequency, unique_id, node).
@@ -78,7 +81,10 @@ def _build_huffman_tree_and_codes(frequencies: collections.Counter) -> Dict[int,
             raise ValueError("Malformed heap item for single unique byte.")
 
 
-    # Build the Huffman tree by repeatedly combining the two lowest-frequency nodes.
+    # Build the Huffman tree by repeatedly combining the two lowest-frequency
+    # nodes.  ``heapq`` ensures we always pop the nodes with the smallest
+    # frequency (and, because of the unique id, gives deterministic results when
+    # frequencies are equal).
     while len(heap) > 1:
         freq1, uid1, left_node = heapq.heappop(heap)
         freq2, uid2, right_node = heapq.heappop(heap)
@@ -202,6 +208,9 @@ def encode_huffman(
 
     # Convert the padded binary string to a DNA sequence.
     dna_sequence_parts: List[str] = []
+    # Map every pair of bits to a nucleotide.  This fixed mapping allows the
+    # variable-length Huffman output to be represented using only the alphabet
+    # {A,T,C,G}.  Two bits are consumed at a time during conversion.
     dna_mapping = {"00": 'A', "01": 'T', "10": 'C', "11": 'G'}
 
     # This check covers cases where data was non-empty but resulted in an empty
@@ -325,7 +334,10 @@ def decode_huffman(
             "but Huffman table or padding suggests data was expected."
         )
 
-    # 2. Remove Huffman padding bits.
+    # 2. Remove Huffman padding bits. ``num_padding_bits`` tells us how many
+    # trailing '0's were added solely to satisfy the 2-bit DNA packing.  These
+    # bits carry no information and must be stripped before decoding the Huffman
+    # codes.
     unpadded_binary_string: str
     if num_padding_bits < 0:
         raise ValueError("num_padding_bits cannot be negative.")
@@ -372,7 +384,10 @@ def decode_huffman(
 
     # 4. Decode the unpadded binary string to bytes.
     decoded_bytes_list: List[bytes] = []
-    current_code_buffer = [] # Use list of chars for efficient joining
+    # ``current_code_buffer`` accumulates bits until they match a Huffman code
+    # from ``inverted_huffman_table``.  Using a list for the buffer avoids the
+    # overhead of repeatedly concatenating Python strings.
+    current_code_buffer = []
     for bit in unpadded_binary_string:
         current_code_buffer.append(bit)
         current_prefix = "".join(current_code_buffer)
@@ -381,8 +396,11 @@ def decode_huffman(
             decoded_bytes_list.append(bytes([byte_val]))
             current_code_buffer = [] # Reset buffer
     
-    # If there are remaining bits in the buffer, they don't form a valid code.
-    if current_code_buffer: 
+    # If there are remaining bits in ``current_code_buffer`` after processing
+    # the entire bit string, it means the last bits did not match any Huffman
+    # code.  This typically indicates data corruption or that an incorrect table
+    # was supplied.
+    if current_code_buffer:
         raise ValueError(
             "Corrupted data or incorrect Huffman table: "
             f"remaining unparsed bits '{''.join(current_code_buffer)}'."

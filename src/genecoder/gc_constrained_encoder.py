@@ -69,14 +69,18 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
     homopolymer_ok = not check_homopolymer_length(initial_sequence, max_homopolymer)
 
     if gc_content_ok and homopolymer_ok:
+        # Prefix with ``"0"`` to indicate that the sequence is the direct
+        # encoding of ``data`` without any modifications.
         return "0" + initial_sequence
     else:
-        # Invert data bits and re-encode
-        modified_data = bytes(b ^ 0xFF for b in data)  # XOR each byte with 0xFF to flip all bits
+        # The sequence violates the constraints.  As a simple remediation the
+        # bits of ``data`` are inverted using XOR with ``0xFF`` (bitwise NOT for
+        # each byte) and that modified payload is encoded instead.
+        modified_data = bytes(b ^ 0xFF for b in data)
         alternative_sequence = encode_base4_direct(modified_data, add_parity=False)
-        # Here, we assume the alternative sequence is better or acceptable.
-        # A more sophisticated approach might re-check constraints for the alternative
-        # or use a more complex encoding strategy if both fail.
+        # ``"1"`` is prepended so the decoder knows to invert the bits again.
+        # A more sophisticated implementation could attempt multiple
+        # alternatives before falling back to this simple inversion.
         return "1" + alternative_sequence
 
 def get_max_homopolymer_length(dna_sequence: str) -> int:
@@ -148,6 +152,10 @@ def decode_gc_balanced(
 
     from .encoders import decode_base4_direct  # Local import to avoid circular dependency
 
+    # The first nucleotide acts as a signal bit. ``"0"`` means the sequence is
+    # the direct encoding of the original data, while ``"1"`` indicates that the
+    # data bytes were bitwise inverted before encoding.  Everything after the
+    # first character is the actual payload.
     signal_bit = dna_sequence[0]
     payload_dna_sequence = dna_sequence[1:]
 
@@ -164,7 +172,8 @@ def decode_gc_balanced(
     else:
         raise ValueError(f"Invalid signal bit: '{signal_bit}'. Expected '0' or '1'.")
 
-    # Calculate constraints on the payload DNA sequence
+    # Recalculate constraints on the payload so the caller can optionally check
+    # that the received sequence still satisfies them.
     gc_content = calculate_gc_content(payload_dna_sequence)
     max_homopolymer_len = get_max_homopolymer_length(payload_dna_sequence)
 
