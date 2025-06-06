@@ -18,6 +18,7 @@ from .gc_constrained_encoder import (
 )
 from .utils import get_max_homopolymer_length
 from genecoder.error_correction import encode_triple_repeat, decode_triple_repeat
+from .utils import DNA_ENCODE_MAP, DNA_DECODE_MAP
 
 __all__ = [
     "encode_base4_direct",
@@ -42,19 +43,19 @@ def encode_base4_direct(
 
   The mapping from 2-bit binary pairs to DNA nucleotides is as follows:
     - `00` (binary) -> 'A'
-    - `01` (binary) -> 'T'
-    - `10` (binary) -> 'C'
-    - `11` (binary) -> 'G'
+    - `01` (binary) -> 'C'
+    - `10` (binary) -> 'G'
+    - `11` (binary) -> 'T'
 
   Each input byte (8 bits) is processed by reading its bits in four 2-bit pairs,
   starting from the Most Significant Bit (MSB) pair to the Least Significant Bit 
   (LSB) pair. For example, the byte `0b01000001` (ASCII 'A', decimal 65) is 
   processed as:
-    - First 2 bits (MSB): `01` -> 'T'
+    - First 2 bits (MSB): `01` -> 'C'
     - Next 2 bits:        `00` -> 'A'
     - Next 2 bits:        `00` -> 'A'
-    - Last 2 bits (LSB):  `01` -> 'T'
-  This results in the DNA sequence "TAAT".
+    - Last 2 bits (LSB):  `01` -> 'C'
+  This results in the DNA sequence "CAAC".
 
   Args:
     data (bytes): The byte string to encode.
@@ -74,21 +75,23 @@ def encode_base4_direct(
     NotImplementedError: If `add_parity` is True and `parity_rule` is unknown.
   """
   dna_sequence_parts: list[str] = []
-  # Mapping of 2-bit integers to DNA characters.
-  # 0b00 (0) -> 'A', 0b01 (1) -> 'T', 0b10 (2) -> 'C', 0b11 (3) -> 'G'
-  mapping = { 
-      0: 'A', 1: 'T', 2: 'C', 3: 'G'
+  # Mapping of 2-bit integers to DNA characters derived from ``DNA_ENCODE_MAP``.
+  mapping = {
+      0: DNA_ENCODE_MAP["00"],
+      1: DNA_ENCODE_MAP["01"],
+      2: DNA_ENCODE_MAP["10"],
+      3: DNA_ENCODE_MAP["11"],
   }
 
   for byte_val in data:
     # Process bits from most significant to least significant.
     # Each byte is split into four 2-bit segments.
     # Example: byte_val = 0b11001001 (decimal 201)
-    # - (byte_val >> 6) & 0b11 results in 0b11 ('G')
+    # - (byte_val >> 6) & 0b11 results in 0b11 ('T')
     # - (byte_val >> 4) & 0b11 results in 0b00 ('A')
-    # - (byte_val >> 2) & 0b11 results in 0b10 ('C')
-    # - (byte_val >> 0) & 0b11 results in 0b01 ('T')
-    # The resulting DNA sequence for this byte is "GACT".
+    # - (byte_val >> 2) & 0b11 results in 0b10 ('G')
+    # - (byte_val >> 0) & 0b11 results in 0b01 ('C')
+    # The resulting DNA sequence for this byte is "TAGC".
 
     # Extract the four 2-bit pairs from the byte.
     pairs = [
@@ -127,18 +130,18 @@ def decode_base4_direct(
   This function reverses the `encode_base4_direct` process. The mapping from
   DNA nucleotides to 2-bit binary pairs is:
     - 'A' -> `00` (binary)
-    - 'T' -> `01` (binary)
-    - 'C' -> `10` (binary)
-    - 'G' -> `11` (binary)
+    - 'C' -> `01` (binary)
+    - 'G' -> `10` (binary)
+    - 'T' -> `11` (binary)
 
   Each set of 4 DNA characters in the input sequence corresponds to one output byte.
   The first character of a 4-character block maps to the Most Significant Bit 
   (MSB) pair of the resulting byte, and the last character maps to the Least 
-  Significant Bit (LSB) pair. For example, the DNA sequence "TAAT" is processed as:
-    - 'T' -> `01` (becomes the MSB pair of the byte)
+  Significant Bit (LSB) pair. For example, the DNA sequence "CAAC" is processed as:
+    - 'C' -> `01` (becomes the MSB pair of the byte)
     - 'A' -> `00`
     - 'A' -> `00`
-    - 'T' -> `01` (becomes the LSB pair of the byte)
+    - 'C' -> `01` (becomes the LSB pair of the byte)
   This results in the byte `0b01000001` (ASCII 'A', decimal 65).
 
   Args:
@@ -186,21 +189,24 @@ def decode_base4_direct(
     )
 
   decoded_bytes: list[int] = [] 
-  # Mapping of DNA characters to their 2-bit integer values.
-  # 'A' -> 0b00 (0), 'T' -> 0b01 (1), 'C' -> 0b10 (2), 'G' -> 0b11 (3)
+  # Mapping of DNA characters to their 2-bit integer values derived from
+  # ``DNA_DECODE_MAP``.
   reverse_mapping = {
-      'A': 0, 'T': 1, 'C': 2, 'G': 3
+      'A': int(DNA_DECODE_MAP['A'], 2),
+      'C': int(DNA_DECODE_MAP['C'], 2),
+      'G': int(DNA_DECODE_MAP['G'], 2),
+      'T': int(DNA_DECODE_MAP['T'], 2),
   }
 
   for i in range(0, len(sequence_to_decode), 4):
     chars = sequence_to_decode[i:i+4]  # Get a 4-character block from the (potentially stripped) sequence
     current_byte_val = 0
     # Convert the 4 DNA characters back into one byte.
-    # Example: chars = "GACT" (G=0b11, A=0b00, C=0b10, T=0b01)
-    # - 'G' (0b11) shifted left by 6 bits: 0b11000000
+    # Example: chars = "TAGC" (T=0b11, A=0b00, G=0b10, C=0b01)
+    # - 'T' (0b11) shifted left by 6 bits: 0b11000000
     # - 'A' (0b00) shifted left by 4 bits: 0b00000000
-    # - 'C' (0b10) shifted left by 2 bits: 0b00001000
-    # - 'T' (0b01) shifted left by 0 bits: 0b00000001
+    # - 'G' (0b10) shifted left by 2 bits: 0b00001000
+    # - 'C' (0b01) shifted left by 0 bits: 0b00000001
     # Resulting byte: 0b11000000 | 0b00000000 | 0b00001000 | 0b00000001 = 0b11001001 (201)
 
     current_byte_val |= reverse_mapping[chars[0]] << 6 # 1st char is MSB pair

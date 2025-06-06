@@ -36,3 +36,4 @@ def get_max_homopolymer_length(dna_sequence: str) -> int:
 def check_homopolymer_length(dna_sequence: str, max_len: int) -> bool:
     """Checks if any homopolymer in the DNA sequence exceeds a maximum length."""
     return get_max_homopolymer_length(dna_sequence) > max_len
+
