@@ -1,5 +1,11 @@
 """Utility helpers shared across modules."""
 
+DNA_ENCODE_MAP = {"00": "A", "01": "C", "10": "G", "11": "T"}
+"""Mapping from two-bit binary strings to DNA bases."""
+
+DNA_DECODE_MAP = {v: k for k, v in DNA_ENCODE_MAP.items()}
+"""Reverse mapping from DNA bases back to two-bit binary strings."""
+
 
 def get_max_homopolymer_length(dna_sequence: str) -> int:
     """Calculates the length of the longest homopolymer in a DNA sequence.
@@ -12,6 +18,7 @@ def get_max_homopolymer_length(dna_sequence: str) -> int:
     """
     if not dna_sequence:
         return 0
+    dna_sequence = dna_sequence.upper()
 
     max_len = 0
     current_len = 0
