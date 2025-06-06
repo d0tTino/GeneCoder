@@ -162,9 +162,9 @@ def encode_huffman(
     6.  Converting the padded binary string into a DNA sequence, where each
         2-bit pair is mapped to a nucleotide:
           - "00" -> 'A'
-          - "01" -> 'T'
-          - "10" -> 'C'
-          - "11" -> 'G'
+          - "01" -> 'C'
+          - "10" -> 'G'
+          - "11" -> 'T'
     7.  If `add_parity` is True, the generated DNA sequence is further processed
         to include parity bits.
 
@@ -249,8 +249,8 @@ def decode_huffman(
     encoded with parity bits.
 
     The process involves:
-    1.  Converting the DNA sequence back into its binary string representation 
-        using the mapping: 'A' -> "00", 'T' -> "01", 'C' -> "10", 'G' -> "11".
+    1.  Converting the DNA sequence back into its binary string representation
+        using the mapping: 'A' -> "00", 'C' -> "01", 'G' -> "10", 'T' -> "11".
     2.  Removing any padding bits from the end of the binary string, based on 
         `num_padding_bits`.
     3.  Inverting the provided `huffman_table` to map binary codes back to 
