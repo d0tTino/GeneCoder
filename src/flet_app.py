@@ -23,8 +23,8 @@ import asyncio # For asynchronous operations
 from genecoder.encoders import (
     encode_base4_direct, decode_base4_direct,
     encode_gc_balanced, decode_gc_balanced, calculate_gc_content,
-    get_max_homopolymer_length
 )
+from genecoder.utils import get_max_homopolymer_length
 from genecoder.encoders import encode_triple_repeat, decode_triple_repeat # FEC functions
 from genecoder.huffman_coding import encode_huffman, decode_huffman
 from genecoder.formats import to_fasta, from_fasta
@@ -321,7 +321,6 @@ def main(page: ft.Page):
                 gc_payload = raw_dna_sequence[1:] if len(raw_dna_sequence) > 0 else ""
                 actual_gc = await asyncio.to_thread(calculate_gc_content, gc_payload)
                 encode_actual_gc_text.value = f"Actual GC content (payload, pre-FEC): {actual_gc:.2%}"
-                actual_max_hp = await asyncio.to_thread(get_max_homopolymer_length, gc_payload)
                 encode_actual_homopolymer_text.value = f"Actual max homopolymer (payload, pre-FEC): {actual_max_hp}"
             else:
                 encode_actual_gc_text.value = "Actual GC content (payload): N/A"

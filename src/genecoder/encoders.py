@@ -12,11 +12,11 @@ from genecoder.error_detection import (
     PARITY_RULE_GC_EVEN_A_ODD_T
 )
 from .gc_constrained_encoder import (
-    encode_gc_balanced, 
-    decode_gc_balanced, 
+    encode_gc_balanced,
+    decode_gc_balanced,
     calculate_gc_content,
-    get_max_homopolymer_length
 )
+from .utils import get_max_homopolymer_length
 from genecoder.error_correction import encode_triple_repeat, decode_triple_repeat
 from .utils import DNA_ENCODE_MAP, DNA_DECODE_MAP
 
