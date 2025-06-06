@@ -1,3 +1,21 @@
+"""Simple triple repeat error correction utilities.
+
+This module implements forward error correction by repeating each
+base three times and provides a decoder that can correct a single
+error within each triplet.  It is a small helper used by the CLI and
+GUI alongside the higher level :mod:`genecoder.encoders` package.
+
+Main functions
+--------------
+``encode_triple_repeat``
+    Expand a DNA sequence so each nucleotide occurs three times.
+``decode_triple_repeat``
+    Recover the original sequence while counting corrected and
+    uncorrectable triplets.
+
+The implementation only relies on the Python standard library.
+"""
+
 def encode_triple_repeat(dna_sequence: str) -> str:
     """Encodes a DNA sequence by repeating each nucleotide three times.
 

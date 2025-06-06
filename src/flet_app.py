@@ -1,3 +1,17 @@
+"""Interactive GUI for the GeneCoder toolkit.
+
+This module builds a desktop-style application using `flet` that lets
+users encode files into DNA sequences and decode them back.  The UI is
+driven by the :func:`main` entry point which wires up event handlers for
+encoding, decoding and plotting operations.
+
+The application relies heavily on the :mod:`genecoder` package
+(`encoders`, `huffman_coding`, `formats`, `error_detection`, and the
+`plotting` utilities which themselves use `matplotlib`).  It runs most
+heavy tasks asynchronously with :mod:`asyncio` so the interface remains
+responsive.
+"""
+
 import flet as ft
 import os
 import json

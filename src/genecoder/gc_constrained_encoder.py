@@ -1,3 +1,20 @@
+"""Encoding helpers with GC content and homopolymer constraints.
+
+This module provides utility functions to measure GC content and
+homopolymer runs as well as a lightweight encoder/decoder pair that
+wraps :mod:`genecoder.encoders`.  The ``encode_gc_balanced`` function
+encodes binary data using ``encode_base4_direct`` while ensuring the
+result meets simple constraints.  ``decode_gc_balanced`` reverses the
+process and can optionally validate those constraints on the decoded
+sequence.
+
+Dependencies
+------------
+The functions import :mod:`genecoder.encoders` locally to avoid
+circular imports.  Only the Python standard library is otherwise
+required.
+"""
+
 from typing import Optional
 
 def calculate_gc_content(dna_sequence: str) -> float:
