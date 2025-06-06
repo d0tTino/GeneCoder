@@ -348,15 +348,8 @@ def decode_huffman(
 
     # Handle if unpadded binary string is empty.
     if not unpadded_binary_string:
-        if not huffman_table: 
-            return b"", parity_errors # Return parity_errors
-        raise ValueError(
-            "Unpadded binary string is empty, but Huffman table is not empty, "
-            "implying all data was removed as padding."
-        )
-        # was then given as 2, unpadded becomes empty, but table {'A':'0'} exists).
-        # This implies all original data was represented by bits that were then
-        # considered padding.
+        if not huffman_table:
+            return b"", parity_errors  # Return parity_errors
         raise ValueError(
             "Unpadded binary string is empty, but Huffman table is not empty, "
             "implying all data was removed as padding."
