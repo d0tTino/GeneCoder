@@ -725,8 +725,7 @@ def main(page: ft.Page):
 
     decode_button.on_click = decode_file_data
 
-    async def on_save_decoded_file_result(e: ft.FilePickerResultEvent): # Made async
-        global decoded_bytes_to_save
+    async def on_save_decoded_file_result(e: ft.FilePickerResultEvent):  # Made async
         if e.path:
             try:
                 with open(e.path, "wb") as f_out: 
