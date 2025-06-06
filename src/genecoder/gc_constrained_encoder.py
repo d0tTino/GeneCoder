@@ -112,6 +112,8 @@ def get_max_homopolymer_length(dna_sequence: str) -> int:
     if not dna_sequence:
         return 0
 
+    dna_sequence = dna_sequence.upper()
+
     max_len = 0
     current_len = 0
     if len(dna_sequence) > 0:
