@@ -12,6 +12,7 @@ This module provides functions to:
 import collections
 import heapq
 from typing import Dict, Tuple, List, Union # For type hints
+from .utils import DNA_ENCODE_MAP, DNA_DECODE_MAP
 from genecoder.error_detection import (
     add_parity_to_sequence, 
     strip_and_verify_parity, 
@@ -208,10 +209,8 @@ def encode_huffman(
 
     # Convert the padded binary string to a DNA sequence.
     dna_sequence_parts: List[str] = []
-    # Map every pair of bits to a nucleotide.  This fixed mapping allows the
-    # variable-length Huffman output to be represented using only the alphabet
-    # {A,T,C,G}.  Two bits are consumed at a time during conversion.
-    dna_mapping = {"00": 'A', "01": 'T', "10": 'C', "11": 'G'}
+    # Map every pair of bits to a nucleotide using the shared mapping.
+    dna_mapping = DNA_ENCODE_MAP
 
     # This check covers cases where data was non-empty but resulted in an empty
     # encoded_binary_string (e.g., if all Huffman codes were empty strings, which
@@ -315,9 +314,8 @@ def decode_huffman(
 
     # 1. Convert DNA sequence (potentially stripped of parity) to its binary string.
     binary_digits_list: List[str] = []
-    dna_to_binary_map = {'A': "00", 'T': "01", 'C': "10", 'G': "11"}
-    for char_dna in sequence_for_huffman_decode: # Use the (potentially) stripped sequence
-        binary_pair = dna_to_binary_map.get(char_dna)
+    for char_dna in sequence_for_huffman_decode:  # Use the (potentially) stripped sequence
+        binary_pair = DNA_DECODE_MAP.get(char_dna)
         if binary_pair is None:
             raise ValueError(
                 f"Invalid DNA character '{char_dna}' in sequence for Huffman decoding."
