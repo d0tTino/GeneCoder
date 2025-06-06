@@ -11,7 +11,8 @@ from genecoder.plotting import (  # noqa: E402
     prepare_nucleotide_frequency_data,
     generate_nucleotide_frequency_plot,
     calculate_windowed_gc_content,
-    identify_homopolymer_regions
+    identify_homopolymer_regions,
+    generate_sequence_analysis_plot
 )
 
 class TestPlotting(unittest.TestCase):
@@ -232,6 +233,21 @@ class TestPlotting(unittest.TestCase):
         self.assertEqual(identify_homopolymer_regions("GGXXAAA", min_len=2), [(0,1,'G'), (2,3,'X'), (4,6,'A')])
         # "CCC YYYY Z", min_len=3 -> [(0,2,'C'), (4,7,'Y')] Space breaks
         self.assertEqual(identify_homopolymer_regions("CCC YYYY Z", min_len=3), [(0,2,'C'), (4,7,'Y')])
+
+    def test_generate_sequence_analysis_plot_basic(self):
+        gc_data = ([0, 2, 4], [0.5, 0.0, 1.0])
+        homos = [(1, 3, 'A')]
+        buf = generate_sequence_analysis_plot(gc_data, homos, sequence_length=6)
+        self.assertIsInstance(buf, io.BytesIO)
+        self.assertTrue(buf.getvalue().startswith(b'\x89PNG\r\n\x1a\n'))
+        buf.close()
+
+    def test_generate_sequence_analysis_plot_empty(self):
+        buf = generate_sequence_analysis_plot(([], []), [], sequence_length=0)
+        self.assertIsInstance(buf, io.BytesIO)
+        self.assertTrue(buf.getvalue().startswith(b'\x89PNG\r\n\x1a\n'))
+        buf.close()
+
 
 if __name__ == '__main__':
     unittest.main()
