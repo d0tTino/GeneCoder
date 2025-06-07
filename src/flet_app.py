@@ -136,7 +136,6 @@ def main(page: ft.Page):
         on_change=lambda e: setattr(k_value_input, 'disabled', not e.control.value) or page.update()
     )
 
-
     fec_dropdown = ft.Dropdown(
         label="FEC Method",
         options=[
