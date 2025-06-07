@@ -320,8 +320,15 @@ def main(page: ft.Page):
             if method == "GC-Balanced":
                 gc_payload = raw_dna_sequence[1:] if len(raw_dna_sequence) > 0 else ""
                 actual_gc = await asyncio.to_thread(calculate_gc_content, gc_payload)
-                encode_actual_gc_text.value = f"Actual GC content (payload, pre-FEC): {actual_gc:.2%}"
-                encode_actual_homopolymer_text.value = f"Actual max homopolymer (payload, pre-FEC): {actual_max_hp}"
+                actual_max_hp = await asyncio.to_thread(
+                    get_max_homopolymer_length, gc_payload
+                )
+                encode_actual_gc_text.value = (
+                    f"Actual GC content (payload, pre-FEC): {actual_gc:.2%}"
+                )
+                encode_actual_homopolymer_text.value = (
+                    f"Actual max homopolymer (payload, pre-FEC): {actual_max_hp}"
+                )
             else:
                 encode_actual_gc_text.value = "Actual GC content (payload): N/A"
                 encode_actual_homopolymer_text.value = "Actual max homopolymer (payload): N/A"

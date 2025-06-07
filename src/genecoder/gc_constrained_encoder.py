@@ -16,7 +16,7 @@ required.
 """
 
 from typing import Optional
-from .utils import check_homopolymer_length, get_max_homopolymer_length
+from .utils import check_homopolymer_length
 
 def calculate_gc_content(dna_sequence: str) -> float:
     """Calculates the GC content of a DNA sequence.
