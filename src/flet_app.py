@@ -131,10 +131,21 @@ def main(page: ft.Page):
     )
 
     parity_checkbox = ft.Checkbox(
-        label="Add Parity", 
+        label="Add Parity",
         value=False,
         on_change=lambda e: setattr(k_value_input, 'disabled', not e.control.value) or page.update()
     )
+
+    def on_fec_change(e: ft.ControlEvent):
+        """Handle FEC selection updates."""
+        if e.control.value == "Hamming(7,4)":
+            parity_checkbox.value = False
+            parity_checkbox.disabled = True
+            k_value_input.disabled = True
+        else:
+            parity_checkbox.disabled = False
+            k_value_input.disabled = not parity_checkbox.value
+        page.update()
 
     fec_dropdown = ft.Dropdown(
         label="FEC Method",
@@ -143,7 +154,15 @@ def main(page: ft.Page):
             ft.dropdown.Option("Triple-Repeat"),
             ft.dropdown.Option("Hamming(7,4)")
         ],
-        value="None"
+        value="None",
+        on_change=on_fec_change
+    )
+
+    fec_info_text = ft.Text(
+        "Parity automatically disabled when Hamming FEC selected.",
+        size=12,
+        color=ft.colors.BLUE_GREY_400,
+        italic=True,
     )
     
     encode_button = ft.ElevatedButton("Encode")
@@ -905,6 +924,7 @@ def main(page: ft.Page):
                             method_dropdown,
                             ft.Row([parity_checkbox, k_value_input]),
                             fec_dropdown,
+                            fec_info_text,
 
                             ft.Row([encode_button, encode_progress_ring]), # Added progress ring
                             ft.Divider(),
