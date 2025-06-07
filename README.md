@@ -1,6 +1,6 @@
 # GeneCoder: Simulated DNA Data Encoding & Exploration
 
-[![Codecov Coverage](https://codecov.io/gh/your-org/GeneCoder/branch/main/graph/badge.svg)](https://codecov.io/gh/your-org/GeneCoder)
+[![Codecov Coverage](https://codecov.io/gh/d0tTino/GeneCoder/branch/main/graph/badge.svg)](https://codecov.io/gh/d0tTino/GeneCoder)
 
 **An open, educational software toolkit for simulating DNA data encoding and decoding, bringing the concepts of molecular data storage to your fingertips.**
 
