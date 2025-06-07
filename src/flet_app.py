@@ -235,6 +235,7 @@ def main(page: ft.Page):
             method = method_dropdown.value
             add_parity_encode = parity_checkbox.value
             fec_method = fec_dropdown.value
+
             k_val_encode = 7
             if add_parity_encode:
                 if not k_value_input.value:
@@ -334,6 +335,7 @@ def main(page: ft.Page):
                 final_encoded_dna = await asyncio.to_thread(
                     encode_triple_repeat, raw_dna_sequence
                 )
+
                 header_parts.append("fec=triple_repeat")
                 current_status = encode_status_text.value
                 if "Info:" in current_status:
@@ -404,6 +406,7 @@ def main(page: ft.Page):
                     encode_status_text.value = base_success_msg + " Hamming(7,4) FEC applied."
             elif "Info:" not in encode_status_text.value:
                 encode_status_text.value = base_success_msg
+
             # If "Info:" was there but no FEC, it remains.
             
             encode_status_text.color = ft.colors.GREEN_700 # Assume success if no error thrown
@@ -605,7 +608,10 @@ def main(page: ft.Page):
         7. Determines the primary decoding method from the FASTA header.
         8. Parses method-specific parameters (e.g., Huffman table, GC constraints, parity) from the header.
         9. Applies the primary decoding method asynchronously.
-        10. Updates status messages and re-enables UI controls in a `finally` block.
+        10. If the FASTA header specifies `fec=hamming_7_4`, applies binary-level
+            Hamming decoding and updates `decode_fec_info_text` with the number
+            of corrected errors.
+        11. Updates status messages and re-enables UI controls in a `finally` block.
         """
         global decoded_bytes_to_save
         
@@ -780,6 +786,27 @@ def main(page: ft.Page):
                 page.update()
                 return
 
+            # --- Binary-level FEC decoding (Hamming) ---
+            if "fec=hamming_7_4" in header:
+                fec_padding_bits_match = re.search(r"fec_padding_bits=(\d+)", header)
+                if fec_padding_bits_match:
+                    fec_padding_bits = int(fec_padding_bits_match.group(1))
+                    try:
+                        decode_result = await asyncio.to_thread(
+                            decode_data_with_hamming, decoded_bytes_result, fec_padding_bits
+                        )
+                        decoded_bytes_result, corrected_ham = decode_result
+                        decode_fec_info_text.value = (
+                            (decode_fec_info_text.value + "\n") if decode_fec_info_text.value else ""
+                        ) + f"Hamming(7,4) FEC: {corrected_ham} corrected errors."
+                        decode_fec_info_text.color = ft.colors.GREEN_700
+                    except ValueError as ve_ham:
+                        decode_fec_info_text.value = f"Hamming FEC decode error: {ve_ham}"
+                        decode_fec_info_text.color = ft.colors.RED_ACCENT_700
+                else:
+                    decode_fec_info_text.value = "'fec_padding_bits' missing for Hamming FEC."
+                    decode_fec_info_text.color = ft.colors.RED_ACCENT_700
+
             # Store for the save callback outside this function
             decoded_bytes_to_save = decoded_bytes_result  # noqa: F841
             final_status_message = " ".join(current_decode_status_messages) + " Decoding successful."
@@ -878,6 +905,7 @@ def main(page: ft.Page):
                             method_dropdown,
                             ft.Row([parity_checkbox, k_value_input]),
                             fec_dropdown,
+
                             ft.Row([encode_button, encode_progress_ring]), # Added progress ring
                             ft.Divider(),
                             ft.Text("Metrics:", weight=ft.FontWeight.BOLD),
