@@ -102,11 +102,12 @@ To use GeneCoder CLI, navigate to the project's root directory. The main script 
 See [WORKFLOWS.md](WORKFLOWS.md) for a step-by-step overview of the encoding and decoding process.
 
 **General Command Structure (Batch and Single File):**
-`python src/cli.py <command> --input-files <path1> [<path2> ...] [--output-file <path>] [--output-dir <dir>] --method <method_name> [options]`
+`python src/cli.py <command> --input-files <path1> [<path2> ...] [--output-file <path>] [--output-dir <dir>] --method <method_name> [--fec <fec_method>] [options]`
 
 *   `--input-files`: One or more input files.
 *   `--output-file`: Specify for a single input file if not using `--output-dir`.
 *   `--output-dir`: Specify for multiple input files, or for a single input if `--output-file` is not used. Output files are named based on input filenames.
+*   `--fec`: Optional Forward Error Correction method (`triple_repeat` or `hamming_7_4`). Omit this flag (or pass `--fec None`) to disable FEC.
 
 **CLI Examples:**
 
