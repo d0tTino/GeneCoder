@@ -545,7 +545,10 @@ def main(page: ft.Page):
         7. Determines the primary decoding method from the FASTA header.
         8. Parses method-specific parameters (e.g., Huffman table, GC constraints, parity) from the header.
         9. Applies the primary decoding method asynchronously.
-        10. Updates status messages and re-enables UI controls in a `finally` block.
+        10. If the FASTA header specifies `fec=hamming_7_4`, applies binary-level
+            Hamming decoding and updates `decode_fec_info_text` with the number
+            of corrected errors.
+        11. Updates status messages and re-enables UI controls in a `finally` block.
         """
         global decoded_bytes_to_save
         
@@ -719,6 +722,27 @@ def main(page: ft.Page):
                 decode_status_text.color = ft.colors.RED_ACCENT_700
                 page.update()
                 return
+
+            # --- Binary-level FEC decoding (Hamming) ---
+            if "fec=hamming_7_4" in header:
+                fec_padding_bits_match = re.search(r"fec_padding_bits=(\d+)", header)
+                if fec_padding_bits_match:
+                    fec_padding_bits = int(fec_padding_bits_match.group(1))
+                    try:
+                        decode_result = await asyncio.to_thread(
+                            decode_data_with_hamming, decoded_bytes_result, fec_padding_bits
+                        )
+                        decoded_bytes_result, corrected_ham = decode_result
+                        decode_fec_info_text.value = (
+                            (decode_fec_info_text.value + "\n") if decode_fec_info_text.value else ""
+                        ) + f"Hamming(7,4) FEC: {corrected_ham} corrected errors."
+                        decode_fec_info_text.color = ft.colors.GREEN_700
+                    except ValueError as ve_ham:
+                        decode_fec_info_text.value = f"Hamming FEC decode error: {ve_ham}"
+                        decode_fec_info_text.color = ft.colors.RED_ACCENT_700
+                else:
+                    decode_fec_info_text.value = "'fec_padding_bits' missing for Hamming FEC."
+                    decode_fec_info_text.color = ft.colors.RED_ACCENT_700
 
             # Store for the save callback outside this function
             decoded_bytes_to_save = decoded_bytes_result  # noqa: F841

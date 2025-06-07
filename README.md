@@ -71,7 +71,7 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
     *   For `gc_balanced`: Actual GC content and max homopolymer length of the payload (pre-FEC).
 *   **Graphical User Interface (GUI):**
     *   A Flet-based GUI (`src/flet_app.py`) provides an interactive way to use most encoding/decoding features.
-    *   Includes options for GC-Balanced encoding and Triple-Repeat FEC. (Note: Hamming(7,4) FEC integration in the GUI is currently deferred due to a temporary technical issue and is planned for a future update).
+*   Includes options for GC-Balanced encoding, Triple-Repeat FEC, and Hamming(7,4) FEC.
     *   GUI operations are now asynchronous for improved responsiveness.
     *   Displays encoding metrics and analysis plots:
         *   Huffman codeword lengths histogram.
