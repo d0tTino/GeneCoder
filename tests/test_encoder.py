@@ -1,7 +1,6 @@
 import pytest
 
-from dna_encoder import encoder  # noqa: E402
-
+import genecoder.encoders as encoder  # noqa: E402
 
 def test_encode_empty():
     assert encoder.encode_base4(b"") == ""

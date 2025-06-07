@@ -3,3 +3,4 @@ matplotlib
 
 # Packages used for running the test suite
 pytest
+pytest-cov
