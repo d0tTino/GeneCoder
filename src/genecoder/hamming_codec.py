@@ -47,33 +47,31 @@ def encode_hamming_7_4_nibble(nibble: int) -> int:
 
 # Precompute the 16 valid Hamming codewords and an error lookup table
 _HAMMING_CODEWORDS: list[int] = [encode_hamming_7_4_nibble(n) for n in range(16)]
-_ERROR_LOOKUP: dict[int, tuple[int, bool]] = {}
 
 
-def _build_lookup() -> None:
+def _build_lookup() -> dict[int, tuple[int, bool]]:
     """Builds the lookup table for decoding, including single-bit errors."""
-    global _ERROR_LOOKUP
-    _ERROR_LOOKUP = {}
+    lookup: dict[int, tuple[int, bool]] = {}
     for nib, valid in enumerate(_HAMMING_CODEWORDS):
         # Map the valid codeword back to its nibble with the ``corrected`` flag
         # set to False.
-        _ERROR_LOOKUP[valid] = (nib, False)
+        lookup[valid] = (nib, False)
         # Pre-compute all single-bit error variants of this codeword.  Each is
         # associated with the original nibble and ``True`` to indicate a
         # correction would be necessary.
         for i in range(7):
             erroneous = valid ^ (1 << i)
-            if erroneous not in _ERROR_LOOKUP:
-                _ERROR_LOOKUP[erroneous] = (nib, True)
+            if erroneous not in lookup:
+                lookup[erroneous] = (nib, True)
+    return lookup
+
+# Build the lookup table at import time
+_ERROR_LOOKUP: dict[int, tuple[int, bool]] = _build_lookup()
 
 def decode_hamming_7_4_codeword(codeword: int) -> tuple[int, bool]:
     """Decodes a 7-bit Hamming(7,4) codeword with single-bit error correction."""
     if not (0 <= codeword <= 127):
         raise ValueError("Input codeword must be between 0 and 127.")
-
-    # Lazily build the lookup table on first use
-    if "_ERROR_LOOKUP" not in globals():
-        _build_lookup()
 
     if codeword in _ERROR_LOOKUP:
         return _ERROR_LOOKUP[codeword]

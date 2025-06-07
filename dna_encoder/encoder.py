@@ -1,3 +1,6 @@
+from genecoder.utils import DNA_ENCODE_MAP, DNA_DECODE_MAP
+
+
 def encode_base4(data: bytes) -> str:
     """
     Encodes a bytes object into a DNA sequence string using a base-4 representation.
@@ -20,14 +23,7 @@ def encode_base4(data: bytes) -> str:
     dna_sequence = ""
     for i in range(0, len(binary_string), 2):
         chunk = binary_string[i:i+2]
-        if chunk == "00":
-            dna_sequence += "A"
-        elif chunk == "01":
-            dna_sequence += "C"
-        elif chunk == "10":
-            dna_sequence += "G"
-        elif chunk == "11":
-            dna_sequence += "T"
+        dna_sequence += DNA_ENCODE_MAP[chunk]
         # It's guaranteed that chunks will be one of these, so no else is needed.
         # However, if the binary_string length is odd, the last chunk will be a single bit.
         # The problem description implies that the concatenated 8-bit strings will always
@@ -56,15 +52,9 @@ def decode_base4(dna_sequence: str) -> bytes:
         return b""
 
     binary_string = ""
-    dna_to_binary_map = {
-        'A': "00",
-        'C': "01",
-        'G': "10",
-        'T': "11"
-    }
 
     for char in dna_sequence:
-        binary_chunk = dna_to_binary_map.get(char)
+        binary_chunk = DNA_DECODE_MAP.get(char)
         if binary_chunk is None:
             raise ValueError(f"Invalid character in DNA sequence: {char}")
         binary_string += binary_chunk

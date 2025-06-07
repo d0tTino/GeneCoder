@@ -16,6 +16,7 @@ required.
 """
 
 from typing import Optional
+from .utils import check_homopolymer_length, get_max_homopolymer_length
 
 def calculate_gc_content(dna_sequence: str) -> float:
     """Calculates the GC content of a DNA sequence.
@@ -33,32 +34,6 @@ def calculate_gc_content(dna_sequence: str) -> float:
     gc_count = dna_sequence.upper().count('G') + dna_sequence.upper().count('C')
     return gc_count / len(dna_sequence)
 
-def check_homopolymer_length(dna_sequence: str, max_len: int) -> bool:
-    """Checks if any homopolymer in the DNA sequence exceeds a maximum length.
-
-    Args:
-        dna_sequence: The DNA sequence string.
-        max_len: The maximum allowed homopolymer length.
-
-    Returns:
-        True if any homopolymer is longer than max_len, otherwise False.
-        Returns False for an empty sequence.
-    """
-    if not dna_sequence:
-        return False
-
-    current_char = ''
-    current_len = 0
-    for char in dna_sequence.upper():
-        if char == current_char:
-            current_len += 1
-        else:
-            current_char = char
-            current_len = 1
-        
-        if current_len > max_len:
-            return True
-    return False
 
 def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, max_homopolymer: int) -> str:
     """Encodes binary data into a DNA sequence with GC content and homopolymer constraints.
