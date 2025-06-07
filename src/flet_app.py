@@ -135,9 +135,30 @@ def main(page: ft.Page):
         on_change=lambda e: setattr(k_value_input, 'disabled', not e.control.value) or page.update()
     )
 
-    fec_checkbox = ft.Checkbox(
-        label="Enable Triple-Repeat FEC",
-        value=False
+    def on_fec_change(e: ft.ControlEvent):
+        if e.control.value == "Hamming(7,4)":
+            parity_checkbox.disabled = True
+            k_value_input.disabled = True
+        else:
+            parity_checkbox.disabled = False
+            k_value_input.disabled = not parity_checkbox.value
+        page.update()
+
+    fec_dropdown = ft.Dropdown(
+        label="FEC Method",
+        options=[
+            ft.dropdown.Option("None"),
+            ft.dropdown.Option("Triple-Repeat"),
+            ft.dropdown.Option("Hamming(7,4)"),
+        ],
+        value="None",
+        on_change=on_fec_change,
+    )
+
+    fec_info_text = ft.Text(
+        "Add Parity is disabled when Hamming(7,4) is selected.",
+        size=12,
+        italic=True,
     )
     
     encode_button = ft.ElevatedButton("Encode")
@@ -227,8 +248,8 @@ def main(page: ft.Page):
                 return
 
             method = method_dropdown.value
-            add_parity_encode = parity_checkbox.value
-            apply_fec_encode = fec_checkbox.value
+            fec_method = fec_dropdown.value
+            add_parity_encode = parity_checkbox.value and fec_method != "Hamming(7,4)"
             k_val_encode = 7
             if add_parity_encode:
                 if not k_value_input.value:
@@ -291,15 +312,16 @@ def main(page: ft.Page):
                 header_parts.extend([f"gc_min={target_gc_min}", f"gc_max={target_gc_max}", f"max_homopolymer={max_homopolymer}"])
 
             final_encoded_dna = raw_dna_sequence
-            if apply_fec_encode:
+            if fec_method == "Triple-Repeat":
                 final_encoded_dna = await asyncio.to_thread(encode_triple_repeat, raw_dna_sequence)
                 header_parts.append("fec=triple_repeat")
                 # Append to status text; ensure it's not overwritten if already an info message
                 current_status = encode_status_text.value
-                if "Info:" in current_status: # If there's already an info message (like GC-Balanced + Parity)
-                     encode_status_text.value = current_status + " Triple-Repeat FEC applied."
-                else: # Otherwise, set it directly or append to a success message later
-                     encode_status_text.value = "Triple-Repeat FEC applied." # This might get overwritten by "Encoding successful"
+                if "Info:" in current_status:  # If there's already an info message (like GC-Balanced + Parity)
+                    encode_status_text.value = current_status + " Triple-Repeat FEC applied."
+                else:
+                    # Otherwise, set it directly or append to a success message later
+                    encode_status_text.value = "Triple-Repeat FEC applied."  # This might get overwritten by "Encoding successful"
                 encode_status_text.color = ft.colors.BLUE_GREY_400
             
             fasta_header = " ".join(header_parts)
@@ -337,7 +359,7 @@ def main(page: ft.Page):
             encode_save_button.visible = True
             
             base_success_msg = "Encoding successful! Click 'Save Encoded FASTA...' to save."
-            if apply_fec_encode and "Triple-Repeat FEC applied" in encode_status_text.value :
+            if fec_method == "Triple-Repeat" and "Triple-Repeat FEC applied" in encode_status_text.value :
                 if "Info:" in encode_status_text.value: # If there was GC-Balanced + Parity warning
                      encode_status_text.value = encode_status_text.value.replace("Triple-Repeat FEC applied.", base_success_msg + " Triple-Repeat FEC applied.")
                 else: # Just FEC applied
@@ -841,7 +863,10 @@ def main(page: ft.Page):
                             ft.Row([encode_browse_button, encode_selected_input_file_text]),
                             method_dropdown,
                             ft.Row([parity_checkbox, k_value_input]),
-                            fec_checkbox,
+                            ft.Column([
+                                fec_dropdown,
+                                fec_info_text,
+                            ], spacing=5),
                             ft.Row([encode_button, encode_progress_ring]), # Added progress ring
                             ft.Divider(),
                             ft.Text("Metrics:", weight=ft.FontWeight.BOLD),
