@@ -13,3 +13,18 @@ project:
 All submodules are importable from ``genecoder`` for convenience.
 """
 
+from .app_helpers import (
+    EncodeOptions,
+    EncodeResult,
+    DecodeResult,
+    perform_encoding,
+    perform_decoding,
+)
+
+__all__ = [
+    "EncodeOptions",
+    "EncodeResult",
+    "DecodeResult",
+    "perform_encoding",
+    "perform_decoding",
+]
