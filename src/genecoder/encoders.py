@@ -5,7 +5,7 @@ Each 2-bit segment of a byte corresponds to one nucleotide. The processing
 occurs from the Most Significant Bit (MSB) to the Least Significant Bit (LSB)
 of each byte.
 """
-from typing import Tuple, List # For type hints
+from typing import Tuple, List, Iterable, Iterator  # For type hints
 from genecoder.error_detection import (
     add_parity_to_sequence,
     strip_and_verify_parity,
@@ -32,11 +32,13 @@ __all__ = [
 ]
 
 def encode_base4_direct(
-    data: bytes, 
-    add_parity: bool = False, 
-    k_value: int = 7, 
-    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T
-) -> str:
+    data: bytes | Iterable[bytes],
+    add_parity: bool = False,
+    k_value: int = 7,
+    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
+    *,
+    stream: bool = False,
+) -> Iterator[str] | str:
   """Encodes a byte string into a DNA sequence using Base-4 Direct Mapping.
 
   Optionally, parity nucleotides can be added to the sequence for error detection.
@@ -58,70 +60,70 @@ def encode_base4_direct(
   This results in the DNA sequence "CAAC".
 
   Args:
-    data (bytes): The byte string to encode.
+    data (bytes | Iterable[bytes]): Bytes to encode. When ``stream`` is ``True``
+      this should be an iterable yielding chunks of bytes. Otherwise a single
+      ``bytes`` object is expected.
     add_parity (bool): If True, add parity nucleotides to the encoded sequence.
                        Defaults to False.
     k_value (int): The size of each data block for parity calculation.
                    Defaults to 7. Must be positive if `add_parity` is True.
     parity_rule (str): The parity rule to use if `add_parity` is True.
                        Defaults to `PARITY_RULE_GC_EVEN_A_ODD_T`.
+    stream (bool): If True, return a generator that yields encoded DNA for each
+      chunk provided in ``data``.
 
   Returns:
-    str: A string representing the DNA sequence, possibly with parity
-         nucleotides interleaved.
+    Iterator[str] | str: If ``stream`` is ``True`` an iterator yielding DNA
+    chunks is returned. Otherwise the full DNA string is returned.
   
   Raises:
     ValueError: If `add_parity` is True and `k_value` is not positive.
     NotImplementedError: If `add_parity` is True and `parity_rule` is unknown.
   """
-  dna_sequence_parts: list[str] = []
-  # Mapping of 2-bit integers to DNA characters derived from ``DNA_ENCODE_MAP``.
-  mapping = {
-      0: DNA_ENCODE_MAP["00"],
-      1: DNA_ENCODE_MAP["01"],
-      2: DNA_ENCODE_MAP["10"],
-      3: DNA_ENCODE_MAP["11"],
-  }
+  def _encode_chunk(chunk: bytes) -> str:
+    dna_sequence_parts: list[str] = []
+    mapping = {
+        0: DNA_ENCODE_MAP["00"],
+        1: DNA_ENCODE_MAP["01"],
+        2: DNA_ENCODE_MAP["10"],
+        3: DNA_ENCODE_MAP["11"],
+    }
+    for byte_val in chunk:
+      pairs = [
+          (byte_val >> 6) & 0b11,
+          (byte_val >> 4) & 0b11,
+          (byte_val >> 2) & 0b11,
+          (byte_val >> 0) & 0b11,
+      ]
+      for pair_val in pairs:
+        dna_sequence_parts.append(mapping[pair_val])
+    encoded = "".join(dna_sequence_parts)
+    if add_parity:
+      if k_value <= 0:
+        raise ValueError("k_value must be a positive integer when adding parity.")
+      encoded = add_parity_to_sequence(encoded, k_value, parity_rule)
+    return encoded
 
-  for byte_val in data:
-    # Process bits from most significant to least significant.
-    # Each byte is split into four 2-bit segments.
-    # Example: byte_val = 0b11001001 (decimal 201)
-    # - (byte_val >> 6) & 0b11 results in 0b11 ('T')
-    # - (byte_val >> 4) & 0b11 results in 0b00 ('A')
-    # - (byte_val >> 2) & 0b11 results in 0b10 ('G')
-    # - (byte_val >> 0) & 0b11 results in 0b01 ('C')
-    # The resulting DNA sequence for this byte is "TAGC".
-
-    # Extract the four 2-bit pairs from the byte.
-    pairs = [
-        (byte_val >> 6) & 0b11,  # Most significant 2 bits
-        (byte_val >> 4) & 0b11,
-        (byte_val >> 2) & 0b11,
-        (byte_val >> 0) & 0b11   # Least significant 2 bits
-    ]
-
-    for pair_val in pairs:
-      dna_sequence_parts.append(mapping[pair_val])
-
-  encoded_dna = "".join(dna_sequence_parts)
-
-  if add_parity:
-    if k_value <= 0:
-      raise ValueError("k_value must be a positive integer when adding parity.")
-    # Assuming PARITY_RULE_GC_EVEN_A_ODD_T is the only one for now,
-    # add_parity_to_sequence will raise NotImplementedError for others.
-    encoded_dna = add_parity_to_sequence(encoded_dna, k_value, parity_rule)
-
-  return encoded_dna
+  if stream:
+    if isinstance(data, (bytes, bytearray)):
+      iterable = [data]
+    else:
+      iterable = data
+    return (_encode_chunk(chunk) for chunk in iterable)
+  else:
+    if not isinstance(data, (bytes, bytearray)):
+      data = b"".join(data)
+    return _encode_chunk(data)
 
 
 def decode_base4_direct(
-    dna_sequence: str,
+    dna_sequence: str | Iterable[str],
     check_parity: bool = False,
     k_value: int = 7,
-    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T
-) -> Tuple[bytes, List[int]]:
+    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
+    *,
+    stream: bool = False,
+) -> Tuple[bytes, List[int]] | Iterator[Tuple[bytes, List[int]]]:
   """Decodes a DNA sequence string into a byte string using Base-4 Direct Mapping.
 
   Optionally, this function can check for parity errors if the sequence was
@@ -145,16 +147,22 @@ def decode_base4_direct(
   This results in the byte `0b01000001` (ASCII 'A', decimal 65).
 
   Args:
-    dna_sequence (str): The DNA sequence string to decode.
+    dna_sequence (str | Iterable[str]): DNA sequence to decode. If ``stream`` is
+      ``True`` this should be an iterable yielding chunks of the sequence;
+      otherwise a single string is expected.
     check_parity (bool): If True, verify parity and report errors.
                          Defaults to False.
     k_value (int): The size of each data block used during parity encoding.
                    Defaults to 7. Must be positive if `check_parity` is True.
     parity_rule (str): The parity rule used during encoding if `check_parity` is True.
                        Defaults to `PARITY_RULE_GC_EVEN_A_ODD_T`.
+    stream (bool): If True, return a generator yielding decoded byte chunks for
+      each piece provided in ``dna_sequence``.
 
   Returns:
-    Tuple[bytes, List[int]]: A tuple containing:
+    Tuple[bytes, List[int]] | Iterator[Tuple[bytes, List[int]]]: If ``stream`` is
+    ``True`` an iterator yielding decoded byte chunks and parity error lists is
+    returned. Otherwise a single tuple for the full sequence is returned.
       - bytes: The decoded byte string.
       - List[int]: A list of 0-based indices of data blocks where parity
                    errors were detected. Empty if `check_parity` is False
@@ -166,53 +174,47 @@ def decode_base4_direct(
                 invalid characters or its length is not a multiple of 4.
     NotImplementedError: If `check_parity` is True and `parity_rule` is unknown.
   """
-  parity_errors: List[int] = []
-  sequence_to_decode = dna_sequence
+  def _decode_chunk(chunk_seq: str) -> Tuple[bytes, List[int]]:
+    parity_errors: List[int] = []
+    sequence_to_decode = chunk_seq
+    if check_parity:
+      if k_value <= 0:
+        raise ValueError("k_value must be a positive integer when checking parity.")
+      sequence_to_decode, parity_errors = strip_and_verify_parity(
+          chunk_seq, k_value, parity_rule
+      )
+    if not all(c in 'ATCG' for c in sequence_to_decode):
+      raise ValueError(
+          "Invalid character in sequence to decode. Only 'A', 'T', 'C', 'G' are allowed."
+      )
+    if len(sequence_to_decode) % 4 != 0:
+      raise ValueError(
+          "Length of sequence to decode must be a multiple of 4."
+      )
+    decoded_bytes: list[int] = []
+    reverse_mapping = {
+        'A': int(DNA_DECODE_MAP['A'], 2),
+        'C': int(DNA_DECODE_MAP['C'], 2),
+        'G': int(DNA_DECODE_MAP['G'], 2),
+        'T': int(DNA_DECODE_MAP['T'], 2),
+    }
+    for i in range(0, len(sequence_to_decode), 4):
+      chars = sequence_to_decode[i:i+4]
+      current_byte_val = 0
+      current_byte_val |= reverse_mapping[chars[0]] << 6
+      current_byte_val |= reverse_mapping[chars[1]] << 4
+      current_byte_val |= reverse_mapping[chars[2]] << 2
+      current_byte_val |= reverse_mapping[chars[3]] << 0
+      decoded_bytes.append(current_byte_val)
+    return bytes(decoded_bytes), parity_errors
 
-  if check_parity:
-    if k_value <= 0:
-      raise ValueError("k_value must be a positive integer when checking parity.")
-    # strip_and_verify_parity will raise NotImplementedError for unknown rules
-    # or ValueError for malformed sequences (e.g. length inconsistency)
-    sequence_to_decode, parity_errors = strip_and_verify_parity(
-        dna_sequence, k_value, parity_rule
-    )
-
-  # Input validation for the (potentially stripped) sequence to decode
-  if not all(c in 'ATCG' for c in sequence_to_decode):
-    raise ValueError(
-        "Invalid character in sequence to decode. Only 'A', 'T', 'C', 'G' are allowed."
-    )
-  if len(sequence_to_decode) % 4 != 0:
-    raise ValueError(
-        "Length of sequence to decode must be a multiple of 4."
-    )
-
-  decoded_bytes: list[int] = [] 
-  # Mapping of DNA characters to their 2-bit integer values derived from
-  # ``DNA_DECODE_MAP``.
-  reverse_mapping = {
-      'A': int(DNA_DECODE_MAP['A'], 2),
-      'C': int(DNA_DECODE_MAP['C'], 2),
-      'G': int(DNA_DECODE_MAP['G'], 2),
-      'T': int(DNA_DECODE_MAP['T'], 2),
-  }
-
-  for i in range(0, len(sequence_to_decode), 4):
-    chars = sequence_to_decode[i:i+4]  # Get a 4-character block from the (potentially stripped) sequence
-    current_byte_val = 0
-    # Convert the 4 DNA characters back into one byte.
-    # Example: chars = "TAGC" (T=0b11, A=0b00, G=0b10, C=0b01)
-    # - 'T' (0b11) shifted left by 6 bits: 0b11000000
-    # - 'A' (0b00) shifted left by 4 bits: 0b00000000
-    # - 'G' (0b10) shifted left by 2 bits: 0b00001000
-    # - 'C' (0b01) shifted left by 0 bits: 0b00000001
-    # Resulting byte: 0b11000000 | 0b00000000 | 0b00001000 | 0b00000001 = 0b11001001 (201)
-
-    current_byte_val |= reverse_mapping[chars[0]] << 6 # 1st char is MSB pair
-    current_byte_val |= reverse_mapping[chars[1]] << 4
-    current_byte_val |= reverse_mapping[chars[2]] << 2
-    current_byte_val |= reverse_mapping[chars[3]] << 0 # 4th char is LSB pair
-    decoded_bytes.append(current_byte_val)
-
-  return bytes(decoded_bytes), parity_errors
+  if stream:
+    if isinstance(dna_sequence, str):
+      iterable = [dna_sequence]
+    else:
+      iterable = dna_sequence
+    return (_decode_chunk(seq) for seq in iterable)
+  else:
+    if not isinstance(dna_sequence, str):
+      dna_sequence = "".join(dna_sequence)
+    return _decode_chunk(dna_sequence)

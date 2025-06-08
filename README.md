@@ -1,6 +1,14 @@
 # GeneCoder: Simulated DNA Data Encoding & Exploration
 
+[![Codecov Coverage](https://codecov.io/gh/d0tTino/GeneCoder/branch/main/graph/badge.svg)](https://codecov.io/gh/d0tTino/GeneCoder)
+
 **An open, educational software toolkit for simulating DNA data encoding and decoding, bringing the concepts of molecular data storage to your fingertips.**
+
+*The badge above reports the current coverage of GeneCoder's unit tests.*
+
+The coverage report intentionally **excludes** `src/flet_app.py` (the GUI entry
+point) via the `.coveragerc` configuration. Codecov picks up this setting when
+processing `coverage.xml`.
 
 ---
 
@@ -54,6 +62,11 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
         *   The FASTA header will include `fec=hamming_7_4` and `fec_padding_bits=<number>`, where `fec_padding_bits` indicates the number of zero-bits added to the end of the Hamming-encoded bitstream to make its total length a multiple of 8 before byte packing.
         *   The decoder uses these header fields to correctly apply Hamming decoding to the binary data (after DNA decoding) and reports the total number of corrected errors.
         *   Note: If Hamming(7,4) FEC is selected, DNA-level parity (`--add-parity`) is currently ignored as Hamming provides stronger error correction at the binary level.
+    *   **Reed-Solomon FEC (`--fec reed_solomon`):**
+        *   Adds Reed-Solomon parity bytes to the binary data before DNA encoding.
+        *   Requires the optional `reedsolo` library (`pip install reedsolo`).
+        *   The FASTA header will include `fec=reed_solomon` and `fec_nsym=<number>` indicating the number of parity symbols used.
+        *   During decoding, the same number of symbols is read from the header to repair burst errors. The decoder reports how many symbols were corrected.
 *   **Error Detection (Parity):**
     *   Optional parity bit addition for `base4_direct` and `huffman` methods using `--add-parity` (details on rules like `GC_even_A_odd_T` can be found in `error_detection.py`). Parity info is stored in the FASTA header. This is typically used if Hamming(7,4) FEC is not active.
 *   **Decoding Engine:**
@@ -71,7 +84,7 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
     *   For `gc_balanced`: Actual GC content and max homopolymer length of the payload (pre-FEC).
 *   **Graphical User Interface (GUI):**
     *   A Flet-based GUI (`src/flet_app.py`) provides an interactive way to use most encoding/decoding features.
-    *   Includes options for GC-Balanced encoding and Triple-Repeat FEC. (Note: Hamming(7,4) FEC integration in the GUI is currently deferred due to a temporary technical issue and is planned for a future update).
+*   Includes options for GC-Balanced encoding, Triple-Repeat FEC, Hamming(7,4) FEC, and Reed-Solomon FEC.
     *   GUI operations are now asynchronous for improved responsiveness.
     *   Displays encoding metrics and analysis plots:
         *   Huffman codeword lengths histogram.
@@ -98,11 +111,12 @@ To use GeneCoder CLI, navigate to the project's root directory. The main script 
 See [WORKFLOWS.md](WORKFLOWS.md) for a step-by-step overview of the encoding and decoding process.
 
 **General Command Structure (Batch and Single File):**
-`python src/cli.py <command> --input-files <path1> [<path2> ...] [--output-file <path>] [--output-dir <dir>] --method <method_name> [options]`
+`python src/cli.py <command> --input-files <path1> [<path2> ...] [--output-file <path>] [--output-dir <dir>] --method <method_name> [--fec <fec_method>] [options]`
 
 *   `--input-files`: One or more input files.
 *   `--output-file`: Specify for a single input file if not using `--output-dir`.
 *   `--output-dir`: Specify for multiple input files, or for a single input if `--output-file` is not used. Output files are named based on input filenames.
+*   `--fec`: Optional Forward Error Correction method (`triple_repeat` or `hamming_7_4`). Omit this flag (or pass `--fec None`) to disable FEC.
 
 **CLI Examples:**
 
@@ -148,6 +162,13 @@ See [WORKFLOWS.md](WORKFLOWS.md) for a step-by-step overview of the encoding and
     ```
     *Output: `decoded_batch/file1_decoded.bin`, `decoded_batch/notes_decoded.bin`, etc. (assuming original input names were file1.txt, notes.md)*
 
+8.  **Stream encode and decode a large file:**
+    ```bash
+    python src/cli.py encode --input-files big.bin --output-file big.fasta --stream --method base4_direct
+    python src/cli.py decode --input-files big.fasta --output-file big_decoded.bin --stream --method base4_direct
+    ```
+    *Processes the file in chunks to avoid high memory usage (currently only for base4_direct without FEC).* 
+
 
 ### Graphical User Interface (GUI)
 
@@ -155,7 +176,7 @@ Run the Flet application:
 ```bash
 python src/flet_app.py
 ```
-The GUI provides controls for most encoding methods, parity, and Triple-Repeat FEC, along with metric displays and some visual analysis plots. GUI operations are asynchronous to keep the interface responsive. See [WORKFLOWS.md](WORKFLOWS.md) for the underlying processing steps.
+The GUI provides controls for most encoding methods and parity. Forward error correction is selectable from a dropdown offering `None`, `Triple-Repeat`, `Hamming(7,4)`, or `Reed-Solomon`. Metric displays and analysis plots are included. GUI operations are asynchronous to keep the interface responsive. See [WORKFLOWS.md](WORKFLOWS.md) for the underlying processing steps.
 
 ---
 
@@ -180,7 +201,7 @@ The GUI provides controls for most encoding methods, parity, and Triple-Repeat F
 1.  **Foundation & Enhancements (Implemented):**
     *   CLI-based encoding and decoding.
     *   Encoding methods: Base-4 Direct, Huffman-4, GC-Balanced.
-    *   Error handling: Parity checks, Triple-Repeat FEC (on DNA), Hamming(7,4) FEC (on binary via CLI).
+    *   Error handling: Parity checks, Triple-Repeat FEC (on DNA), Hamming(7,4) FEC, Reed-Solomon FEC (both on binary).
     *   FASTA output with comprehensive metadata.
     *   Display of encoding metrics.
     *   Batch processing for CLI.
