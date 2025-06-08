@@ -59,7 +59,8 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
         *   The decoder uses these header fields to correctly apply Hamming decoding to the binary data (after DNA decoding) and reports the total number of corrected errors.
         *   Note: If Hamming(7,4) FEC is selected, DNA-level parity (`--add-parity`) is currently ignored as Hamming provides stronger error correction at the binary level.
     *   **Reed-Solomon FEC (`--fec reed_solomon`):**
-        *   Adds Reed-Solomon parity bytes to the binary data before DNA encoding (via the `reedsolo` library).
+        *   Adds Reed-Solomon parity bytes to the binary data before DNA encoding.
+        *   Requires the optional `reedsolo` library (`pip install reedsolo`).
         *   The FASTA header will include `fec=reed_solomon` and `fec_nsym=<number>` indicating the number of parity symbols used.
         *   During decoding, the same number of symbols is read from the header to repair burst errors. The decoder reports how many symbols were corrected.
 *   **Error Detection (Parity):**
