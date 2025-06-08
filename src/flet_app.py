@@ -17,10 +17,25 @@ import os
 import asyncio  # For asynchronous operations
 
 # Project module imports
-from genecoder import (
-    EncodeOptions,
-    perform_encoding,
-    perform_decoding,
+from genecoder.encoders import (
+    encode_base4_direct, decode_base4_direct,
+    encode_gc_balanced, decode_gc_balanced, calculate_gc_content,
+)
+from genecoder.utils import get_max_homopolymer_length
+from genecoder.encoders import encode_triple_repeat, decode_triple_repeat  # FEC functions
+from genecoder.hamming_codec import encode_data_with_hamming
+from genecoder.huffman_coding import encode_huffman, decode_huffman
+from genecoder.formats import to_fasta, from_fasta
+from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
+from genecoder.plotting import (
+    prepare_huffman_codeword_length_data,
+    generate_codeword_length_histogram,
+    prepare_nucleotide_frequency_data,
+    generate_nucleotide_frequency_plot,
+    calculate_windowed_gc_content,  # New import
+    identify_homopolymer_regions,  # New import
+    generate_sequence_analysis_plot # New import
+
 )
 from .flet_helpers import parse_int_input
 
@@ -120,32 +135,16 @@ def main(page: ft.Page):
         on_change=lambda e: setattr(k_value_input, 'disabled', not e.control.value) or page.update()
     )
 
-    def on_fec_change(e: ft.ControlEvent):
-        if e.control.value == "Hamming(7,4)":
-
-            parity_checkbox.disabled = True
-            k_value_input.disabled = True
-        else:
-            parity_checkbox.disabled = False
-            k_value_input.disabled = not parity_checkbox.value
-        page.update()
 
     fec_dropdown = ft.Dropdown(
         label="FEC Method",
         options=[
             ft.dropdown.Option("None"),
             ft.dropdown.Option("Triple-Repeat"),
-            ft.dropdown.Option("Hamming(7,4)"),
+            ft.dropdown.Option("Hamming(7,4)")
         ],
-        value="None",
-        on_change=on_fec_change,
-    )
+        value="None"
 
-    fec_info_text = ft.Text(
-        "Add Parity is disabled when Hamming(7,4) is selected.",
-        size=12,
-
-        italic=True,
     )
     
     encode_button = ft.ElevatedButton("Encode")
@@ -235,8 +234,8 @@ def main(page: ft.Page):
                 return
 
             method = method_dropdown.value
+            add_parity_encode = parity_checkbox.value
             fec_method = fec_dropdown.value
-            add_parity_encode = parity_checkbox.value and fec_method != "Hamming(7,4)"
 
             k_val_encode = 7
             if add_parity_encode:
@@ -264,36 +263,68 @@ def main(page: ft.Page):
             with open(input_path, "rb") as f_in:
                 input_data = await asyncio.to_thread(f_in.read)
 
-            window_size = parse_int_input(window_size_input.value, 50, 1)
-            step = parse_int_input(step_size_input.value, 10, 1)
-            min_hp = parse_int_input(min_homopolymer_input.value, 4, 2)
+            current_input_data = input_data
+            fec_padding_bits_for_header = 0
+            apply_hamming_fec = fec_method == "Hamming(7,4)"
+            apply_triple_repeat = fec_method == "Triple-Repeat"
 
-            options = EncodeOptions(
-                method=method,
-                add_parity=add_parity_encode,
-                k_value=k_val_encode,
-                fec_method=fec_method,
-                window_size=window_size,
-                step_size=step,
-                min_homopolymer_len=min_hp,
-            )
+            if apply_hamming_fec:
+                if add_parity_encode:
+                    encode_status_text.value = (
+                        "Info: 'Add Parity' ignored when Hamming(7,4) FEC selected."
+                    )
+                current_input_data, fec_padding_bits_for_header = await asyncio.to_thread(
+                    encode_data_with_hamming, input_data
+                )
 
-            result = await asyncio.to_thread(perform_encoding, input_data, options)
+            should_add_parity = add_parity_encode and not apply_hamming_fec
 
-            encode_hidden_fasta_content.value = result.fasta
+            raw_dna_sequence = ""
+            huffman_table_for_header = {}
+            num_padding_bits_for_header = 0
+            
+            if method == "Base-4 Direct":
+                raw_dna_sequence = await asyncio.to_thread(
+                    encode_base4_direct,
+                    current_input_data,
+                    should_add_parity,
+                    k_val_encode,
+                    PARITY_RULE_GC_EVEN_A_ODD_T,
+                )
+            elif method == "Huffman":
+                # encode_huffman returns a tuple, so handle its result
+                encode_result = await asyncio.to_thread(
+                    encode_huffman,
+                    current_input_data,
+                    should_add_parity,
+                    k_val_encode,
+                    PARITY_RULE_GC_EVEN_A_ODD_T,
+                )
+                raw_dna_sequence, huffman_table_for_header, num_padding_bits_for_header = encode_result
 
-            encode_orig_size_text.value = f"Original size: {result.metrics['original_size']} bytes"
-            encode_dna_len_text.value = (
-                f"Encoded DNA length: {result.metrics['dna_length']} nucleotides (Post-FEC)"
-            )
-            encode_comp_ratio_text.value = f"Compression ratio: {result.metrics['compression_ratio']:.2f}"
-            encode_bits_per_nt_text.value = (
-                f"Bits per nucleotide: {result.metrics['bits_per_nt']:.2f} bits/nt"
-            )
+            elif method == "GC-Balanced":
+                target_gc_min, target_gc_max, max_homopolymer = 0.45, 0.55, 3
+                raw_dna_sequence = await asyncio.to_thread(
+                    encode_gc_balanced,
+                    current_input_data,
+                    target_gc_min,
+                    target_gc_max,
+                    max_homopolymer,
+                )
+            else:
+                encode_status_text.value = f"Error: Unknown method '{method}'."
+                page.update()
+                return
 
-            header_parts = [f"method={method.lower().replace(' ', '_').replace('-', '_')}", f"input_file={os.path.basename(input_path)}"]
-            if add_parity_encode and method != "GC-Balanced":
-                header_parts.extend([f"parity_k={k_val_encode}", f"parity_rule={PARITY_RULE_GC_EVEN_A_ODD_T}"])
+
+            header_parts = [
+                f"method={method.lower().replace(' ', '_').replace('-', '_')}",
+                f"input_file={os.path.basename(input_path)}",
+            ]
+            if should_add_parity and method != "GC-Balanced":
+                header_parts.extend(
+                    [f"parity_k={k_val_encode}", f"parity_rule={PARITY_RULE_GC_EVEN_A_ODD_T}"]
+                )
             if method == "Huffman":
                 serializable_table = {str(k): v for k, v in huffman_table_for_header.items()}
                 huffman_params = {"table": serializable_table, "padding": num_padding_bits_for_header}
@@ -302,16 +333,27 @@ def main(page: ft.Page):
                 header_parts.extend([f"gc_min={target_gc_min}", f"gc_max={target_gc_max}", f"max_homopolymer={max_homopolymer}"])
 
             final_encoded_dna = raw_dna_sequence
-            if fec_method == "Triple-Repeat":
-                final_encoded_dna = await asyncio.to_thread(encode_triple_repeat, raw_dna_sequence)
+            if apply_triple_repeat:
+                final_encoded_dna = await asyncio.to_thread(
+                    encode_triple_repeat, raw_dna_sequence
+                )
+
                 header_parts.append("fec=triple_repeat")
-                # Append to status text; ensure it's not overwritten if already an info message
                 current_status = encode_status_text.value
-                if "Info:" in current_status:  # If there's already an info message (like GC-Balanced + Parity)
+                if "Info:" in current_status:
                     encode_status_text.value = current_status + " Triple-Repeat FEC applied."
                 else:
-                    # Otherwise, set it directly or append to a success message later
-                    encode_status_text.value = "Triple-Repeat FEC applied."  # This might get overwritten by "Encoding successful"
+                    encode_status_text.value = "Triple-Repeat FEC applied."
+                encode_status_text.color = ft.colors.BLUE_GREY_400
+            elif apply_hamming_fec:
+                header_parts.append("fec=hamming_7_4")
+                header_parts.append(f"fec_padding_bits={fec_padding_bits_for_header}")
+                current_status = encode_status_text.value
+                if "Info:" in current_status:
+                    encode_status_text.value = current_status + " Hamming(7,4) FEC applied."
+                else:
+                    encode_status_text.value = "Hamming(7,4) FEC applied."
+
                 encode_status_text.color = ft.colors.BLUE_GREY_400
             
             fasta_header = " ".join(header_parts)
@@ -344,13 +386,25 @@ def main(page: ft.Page):
             encode_save_button.visible = True
             
             base_success_msg = "Encoding successful! Click 'Save Encoded FASTA...' to save."
-            if fec_method == "Triple-Repeat" and "Triple-Repeat FEC applied" in encode_status_text.value :
-                if "Info:" in encode_status_text.value: # If there was GC-Balanced + Parity warning
-                     encode_status_text.value = encode_status_text.value.replace("Triple-Repeat FEC applied.", base_success_msg + " Triple-Repeat FEC applied.")
-                else: # Just FEC applied
-                     encode_status_text.value = base_success_msg + " Triple-Repeat FEC applied."
-            elif "Info:" not in encode_status_text.value : # No prior info messages
-                 encode_status_text.value = base_success_msg
+            if apply_triple_repeat and "Triple-Repeat FEC applied" in encode_status_text.value:
+                if "Info:" in encode_status_text.value:
+                    encode_status_text.value = encode_status_text.value.replace(
+                        "Triple-Repeat FEC applied.",
+                        base_success_msg + " Triple-Repeat FEC applied.",
+                    )
+                else:
+                    encode_status_text.value = base_success_msg + " Triple-Repeat FEC applied."
+            elif apply_hamming_fec and "Hamming(7,4) FEC applied" in encode_status_text.value:
+                if "Info:" in encode_status_text.value:
+                    encode_status_text.value = encode_status_text.value.replace(
+                        "Hamming(7,4) FEC applied.",
+                        base_success_msg + " Hamming(7,4) FEC applied.",
+                    )
+                else:
+                    encode_status_text.value = base_success_msg + " Hamming(7,4) FEC applied."
+            elif "Info:" not in encode_status_text.value:
+                encode_status_text.value = base_success_msg
+
             # If "Info:" was there but no FEC, it remains.
             
             encode_status_text.color = ft.colors.GREEN_700 # Assume success if no error thrown
@@ -614,10 +668,7 @@ def main(page: ft.Page):
                             ft.Row([encode_browse_button, encode_selected_input_file_text]),
                             method_dropdown,
                             ft.Row([parity_checkbox, k_value_input]),
-                            ft.Column([
-                                fec_dropdown,
-                                fec_info_text,
-                            ], spacing=5),
+                            fec_dropdown,
 
                             ft.Row([encode_button, encode_progress_ring]), # Added progress ring
                             ft.Divider(),
