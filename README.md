@@ -58,6 +58,10 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
         *   The FASTA header will include `fec=hamming_7_4` and `fec_padding_bits=<number>`, where `fec_padding_bits` indicates the number of zero-bits added to the end of the Hamming-encoded bitstream to make its total length a multiple of 8 before byte packing.
         *   The decoder uses these header fields to correctly apply Hamming decoding to the binary data (after DNA decoding) and reports the total number of corrected errors.
         *   Note: If Hamming(7,4) FEC is selected, DNA-level parity (`--add-parity`) is currently ignored as Hamming provides stronger error correction at the binary level.
+    *   **Reed-Solomon FEC (`--fec reed_solomon`):**
+        *   Adds Reed-Solomon parity bytes to the binary data before DNA encoding (via the `reedsolo` library).
+        *   The FASTA header will include `fec=reed_solomon` and `fec_nsym=<number>` indicating the number of parity symbols used.
+        *   During decoding, the same number of symbols is read from the header to repair burst errors. The decoder reports how many symbols were corrected.
 *   **Error Detection (Parity):**
     *   Optional parity bit addition for `base4_direct` and `huffman` methods using `--add-parity` (details on rules like `GC_even_A_odd_T` can be found in `error_detection.py`). Parity info is stored in the FASTA header. This is typically used if Hamming(7,4) FEC is not active.
 *   **Decoding Engine:**
@@ -75,7 +79,7 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
     *   For `gc_balanced`: Actual GC content and max homopolymer length of the payload (pre-FEC).
 *   **Graphical User Interface (GUI):**
     *   A Flet-based GUI (`src/flet_app.py`) provides an interactive way to use most encoding/decoding features.
-*   Includes options for GC-Balanced encoding, Triple-Repeat FEC, and Hamming(7,4) FEC.
+*   Includes options for GC-Balanced encoding, Triple-Repeat FEC, Hamming(7,4) FEC, and Reed-Solomon FEC.
     *   GUI operations are now asynchronous for improved responsiveness.
     *   Displays encoding metrics and analysis plots:
         *   Huffman codeword lengths histogram.
@@ -160,7 +164,7 @@ Run the Flet application:
 ```bash
 python src/flet_app.py
 ```
-The GUI provides controls for most encoding methods and parity. Forward error correction is selectable from a dropdown offering `None`, `Triple-Repeat`, or `Hamming(7,4)`. Metric displays and analysis plots are included. GUI operations are asynchronous to keep the interface responsive. See [WORKFLOWS.md](WORKFLOWS.md) for the underlying processing steps.
+The GUI provides controls for most encoding methods and parity. Forward error correction is selectable from a dropdown offering `None`, `Triple-Repeat`, `Hamming(7,4)`, or `Reed-Solomon`. Metric displays and analysis plots are included. GUI operations are asynchronous to keep the interface responsive. See [WORKFLOWS.md](WORKFLOWS.md) for the underlying processing steps.
 
 ---
 
@@ -185,7 +189,7 @@ The GUI provides controls for most encoding methods and parity. Forward error co
 1.  **Foundation & Enhancements (Implemented):**
     *   CLI-based encoding and decoding.
     *   Encoding methods: Base-4 Direct, Huffman-4, GC-Balanced.
-    *   Error handling: Parity checks, Triple-Repeat FEC (on DNA), Hamming(7,4) FEC (on binary via CLI).
+    *   Error handling: Parity checks, Triple-Repeat FEC (on DNA), Hamming(7,4) FEC, Reed-Solomon FEC (both on binary).
     *   FASTA output with comprehensive metadata.
     *   Display of encoding metrics.
     *   Batch processing for CLI.

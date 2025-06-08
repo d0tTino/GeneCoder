@@ -121,7 +121,7 @@ def main(page: ft.Page):
 
     def on_fec_change(e: ft.ControlEvent):
         """Handle FEC selection updates."""
-        if e.control.value == "Hamming(7,4)":
+        if e.control.value in ("Hamming(7,4)", "Reed-Solomon"):
             parity_checkbox.value = False
             parity_checkbox.disabled = True
             k_value_input.disabled = True
@@ -135,14 +135,15 @@ def main(page: ft.Page):
         options=[
             ft.dropdown.Option("None"),
             ft.dropdown.Option("Triple-Repeat"),
-            ft.dropdown.Option("Hamming(7,4)")
+            ft.dropdown.Option("Hamming(7,4)"),
+            ft.dropdown.Option("Reed-Solomon")
         ],
         value="None",
         on_change=on_fec_change
     )
 
     fec_info_text = ft.Text(
-        "Parity automatically disabled when Hamming FEC selected.",
+        "Parity automatically disabled when Hamming or Reed-Solomon FEC selected.",
         size=12,
         color=ft.colors.BLUE_GREY_400,
         italic=True,
