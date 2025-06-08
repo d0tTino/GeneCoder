@@ -153,6 +153,13 @@ See [WORKFLOWS.md](WORKFLOWS.md) for a step-by-step overview of the encoding and
     ```
     *Output: `decoded_batch/file1_decoded.bin`, `decoded_batch/notes_decoded.bin`, etc. (assuming original input names were file1.txt, notes.md)*
 
+8.  **Stream encode and decode a large file:**
+    ```bash
+    python src/cli.py encode --input-files big.bin --output-file big.fasta --stream --method base4_direct
+    python src/cli.py decode --input-files big.fasta --output-file big_decoded.bin --stream --method base4_direct
+    ```
+    *Processes the file in chunks to avoid high memory usage (currently only for base4_direct without FEC).* 
+
 
 ### Graphical User Interface (GUI)
 
