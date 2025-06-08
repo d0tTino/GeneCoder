@@ -22,6 +22,7 @@ from genecoder import (
     perform_encoding,
     perform_decoding,
 )
+from .flet_helpers import parse_int_input
 
 encode_fasta_data_to_save_ref = ft.Ref[str]()
 decoded_bytes_to_save: bytes = b"" 
@@ -270,26 +271,9 @@ def main(page: ft.Page):
             with open(input_path, "rb") as f_in:
                 input_data = await asyncio.to_thread(f_in.read)
 
-            try:
-                window_size = int(window_size_input.value) if window_size_input.value else 50
-            except ValueError:
-                window_size = 50
-            if window_size <= 0:
-                window_size = 50
-
-            try:
-                step = int(step_size_input.value) if step_size_input.value else 10
-            except ValueError:
-                step = 10
-            if step <= 0:
-                step = 10
-
-            try:
-                min_hp = int(min_homopolymer_input.value) if min_homopolymer_input.value else 4
-            except ValueError:
-                min_hp = 4
-            if min_hp < 2:
-                min_hp = 4
+            window_size = parse_int_input(window_size_input.value, 50, 1)
+            step = parse_int_input(step_size_input.value, 10, 1)
+            min_hp = parse_int_input(min_homopolymer_input.value, 4, 2)
 
             options = EncodeOptions(
                 method=method,
