@@ -120,15 +120,9 @@ def main(page: ft.Page):
         on_change=lambda e: setattr(k_value_input, 'disabled', not e.control.value) or page.update()
     )
 
-    stream_checkbox = ft.Checkbox(
-        label="Stream large files",
-        value=False,
-    )
-
     def on_fec_change(e: ft.ControlEvent):
-        """Handle FEC selection updates."""
-        if e.control.value in ("Hamming(7,4)", "Reed-Solomon"):
-            parity_checkbox.value = False
+        if e.control.value == "Hamming(7,4)":
+
             parity_checkbox.disabled = True
             k_value_input.disabled = True
         else:
@@ -142,16 +136,15 @@ def main(page: ft.Page):
             ft.dropdown.Option("None"),
             ft.dropdown.Option("Triple-Repeat"),
             ft.dropdown.Option("Hamming(7,4)"),
-            ft.dropdown.Option("Reed-Solomon")
         ],
         value="None",
-        on_change=on_fec_change
+        on_change=on_fec_change,
     )
 
     fec_info_text = ft.Text(
-        "Parity automatically disabled when Hamming or Reed-Solomon FEC selected.",
+        "Add Parity is disabled when Hamming(7,4) is selected.",
         size=12,
-        color=ft.colors.BLUE_GREY_400,
+
         italic=True,
     )
     
@@ -242,8 +235,8 @@ def main(page: ft.Page):
                 return
 
             method = method_dropdown.value
-            add_parity_encode = parity_checkbox.value
             fec_method = fec_dropdown.value
+            add_parity_encode = parity_checkbox.value and fec_method != "Hamming(7,4)"
 
             k_val_encode = 7
             if add_parity_encode:
@@ -298,6 +291,44 @@ def main(page: ft.Page):
                 f"Bits per nucleotide: {result.metrics['bits_per_nt']:.2f} bits/nt"
             )
 
+            header_parts = [f"method={method.lower().replace(' ', '_').replace('-', '_')}", f"input_file={os.path.basename(input_path)}"]
+            if add_parity_encode and method != "GC-Balanced":
+                header_parts.extend([f"parity_k={k_val_encode}", f"parity_rule={PARITY_RULE_GC_EVEN_A_ODD_T}"])
+            if method == "Huffman":
+                serializable_table = {str(k): v for k, v in huffman_table_for_header.items()}
+                huffman_params = {"table": serializable_table, "padding": num_padding_bits_for_header}
+                header_parts.append(f"huffman_params={json.dumps(huffman_params)}")
+            elif method == "GC-Balanced":
+                header_parts.extend([f"gc_min={target_gc_min}", f"gc_max={target_gc_max}", f"max_homopolymer={max_homopolymer}"])
+
+            final_encoded_dna = raw_dna_sequence
+            if fec_method == "Triple-Repeat":
+                final_encoded_dna = await asyncio.to_thread(encode_triple_repeat, raw_dna_sequence)
+                header_parts.append("fec=triple_repeat")
+                # Append to status text; ensure it's not overwritten if already an info message
+                current_status = encode_status_text.value
+                if "Info:" in current_status:  # If there's already an info message (like GC-Balanced + Parity)
+                    encode_status_text.value = current_status + " Triple-Repeat FEC applied."
+                else:
+                    # Otherwise, set it directly or append to a success message later
+                    encode_status_text.value = "Triple-Repeat FEC applied."  # This might get overwritten by "Encoding successful"
+                encode_status_text.color = ft.colors.BLUE_GREY_400
+            
+            fasta_header = " ".join(header_parts)
+            final_fasta_str = await asyncio.to_thread(to_fasta, final_encoded_dna, fasta_header, 80)
+            encode_hidden_fasta_content.value = final_fasta_str
+
+            original_size_bytes = len(input_data)
+            final_encoded_length_nucleotides = len(final_encoded_dna)
+            dna_equivalent_bytes = final_encoded_length_nucleotides * 0.25
+            compression_ratio = original_size_bytes / dna_equivalent_bytes if dna_equivalent_bytes > 0 else (float('inf') if original_size_bytes > 0 else 0.0)
+            bits_per_nt_val = (original_size_bytes * 8) / final_encoded_length_nucleotides if final_encoded_length_nucleotides != 0 else 0.0
+
+            encode_orig_size_text.value = f"Original size: {original_size_bytes} bytes"
+            encode_dna_len_text.value = f"Encoded DNA length: {final_encoded_length_nucleotides} nucleotides (Post-FEC)"
+            encode_comp_ratio_text.value = f"Compression ratio: {compression_ratio:.2f}"
+            encode_bits_per_nt_text.value = f"Bits per nucleotide: {bits_per_nt_val:.2f} bits/nt"
+            
             if method == "GC-Balanced":
                 encode_actual_gc_text.value = (
                     f"Actual GC content (payload, pre-FEC): {result.metrics['actual_gc']:.2%}"
@@ -311,6 +342,48 @@ def main(page: ft.Page):
 
             encode_dna_snippet_text.value = result.encoded_dna[:200]
             encode_save_button.visible = True
+            
+            base_success_msg = "Encoding successful! Click 'Save Encoded FASTA...' to save."
+            if fec_method == "Triple-Repeat" and "Triple-Repeat FEC applied" in encode_status_text.value :
+                if "Info:" in encode_status_text.value: # If there was GC-Balanced + Parity warning
+                     encode_status_text.value = encode_status_text.value.replace("Triple-Repeat FEC applied.", base_success_msg + " Triple-Repeat FEC applied.")
+                else: # Just FEC applied
+                     encode_status_text.value = base_success_msg + " Triple-Repeat FEC applied."
+            elif "Info:" not in encode_status_text.value : # No prior info messages
+                 encode_status_text.value = base_success_msg
+            # If "Info:" was there but no FEC, it remains.
+            
+            encode_status_text.color = ft.colors.GREEN_700 # Assume success if no error thrown
+
+            analysis_tab_is_enabled = False
+            current_analysis_status_messages = []
+
+            if method == "Huffman" and huffman_table_for_header:
+                try:
+                    length_counts = await asyncio.to_thread(prepare_huffman_codeword_length_data, huffman_table_for_header)
+                    if any(length_counts.values()):
+                        hist_buf = await asyncio.to_thread(generate_codeword_length_histogram, length_counts)
+                        codeword_hist_image.src_base64 = base64.b64encode(hist_buf.getvalue()).decode('utf-8')
+                        hist_buf.close()
+                        analysis_tab_is_enabled = True
+                except Exception as plot_ex:
+                    current_analysis_status_messages.append(f"Huffman plot error: {plot_ex}")
+            else:
+                current_analysis_status_messages.append("Codeword histogram for Huffman only.")
+            
+            if final_encoded_dna: # Use final_encoded_dna for nucleotide frequency
+                try:
+                    nucleotide_counts = await asyncio.to_thread(prepare_nucleotide_frequency_data, final_encoded_dna)
+                    if any(nucleotide_counts.values()):
+                        freq_buf = await asyncio.to_thread(generate_nucleotide_frequency_plot, nucleotide_counts)
+                        nucleotide_freq_image.src_base64 = base64.b64encode(freq_buf.getvalue()).decode('utf-8')
+                        freq_buf.close()
+                        analysis_tab_is_enabled = True
+                except Exception as plot_ex:
+                    current_analysis_status_messages.append(f"Nucleotide plot error: {plot_ex}")
+            else:
+                current_analysis_status_messages.append("Empty sequence for nucleotide plot.")
+
 
             status_prefix = " ".join(result.info_messages)
             encode_status_text.value = (
@@ -540,10 +613,11 @@ def main(page: ft.Page):
                         controls=[
                             ft.Row([encode_browse_button, encode_selected_input_file_text]),
                             method_dropdown,
-                              ft.Row([parity_checkbox, k_value_input]),
-                              stream_checkbox,
-                              fec_dropdown,
-                            fec_info_text,
+                            ft.Row([parity_checkbox, k_value_input]),
+                            ft.Column([
+                                fec_dropdown,
+                                fec_info_text,
+                            ], spacing=5),
 
                             ft.Row([encode_button, encode_progress_ring]), # Added progress ring
                             ft.Divider(),
