@@ -6,6 +6,10 @@
 
 *The badge above reports the current coverage of GeneCoder's unit tests.*
 
+The coverage report intentionally **excludes** `src/flet_app.py` (the GUI entry
+point) via the `.coveragerc` configuration. Codecov picks up this setting when
+processing `coverage.xml`.
+
 ---
 
 ## Current Status: Evolving with New Features! 🚀
