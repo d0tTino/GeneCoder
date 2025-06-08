@@ -9,7 +9,24 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from reedsolo import RSCodec, ReedSolomonError
+try:  # pragma: no cover - optional dependency
+    from reedsolo import RSCodec, ReedSolomonError
+    _HAS_REEDSOLO = True
+except ImportError:  # pragma: no cover - missing optional dependency
+    RSCodec = None
+
+    class ReedSolomonError(Exception):
+        """Placeholder used when :mod:`reedsolo` is unavailable."""
+
+    _HAS_REEDSOLO = False
+
+
+def _require_reedsolo() -> None:  # pragma: no cover - helper
+    """Ensure the :mod:`reedsolo` package is installed."""
+    if not _HAS_REEDSOLO:
+        raise ImportError(
+            "reedsolo is required for Reed-Solomon encoding. Install it via 'pip install reedsolo'."
+        )
 
 
 def encode_data_rs(data: bytes, nsym: int = 10) -> Tuple[bytes, int]:
@@ -28,6 +45,7 @@ def encode_data_rs(data: bytes, nsym: int = 10) -> Tuple[bytes, int]:
         ``(encoded_bytes, nsym)`` where ``encoded_bytes`` is the encoded output
         including parity symbols.
     """
+    _require_reedsolo()
     rs = RSCodec(nsym)
     encoded = rs.encode(data)
     return bytes(encoded), nsym
@@ -54,6 +72,7 @@ def decode_data_rs(encoded: bytes, nsym: int) -> Tuple[bytes, int]:
     ValueError
         If decoding fails due to too many errors.
     """
+    _require_reedsolo()
     rs = RSCodec(nsym)
     try:
         decoded, _full, err_pos = rs.decode(encoded)

@@ -1,6 +1,4 @@
 import os
-from pathlib import Path
-import tempfile
 
 from genecoder.streaming import stream_encode_file, stream_decode_file, encode_base4_direct, decode_base4_direct
 

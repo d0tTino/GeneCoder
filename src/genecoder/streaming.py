@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import os
-from typing import Iterable, Iterator
+from typing import Iterator
 
 from .encoders import encode_base4_direct, decode_base4_direct
 from .error_detection import PARITY_RULE_GC_EVEN_A_ODD_T

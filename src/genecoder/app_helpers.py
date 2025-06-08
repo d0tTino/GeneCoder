@@ -16,6 +16,7 @@ from .hamming_codec import encode_data_with_hamming, decode_data_with_hamming
 from .huffman_coding import encode_huffman, decode_huffman
 from .formats import to_fasta, from_fasta
 from .error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
+from .reed_solomon_codec import encode_data_rs, decode_data_rs
 from .plotting import (
     prepare_huffman_codeword_length_data,
     generate_codeword_length_histogram,
