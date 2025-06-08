@@ -119,6 +119,11 @@ def main(page: ft.Page):
         on_change=lambda e: setattr(k_value_input, 'disabled', not e.control.value) or page.update()
     )
 
+    stream_checkbox = ft.Checkbox(
+        label="Stream large files",
+        value=False,
+    )
+
     def on_fec_change(e: ft.ControlEvent):
         """Handle FEC selection updates."""
         if e.control.value == "Hamming(7,4)":
@@ -397,6 +402,8 @@ def main(page: ft.Page):
 
     decode_button = ft.ElevatedButton("Decode")
 
+    decode_stream_checkbox = ft.Checkbox(label="Stream large files", value=False)
+
     async def on_decode_file_picker_result(e: ft.FilePickerResultEvent): # Made async
         if e.files and len(e.files) > 0:
             selected_decode_input_file_path.current = e.files[0].path
@@ -500,6 +507,7 @@ def main(page: ft.Page):
         controls=[
             ft.Row([decode_browse_button, decode_selected_input_file_text], alignment=ft.MainAxisAlignment.START),
             ft.Row([decode_button, decode_progress_ring]), # Added progress ring
+            decode_stream_checkbox,
             ft.Divider(),
             ft.Text("Status:", weight=ft.FontWeight.BOLD),
             decode_status_text,
@@ -547,8 +555,9 @@ def main(page: ft.Page):
                         controls=[
                             ft.Row([encode_browse_button, encode_selected_input_file_text]),
                             method_dropdown,
-                            ft.Row([parity_checkbox, k_value_input]),
-                            fec_dropdown,
+                              ft.Row([parity_checkbox, k_value_input]),
+                              stream_checkbox,
+                              fec_dropdown,
                             fec_info_text,
 
                             ft.Row([encode_button, encode_progress_ring]), # Added progress ring

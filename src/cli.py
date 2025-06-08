@@ -313,6 +313,49 @@ def process_single_encode(
         f"\nProcessing encode for input: {input_file_path} -> output: {output_file_path}"
     )
     try:
+        if args.stream and args.method == "base4_direct" and args.fec is None:
+            header = f"method=base4_direct input_file={os.path.basename(input_file_path)}"
+            if args.add_parity:
+                header += f" parity_k={args.k_value} parity_rule={args.parity_rule}"
+            from genecoder.streaming import stream_encode_file
+
+            total_len = stream_encode_file(
+                input_file_path,
+                output_file_path,
+                header=header,
+                add_parity=args.add_parity,
+                k_value=args.k_value,
+                parity_rule=args.parity_rule,
+            )
+
+            original_size_bytes = os.path.getsize(input_file_path)
+            dna_equivalent_bytes = total_len * 0.25
+            compression_ratio = (
+                original_size_bytes / dna_equivalent_bytes
+                if dna_equivalent_bytes > 0
+                else (float("inf") if original_size_bytes > 0 else 0.0)
+            )
+            bits_per_nucleotide = (
+                (original_size_bytes * 8) / total_len if total_len else 0.0
+            )
+
+            print(f"\n--- Encoding Metrics for {input_file_path} ---")
+            print(f"Original file size: {original_size_bytes} bytes")
+            print(
+                f"Final Encoded DNA length: {total_len} nucleotides (streamed)"
+            )
+            print(
+                f"Compression ratio: {compression_ratio:.2f} (original bytes / final DNA bytes equivalent)"
+            )
+            print(
+                f"Bits per nucleotide: {bits_per_nucleotide:.2f} bits/nt"
+            )
+            print("----------------------")
+            print(
+                f"Successfully encoded '{input_file_path}' to '{output_file_path}' using streaming."
+            )
+            return
+
         with open(input_file_path, "rb") as f_in:
             original_input_data = f_in.read()  # Store original for metrics
 
@@ -400,6 +443,21 @@ def process_single_decode(
         f"\nProcessing decode for input: {input_file_path} -> output: {output_file_path}"
     )
     try:
+        if args.stream and args.method == "base4_direct":
+            from genecoder.streaming import stream_decode_file
+
+            stream_decode_file(
+                input_file_path,
+                output_file_path,
+                check_parity=args.check_parity,
+                k_value=args.k_value,
+                parity_rule=args.parity_rule,
+            )
+            print(
+                f"Successfully decoded '{input_file_path}' to '{output_file_path}' using streaming."
+            )
+            return
+
         with open(input_file_path, "r", encoding="utf-8") as f_in:
             file_content_str = f_in.read()
 
@@ -602,6 +660,11 @@ def main() -> None:
         default=3,
         help="Maximum homopolymer length for gc_balanced encoding (default: 3).",
     )
+    encode_parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Stream encode large files (base4_direct only).",
+    )
 
     # Decode command parser
     decode_parser = subparsers.add_parser(
@@ -649,6 +712,11 @@ def main() -> None:
         default=PARITY_RULE_GC_EVEN_A_ODD_T,
         choices=[PARITY_RULE_GC_EVEN_A_ODD_T],  # Add more rules here in future
         help="Parity rule used during encoding (default: GC_even_A_odd_T).",
+    )
+    decode_parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Stream decode large files (base4_direct only).",
     )
 
     # Analyze command parser
