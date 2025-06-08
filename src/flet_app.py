@@ -14,10 +14,7 @@ responsive.
 
 import flet as ft
 import os
-import json
-import base64 # For displaying matplotlib plots in Flet
-import re # For parsing header parameters
-import asyncio # For asynchronous operations
+import asyncio  # For asynchronous operations
 
 # Project module imports
 from genecoder.encoders import (
@@ -38,7 +35,9 @@ from genecoder.plotting import (
     calculate_windowed_gc_content,  # New import
     identify_homopolymer_regions,  # New import
     generate_sequence_analysis_plot # New import
+
 )
+from .flet_helpers import parse_int_input
 
 encode_fasta_data_to_save_ref = ft.Ref[str]()
 decoded_bytes_to_save: bytes = b"" 
@@ -131,10 +130,11 @@ def main(page: ft.Page):
     )
 
     parity_checkbox = ft.Checkbox(
-        label="Add Parity", 
+        label="Add Parity",
         value=False,
         on_change=lambda e: setattr(k_value_input, 'disabled', not e.control.value) or page.update()
     )
+
 
     fec_dropdown = ft.Dropdown(
         label="FEC Method",
@@ -144,6 +144,7 @@ def main(page: ft.Page):
             ft.dropdown.Option("Hamming(7,4)")
         ],
         value="None"
+
     )
     
     encode_button = ft.ElevatedButton("Encode")
@@ -235,6 +236,7 @@ def main(page: ft.Page):
             method = method_dropdown.value
             add_parity_encode = parity_checkbox.value
             fec_method = fec_dropdown.value
+
             k_val_encode = 7
             if add_parity_encode:
                 if not k_value_input.value:
@@ -254,11 +256,11 @@ def main(page: ft.Page):
                     encode_status_text.color = ft.colors.RED_ACCENT_700
                     page.update()
                     return
-            
+
             if method == "GC-Balanced" and add_parity_encode:
                 encode_status_text.value = "Info: 'Add Parity' not directly used by GC-Balanced."
 
-            with open(input_path, 'rb') as f_in:
+            with open(input_path, "rb") as f_in:
                 input_data = await asyncio.to_thread(f_in.read)
 
             current_input_data = input_data
@@ -314,6 +316,7 @@ def main(page: ft.Page):
                 page.update()
                 return
 
+
             header_parts = [
                 f"method={method.lower().replace(' ', '_').replace('-', '_')}",
                 f"input_file={os.path.basename(input_path)}",
@@ -334,6 +337,7 @@ def main(page: ft.Page):
                 final_encoded_dna = await asyncio.to_thread(
                     encode_triple_repeat, raw_dna_sequence
                 )
+
                 header_parts.append("fec=triple_repeat")
                 current_status = encode_status_text.value
                 if "Info:" in current_status:
@@ -349,6 +353,7 @@ def main(page: ft.Page):
                     encode_status_text.value = current_status + " Hamming(7,4) FEC applied."
                 else:
                     encode_status_text.value = "Hamming(7,4) FEC applied."
+
                 encode_status_text.color = ft.colors.BLUE_GREY_400
             
             fasta_header = " ".join(header_parts)
@@ -367,22 +372,17 @@ def main(page: ft.Page):
             encode_bits_per_nt_text.value = f"Bits per nucleotide: {bits_per_nt_val:.2f} bits/nt"
             
             if method == "GC-Balanced":
-                gc_payload = raw_dna_sequence[1:] if len(raw_dna_sequence) > 0 else ""
-                actual_gc = await asyncio.to_thread(calculate_gc_content, gc_payload)
-                actual_max_hp = await asyncio.to_thread(
-                    get_max_homopolymer_length, gc_payload
-                )
                 encode_actual_gc_text.value = (
-                    f"Actual GC content (payload, pre-FEC): {actual_gc:.2%}"
+                    f"Actual GC content (payload, pre-FEC): {result.metrics['actual_gc']:.2%}"
                 )
                 encode_actual_homopolymer_text.value = (
-                    f"Actual max homopolymer (payload, pre-FEC): {actual_max_hp}"
+                    f"Actual max homopolymer (payload, pre-FEC): {result.metrics['max_homopolymer']}"
                 )
             else:
                 encode_actual_gc_text.value = "Actual GC content (payload): N/A"
                 encode_actual_homopolymer_text.value = "Actual max homopolymer (payload): N/A"
 
-            encode_dna_snippet_text.value = final_encoded_dna[:200]
+            encode_dna_snippet_text.value = result.encoded_dna[:200]
             encode_save_button.visible = True
             
             base_success_msg = "Encoding successful! Click 'Save Encoded FASTA...' to save."
@@ -404,6 +404,7 @@ def main(page: ft.Page):
                     encode_status_text.value = base_success_msg + " Hamming(7,4) FEC applied."
             elif "Info:" not in encode_status_text.value:
                 encode_status_text.value = base_success_msg
+
             # If "Info:" was there but no FEC, it remains.
             
             encode_status_text.color = ft.colors.GREEN_700 # Assume success if no error thrown
@@ -437,80 +438,27 @@ def main(page: ft.Page):
             else:
                 current_analysis_status_messages.append("Empty sequence for nucleotide plot.")
 
-            # Generate and display new sequence analysis plot
-            sequence_analysis_plot_image.src_base64 = None
-            if final_encoded_dna: # Use final_encoded_dna for this plot as well
-                try:
-                    try:
-                        window_size = int(window_size_input.value) if window_size_input.value else 50
-                    except ValueError:
-                        window_size = 50
-                    if window_size <= 0:
-                        window_size = 50
 
-                    try:
-                        step = int(step_size_input.value) if step_size_input.value else 10
-                    except ValueError:
-                        step = 10
-                    if step <= 0:
-                        step = 10
+            status_prefix = " ".join(result.info_messages)
+            encode_status_text.value = (
+                (status_prefix + " " if status_prefix else "")
+                + "Encoding successful! Click 'Save Encoded FASTA...' to save."
+            )
+            encode_status_text.color = ft.colors.GREEN_700
 
-                    try:
-                        min_homopolymer_len = int(min_homopolymer_input.value) if min_homopolymer_input.value else 4
-                    except ValueError:
-                        min_homopolymer_len = 4
-                    if min_homopolymer_len < 2:
-                        min_homopolymer_len = 4
-                    
-                    gc_data = await asyncio.to_thread(
-                        calculate_windowed_gc_content, final_encoded_dna, window_size, step
-                    )
-                    homopolymer_data = await asyncio.to_thread(
-                        identify_homopolymer_regions, final_encoded_dna, min_homopolymer_len
-                    )
-                    
-                    # Check if gc_data or homopolymer_data has meaningful content before plotting
-                    # generate_sequence_analysis_plot should handle empty inputs, but good to be defensive
-                    if (gc_data and gc_data[0]) or homopolymer_data : # Check if there's any data to plot
-                        plot_buf = await asyncio.to_thread(
-                            generate_sequence_analysis_plot, gc_data, homopolymer_data, len(final_encoded_dna)
-                        )
-                        sequence_analysis_plot_image.src_base64 = base64.b64encode(plot_buf.getvalue()).decode('utf-8')
-                        plot_buf.close()
-                        analysis_tab_is_enabled = True # Enable tab if this plot is generated
-                        current_analysis_status_messages.append(
-                            f"Sequence analysis plot generated (window={window_size}, step={step}, min_hp={min_homopolymer_len})."
-                        )
-                    else:
-                        current_analysis_status_messages.append("No significant data for sequence analysis plot (GC/Homopolymers).")
-                        
-                except Exception as plot_ex:
-                    current_analysis_status_messages.append(f"Sequence analysis plot error: {plot_ex}")
-                    sequence_analysis_plot_image.src_base64 = None
+            codeword_hist_image.src_base64 = result.plots.get("codeword_hist")
+            nucleotide_freq_image.src_base64 = result.plots.get("nucleotide_freq")
+            sequence_analysis_plot_image.src_base64 = result.plots.get("sequence_analysis")
+
+            any_plot = any(result.plots.values())
+            if any_plot:
+                analysis_status_text.value = "All analysis plots generated successfully."
+                analysis_status_text.color = ft.colors.GREEN_700
             else:
-                current_analysis_status_messages.append("Empty sequence for sequence analysis plot.")
-
-            
-            final_analysis_status = " | ".join(msg for msg in current_analysis_status_messages if msg and msg.strip()).strip()
-            if not final_analysis_status and analysis_tab_is_enabled : 
-                 analysis_status_text.value = "All analysis plots generated successfully."
-                 analysis_status_text.color = ft.colors.GREEN_700
-            elif not analysis_tab_is_enabled and not final_analysis_status : 
-                 analysis_status_text.value = "No analysis plots applicable or generated for the selected options."
-                 analysis_status_text.color = ft.colors.ORANGE_ACCENT_700 # Or some neutral info color
-            else: 
-                analysis_status_text.value = final_analysis_status
-                # Determine overall color based on presence of "error" or "warning" keywords
-                if "error" in final_analysis_status.lower():
-                    analysis_status_text.color = ft.colors.RED_ACCENT_700
-                elif "warning" in final_analysis_status.lower() or "empty" in final_analysis_status.lower() or "no significant data" in final_analysis_status.lower():
-                    analysis_status_text.color = ft.colors.ORANGE_ACCENT_700
-                else: # Success or partial success messages
-                    analysis_status_text.color = ft.colors.GREEN_700 if "generated" in final_analysis_status else ft.colors.BLUE_GREY_400
-
-
+                analysis_status_text.value = "No analysis plots applicable or generated for the selected options."
+                analysis_status_text.color = ft.colors.ORANGE_ACCENT_700
             if len(app_tabs.tabs) > 2:
-                app_tabs.tabs[2].disabled = not analysis_tab_is_enabled
+                app_tabs.tabs[2].disabled = not any_plot
 
         except FileNotFoundError:
             encode_status_text.value = f"Error: Input file '{input_path}' not found."
@@ -566,6 +514,8 @@ def main(page: ft.Page):
 
     decode_button = ft.ElevatedButton("Decode")
 
+    decode_stream_checkbox = ft.Checkbox(label="Stream large files", value=False)
+
     async def on_decode_file_picker_result(e: ft.FilePickerResultEvent): # Made async
         if e.files and len(e.files) > 0:
             selected_decode_input_file_path.current = e.files[0].path
@@ -590,32 +540,16 @@ def main(page: ft.Page):
         )
     )
 
-    async def decode_file_data(e): # Corrected from 'def' to 'async def' in my thoughts, already async in code
-        """
-        Handles the decoding process when the 'Decode' button is clicked.
-        
-        This asynchronous function performs the following steps:
-        1. Disables UI controls (buttons, progress ring) to prevent concurrent operations.
-        2. Resets UI elements (status texts).
-        3. Validates input file selection.
-        4. Reads FASTA file content asynchronously.
-        5. Parses FASTA records.
-        6. If Triple-Repeat FEC is indicated in the header, applies FEC decoding 
-           asynchronously and updates `decode_fec_info_text`. Handles sequence length validation for FEC.
-        7. Determines the primary decoding method from the FASTA header.
-        8. Parses method-specific parameters (e.g., Huffman table, GC constraints, parity) from the header.
-        9. Applies the primary decoding method asynchronously.
-        10. Updates status messages and re-enables UI controls in a `finally` block.
-        """
+    async def decode_file_data(e):
+        """Decode an input FASTA file using :func:`perform_decoding`."""
         global decoded_bytes_to_save
-        
+
         decode_status_text.value = "Processing..."
-        decode_fec_info_text.value = "" 
         decode_progress_ring.visible = True
         decode_button.disabled = True
         decode_browse_button.disabled = True
         decode_save_button.visible = False
-        decoded_bytes_to_save = b"" 
+        decoded_bytes_to_save = b""
         page.update()
 
         try:
@@ -626,169 +560,25 @@ def main(page: ft.Page):
                 page.update()
                 return
 
-            with open(input_path, 'r', encoding='utf-8') as f_in:
+            with open(input_path, "r", encoding="utf-8") as f_in:
                 file_content_str = await asyncio.to_thread(f_in.read)
 
-            parsed_records = await asyncio.to_thread(from_fasta, file_content_str)
-            if not parsed_records:
-                decode_status_text.value = f"Error: No valid FASTA records found in '{os.path.basename(input_path)}'."
-                decode_status_text.color = ft.colors.RED_ACCENT_700
-                page.update()
-                return
-            
-            current_decode_status_messages = []
-            if len(parsed_records) > 1:
-                current_decode_status_messages.append("Warning: Multiple FASTA records; processing first one.")
-
-            header, sequence_from_fasta = parsed_records[0]
-            
-            sequence_for_primary_decode = sequence_from_fasta
-            if "fec=triple_repeat" in header:
-                current_decode_status_messages.append("Triple-Repeat FEC detected.")
-                if len(sequence_from_fasta) % 3 != 0:
-                    warning_msg = f"Warning: FEC sequence length ({len(sequence_from_fasta)}) not multiple of 3. Using original sequence."
-                    current_decode_status_messages.append(warning_msg)
-                    decode_fec_info_text.value = warning_msg
-                    decode_fec_info_text.color = ft.colors.AMBER_ACCENT_700
-                else:
-                    try:
-                        decode_fec_result = await asyncio.to_thread(decode_triple_repeat, sequence_from_fasta)
-                        sequence_for_primary_decode, corrected, uncorrectable = decode_fec_result
-                        fec_msg = f"Triple-Repeat FEC: {corrected} corrected, {uncorrectable} uncorrectable."
-                        current_decode_status_messages.append(fec_msg)
-                        decode_fec_info_text.value = fec_msg
-                        decode_fec_info_text.color = ft.colors.GREEN_700 if uncorrectable == 0 else ft.colors.ORANGE_ACCENT_700
-                    except ValueError as ve_fec:
-                         err_msg = f"FEC decoding error: {ve_fec}. Using original sequence."
-                         current_decode_status_messages.append(err_msg)
-                         decode_fec_info_text.value = err_msg
-                         decode_fec_info_text.color = ft.colors.RED_ACCENT_700
-            else:
-                decode_fec_info_text.value = "No FEC detected in header."
-            page.update()
-
-            detected_method_str = None
-            huffman_table = None
-            num_padding_bits = 0
-            check_parity = False
-            k_val_decode = 7
-            parity_rule_decode = PARITY_RULE_GC_EVEN_A_ODD_T
-
-            if "method=huffman" in header and "huffman_params={" in header:
-                detected_method_str = "huffman"
-                # ... (Huffman param parsing logic - assumed to be synchronous for now, or needs to_thread if complex)
-                try:
-                    json_param_field_start = header.find("huffman_params=")
-                    json_part_with_key = header[json_param_field_start + len("huffman_params="):]
-                    first_bracket_index = json_part_with_key.find('{')
-                    if first_bracket_index == -1:
-                        raise ValueError("JSON object for huffman_params not found or malformed.")
-                    open_brackets = 0
-                    json_end_index = -1
-                    for i, char_h in enumerate(json_part_with_key[first_bracket_index:]):
-                        if char_h == "{":
-                            open_brackets += 1
-                        elif char_h == "}":
-                            open_brackets -= 1
-                        if open_brackets == 0:
-                            json_end_index = first_bracket_index + i + 1
-                            break
-                    if json_end_index == -1:
-                        raise ValueError("JSON object for huffman_params not properly closed.")
-                    params_json_str = json_part_with_key[first_bracket_index:json_end_index]
-                    huffman_params = json.loads(params_json_str) # json.loads is sync
-                    huffman_table_str_keys = huffman_params.get('table')
-                    num_padding_bits = huffman_params.get('padding')
-                    if huffman_table_str_keys is None or num_padding_bits is None:
-                        raise ValueError("Essential 'table' or 'padding' missing.")
-                    huffman_table = {int(k): v for k, v in huffman_table_str_keys.items()}
-                except Exception as json_ex:
-                    decode_status_text.value = f"Error: Invalid Huffman parameters: {json_ex}"
-                    decode_status_text.color = ft.colors.RED_ACCENT_700
-                    page.update()
-                    return
-            elif "method=base4_direct" in header:
-                detected_method_str = "base4_direct"
-            elif "method=gc_balanced" in header:
-                detected_method_str = "gc_balanced"
-            else:
-                decode_status_text.value = "Error: Could not determine decoding method."
-                decode_status_text.color = ft.colors.RED_ACCENT_700
-                page.update()
-                return
-            
-            if detected_method_str != "gc_balanced" and "parity_k=" in header and "parity_rule=" in header:
-                check_parity = True
-                try:
-                    parity_k_str = header.split("parity_k=")[1].split()[0]
-                    k_val_decode = int(parity_k_str)
-                    parity_rule_str = header.split("parity_rule=")[1].split()[0]
-                    if parity_rule_str != PARITY_RULE_GC_EVEN_A_ODD_T:
-                        raise ValueError(f"Unsupported parity rule '{parity_rule_str}'.")
-                    if k_val_decode <= 0:
-                        raise ValueError("Parity k-value must be positive.")
-                except Exception as parity_ex:
-                    decode_status_text.value = f"Error: Invalid parity parameters: {parity_ex}"
-                    decode_status_text.color = ft.colors.RED_ACCENT_700
-                    page.update()
-                    return
-            
-            decoded_bytes_result = b""
-            parity_errors = []
-
-            if detected_method_str == "base4_direct":
-                decode_result = await asyncio.to_thread(
-                    decode_base4_direct, sequence_for_primary_decode, check_parity, k_val_decode, parity_rule_decode
-                )
-                decoded_bytes_result, parity_errors = decode_result
-            elif detected_method_str == "huffman":
-                if huffman_table is None:
-                    decode_status_text.value = "Error: Huffman params missing."
-                    decode_status_text.color = ft.colors.RED_ACCENT_700
-                    page.update()
-                    return
-                decode_result = await asyncio.to_thread(
-                    decode_huffman, sequence_for_primary_decode, huffman_table, num_padding_bits, check_parity, k_val_decode, parity_rule_decode
-                )
-                decoded_bytes_result, parity_errors = decode_result
-            elif detected_method_str == "gc_balanced":
-                # Param parsing for GC-balanced (sync or needs to_thread if complex)
-                expected_gc_min_val, expected_gc_max_val, expected_max_homopolymer_val = None, None, None
-                # ... (re.search logic as before, this part is fast and can remain sync)
-                gc_min_match = re.search(r"gc_min=([\d.]+)", header)
-                gc_max_match = re.search(r"gc_max=([\d.]+)", header)
-                max_homopolymer_match = re.search(r"max_homopolymer=(\d+)", header)
-                if gc_min_match:
-                    expected_gc_min_val = float(gc_min_match.group(1))
-                if gc_max_match:
-                    expected_gc_max_val = float(gc_max_match.group(1))
-                if max_homopolymer_match:
-                    expected_max_homopolymer_val = int(max_homopolymer_match.group(1))
-                if not all([expected_gc_min_val, expected_gc_max_val, expected_max_homopolymer_val]):
-                     current_decode_status_messages.append("Warning: Could not parse all GC constraint params.")
-                
-                decoded_bytes_result = await asyncio.to_thread(
-                    decode_gc_balanced,
-                    sequence_for_primary_decode,
-                    expected_gc_min_val,
-                    expected_gc_max_val,
-                    expected_max_homopolymer_val,
-                )
-            else:
-                decode_status_text.value = "Error: Internal method error."
+            try:
+                result = await asyncio.to_thread(perform_decoding, file_content_str)
+            except Exception as ex:
+                decode_status_text.value = f"Error: {ex}"
                 decode_status_text.color = ft.colors.RED_ACCENT_700
                 page.update()
                 return
 
-            # Store for the save callback outside this function
-            decoded_bytes_to_save = decoded_bytes_result  # noqa: F841
-            final_status_message = " ".join(current_decode_status_messages) + " Decoding successful."
-            if check_parity and parity_errors and detected_method_str != "gc_balanced":
-                final_status_message += f" Parity error(s) at blocks: {parity_errors}."
-                decode_status_text.color = ft.colors.AMBER_ACCENT_700
+            decoded_bytes_to_save = result.decoded_bytes
+            decode_status_text.value = result.status_message
+            decode_status_text.color = ft.colors.GREEN_700
+            if result.fec_info:
+                decode_fec_info_text.value = result.fec_info
+                decode_fec_info_text.color = ft.colors.GREEN_700
             else:
-                decode_status_text.color = ft.colors.GREEN_700
-            decode_status_text.value = final_status_message
+                decode_fec_info_text.value = ""
             decode_save_button.visible = True
 
         except FileNotFoundError:
@@ -829,6 +619,7 @@ def main(page: ft.Page):
         controls=[
             ft.Row([decode_browse_button, decode_selected_input_file_text], alignment=ft.MainAxisAlignment.START),
             ft.Row([decode_button, decode_progress_ring]), # Added progress ring
+            decode_stream_checkbox,
             ft.Divider(),
             ft.Text("Status:", weight=ft.FontWeight.BOLD),
             decode_status_text,
@@ -878,6 +669,7 @@ def main(page: ft.Page):
                             method_dropdown,
                             ft.Row([parity_checkbox, k_value_input]),
                             fec_dropdown,
+
                             ft.Row([encode_button, encode_progress_ring]), # Added progress ring
                             ft.Divider(),
                             ft.Text("Metrics:", weight=ft.FontWeight.BOLD),

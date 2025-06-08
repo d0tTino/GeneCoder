@@ -274,6 +274,9 @@ def generate_sequence_analysis_plot(
 ) -> io.BytesIO:
     """Generates a plot showing windowed GC content and homopolymer regions.
 
+    When ``sequence_length`` is zero the x-axis is scaled from 0 to 1 to avoid a
+    Matplotlib warning triggered by identical lower and upper x-limits.
+
     Args:
         gc_windows_data: Tuple from `calculate_windowed_gc_content` 
                          (list of window starts, list of GC values).
@@ -301,7 +304,10 @@ def generate_sequence_analysis_plot(
                  horizontalalignment='center', verticalalignment='center', 
                  transform=ax1.transAxes, fontsize=10, color='gray')
 
-    ax1.set_xlim(0, sequence_length)
+    # Avoid a Matplotlib warning when ``sequence_length`` is zero by setting the
+    # upper limit to at least 1. This keeps the plot stable even for empty
+    # sequences.
+    ax1.set_xlim(0, max(sequence_length, 1))
 
     # Overlay homopolymer regions
     # We can use a secondary y-axis for visual separation if needed, but for axvspan it's not strictly necessary.

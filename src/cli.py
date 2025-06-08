@@ -14,6 +14,7 @@ import os
 import random
 import re  # For parsing header parameters
 import concurrent.futures
+from dataclasses import dataclass
 from genecoder.encoders import (
     encode_base4_direct,
     decode_base4_direct,
@@ -30,6 +31,7 @@ from genecoder.hamming_codec import (
     encode_data_with_hamming,
     decode_data_with_hamming,
 )  # Binary-level FEC
+from genecoder.reed_solomon_codec import encode_data_rs, decode_data_rs
 from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman, decode_huffman
 from genecoder.error_detection import (
@@ -43,6 +45,294 @@ from genecoder.plotting import (
 )
 
 
+@dataclass
+class EncodingOptions:
+    """Configuration for the encoding pipeline."""
+
+    method: str
+    add_parity: bool
+    k_value: int
+    parity_rule: str
+    fec: str | None
+    gc_min: float
+    gc_max: float
+    max_homopolymer: int
+
+
+@dataclass
+class DecodingOptions:
+    """Configuration for the decoding pipeline."""
+
+    method: str
+    check_parity: bool
+    k_value: int
+    parity_rule: str
+
+
+def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
+    """Create :class:`EncodingOptions` from CLI arguments."""
+
+    return EncodingOptions(
+        method=args.method,
+        add_parity=args.add_parity,
+        k_value=args.k_value,
+        parity_rule=args.parity_rule,
+        fec=args.fec,
+        gc_min=args.gc_min,
+        gc_max=args.gc_max,
+        max_homopolymer=args.max_homopolymer,
+    )
+
+
+def build_decoding_options(args: argparse.Namespace) -> DecodingOptions:
+    """Create :class:`DecodingOptions` from CLI arguments."""
+
+    return DecodingOptions(
+        method=args.method,
+        check_parity=args.check_parity,
+        k_value=args.k_value,
+        parity_rule=args.parity_rule,
+    )
+
+
+def run_encoding_pipeline(
+    data: bytes, options: EncodingOptions, input_file_name: str
+) -> tuple[str, str, str, bytes, int]:
+    """Encode ``data`` according to ``options`` and return DNA and header."""
+
+    current_input = data
+    fec_padding_bits = -1
+    header_parts = [f"method={options.method}", f"input_file={input_file_name}"]
+
+    if options.fec == "hamming_7_4":
+        if options.add_parity:
+            print(
+                f"Warning for {input_file_name}: --add-parity is ignored when Hamming(7,4) FEC is applied to binary data.",
+                file=sys.stderr,
+            )
+        current_input, fec_padding_bits = encode_data_with_hamming(data)
+        header_parts.append("fec=hamming_7_4")
+        header_parts.append(f"fec_padding_bits={fec_padding_bits}")
+        print(
+            f"Applied Hamming(7,4) FEC to {input_file_name}. Original binary size: {len(data)}, Hamming encoded binary size: {len(current_input)} (padding bits: {fec_padding_bits})."
+        )
+    elif options.fec == "reed_solomon":
+        if options.add_parity:
+            print(
+                f"Warning for {input_file_name}: --add-parity is ignored when Reed-Solomon FEC is applied to binary data.",
+                file=sys.stderr,
+            )
+        current_input, rs_nsym = encode_data_rs(data)
+        header_parts.append("fec=reed_solomon")
+        header_parts.append(f"fec_nsym={rs_nsym}")
+        print(
+            f"Applied Reed-Solomon FEC to {input_file_name}. Original binary size: {len(data)}, RS encoded binary size: {len(current_input)} (nsym={rs_nsym})."
+        )
+
+    raw_dna = ""
+    should_add_parity = options.add_parity and options.fec not in ("hamming_7_4", "reed_solomon")
+
+    if options.method == "base4_direct":
+        if should_add_parity and options.k_value <= 0:
+            raise ValueError("Parity k-value must be positive.")
+        raw_dna = encode_base4_direct(
+            current_input,
+            add_parity=should_add_parity,
+            k_value=options.k_value,
+            parity_rule=options.parity_rule,
+        )
+        if should_add_parity:
+            header_parts.extend(
+                [f"parity_k={options.k_value}", f"parity_rule={options.parity_rule}"]
+            )
+    elif options.method == "huffman":
+        if should_add_parity and options.k_value <= 0:
+            raise ValueError("Parity k-value must be positive for Huffman.")
+        raw_dna, huffman_table, num_padding_bits = encode_huffman(
+            current_input,
+            add_parity=should_add_parity,
+            k_value=options.k_value,
+            parity_rule=options.parity_rule,
+        )
+        serializable_table = {str(k): v for k, v in huffman_table.items()}
+        huffman_params = {"table": serializable_table, "padding": num_padding_bits}
+        header_parts.append(f"huffman_params={json.dumps(huffman_params)}")
+        if should_add_parity:
+            header_parts.extend(
+                [f"parity_k={options.k_value}", f"parity_rule={options.parity_rule}"]
+            )
+    elif options.method == "gc_balanced":
+        if should_add_parity:
+            print(
+                f"Warning for {input_file_name}: --add-parity not directly used by 'gc_balanced' core logic.",
+                file=sys.stderr,
+            )
+        raw_dna = encode_gc_balanced(
+            current_input,
+            options.gc_min,
+            options.gc_max,
+            options.max_homopolymer,
+        )
+        header_parts.extend(
+            [
+                f"gc_min={options.gc_min}",
+                f"gc_max={options.gc_max}",
+                f"max_homopolymer={options.max_homopolymer}",
+            ]
+        )
+    else:
+        raise ValueError(f"Unknown encoding method '{options.method}'.")
+
+    final_dna = raw_dna
+    if options.fec == "triple_repeat":
+        final_dna = encode_triple_repeat(raw_dna)
+        header_parts.append("fec=triple_repeat")
+        print(
+            f"Applied Triple-Repeat FEC to {input_file_name}. DNA length before: {len(raw_dna)}, after: {len(final_dna)}."
+        )
+    elif options.fec is not None and options.fec not in ("hamming_7_4", "reed_solomon"):
+        print(
+            f"Warning for {input_file_name}: Unknown FEC method '{options.fec}'. No DNA-level FEC applied.",
+            file=sys.stderr,
+        )
+
+    return final_dna, " ".join(header_parts), raw_dna, current_input, fec_padding_bits
+
+
+def run_decoding_pipeline(
+    sequence: str, header: str, options: DecodingOptions, input_file_name: str
+) -> bytes:
+    """Decode ``sequence`` according to ``header`` and ``options``."""
+
+    dna_for_primary = sequence
+    if "fec=triple_repeat" in header:
+        print(f"Triple-Repeat FEC detected in header for {input_file_name}.")
+        if len(sequence) % 3 != 0:
+            print(
+                f"Warning for {input_file_name}: Sequence length {len(sequence)} is not multiple of 3 for Triple-Repeat FEC. Attempting decode, but it might fail or be incorrect.",
+                file=sys.stderr,
+            )
+        try:
+            dna_for_primary, corrected_tr, uncorr_tr = decode_triple_repeat(sequence)
+            print(
+                f"Triple-Repeat FEC decoding for {input_file_name}: {corrected_tr} corrected, {uncorr_tr} uncorrectable errors in triplets."
+            )
+        except ValueError as ve:
+            print(
+                f"Error during Triple-Repeat FEC decoding for {input_file_name}: {ve}. Using sequence as is for primary decode.",
+                file=sys.stderr,
+            )
+
+    parity_errors: list[int] = []
+    should_check_parity = options.check_parity and "fec=hamming_7_4" not in header and "fec=reed_solomon" not in header
+
+    if options.method == "base4_direct":
+        if should_check_parity and options.k_value <= 0:
+            raise ValueError("Parity k-value must be positive for DNA-level parity.")
+        binary_data, parity_errors = decode_base4_direct(
+            dna_for_primary,
+            check_parity=should_check_parity,
+            k_value=options.k_value,
+            parity_rule=options.parity_rule,
+        )
+    elif options.method == "huffman":
+        if should_check_parity and options.k_value <= 0:
+            raise ValueError("Parity k-value must be positive for Huffman DNA-level parity.")
+        json_param_field_start = header.find("huffman_params=")
+        if json_param_field_start == -1:
+            raise ValueError("Huffman params field missing.")
+        json_part_with_key = header[json_param_field_start + len("huffman_params=") :]
+        first_bracket = json_part_with_key.find("{")
+        if first_bracket == -1:
+            raise ValueError("Huffman JSON object start missing.")
+        open_br = 0
+        json_end = -1
+        for i, char_h in enumerate(json_part_with_key[first_bracket:]):
+            if char_h == "{":
+                open_br += 1
+            elif char_h == "}":
+                open_br -= 1
+            if open_br == 0:
+                json_end = first_bracket + i + 1
+                break
+        if json_end == -1:
+            raise ValueError("Huffman JSON object end missing.")
+        params_json_str = json_part_with_key[first_bracket:json_end]
+        huffman_params = json.loads(params_json_str)
+        huffman_table = {int(k): v for k, v in huffman_params["table"].items()}
+        num_padding_bits = huffman_params["padding"]
+        binary_data, parity_errors = decode_huffman(
+            dna_for_primary,
+            huffman_table,
+            num_padding_bits,
+            check_parity=should_check_parity,
+            k_value=options.k_value,
+            parity_rule=options.parity_rule,
+        )
+    elif options.method == "gc_balanced":
+        if should_check_parity:
+            print(
+                f"Warning for {input_file_name}: --check-parity is not applicable to 'gc_balanced' method's DNA layer.",
+                file=sys.stderr,
+            )
+        gc_min_match = re.search(r"gc_min=([\d.]+)", header)
+        gc_max_match = re.search(r"gc_max=([\d.]+)", header)
+        max_hp_match = re.search(r"max_homopolymer=(\d+)", header)
+        gc_min = float(gc_min_match.group(1)) if gc_min_match else None
+        gc_max = float(gc_max_match.group(1)) if gc_max_match else None
+        max_hp = int(max_hp_match.group(1)) if max_hp_match else None
+        binary_data = decode_gc_balanced(
+            dna_for_primary,
+            expected_gc_min=gc_min,
+            expected_gc_max=gc_max,
+            expected_max_homopolymer=max_hp,
+        )
+    else:
+        raise ValueError(f"Unknown decoding method '{options.method}'.")
+
+    if should_check_parity and parity_errors:
+        print(
+            f"Warning for {input_file_name}: DNA-level parity errors in data blocks: {parity_errors}",
+            file=sys.stderr,
+        )
+
+    final_data = binary_data
+    if "fec=hamming_7_4" in header:
+        print(f"Hamming(7,4) FEC detected in header for {input_file_name}.")
+        fec_padding_bits_match = re.search(r"fec_padding_bits=(\d+)", header)
+        if not fec_padding_bits_match:
+            raise ValueError("'fec_padding_bits' missing in header for Hamming(7,4) FEC.")
+        fec_padding_bits = int(fec_padding_bits_match.group(1))
+        try:
+            final_data, corrected_ham = decode_data_with_hamming(binary_data, fec_padding_bits)
+            print(
+                f"Hamming(7,4) FEC decoding for {input_file_name}: {corrected_ham} corrected errors in codewords."
+            )
+        except ValueError as ve:
+            print(
+                f"Error during Hamming(7,4) FEC decoding for {input_file_name}: {ve}. Output may be incorrect.",
+                file=sys.stderr,
+            )
+    if "fec=reed_solomon" in header:
+        print(f"Reed-Solomon FEC detected in header for {input_file_name}.")
+        nsym_match = re.search(r"fec_nsym=(\d+)", header)
+        if not nsym_match:
+            raise ValueError("'fec_nsym' missing in header for Reed-Solomon FEC.")
+        nsym = int(nsym_match.group(1))
+        try:
+            final_data, corrected_rs = decode_data_rs(final_data, nsym)
+            print(
+                f"Reed-Solomon FEC decoding for {input_file_name}: {corrected_rs} corrections."
+            )
+        except ValueError as ve:
+            print(
+                f"Error during Reed-Solomon FEC decoding for {input_file_name}: {ve}. Output may be incorrect.",
+                file=sys.stderr,
+            )
+
+    return final_data
+
+
 # --- Helper function for single file encoding ---
 def process_single_encode(
     input_file_path: str, output_file_path: str, args: argparse.Namespace
@@ -52,134 +342,63 @@ def process_single_encode(
         f"\nProcessing encode for input: {input_file_path} -> output: {output_file_path}"
     )
     try:
-        with open(input_file_path, "rb") as f_in:
-            original_input_data = f_in.read()  # Store original for metrics
-
-        current_input_data = original_input_data
-        fec_padding_bits = -1  # Placeholder, only relevant for Hamming
-
-        fasta_header_parts = [
-            f"method={args.method}",
-            f"input_file={os.path.basename(input_file_path)}",
-        ]
-
-        # Apply Hamming FEC *before* DNA encoding if specified
-        if args.fec == "hamming_7_4":
+        if args.stream and args.method == "base4_direct" and args.fec is None:
+            header = f"method=base4_direct input_file={os.path.basename(input_file_path)}"
             if args.add_parity:
-                print(
-                    f"Warning for {input_file_path}: --add-parity is ignored when Hamming(7,4) FEC is applied to binary data.",
-                    file=sys.stderr,
-                )
-            current_input_data, fec_padding_bits = encode_data_with_hamming(
-                original_input_data
-            )
-            fasta_header_parts.append("fec=hamming_7_4")
-            fasta_header_parts.append(f"fec_padding_bits={fec_padding_bits}")
-            print(
-                f"Applied Hamming(7,4) FEC to {input_file_path}. Original binary size: {len(original_input_data)}, Hamming encoded binary size: {len(current_input_data)} (padding bits: {fec_padding_bits})."
-            )
+                header += f" parity_k={args.k_value} parity_rule={args.parity_rule}"
+            from genecoder.streaming import stream_encode_file
 
-        # DNA Encoding methods
-        raw_encoded_dna = ""
-        # Determine if parity should be applied (only if Hamming not used)
-        should_add_parity = args.add_parity and args.fec != "hamming_7_4"
-
-        if args.method == "base4_direct":
-            if should_add_parity and args.k_value <= 0:
-                print(
-                    f"Error for {input_file_path}: Parity k-value must be positive.",
-                    file=sys.stderr,
-                )
-                return
-            raw_encoded_dna = encode_base4_direct(
-                current_input_data,
-                add_parity=should_add_parity,
+            total_len = stream_encode_file(
+                input_file_path,
+                output_file_path,
+                header=header,
+                add_parity=args.add_parity,
                 k_value=args.k_value,
                 parity_rule=args.parity_rule,
             )
-            if should_add_parity:
-                fasta_header_parts.extend(
-                    [f"parity_k={args.k_value}", f"parity_rule={args.parity_rule}"]
-                )
 
-        elif args.method == "huffman":
-            if should_add_parity and args.k_value <= 0:
-                print(
-                    f"Error for {input_file_path}: Parity k-value must be positive for Huffman.",
-                    file=sys.stderr,
-                )
-                return
-            raw_encoded_dna, huffman_table, num_padding_bits = encode_huffman(
-                current_input_data,
-                add_parity=should_add_parity,
-                k_value=args.k_value,
-                parity_rule=args.parity_rule,
+            original_size_bytes = os.path.getsize(input_file_path)
+            dna_equivalent_bytes = total_len * 0.25
+            compression_ratio = (
+                original_size_bytes / dna_equivalent_bytes
+                if dna_equivalent_bytes > 0
+                else (float("inf") if original_size_bytes > 0 else 0.0)
             )
-            serializable_table = {str(k): v for k, v in huffman_table.items()}
-            huffman_params = {"table": serializable_table, "padding": num_padding_bits}
-            fasta_header_parts.append(f"huffman_params={json.dumps(huffman_params)}")
-            if should_add_parity:
-                fasta_header_parts.extend(
-                    [f"parity_k={args.k_value}", f"parity_rule={args.parity_rule}"]
-                )
-
-        elif args.method == "gc_balanced":
-            target_gc_min = args.gc_min
-            target_gc_max = args.gc_max
-            max_homopolymer_constraint = args.max_homopolymer
-            if should_add_parity:  # Parity is not part of gc_balanced's core logic
-                print(
-                    f"Warning for {input_file_path}: --add-parity not directly used by 'gc_balanced' core logic.",
-                    file=sys.stderr,
-                )
-            raw_encoded_dna = encode_gc_balanced(
-                current_input_data,
-                target_gc_min,
-                target_gc_max,
-                max_homopolymer_constraint,
-            )
-            fasta_header_parts.extend(
-                [
-                    f"gc_min={target_gc_min}",
-                    f"gc_max={target_gc_max}",
-                    f"max_homopolymer={max_homopolymer_constraint}",
-                ]
+            bits_per_nucleotide = (
+                (original_size_bytes * 8) / total_len if total_len else 0.0
             )
 
-        else:
+            print(f"\n--- Encoding Metrics for {input_file_path} ---")
+            print(f"Original file size: {original_size_bytes} bytes")
             print(
-                f"Error for {input_file_path}: Unknown encoding method '{args.method}'.",
-                file=sys.stderr,
+                f"Final Encoded DNA length: {total_len} nucleotides (streamed)"
+            )
+            print(
+                f"Compression ratio: {compression_ratio:.2f} (original bytes / final DNA bytes equivalent)"
+            )
+            print(
+                f"Bits per nucleotide: {bits_per_nucleotide:.2f} bits/nt"
+            )
+            print("----------------------")
+            print(
+                f"Successfully encoded '{input_file_path}' to '{output_file_path}' using streaming."
             )
             return
 
-        # Apply Triple-Repeat FEC *after* DNA encoding if specified
-        final_encoded_dna_sequence = raw_encoded_dna
-        if args.fec == "triple_repeat":
-            if (
-                args.fec == "hamming_7_4"
-            ):  # This case should not be hit if logic is correct above, but as safeguard
-                print(
-                    f"Error for {input_file_path}: Cannot apply both hamming_7_4 and triple_repeat FEC.",
-                    file=sys.stderr,
-                )  # Should be handled by arg choices
-                return  # Or handle as priority, e.g. Hamming first
-            final_encoded_dna_sequence = encode_triple_repeat(raw_encoded_dna)
-            fasta_header_parts.append(
-                "fec=triple_repeat"
-            )  # Ensure this is not duplicated if Hamming was also added
-            print(
-                f"Applied Triple-Repeat FEC to {input_file_path}. DNA length before: {len(raw_encoded_dna)}, after: {len(final_encoded_dna_sequence)}."
-            )
-        elif (
-            args.fec is not None and args.fec != "hamming_7_4"
-        ):  # Unknown FEC if not already handled
-            print(
-                f"Warning for {input_file_path}: Unknown FEC method '{args.fec}'. No DNA-level FEC applied.",
-                file=sys.stderr,
-            )
+        with open(input_file_path, "rb") as f_in:
+            original_input_data = f_in.read()  # Store original for metrics
 
-        fasta_header = " ".join(fasta_header_parts)
+        options = build_encoding_options(args)
+        (
+            final_encoded_dna_sequence,
+            fasta_header,
+            raw_encoded_dna,
+            current_input_data,
+            fec_padding_bits,
+        ) = run_encoding_pipeline(
+            original_input_data, options, os.path.basename(input_file_path)
+        )
+
         fasta_output = to_fasta(final_encoded_dna_sequence, fasta_header, line_width=80)
 
         os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
@@ -253,6 +472,21 @@ def process_single_decode(
         f"\nProcessing decode for input: {input_file_path} -> output: {output_file_path}"
     )
     try:
+        if args.stream and args.method == "base4_direct":
+            from genecoder.streaming import stream_decode_file
+
+            stream_decode_file(
+                input_file_path,
+                output_file_path,
+                check_parity=args.check_parity,
+                k_value=args.k_value,
+                parity_rule=args.parity_rule,
+            )
+            print(
+                f"Successfully decoded '{input_file_path}' to '{output_file_path}' using streaming."
+            )
+            return
+
         with open(input_file_path, "r", encoding="utf-8") as f_in:
             file_content_str = f_in.read()
 
@@ -282,173 +516,10 @@ def process_single_decode(
                 )
                 sys.exit(1)
 
-        # --- DNA-level FEC decoding (Triple Repeat) ---
-        dna_sequence_for_primary_decode = sequence_from_fasta
-        if "fec=triple_repeat" in header:
-            print(f"Triple-Repeat FEC detected in header for {input_file_path}.")
-            if len(sequence_from_fasta) % 3 != 0:
-                print(
-                    f"Warning for {input_file_path}: Sequence length {len(sequence_from_fasta)} is not multiple of 3 for Triple-Repeat FEC. Attempting decode, but it might fail or be incorrect.",
-                    file=sys.stderr,
-                )
-            try:
-                dna_sequence_for_primary_decode, corrected_tr, uncorr_tr = (
-                    decode_triple_repeat(sequence_from_fasta)
-                )
-                print(
-                    f"Triple-Repeat FEC decoding for {input_file_path}: {corrected_tr} corrected, {uncorr_tr} uncorrectable errors in triplets."
-                )
-            except (
-                ValueError
-            ) as ve:  # Catch error if decode_triple_repeat itself raises it
-                print(
-                    f"Error during Triple-Repeat FEC decoding for {input_file_path}: {ve}. Using sequence as is for primary decode.",
-                    file=sys.stderr,
-                )
-                # dna_sequence_for_primary_decode remains sequence_from_fasta
-
-        # --- Primary DNA Decoding (to intermediate binary) ---
-        intermediate_binary_data = b""
-        parity_errors = []  # For DNA-level parity, not Hamming
-
-        # Determine if DNA-level parity should be checked (only if Hamming not primary FEC)
-        should_check_dna_parity = args.check_parity and "fec=hamming_7_4" not in header
-
-        if args.method == "base4_direct":
-            if should_check_dna_parity and args.k_value <= 0:
-                print(
-                    f"Error for {input_file_path}: Parity k-value must be positive for DNA-level parity.",
-                    file=sys.stderr,
-                )
-                return
-            intermediate_binary_data, parity_errors = decode_base4_direct(
-                dna_sequence_for_primary_decode,
-                check_parity=should_check_dna_parity,
-                k_value=args.k_value,
-                parity_rule=args.parity_rule,
-            )
-        elif args.method == "huffman":
-            if should_check_dna_parity and args.k_value <= 0:
-                print(
-                    f"Error for {input_file_path}: Parity k-value must be positive for Huffman DNA-level parity.",
-                    file=sys.stderr,
-                )
-                return
-            try:  # Parsing Huffman params from header
-                json_param_field_start = header.find("huffman_params=")
-                if json_param_field_start == -1:
-                    raise ValueError("Huffman params field missing.")
-                json_part_with_key = header[
-                    json_param_field_start + len("huffman_params=") :
-                ]
-                first_bracket = json_part_with_key.find("{")
-                if first_bracket == -1:
-                    raise ValueError("Huffman JSON object start missing.")
-                open_br = 0
-                json_end = -1
-                for i, char_h in enumerate(json_part_with_key[first_bracket:]):
-                    if char_h == "{":
-                        open_br += 1
-                    elif char_h == "}":
-                        open_br -= 1
-                    if open_br == 0:
-                        json_end = first_bracket + i + 1
-                        break
-                if json_end == -1:
-                    raise ValueError("Huffman JSON object end missing.")
-                params_json_str = json_part_with_key[first_bracket:json_end]
-                huffman_params = json.loads(params_json_str)
-                huffman_table = {int(k): v for k, v in huffman_params["table"].items()}
-                num_padding_bits = huffman_params["padding"]
-                if huffman_table is None or num_padding_bits is None:
-                    raise ValueError("Huffman table/padding missing.")
-
-                intermediate_binary_data, parity_errors = decode_huffman(
-                    dna_sequence_for_primary_decode,
-                    huffman_table,
-                    num_padding_bits,
-                    check_parity=should_check_dna_parity,
-                    k_value=args.k_value,
-                    parity_rule=args.parity_rule,
-                )
-            except Exception as e:
-                print(
-                    f"Error for {input_file_path}: Invalid Huffman params in header: {e}",
-                    file=sys.stderr,
-                )
-                return
-        elif args.method == "gc_balanced":
-            if should_check_dna_parity:
-                # gc_balanced does not use this type of parity
-                print(
-                    f"Warning for {input_file_path}: --check-parity is not applicable to 'gc_balanced' method's DNA layer.",
-                    file=sys.stderr,
-                )
-            try:  # Parsing GC-Balanced params from header
-                gc_min_match = re.search(r"gc_min=([\d.]+)", header)
-                gc_max_match = re.search(r"gc_max=([\d.]+)", header)
-                max_hp_match = re.search(r"max_homopolymer=(\d+)", header)
-                gc_min = float(gc_min_match.group(1)) if gc_min_match else None
-                gc_max = float(gc_max_match.group(1)) if gc_max_match else None
-                max_hp = int(max_hp_match.group(1)) if max_hp_match else None
-                if not all([gc_min, gc_max, max_hp]):
-                    print(
-                        f"Warning for {input_file_path}: Could not parse all GC constraint params from header for gc_balanced.",
-                        file=sys.stderr,
-                    )
-                intermediate_binary_data = decode_gc_balanced(
-                    dna_sequence_for_primary_decode,
-                    expected_gc_min=gc_min,
-                    expected_gc_max=gc_max,
-                    expected_max_homopolymer=max_hp,
-                )
-            except Exception as e:
-                print(
-                    f"Error for {input_file_path}: GC-balanced decoding/param parsing: {e}",
-                    file=sys.stderr,
-                )
-                return
-        else:
-            print(
-                f"Error for {input_file_path}: Unknown decoding method '{args.method}'.",
-                file=sys.stderr,
-            )
-            return
-
-        if should_check_dna_parity and parity_errors:
-            print(
-                f"Warning for {input_file_path}: DNA-level parity errors in data blocks: {parity_errors}",
-                file=sys.stderr,
-            )
-
-        # --- Binary-level FEC decoding (Hamming) ---
-        final_decoded_data = intermediate_binary_data
-        if "fec=hamming_7_4" in header:
-            print(f"Hamming(7,4) FEC detected in header for {input_file_path}.")
-            fec_padding_bits_match = re.search(r"fec_padding_bits=(\d+)", header)
-            if not fec_padding_bits_match:
-                print(
-                    f"Error for {input_file_path}: 'fec_padding_bits' missing in header for Hamming(7,4) FEC. Cannot decode.",
-                    file=sys.stderr,
-                )
-                return  # Critical error, cannot proceed with Hamming decode
-
-            fec_padding_bits = int(fec_padding_bits_match.group(1))
-            try:
-                final_decoded_data, corrected_ham = decode_data_with_hamming(
-                    intermediate_binary_data, fec_padding_bits
-                )
-                print(
-                    f"Hamming(7,4) FEC decoding for {input_file_path}: {corrected_ham} corrected errors in codewords."
-                )
-            except (
-                ValueError
-            ) as ve:  # Catch errors from decode_data_with_hamming (e.g. invalid length)
-                print(
-                    f"Error during Hamming(7,4) FEC decoding for {input_file_path}: {ve}. Output may be incorrect.",
-                    file=sys.stderr,
-                )
-                # final_decoded_data remains intermediate_binary_data if Hamming fails critically
+        options = build_decoding_options(args)
+        final_decoded_data = run_decoding_pipeline(
+            sequence_from_fasta, header, options, os.path.basename(input_file_path)
+        )
 
         os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
         with open(output_file_path, "wb") as f_out:
@@ -597,8 +668,8 @@ def main() -> None:
         "--fec",
         type=str,
         default=None,
-        choices=[None, "triple_repeat", "hamming_7_4"],  # Added hamming_7_4
-        help="Forward Error Correction method to apply. Optional. (Note: hamming_7_4 is applied to binary data before DNA encoding; triple_repeat is applied to DNA sequence after encoding).",
+        choices=[None, "triple_repeat", "hamming_7_4", "reed_solomon"],  # Added hamming_7_4 and reed_solomon
+        help="Forward Error Correction method to apply. Optional. (Note: hamming_7_4 and reed_solomon are applied to binary data before DNA encoding; triple_repeat is applied to DNA sequence after encoding).",
     )
     encode_parser.add_argument(
         "--gc-min",
@@ -617,6 +688,11 @@ def main() -> None:
         type=int,
         default=3,
         help="Maximum homopolymer length for gc_balanced encoding (default: 3).",
+    )
+    encode_parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Stream encode large files (base4_direct only).",
     )
 
     # Decode command parser
@@ -665,6 +741,11 @@ def main() -> None:
         default=PARITY_RULE_GC_EVEN_A_ODD_T,
         choices=[PARITY_RULE_GC_EVEN_A_ODD_T],  # Add more rules here in future
         help="Parity rule used during encoding (default: GC_even_A_odd_T).",
+    )
+    decode_parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Stream decode large files (base4_direct only).",
     )
 
     # Analyze command parser
