@@ -72,8 +72,12 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
                 "Info: 'Add Parity' ignored when Hamming(7,4) FEC selected."\
             )
         current_input, fec_padding_bits = encode_data_with_hamming(data)
+    elif options.fec_method == "Reed-Solomon":
+        if options.add_parity:
+            info_msgs.append("Info: 'Add Parity' ignored when Reed-Solomon FEC selected.")
+        current_input, rs_nsym = encode_data_rs(data)
 
-    should_add_parity = options.add_parity and options.fec_method != "Hamming(7,4)"
+    should_add_parity = options.add_parity and options.fec_method not in ("Hamming(7,4)", "Reed-Solomon")
 
     raw_dna = ""
     huffman_table: Optional[Dict[int, str]] = None
@@ -109,6 +113,8 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
         info_msgs.append("Triple-Repeat FEC applied.")
     elif options.fec_method == "Hamming(7,4)":
         info_msgs.append("Hamming(7,4) FEC applied.")
+    elif options.fec_method == "Reed-Solomon":
+        info_msgs.append("Reed-Solomon FEC applied.")
 
     header_parts = [
         f"method={method.lower().replace(' ', '_').replace('-', '_')}",
@@ -133,6 +139,9 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
     elif options.fec_method == "Hamming(7,4)":
         header_parts.append("fec=hamming_7_4")
         header_parts.append(f"fec_padding_bits={fec_padding_bits}")
+    elif options.fec_method == "Reed-Solomon":
+        header_parts.append("fec=reed_solomon")
+        header_parts.append(f"fec_nsym={rs_nsym}")
 
     fasta_header = " ".join(header_parts)
     fasta_str = to_fasta(final_dna, fasta_header, 80)
@@ -296,6 +305,18 @@ def perform_decoding(fasta_data: str) -> DecodeResult:
             fec_messages.append(msg)
         else:
             msg = "'fec_padding_bits' missing for Hamming FEC."
+            messages.append(msg)
+            fec_messages.append(msg)
+    if "fec=reed_solomon" in header:
+        nsym_match = re.search(r"fec_nsym=(\d+)", header)
+        if nsym_match:
+            nsym = int(nsym_match.group(1))
+            decoded_bytes, corrected_rs = decode_data_rs(decoded_bytes, nsym)
+            msg = f"Reed-Solomon FEC: {corrected_rs} corrections."
+            messages.append(msg)
+            fec_messages.append(msg)
+        else:
+            msg = "'fec_nsym' missing for Reed-Solomon FEC."
             messages.append(msg)
             fec_messages.append(msg)
 

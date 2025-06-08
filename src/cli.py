@@ -31,6 +31,7 @@ from genecoder.hamming_codec import (
     encode_data_with_hamming,
     decode_data_with_hamming,
 )  # Binary-level FEC
+from genecoder.reed_solomon_codec import encode_data_rs, decode_data_rs
 from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman, decode_huffman
 from genecoder.error_detection import (
@@ -115,9 +116,21 @@ def run_encoding_pipeline(
         print(
             f"Applied Hamming(7,4) FEC to {input_file_name}. Original binary size: {len(data)}, Hamming encoded binary size: {len(current_input)} (padding bits: {fec_padding_bits})."
         )
+    elif options.fec == "reed_solomon":
+        if options.add_parity:
+            print(
+                f"Warning for {input_file_name}: --add-parity is ignored when Reed-Solomon FEC is applied to binary data.",
+                file=sys.stderr,
+            )
+        current_input, rs_nsym = encode_data_rs(data)
+        header_parts.append("fec=reed_solomon")
+        header_parts.append(f"fec_nsym={rs_nsym}")
+        print(
+            f"Applied Reed-Solomon FEC to {input_file_name}. Original binary size: {len(data)}, RS encoded binary size: {len(current_input)} (nsym={rs_nsym})."
+        )
 
     raw_dna = ""
-    should_add_parity = options.add_parity and options.fec != "hamming_7_4"
+    should_add_parity = options.add_parity and options.fec not in ("hamming_7_4", "reed_solomon")
 
     if options.method == "base4_direct":
         if should_add_parity and options.k_value <= 0:
@@ -177,7 +190,7 @@ def run_encoding_pipeline(
         print(
             f"Applied Triple-Repeat FEC to {input_file_name}. DNA length before: {len(raw_dna)}, after: {len(final_dna)}."
         )
-    elif options.fec is not None and options.fec != "hamming_7_4":
+    elif options.fec is not None and options.fec not in ("hamming_7_4", "reed_solomon"):
         print(
             f"Warning for {input_file_name}: Unknown FEC method '{options.fec}'. No DNA-level FEC applied.",
             file=sys.stderr,
@@ -211,7 +224,7 @@ def run_decoding_pipeline(
             )
 
     parity_errors: list[int] = []
-    should_check_parity = options.check_parity and "fec=hamming_7_4" not in header
+    should_check_parity = options.check_parity and "fec=hamming_7_4" not in header and "fec=reed_solomon" not in header
 
     if options.method == "base4_direct":
         if should_check_parity and options.k_value <= 0:
@@ -298,6 +311,22 @@ def run_decoding_pipeline(
         except ValueError as ve:
             print(
                 f"Error during Hamming(7,4) FEC decoding for {input_file_name}: {ve}. Output may be incorrect.",
+                file=sys.stderr,
+            )
+    if "fec=reed_solomon" in header:
+        print(f"Reed-Solomon FEC detected in header for {input_file_name}.")
+        nsym_match = re.search(r"fec_nsym=(\d+)", header)
+        if not nsym_match:
+            raise ValueError("'fec_nsym' missing in header for Reed-Solomon FEC.")
+        nsym = int(nsym_match.group(1))
+        try:
+            final_data, corrected_rs = decode_data_rs(final_data, nsym)
+            print(
+                f"Reed-Solomon FEC decoding for {input_file_name}: {corrected_rs} corrections."
+            )
+        except ValueError as ve:
+            print(
+                f"Error during Reed-Solomon FEC decoding for {input_file_name}: {ve}. Output may be incorrect.",
                 file=sys.stderr,
             )
 
@@ -639,8 +668,8 @@ def main() -> None:
         "--fec",
         type=str,
         default=None,
-        choices=[None, "triple_repeat", "hamming_7_4"],  # Added hamming_7_4
-        help="Forward Error Correction method to apply. Optional. (Note: hamming_7_4 is applied to binary data before DNA encoding; triple_repeat is applied to DNA sequence after encoding).",
+        choices=[None, "triple_repeat", "hamming_7_4", "reed_solomon"],  # Added hamming_7_4 and reed_solomon
+        help="Forward Error Correction method to apply. Optional. (Note: hamming_7_4 and reed_solomon are applied to binary data before DNA encoding; triple_repeat is applied to DNA sequence after encoding).",
     )
     encode_parser.add_argument(
         "--gc-min",
