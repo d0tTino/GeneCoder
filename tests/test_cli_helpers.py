@@ -1,4 +1,5 @@
 import argparse
+import pytest
 from pathlib import Path
 from genecoder.formats import to_fasta, from_fasta
 from src.cli import (
@@ -71,3 +72,81 @@ def test_hamming_pipeline(tmp_path: Path):
     dec_opts = build_decoding_options(dec_args)
     out_bytes = run_decoding_pipeline(dna, header, dec_opts, input_file.name)
     assert out_bytes == data
+
+
+def test_reed_solomon_pipeline(tmp_path: Path):
+    data = b"RS test"
+    input_file = tmp_path / "rs.bin"
+    input_file.write_bytes(data)
+
+    enc_args = argparse.Namespace(
+        method="base4_direct",
+        add_parity=True,
+        k_value=7,
+        parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T,
+        fec="reed_solomon",
+        gc_min=0.45,
+        gc_max=0.55,
+        max_homopolymer=3,
+    )
+    enc_opts = build_encoding_options(enc_args)
+    dna, header, *_ = run_encoding_pipeline(data, enc_opts, input_file.name)
+    assert "fec=reed_solomon" in header
+    assert "fec_nsym=" in header
+    assert "parity_k" not in header
+
+    dec_args = argparse.Namespace(
+        method="base4_direct",
+        check_parity=False,
+        k_value=7,
+        parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T,
+    )
+    dec_opts = build_decoding_options(dec_args)
+    out_bytes = run_decoding_pipeline(dna, header, dec_opts, input_file.name)
+    assert out_bytes == data
+
+
+def test_run_encoding_invalid_k_value():
+    enc_args = argparse.Namespace(
+        method="base4_direct",
+        add_parity=True,
+        k_value=0,
+        parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T,
+        fec=None,
+        gc_min=0.45,
+        gc_max=0.55,
+        max_homopolymer=3,
+    )
+    enc_opts = build_encoding_options(enc_args)
+    with pytest.raises(ValueError):
+        run_encoding_pipeline(b"abc", enc_opts, "f.bin")
+
+
+def test_run_decoding_unknown_method(tmp_path: Path):
+    input_file = tmp_path / "x.bin"
+    data = b"hello"
+    input_file.write_bytes(data)
+
+    # encode with base4_direct
+    enc_args = argparse.Namespace(
+        method="base4_direct",
+        add_parity=False,
+        k_value=7,
+        parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T,
+        fec=None,
+        gc_min=0.45,
+        gc_max=0.55,
+        max_homopolymer=3,
+    )
+    enc_opts = build_encoding_options(enc_args)
+    dna, header, *_ = run_encoding_pipeline(data, enc_opts, input_file.name)
+
+    dec_args = argparse.Namespace(
+        method="unknown",
+        check_parity=False,
+        k_value=7,
+        parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T,
+    )
+    dec_opts = build_decoding_options(dec_args)
+    with pytest.raises(ValueError):
+        run_decoding_pipeline(dna, header, dec_opts, input_file.name)

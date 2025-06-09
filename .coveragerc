@@ -1,3 +1,4 @@
 [run]
 omit =
     src/flet_app.py
+    src/cli.py
