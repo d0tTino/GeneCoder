@@ -283,6 +283,7 @@ def main(page: ft.Page):
             nucleotide_freq_image.src_base64 = result.plots.get("nucleotide_freq")
             sequence_analysis_plot_image.src_base64 = result.plots.get("sequence_analysis")
 
+            any_plot = any(result.plots.values())
 
             if any_plot:
                 analysis_status_text.value = "All analysis plots generated successfully."
