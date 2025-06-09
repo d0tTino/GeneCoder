@@ -15,14 +15,18 @@ responsive.
 import flet as ft
 import os
 import asyncio  # For asynchronous operations
+import json
+import base64
 
 # Project module imports
 from genecoder import (
     EncodeOptions,
     perform_encoding,
-    perform_decoding,
+
 )
-from .flet_helpers import parse_int_input
+from genecoder.utils import get_max_homopolymer_length
+from genecoder.app_helpers import perform_decoding
+
 
 encode_fasta_data_to_save_ref = ft.Ref[str]()
 decoded_bytes_to_save: bytes = b"" 
@@ -120,15 +124,30 @@ def main(page: ft.Page):
         on_change=lambda e: setattr(k_value_input, 'disabled', not e.control.value) or page.update()
     )
 
+    def on_fec_change(e: ft.ControlEvent):
+        """Toggle parity checkbox based on selected FEC."""
+        selected = e.control.value
+        if selected in ("Hamming(7,4)", "Reed-Solomon"):
+            parity_checkbox.value = False
+            parity_checkbox.disabled = True
+            k_value_input.disabled = True
+        else:
+            parity_checkbox.disabled = False
+            k_value_input.disabled = not parity_checkbox.value
+        page.update()
+
+
 
     fec_dropdown = ft.Dropdown(
         label="FEC Method",
         options=[
             ft.dropdown.Option("None"),
             ft.dropdown.Option("Triple-Repeat"),
-            ft.dropdown.Option("Hamming(7,4)")
+            ft.dropdown.Option("Hamming(7,4)"),
+            ft.dropdown.Option("Reed-Solomon"),
         ],
-        value="None"
+        value="None",
+        on_change=on_fec_change
 
     )
     
@@ -176,7 +195,8 @@ def main(page: ft.Page):
         4. Reads input file data asynchronously.
         5. Applies the selected encoding method (Base-4 Direct, Huffman, GC-Balanced) 
            asynchronously using `asyncio.to_thread`.
-        6. Optionally applies Triple-Repeat FEC if selected, also asynchronously.
+        6. Optionally applies Triple-Repeat, Hamming(7,4), or Reed-Solomon FEC if selected,
+           also asynchronously.
         7. Constructs FASTA header and formats the output.
         8. Calculates and displays encoding metrics.
         9. Generates and displays analysis plots (Huffman codeword lengths, nucleotide frequencies)
@@ -253,6 +273,7 @@ def main(page: ft.Page):
                 )
                 encode_actual_homopolymer_text.value = (
                     f"Actual max homopolymer (payload, pre-FEC): {metrics['max_homopolymer']}"
+
                 )
             else:
                 encode_actual_gc_text.value = "Actual GC content (payload): N/A"
@@ -262,7 +283,7 @@ def main(page: ft.Page):
             nucleotide_freq_image.src_base64 = result.plots.get("nucleotide_freq")
             sequence_analysis_plot_image.src_base64 = result.plots.get("sequence_analysis")
 
-            any_plot = any(result.plots.values())
+
             if any_plot:
                 analysis_status_text.value = "All analysis plots generated successfully."
                 analysis_status_text.color = ft.colors.GREEN_700
