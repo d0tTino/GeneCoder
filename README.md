@@ -176,7 +176,7 @@ Run the Flet application:
 ```bash
 python src/flet_app.py
 ```
-The GUI provides controls for most encoding methods and parity. Forward error correction is selectable from a dropdown offering `None`, `Triple-Repeat`, `Hamming(7,4)`, or `Reed-Solomon`. Metric displays and analysis plots are included. GUI operations are asynchronous to keep the interface responsive. See [WORKFLOWS.md](WORKFLOWS.md) for the underlying processing steps.
+The GUI provides controls for most encoding methods and parity. Forward error correction is selectable from a dropdown offering `None`, `Triple-Repeat`, `Hamming(7,4)`, or the newly added `Reed-Solomon` option. Metric displays and analysis plots are included. GUI operations are asynchronous to keep the interface responsive. See [WORKFLOWS.md](WORKFLOWS.md) for the underlying processing steps.
 
 ---
 
