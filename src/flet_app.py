@@ -15,28 +15,10 @@ responsive.
 import flet as ft
 import os
 import asyncio  # For asynchronous operations
+import json  # noqa: F401
+import base64  # noqa: F401
+from genecoder.app_helpers import EncodeOptions, perform_encoding, perform_decoding
 
-# Project module imports
-from genecoder.encoders import (
-    encode_base4_direct, decode_base4_direct,
-    encode_gc_balanced, decode_gc_balanced, calculate_gc_content,
-)
-from genecoder.utils import get_max_homopolymer_length
-from genecoder.encoders import encode_triple_repeat, decode_triple_repeat  # FEC functions
-from genecoder.hamming_codec import encode_data_with_hamming
-from genecoder.huffman_coding import encode_huffman, decode_huffman
-from genecoder.formats import to_fasta, from_fasta
-from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
-from genecoder.plotting import (
-    prepare_huffman_codeword_length_data,
-    generate_codeword_length_histogram,
-    prepare_nucleotide_frequency_data,
-    generate_nucleotide_frequency_plot,
-    calculate_windowed_gc_content,  # New import
-    identify_homopolymer_regions,  # New import
-    generate_sequence_analysis_plot # New import
-
-)
 from .flet_helpers import parse_int_input
 
 encode_fasta_data_to_save_ref = ft.Ref[str]()
@@ -259,197 +241,55 @@ def main(page: ft.Page):
 
             if method == "GC-Balanced" and add_parity_encode:
                 encode_status_text.value = "Info: 'Add Parity' not directly used by GC-Balanced."
-
+            
             with open(input_path, "rb") as f_in:
                 input_data = await asyncio.to_thread(f_in.read)
-
-            current_input_data = input_data
-            fec_padding_bits_for_header = 0
-            apply_hamming_fec = fec_method == "Hamming(7,4)"
-            apply_triple_repeat = fec_method == "Triple-Repeat"
-
-            if apply_hamming_fec:
-                if add_parity_encode:
-                    encode_status_text.value = (
-                        "Info: 'Add Parity' ignored when Hamming(7,4) FEC selected."
-                    )
-                current_input_data, fec_padding_bits_for_header = await asyncio.to_thread(
-                    encode_data_with_hamming, input_data
-                )
-
-            should_add_parity = add_parity_encode and not apply_hamming_fec
-
-            raw_dna_sequence = ""
-            huffman_table_for_header = {}
-            num_padding_bits_for_header = 0
             
-            if method == "Base-4 Direct":
-                raw_dna_sequence = await asyncio.to_thread(
-                    encode_base4_direct,
-                    current_input_data,
-                    should_add_parity,
-                    k_val_encode,
-                    PARITY_RULE_GC_EVEN_A_ODD_T,
-                )
-            elif method == "Huffman":
-                # encode_huffman returns a tuple, so handle its result
-                encode_result = await asyncio.to_thread(
-                    encode_huffman,
-                    current_input_data,
-                    should_add_parity,
-                    k_val_encode,
-                    PARITY_RULE_GC_EVEN_A_ODD_T,
-                )
-                raw_dna_sequence, huffman_table_for_header, num_padding_bits_for_header = encode_result
-
-            elif method == "GC-Balanced":
-                target_gc_min, target_gc_max, max_homopolymer = 0.45, 0.55, 3
-                raw_dna_sequence = await asyncio.to_thread(
-                    encode_gc_balanced,
-                    current_input_data,
-                    target_gc_min,
-                    target_gc_max,
-                    max_homopolymer,
-                )
-            else:
-                encode_status_text.value = f"Error: Unknown method '{method}'."
-                page.update()
-                return
-
-
-            header_parts = [
-                f"method={method.lower().replace(' ', '_').replace('-', '_')}",
-                f"input_file={os.path.basename(input_path)}",
-            ]
-            if should_add_parity and method != "GC-Balanced":
-                header_parts.extend(
-                    [f"parity_k={k_val_encode}", f"parity_rule={PARITY_RULE_GC_EVEN_A_ODD_T}"]
-                )
-            if method == "Huffman":
-                serializable_table = {str(k): v for k, v in huffman_table_for_header.items()}
-                huffman_params = {"table": serializable_table, "padding": num_padding_bits_for_header}
-                header_parts.append(f"huffman_params={json.dumps(huffman_params)}")
-            elif method == "GC-Balanced":
-                header_parts.extend([f"gc_min={target_gc_min}", f"gc_max={target_gc_max}", f"max_homopolymer={max_homopolymer}"])
-
-            final_encoded_dna = raw_dna_sequence
-            if apply_triple_repeat:
-                final_encoded_dna = await asyncio.to_thread(
-                    encode_triple_repeat, raw_dna_sequence
-                )
-
-                header_parts.append("fec=triple_repeat")
-                current_status = encode_status_text.value
-                if "Info:" in current_status:
-                    encode_status_text.value = current_status + " Triple-Repeat FEC applied."
-                else:
-                    encode_status_text.value = "Triple-Repeat FEC applied."
-                encode_status_text.color = ft.colors.BLUE_GREY_400
-            elif apply_hamming_fec:
-                header_parts.append("fec=hamming_7_4")
-                header_parts.append(f"fec_padding_bits={fec_padding_bits_for_header}")
-                current_status = encode_status_text.value
-                if "Info:" in current_status:
-                    encode_status_text.value = current_status + " Hamming(7,4) FEC applied."
-                else:
-                    encode_status_text.value = "Hamming(7,4) FEC applied."
-
-                encode_status_text.color = ft.colors.BLUE_GREY_400
+            options = EncodeOptions(
+                method=method,
+                add_parity=add_parity_encode,
+                k_value=k_val_encode,
+                fec_method=fec_method,
+                window_size=parse_int_input(window_size_input.value, 50, 1),
+                step_size=parse_int_input(step_size_input.value, 10, 1),
+                min_homopolymer_len=parse_int_input(min_homopolymer_input.value, 4, 1),
+            )
             
-            fasta_header = " ".join(header_parts)
-            final_fasta_str = await asyncio.to_thread(to_fasta, final_encoded_dna, fasta_header, 80)
-            encode_hidden_fasta_content.value = final_fasta_str
-
-            original_size_bytes = len(input_data)
-            final_encoded_length_nucleotides = len(final_encoded_dna)
-            dna_equivalent_bytes = final_encoded_length_nucleotides * 0.25
-            compression_ratio = original_size_bytes / dna_equivalent_bytes if dna_equivalent_bytes > 0 else (float('inf') if original_size_bytes > 0 else 0.0)
-            bits_per_nt_val = (original_size_bytes * 8) / final_encoded_length_nucleotides if final_encoded_length_nucleotides != 0 else 0.0
-
-            encode_orig_size_text.value = f"Original size: {original_size_bytes} bytes"
-            encode_dna_len_text.value = f"Encoded DNA length: {final_encoded_length_nucleotides} nucleotides (Post-FEC)"
-            encode_comp_ratio_text.value = f"Compression ratio: {compression_ratio:.2f}"
-            encode_bits_per_nt_text.value = f"Bits per nucleotide: {bits_per_nt_val:.2f} bits/nt"
+            result = await asyncio.to_thread(perform_encoding, input_data, options)
             
-            if method == "GC-Balanced":
+            encode_hidden_fasta_content.value = result.fasta
+            
+            metrics = result.metrics
+            encode_orig_size_text.value = f"Original size: {metrics['original_size']} bytes"
+            encode_dna_len_text.value = f"Encoded DNA length: {metrics['dna_length']} nucleotides"
+            encode_comp_ratio_text.value = f"Compression ratio: {metrics['compression_ratio']:.2f}"
+            encode_bits_per_nt_text.value = f"Bits per nucleotide: {metrics['bits_per_nt']:.2f} bits/nt"
+            
+            if 'actual_gc' in metrics:
                 encode_actual_gc_text.value = (
-                    f"Actual GC content (payload, pre-FEC): {result.metrics['actual_gc']:.2%}"
+                    f"Actual GC content (payload, pre-FEC): {metrics['actual_gc']:.2%}"
                 )
                 encode_actual_homopolymer_text.value = (
-                    f"Actual max homopolymer (payload, pre-FEC): {result.metrics['max_homopolymer']}"
+                    f"Actual max homopolymer (payload, pre-FEC): {metrics['max_homopolymer']}"
                 )
             else:
                 encode_actual_gc_text.value = "Actual GC content (payload): N/A"
                 encode_actual_homopolymer_text.value = "Actual max homopolymer (payload): N/A"
-
+            
             encode_dna_snippet_text.value = result.encoded_dna[:200]
             encode_save_button.visible = True
             
-            base_success_msg = "Encoding successful! Click 'Save Encoded FASTA...' to save."
-            if apply_triple_repeat and "Triple-Repeat FEC applied" in encode_status_text.value:
-                if "Info:" in encode_status_text.value:
-                    encode_status_text.value = encode_status_text.value.replace(
-                        "Triple-Repeat FEC applied.",
-                        base_success_msg + " Triple-Repeat FEC applied.",
-                    )
-                else:
-                    encode_status_text.value = base_success_msg + " Triple-Repeat FEC applied."
-            elif apply_hamming_fec and "Hamming(7,4) FEC applied" in encode_status_text.value:
-                if "Info:" in encode_status_text.value:
-                    encode_status_text.value = encode_status_text.value.replace(
-                        "Hamming(7,4) FEC applied.",
-                        base_success_msg + " Hamming(7,4) FEC applied.",
-                    )
-                else:
-                    encode_status_text.value = base_success_msg + " Hamming(7,4) FEC applied."
-            elif "Info:" not in encode_status_text.value:
-                encode_status_text.value = base_success_msg
-
-            # If "Info:" was there but no FEC, it remains.
-            
-            encode_status_text.color = ft.colors.GREEN_700 # Assume success if no error thrown
-
-            analysis_tab_is_enabled = False
-            current_analysis_status_messages = []
-
-            if method == "Huffman" and huffman_table_for_header:
-                try:
-                    length_counts = await asyncio.to_thread(prepare_huffman_codeword_length_data, huffman_table_for_header)
-                    if any(length_counts.values()):
-                        hist_buf = await asyncio.to_thread(generate_codeword_length_histogram, length_counts)
-                        codeword_hist_image.src_base64 = base64.b64encode(hist_buf.getvalue()).decode('utf-8')
-                        hist_buf.close()
-                        analysis_tab_is_enabled = True
-                except Exception as plot_ex:
-                    current_analysis_status_messages.append(f"Huffman plot error: {plot_ex}")
-            else:
-                current_analysis_status_messages.append("Codeword histogram for Huffman only.")
-            
-            if final_encoded_dna: # Use final_encoded_dna for nucleotide frequency
-                try:
-                    nucleotide_counts = await asyncio.to_thread(prepare_nucleotide_frequency_data, final_encoded_dna)
-                    if any(nucleotide_counts.values()):
-                        freq_buf = await asyncio.to_thread(generate_nucleotide_frequency_plot, nucleotide_counts)
-                        nucleotide_freq_image.src_base64 = base64.b64encode(freq_buf.getvalue()).decode('utf-8')
-                        freq_buf.close()
-                        analysis_tab_is_enabled = True
-                except Exception as plot_ex:
-                    current_analysis_status_messages.append(f"Nucleotide plot error: {plot_ex}")
-            else:
-                current_analysis_status_messages.append("Empty sequence for nucleotide plot.")
-
-
             status_prefix = " ".join(result.info_messages)
             encode_status_text.value = (
                 (status_prefix + " " if status_prefix else "")
                 + "Encoding successful! Click 'Save Encoded FASTA...' to save."
             )
             encode_status_text.color = ft.colors.GREEN_700
-
+            
             codeword_hist_image.src_base64 = result.plots.get("codeword_hist")
             nucleotide_freq_image.src_base64 = result.plots.get("nucleotide_freq")
             sequence_analysis_plot_image.src_base64 = result.plots.get("sequence_analysis")
-
+            
             any_plot = any(result.plots.values())
             if any_plot:
                 analysis_status_text.value = "All analysis plots generated successfully."
