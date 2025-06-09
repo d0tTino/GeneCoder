@@ -19,6 +19,7 @@ import json  # noqa: F401
 import base64  # noqa: F401
 from genecoder.app_helpers import EncodeOptions, perform_encoding, perform_decoding
 
+
 from .flet_helpers import parse_int_input
 
 encode_fasta_data_to_save_ref = ft.Ref[str]()
@@ -117,15 +118,30 @@ def main(page: ft.Page):
         on_change=lambda e: setattr(k_value_input, 'disabled', not e.control.value) or page.update()
     )
 
+    def on_fec_change(e: ft.ControlEvent):
+        """Toggle parity checkbox based on selected FEC."""
+        selected = e.control.value
+        if selected in ("Hamming(7,4)", "Reed-Solomon"):
+            parity_checkbox.value = False
+            parity_checkbox.disabled = True
+            k_value_input.disabled = True
+        else:
+            parity_checkbox.disabled = False
+            k_value_input.disabled = not parity_checkbox.value
+        page.update()
+
+
 
     fec_dropdown = ft.Dropdown(
         label="FEC Method",
         options=[
             ft.dropdown.Option("None"),
             ft.dropdown.Option("Triple-Repeat"),
-            ft.dropdown.Option("Hamming(7,4)")
+            ft.dropdown.Option("Hamming(7,4)"),
+            ft.dropdown.Option("Reed-Solomon"),
         ],
-        value="None"
+        value="None",
+        on_change=on_fec_change
 
     )
     
@@ -173,7 +189,8 @@ def main(page: ft.Page):
         4. Reads input file data asynchronously.
         5. Applies the selected encoding method (Base-4 Direct, Huffman, GC-Balanced) 
            asynchronously using `asyncio.to_thread`.
-        6. Optionally applies Triple-Repeat FEC if selected, also asynchronously.
+        6. Optionally applies Triple-Repeat, Hamming(7,4), or Reed-Solomon FEC if selected,
+           also asynchronously.
         7. Constructs FASTA header and formats the output.
         8. Calculates and displays encoding metrics.
         9. Generates and displays analysis plots (Huffman codeword lengths, nucleotide frequencies)
@@ -254,6 +271,7 @@ def main(page: ft.Page):
                 step_size=parse_int_input(step_size_input.value, 10, 1),
                 min_homopolymer_len=parse_int_input(min_homopolymer_input.value, 4, 1),
             )
+
             
             result = await asyncio.to_thread(perform_encoding, input_data, options)
             
