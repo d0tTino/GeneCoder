@@ -135,6 +135,19 @@ def main(page: ft.Page):
         on_change=lambda e: setattr(k_value_input, 'disabled', not e.control.value) or page.update()
     )
 
+    def on_fec_change(e: ft.ControlEvent):
+        """Toggle parity checkbox based on selected FEC."""
+        selected = e.control.value
+        if selected in ("Hamming(7,4)", "Reed-Solomon"):
+            parity_checkbox.value = False
+            parity_checkbox.disabled = True
+            k_value_input.disabled = True
+        else:
+            parity_checkbox.disabled = False
+            k_value_input.disabled = not parity_checkbox.value
+        page.update()
+
+
 
     fec_dropdown = ft.Dropdown(
         label="FEC Method",
@@ -143,7 +156,8 @@ def main(page: ft.Page):
             ft.dropdown.Option("Triple-Repeat"),
             ft.dropdown.Option("Hamming(7,4)")
         ],
-        value="None"
+        value="None",
+        on_change=on_fec_change
 
     )
     
