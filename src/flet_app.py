@@ -24,6 +24,7 @@ from genecoder.encoders import (
 from genecoder.utils import get_max_homopolymer_length
 from genecoder.encoders import encode_triple_repeat, decode_triple_repeat  # FEC functions
 from genecoder.hamming_codec import encode_data_with_hamming
+from genecoder.reed_solomon_codec import encode_data_rs
 from genecoder.huffman_coding import encode_huffman, decode_huffman
 from genecoder.formats import to_fasta, from_fasta
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
@@ -141,7 +142,8 @@ def main(page: ft.Page):
         options=[
             ft.dropdown.Option("None"),
             ft.dropdown.Option("Triple-Repeat"),
-            ft.dropdown.Option("Hamming(7,4)")
+            ft.dropdown.Option("Hamming(7,4)"),
+            ft.dropdown.Option("Reed-Solomon"),
         ],
         value="None"
 
@@ -191,7 +193,8 @@ def main(page: ft.Page):
         4. Reads input file data asynchronously.
         5. Applies the selected encoding method (Base-4 Direct, Huffman, GC-Balanced) 
            asynchronously using `asyncio.to_thread`.
-        6. Optionally applies Triple-Repeat FEC if selected, also asynchronously.
+        6. Optionally applies Triple-Repeat, Hamming(7,4), or Reed-Solomon FEC if selected,
+           also asynchronously.
         7. Constructs FASTA header and formats the output.
         8. Calculates and displays encoding metrics.
         9. Generates and displays analysis plots (Huffman codeword lengths, nucleotide frequencies)
@@ -265,8 +268,10 @@ def main(page: ft.Page):
 
             current_input_data = input_data
             fec_padding_bits_for_header = 0
+            rs_nsym_for_header = 0
             apply_hamming_fec = fec_method == "Hamming(7,4)"
             apply_triple_repeat = fec_method == "Triple-Repeat"
+            apply_reed_solomon = fec_method == "Reed-Solomon"
 
             if apply_hamming_fec:
                 if add_parity_encode:
@@ -277,7 +282,16 @@ def main(page: ft.Page):
                     encode_data_with_hamming, input_data
                 )
 
-            should_add_parity = add_parity_encode and not apply_hamming_fec
+            if apply_reed_solomon:
+                if add_parity_encode:
+                    encode_status_text.value = (
+                        "Info: 'Add Parity' ignored when Reed-Solomon FEC selected."
+                    )
+                current_input_data, rs_nsym_for_header = await asyncio.to_thread(
+                    encode_data_rs, input_data
+                )
+
+            should_add_parity = add_parity_encode and not (apply_hamming_fec or apply_reed_solomon)
 
             raw_dna_sequence = ""
             huffman_table_for_header = {}
@@ -355,6 +369,16 @@ def main(page: ft.Page):
                     encode_status_text.value = "Hamming(7,4) FEC applied."
 
                 encode_status_text.color = ft.colors.BLUE_GREY_400
+            elif apply_reed_solomon:
+                header_parts.append("fec=reed_solomon")
+                header_parts.append(f"fec_nsym={rs_nsym_for_header}")
+                current_status = encode_status_text.value
+                if "Info:" in current_status:
+                    encode_status_text.value = current_status + " Reed-Solomon FEC applied."
+                else:
+                    encode_status_text.value = "Reed-Solomon FEC applied."
+
+                encode_status_text.color = ft.colors.BLUE_GREY_400
             
             fasta_header = " ".join(header_parts)
             final_fasta_str = await asyncio.to_thread(to_fasta, final_encoded_dna, fasta_header, 80)
@@ -402,6 +426,14 @@ def main(page: ft.Page):
                     )
                 else:
                     encode_status_text.value = base_success_msg + " Hamming(7,4) FEC applied."
+            elif apply_reed_solomon and "Reed-Solomon FEC applied" in encode_status_text.value:
+                if "Info:" in encode_status_text.value:
+                    encode_status_text.value = encode_status_text.value.replace(
+                        "Reed-Solomon FEC applied.",
+                        base_success_msg + " Reed-Solomon FEC applied.",
+                    )
+                else:
+                    encode_status_text.value = base_success_msg + " Reed-Solomon FEC applied."
             elif "Info:" not in encode_status_text.value:
                 encode_status_text.value = base_success_msg
 
