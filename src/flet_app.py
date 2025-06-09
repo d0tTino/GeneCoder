@@ -15,29 +15,29 @@ responsive.
 import flet as ft
 import os
 import asyncio  # For asynchronous operations
+import json
+import base64
 
 # Project module imports
 from genecoder.encoders import (
-    encode_base4_direct, decode_base4_direct,
-    encode_gc_balanced, decode_gc_balanced, calculate_gc_content,
+    encode_base4_direct,
+    encode_gc_balanced,
+    calculate_gc_content,
 )
-from genecoder.utils import get_max_homopolymer_length
-from genecoder.encoders import encode_triple_repeat, decode_triple_repeat  # FEC functions
+from genecoder.encoders import encode_triple_repeat  # FEC functions
 from genecoder.hamming_codec import encode_data_with_hamming
-from genecoder.huffman_coding import encode_huffman, decode_huffman
-from genecoder.formats import to_fasta, from_fasta
+from genecoder.huffman_coding import encode_huffman
+from genecoder.formats import to_fasta
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.plotting import (
     prepare_huffman_codeword_length_data,
     generate_codeword_length_histogram,
     prepare_nucleotide_frequency_data,
-    generate_nucleotide_frequency_plot,
-    calculate_windowed_gc_content,  # New import
-    identify_homopolymer_regions,  # New import
-    generate_sequence_analysis_plot # New import
+    generate_nucleotide_frequency_plot # New import
 
 )
-from .flet_helpers import parse_int_input
+from genecoder.utils import get_max_homopolymer_length
+from genecoder.app_helpers import perform_decoding
 
 encode_fasta_data_to_save_ref = ft.Ref[str]()
 decoded_bytes_to_save: bytes = b"" 
@@ -372,17 +372,18 @@ def main(page: ft.Page):
             encode_bits_per_nt_text.value = f"Bits per nucleotide: {bits_per_nt_val:.2f} bits/nt"
             
             if method == "GC-Balanced":
+                payload = raw_dna_sequence[1:] if raw_dna_sequence else ""
                 encode_actual_gc_text.value = (
-                    f"Actual GC content (payload, pre-FEC): {result.metrics['actual_gc']:.2%}"
+                    f"Actual GC content (payload, pre-FEC): {calculate_gc_content(payload):.2%}"
                 )
                 encode_actual_homopolymer_text.value = (
-                    f"Actual max homopolymer (payload, pre-FEC): {result.metrics['max_homopolymer']}"
+                    f"Actual max homopolymer (payload, pre-FEC): {get_max_homopolymer_length(payload)}"
                 )
             else:
                 encode_actual_gc_text.value = "Actual GC content (payload): N/A"
                 encode_actual_homopolymer_text.value = "Actual max homopolymer (payload): N/A"
 
-            encode_dna_snippet_text.value = result.encoded_dna[:200]
+            encode_dna_snippet_text.value = final_encoded_dna[:200]
             encode_save_button.visible = True
             
             base_success_msg = "Encoding successful! Click 'Save Encoded FASTA...' to save."
@@ -439,18 +440,10 @@ def main(page: ft.Page):
                 current_analysis_status_messages.append("Empty sequence for nucleotide plot.")
 
 
-            status_prefix = " ".join(result.info_messages)
-            encode_status_text.value = (
-                (status_prefix + " " if status_prefix else "")
-                + "Encoding successful! Click 'Save Encoded FASTA...' to save."
-            )
+            encode_status_text.value = "Encoding successful! Click 'Save Encoded FASTA...' to save."
             encode_status_text.color = ft.colors.GREEN_700
 
-            codeword_hist_image.src_base64 = result.plots.get("codeword_hist")
-            nucleotide_freq_image.src_base64 = result.plots.get("nucleotide_freq")
-            sequence_analysis_plot_image.src_base64 = result.plots.get("sequence_analysis")
-
-            any_plot = any(result.plots.values())
+            any_plot = analysis_tab_is_enabled
             if any_plot:
                 analysis_status_text.value = "All analysis plots generated successfully."
                 analysis_status_text.color = ft.colors.GREEN_700
