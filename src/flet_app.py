@@ -15,12 +15,30 @@ responsive.
 import flet as ft
 import os
 import asyncio  # For asynchronous operations
-import json  # noqa: F401
-import base64  # noqa: F401
-from genecoder.app_helpers import EncodeOptions, perform_encoding, perform_decoding
+import json
+import base64
 
+# Project module imports
+from genecoder.encoders import (
+    encode_base4_direct,
+    encode_gc_balanced,
+    calculate_gc_content,
+)
+from genecoder.encoders import encode_triple_repeat  # FEC functions
+from genecoder.hamming_codec import encode_data_with_hamming
+from genecoder.huffman_coding import encode_huffman
+from genecoder.formats import to_fasta
+from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
+from genecoder.plotting import (
+    prepare_huffman_codeword_length_data,
+    generate_codeword_length_histogram,
+    prepare_nucleotide_frequency_data,
+    generate_nucleotide_frequency_plot # New import
 
-from .flet_helpers import parse_int_input
+)
+from genecoder.utils import get_max_homopolymer_length
+from genecoder.app_helpers import perform_decoding
+
 
 encode_fasta_data_to_save_ref = ft.Ref[str]()
 decoded_bytes_to_save: bytes = b"" 
@@ -277,38 +295,81 @@ def main(page: ft.Page):
             
             encode_hidden_fasta_content.value = result.fasta
             
-            metrics = result.metrics
-            encode_orig_size_text.value = f"Original size: {metrics['original_size']} bytes"
-            encode_dna_len_text.value = f"Encoded DNA length: {metrics['dna_length']} nucleotides"
-            encode_comp_ratio_text.value = f"Compression ratio: {metrics['compression_ratio']:.2f}"
-            encode_bits_per_nt_text.value = f"Bits per nucleotide: {metrics['bits_per_nt']:.2f} bits/nt"
-            
-            if 'actual_gc' in metrics:
+            if method == "GC-Balanced":
+                payload = raw_dna_sequence[1:] if raw_dna_sequence else ""
                 encode_actual_gc_text.value = (
-                    f"Actual GC content (payload, pre-FEC): {metrics['actual_gc']:.2%}"
+                    f"Actual GC content (payload, pre-FEC): {calculate_gc_content(payload):.2%}"
                 )
                 encode_actual_homopolymer_text.value = (
-                    f"Actual max homopolymer (payload, pre-FEC): {metrics['max_homopolymer']}"
+                    f"Actual max homopolymer (payload, pre-FEC): {get_max_homopolymer_length(payload)}"
+
                 )
             else:
                 encode_actual_gc_text.value = "Actual GC content (payload): N/A"
                 encode_actual_homopolymer_text.value = "Actual max homopolymer (payload): N/A"
-            
-            encode_dna_snippet_text.value = result.encoded_dna[:200]
+
+            encode_dna_snippet_text.value = final_encoded_dna[:200]
             encode_save_button.visible = True
             
-            status_prefix = " ".join(result.info_messages)
-            encode_status_text.value = (
-                (status_prefix + " " if status_prefix else "")
-                + "Encoding successful! Click 'Save Encoded FASTA...' to save."
-            )
+            base_success_msg = "Encoding successful! Click 'Save Encoded FASTA...' to save."
+            if apply_triple_repeat and "Triple-Repeat FEC applied" in encode_status_text.value:
+                if "Info:" in encode_status_text.value:
+                    encode_status_text.value = encode_status_text.value.replace(
+                        "Triple-Repeat FEC applied.",
+                        base_success_msg + " Triple-Repeat FEC applied.",
+                    )
+                else:
+                    encode_status_text.value = base_success_msg + " Triple-Repeat FEC applied."
+            elif apply_hamming_fec and "Hamming(7,4) FEC applied" in encode_status_text.value:
+                if "Info:" in encode_status_text.value:
+                    encode_status_text.value = encode_status_text.value.replace(
+                        "Hamming(7,4) FEC applied.",
+                        base_success_msg + " Hamming(7,4) FEC applied.",
+                    )
+                else:
+                    encode_status_text.value = base_success_msg + " Hamming(7,4) FEC applied."
+            elif "Info:" not in encode_status_text.value:
+                encode_status_text.value = base_success_msg
+
+            # If "Info:" was there but no FEC, it remains.
+            
+            encode_status_text.color = ft.colors.GREEN_700 # Assume success if no error thrown
+
+            analysis_tab_is_enabled = False
+            current_analysis_status_messages = []
+
+            if method == "Huffman" and huffman_table_for_header:
+                try:
+                    length_counts = await asyncio.to_thread(prepare_huffman_codeword_length_data, huffman_table_for_header)
+                    if any(length_counts.values()):
+                        hist_buf = await asyncio.to_thread(generate_codeword_length_histogram, length_counts)
+                        codeword_hist_image.src_base64 = base64.b64encode(hist_buf.getvalue()).decode('utf-8')
+                        hist_buf.close()
+                        analysis_tab_is_enabled = True
+                except Exception as plot_ex:
+                    current_analysis_status_messages.append(f"Huffman plot error: {plot_ex}")
+            else:
+                current_analysis_status_messages.append("Codeword histogram for Huffman only.")
+            
+            if final_encoded_dna: # Use final_encoded_dna for nucleotide frequency
+                try:
+                    nucleotide_counts = await asyncio.to_thread(prepare_nucleotide_frequency_data, final_encoded_dna)
+                    if any(nucleotide_counts.values()):
+                        freq_buf = await asyncio.to_thread(generate_nucleotide_frequency_plot, nucleotide_counts)
+                        nucleotide_freq_image.src_base64 = base64.b64encode(freq_buf.getvalue()).decode('utf-8')
+                        freq_buf.close()
+                        analysis_tab_is_enabled = True
+                except Exception as plot_ex:
+                    current_analysis_status_messages.append(f"Nucleotide plot error: {plot_ex}")
+            else:
+                current_analysis_status_messages.append("Empty sequence for nucleotide plot.")
+
+
+            encode_status_text.value = "Encoding successful! Click 'Save Encoded FASTA...' to save."
             encode_status_text.color = ft.colors.GREEN_700
-            
-            codeword_hist_image.src_base64 = result.plots.get("codeword_hist")
-            nucleotide_freq_image.src_base64 = result.plots.get("nucleotide_freq")
-            sequence_analysis_plot_image.src_base64 = result.plots.get("sequence_analysis")
-            
-            any_plot = any(result.plots.values())
+
+            any_plot = analysis_tab_is_enabled
+
             if any_plot:
                 analysis_status_text.value = "All analysis plots generated successfully."
                 analysis_status_text.color = ft.colors.GREEN_700
