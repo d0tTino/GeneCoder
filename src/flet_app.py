@@ -15,8 +15,6 @@ responsive.
 import flet as ft
 import os
 import asyncio  # For asynchronous operations
-import json
-import base64
 
 # Project module imports
 from genecoder import (
@@ -24,7 +22,7 @@ from genecoder import (
     perform_encoding,
 
 )
-from genecoder.utils import get_max_homopolymer_length
+from src.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
 
 
@@ -283,6 +281,7 @@ def main(page: ft.Page):
             nucleotide_freq_image.src_base64 = result.plots.get("nucleotide_freq")
             sequence_analysis_plot_image.src_base64 = result.plots.get("sequence_analysis")
 
+            # Compute after populating result.plots so checks use a stable value
             any_plot = any(result.plots.values())
 
             if any_plot:
