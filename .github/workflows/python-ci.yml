@@ -55,6 +55,12 @@ jobs:
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
       run: python scripts/only_comments_changed.py
 
+    - name: Cache pip
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
     - name: Install dependencies
       if: steps.comment_check.outputs.only_comments != 'true'
       run: |
