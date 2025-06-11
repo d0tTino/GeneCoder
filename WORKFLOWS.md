@@ -84,3 +84,16 @@ Both interfaces rely primarily on modules under `genecoder/`:
 - `plotting.py` (GUI metrics)
 
 These modules contain the core logic used by `src/cli.py` and `src/flet_app.py`.
+
+## Continuous Integration and Merge Queue
+
+Pull requests are merged using GitHub's **merge queue**. When a PR enters the
+queue, GitHub creates a temporary merge commit that must pass all required
+status checks before the branch is merged. The `python-ci` workflow is the
+required check for this repository, so the queued merge commit must succeed in
+that workflow to reach the front of the queue. If the checks fail, the PR is
+removed from the queue and will need to be re-queued after fixes are pushed.
+
+Contributors do not need to take any manual steps beyond opening the pull
+request. The merge queue will handle running `python-ci` automatically and will
+merge the branch once all checks pass.
