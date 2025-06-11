@@ -34,9 +34,24 @@ jobs:
               - 'requirements.txt'
               - '.github/workflows/**'
 
+  check-comments:
+    runs-on: ubuntu-latest
+    outputs:
+      only_comments: ${{ steps.comment_check.outputs.only_comments }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect comment-only changes
+        id: comment_check
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python scripts/only_comments_changed.py
+
   build:
-    needs: changes
-    if: needs.changes.outputs.src == 'true'
+    needs: [changes, check-comments]
+    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -49,50 +64,44 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Detect comment-only changes
-      id: comment_check
-      env:
-        BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      run: python scripts/only_comments_changed.py
-
     - name: Set up Python
-      if: steps.comment_check.outputs.only_comments != 'true'
+      if: needs['check-comments'].outputs.only_comments != 'true'
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Cache pip
-      if: steps.comment_check.outputs.only_comments != 'true'
+      if: needs['check-comments'].outputs.only_comments != 'true'
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
         key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
     - name: Install dependencies
-      if: steps.comment_check.outputs.only_comments != 'true'
+      if: needs['check-comments'].outputs.only_comments != 'true'
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install ruff
 
     - uses: pre-commit/action@v3
-      if: steps.comment_check.outputs.only_comments != 'true'
+      if: needs['check-comments'].outputs.only_comments != 'true'
 
     - name: Lint with ruff
-      if: steps.comment_check.outputs.only_comments != 'true'
+      if: needs['check-comments'].outputs.only_comments != 'true'
       run: |
         ruff check . --output-format=github
         # The --output-format=github will show annotations directly in PRs
 
     - name: Run unit tests
-      if: steps.comment_check.outputs.only_comments != 'true'
+      if: needs['check-comments'].outputs.only_comments != 'true'
       run: |
         python -m pip install pytest pytest-cov
         pytest --cov=src --cov-config=.coveragerc -vv
         coverage xml
 
     - name: Upload coverage to Codecov
-      if: steps.comment_check.outputs.only_comments != 'true'
+      if: needs['check-comments'].outputs.only_comments != 'true'
       uses: codecov/codecov-action@v3
       with:
         files: coverage.xml
