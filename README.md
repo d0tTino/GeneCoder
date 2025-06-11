@@ -222,7 +222,7 @@ Feel free to:
 *   Propose new features or improvements by opening an issue.
 *   Submit pull requests for bug fixes or enhancements.
 
-(Detailed contribution guidelines will be added as the project matures).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details on the merge queue, automatic merging of comment-only PRs and how to run `pre-commit` locally.
 
 ---
 
