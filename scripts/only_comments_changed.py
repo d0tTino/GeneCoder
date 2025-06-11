@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Check if Python code changes are limited to comments or documentation."""
+"""Check if repository changes are limited to docs or Python comments."""
 from __future__ import annotations
 
 import io
@@ -27,23 +27,28 @@ def _tokens_without_comments(source: str) -> list[tuple[int, str]] | None:
 
 
 def only_comments_changed(base_ref: str) -> bool:
-    """Return True if only comments or blank lines changed."""
+    """Return True if only docs or Python comments changed."""
 
-    files = run(["git", "diff", "--name-only", base_ref, "--", "*.py"]).splitlines()
-    if not files:
+    all_files = run(["git", "diff", "--name-only", base_ref]).splitlines()
+    if not all_files:
         return True
 
-    for path in files:
-        old_src = run(["git", "show", f"{base_ref}:{path}"])
-        try:
-            with open(path, "r", encoding="utf-8") as fh:
-                new_src = fh.read()
-        except FileNotFoundError:
-            new_src = ""
+    for path in all_files:
+        if path.endswith(('.md', '.rst')) or path.startswith('docs/'):
+            continue
+        if path.endswith('.py'):
+            old_src = run(["git", "show", f"{base_ref}:{path}"])
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    new_src = fh.read()
+            except FileNotFoundError:
+                new_src = ""
 
-        old_tokens = _tokens_without_comments(old_src)
-        new_tokens = _tokens_without_comments(new_src)
-        if old_tokens is None or new_tokens is None or old_tokens != new_tokens:
+            old_tokens = _tokens_without_comments(old_src)
+            new_tokens = _tokens_without_comments(new_src)
+            if old_tokens is None or new_tokens is None or old_tokens != new_tokens:
+                return False
+        else:
             return False
 
     return True
