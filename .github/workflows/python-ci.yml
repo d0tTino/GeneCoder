@@ -3,11 +3,35 @@ name: Python CI
 on:
   push:
     branches: [ main ] # Adjust if your main branch is different (e.g., master)
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   pull_request:
     branches: [ main ] # Adjust if your main branch is different
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'src/**'
+              - 'tests/**'
+              - 'pyproject.toml'
+              - 'requirements.txt'
+              - '.github/workflows/**'
+
   build:
+    needs: changes
+    if: needs.changes.outputs.src == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
