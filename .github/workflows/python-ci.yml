@@ -40,38 +40,43 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Cache pip downloads
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-${{ matrix.python-version }}-
+    - name: Detect comment-only changes
+      id: comment_check
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: python scripts/only_comments_changed.py
+
 
     - name: Install dependencies
+      if: steps.comment_check.outputs.only_comments != 'true'
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install ruff # For linting
 
     - name: Lint with ruff
+      if: steps.comment_check.outputs.only_comments != 'true'
       run: |
         ruff check . --output-format=github
         # The --output-format=github will show annotations directly in PRs
 
     - name: Run unit tests
+      if: steps.comment_check.outputs.only_comments != 'true'
       run: |
         python -m pip install pytest pytest-cov
         pytest --cov=src --cov-config=.coveragerc -vv
         coverage xml
 
     - name: Upload coverage to Codecov
+      if: steps.comment_check.outputs.only_comments != 'true'
       uses: codecov/codecov-action@v3
       with:
         files: coverage.xml
