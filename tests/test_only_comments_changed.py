@@ -30,6 +30,17 @@ def test_python_comment_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     assert only_comments_changed("HEAD")
 
 
+def test_docstring_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = setup_repo(tmp_path)
+    (repo / "file.py").write_text('"""a"""\nprint("hi")\n')
+    git(repo, "add", "file.py")
+    git(repo, "commit", "-m", "add docstring")
+    (repo / "file.py").write_text('"""b"""\nprint("hi")\n')
+    git(repo, "add", "file.py")
+    monkeypatch.chdir(repo)
+    assert only_comments_changed("HEAD")
+
+
 def test_docs_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = setup_repo(tmp_path)
     docs = repo / "docs"

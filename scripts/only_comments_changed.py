@@ -2,6 +2,7 @@
 """Check if repository changes are limited to docs or Python comments."""
 from __future__ import annotations
 
+import ast
 import io
 import os
 import subprocess
@@ -13,14 +14,36 @@ def run(cmd):
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     return result.stdout
 
-DOCSTRING_RE = re.compile(r"^[rRuUbBfF]*('{3}|\"{3})")
+def _ast_without_docstrings(source: str) -> str | None:
+    """Return AST dump without docstrings."""
 
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return None
 
-def _is_triple_quoted(token: tokenize.TokenInfo) -> bool:
-    """Return True if ``token`` represents a triple quoted string."""
+    def strip(node: ast.AST) -> None:
+        if isinstance(
+            node,
+            (
+                ast.Module,
+                ast.ClassDef,
+                ast.FunctionDef,
+                ast.AsyncFunctionDef,
+            ),
+        ):
+            if (
+                node.body
+                and isinstance(node.body[0], ast.Expr)
+                and isinstance(getattr(node.body[0], "value", None), ast.Constant)
+                and isinstance(node.body[0].value.value, str)
+            ):
+                node.body = node.body[1:]
+        for child in getattr(node, "body", []):
+            strip(child)
 
-    return bool(DOCSTRING_RE.match(token.string))
-
+    strip(tree)
+    return ast.dump(tree, include_attributes=False)
 
 def _tokens_without_comments(source: str) -> list[tuple[int, str]] | None:
     """Return tokens excluding comments, NL tokens and docstrings."""
@@ -64,9 +87,18 @@ def only_comments_changed(base_ref: str) -> bool:
             except FileNotFoundError:
                 new_src = ""
 
-            old_tokens = _tokens_without_comments(old_src)
-            new_tokens = _tokens_without_comments(new_src)
-            if old_tokens is None or new_tokens is None or old_tokens != new_tokens:
+            old_ast = _ast_without_docstrings(old_src)
+            new_ast = _ast_without_docstrings(new_src)
+            if old_ast is None or new_ast is None:
+                old_tokens = _tokens_without_comments(old_src)
+                new_tokens = _tokens_without_comments(new_src)
+                if (
+                    old_tokens is None
+                    or new_tokens is None
+                    or old_tokens != new_tokens
+                ):
+                    return False
+            elif old_ast != new_ast:
                 return False
         else:
             return False
