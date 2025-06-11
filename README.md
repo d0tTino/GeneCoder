@@ -183,7 +183,7 @@ Selecting 'Hamming(7,4)' or 'Reed-Solomon' automatically disables the `Add Parit
 
 ## Technology Stack
 
-*   **Language:** Python 3.10 or 3.11 (tested)
+*   **Language:** Python 3.10, 3.11, or 3.12 (tested)
 *   **Core Libraries (Python Standard Library):**
     *   `argparse` (for CLI argument parsing)
     *   `json` (for serializing Huffman table in FASTA headers)
