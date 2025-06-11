@@ -14,6 +14,15 @@ def run(cmd):
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     return result.stdout
 
+
+_TRIPLE_QUOTE_RE = re.compile(r"^[uUbBfFrR]*(['\"]{3})")
+
+
+def _is_triple_quoted(tok: tokenize.TokenInfo) -> bool:
+    """Return True if ``tok.string`` uses triple quotes."""
+
+    return bool(_TRIPLE_QUOTE_RE.match(tok.string))
+
 def _ast_without_docstrings(source: str) -> str | None:
     """Return AST dump without docstrings."""
 

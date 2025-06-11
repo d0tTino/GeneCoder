@@ -3,7 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from scripts.only_comments_changed import only_comments_changed
+from scripts.only_comments_changed import _is_triple_quoted, only_comments_changed
+import io
+import tokenize
 
 
 def git(cwd: Path, *args: str) -> None:
@@ -98,3 +100,13 @@ def test_triple_quoted_string_not_docstring(tmp_path: Path, monkeypatch: pytest.
     git(repo, "add", "file.py")
     monkeypatch.chdir(repo)
     assert not only_comments_changed("HEAD")
+
+
+def test_is_triple_quoted_detection() -> None:
+    tok = next(tokenize.generate_tokens(io.StringIO('"""hi"""').readline))
+    assert _is_triple_quoted(tok)
+
+
+def test_is_triple_quoted_negative() -> None:
+    tok = next(tokenize.generate_tokens(io.StringIO('"hi"').readline))
+    assert not _is_triple_quoted(tok)
