@@ -107,6 +107,10 @@ touch comments, docstrings or documentation files. When the script outputs
 test matrix does not run. This short‑circuits CI for documentation‑only updates
 and significantly reduces build time.
 
+Within the `build` job, code style checks are executed via `pre-commit`, which
+invokes `ruff`. The previous dedicated "Lint with ruff" step has been removed
+because ruff now runs automatically through the pre‑commit hook.
+
 
 ## Automatic Merging for Comment-Only Changes
 

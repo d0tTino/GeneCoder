@@ -87,12 +87,6 @@ jobs:
     - uses: pre-commit/action@v3
       if: needs['check-comments'].outputs.only_comments != 'true'
 
-    - name: Lint with ruff
-      if: needs['check-comments'].outputs.only_comments != 'true'
-      run: |
-        ruff check . --output-format=github
-        # The --output-format=github will show annotations directly in PRs
-
     - name: Run unit tests
       if: needs['check-comments'].outputs.only_comments != 'true'
       run: |
