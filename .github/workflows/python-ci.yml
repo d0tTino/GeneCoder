@@ -6,11 +6,13 @@ on:
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
+      - '**/*.rst'
   pull_request:
     branches: [ main ] # Adjust if your main branch is different
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
+      - '**/*.rst'
 
 # Ensure only a single workflow run per PR or branch
 concurrency:
