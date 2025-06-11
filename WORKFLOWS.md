@@ -100,20 +100,21 @@ merge the branch once all checks pass.
 
 ### `check-comments` Job
 
-The `python-ci` workflow contains a `check-comments` job that runs
-`scripts/only_comments_changed.py` to determine if a pull request only modifies
-comments, docstrings, or documentation files. The subsequent `build` job is
-skipped when this check reports `only_comments=true`, allowing comment-only PRs
-to bypass the full build and test matrix.
+The `python-ci` workflow contains a **`check-comments`** job that runs
+`scripts/only_comments_changed.py` to detect pull requests that exclusively
+touch comments, docstrings or documentation files. When the script outputs
+`only_comments=true`, the workflow skips the `build` job entirely so the full
+test matrix does not run. This short‑circuits CI for documentation‑only updates
+and significantly reduces build time.
 
 
 ## Automatic Merging for Comment-Only Changes
 
 A separate workflow (`automerge-comments.yml`) listens to pull request events. It
-runs `scripts/only_comments_changed.py` to check if the changes are restricted to
-comments or documentation. When the script reports `only_comments=true`, the
-workflow invokes `peter-evans/enable-pull-request-automerge@v2` to automatically
-enable auto-merge for the pull request. PRs that only touch comments, docstrings,
-or documentation files will therefore merge automatically once all required
-checks succeed.
+also runs `scripts/only_comments_changed.py` to verify that the diff only
+contains comments, docstrings or documentation files. When `only_comments=true`
+is reported, the workflow calls
+`peter-evans/enable-pull-request-automerge@v2` to enable auto-merge. As a
+result, pull requests containing only documentation or comment updates merge
+automatically once the standard checks succeed.
 
