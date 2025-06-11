@@ -54,3 +54,36 @@ def test_other_file_change(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     git(repo, "add", "config.yml")
     monkeypatch.chdir(repo)
     assert not only_comments_changed("HEAD")
+
+
+def test_module_docstring_change(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = setup_repo(tmp_path)
+    (repo / "file.py").write_text('"""hi"""\nprint("hi")\n')
+    git(repo, "add", "file.py")
+    git(repo, "commit", "-m", "add docstring")
+    (repo / "file.py").write_text('"""bye"""\nprint("hi")\n')
+    git(repo, "add", "file.py")
+    monkeypatch.chdir(repo)
+    assert only_comments_changed("HEAD")
+
+
+def test_function_docstring_change(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = setup_repo(tmp_path)
+    (repo / "file.py").write_text('def f():\n    """hi"""\n    pass\n')
+    git(repo, "add", "file.py")
+    git(repo, "commit", "-m", "add func doc")
+    (repo / "file.py").write_text('def f():\n    """bye"""\n    pass\n')
+    git(repo, "add", "file.py")
+    monkeypatch.chdir(repo)
+    assert only_comments_changed("HEAD")
+
+
+def test_triple_quoted_string_not_docstring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = setup_repo(tmp_path)
+    (repo / "file.py").write_text('data = """hi"""\nprint(data)\n')
+    git(repo, "add", "file.py")
+    git(repo, "commit", "-m", "init triple string")
+    (repo / "file.py").write_text('data = """bye"""\nprint(data)\n')
+    git(repo, "add", "file.py")
+    monkeypatch.chdir(repo)
+    assert not only_comments_changed("HEAD")

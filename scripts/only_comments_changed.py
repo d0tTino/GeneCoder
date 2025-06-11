@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import os
 import subprocess
+import re
 import tokenize
 
 
@@ -12,16 +13,35 @@ def run(cmd):
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     return result.stdout
 
+DOCSTRING_RE = re.compile(r"^[rRuUbBfF]*('{3}|\"{3})")
+
+
+def _is_triple_quoted(token: tokenize.TokenInfo) -> bool:
+    """Return True if ``token`` represents a triple quoted string."""
+
+    return bool(DOCSTRING_RE.match(token.string))
+
+
 def _tokens_without_comments(source: str) -> list[tuple[int, str]] | None:
-    """Return tokens excluding comments and NL tokens."""
+    """Return tokens excluding comments, NL tokens and docstrings."""
 
     try:
         tokens = tokenize.generate_tokens(io.StringIO(source).readline)
-        return [
-            (tok.type, tok.string)
-            for tok in tokens
-            if tok.type not in (tokenize.COMMENT, tokenize.NL, tokenize.ENCODING)
-        ]
+        result: list[tuple[int, str]] = []
+        prev_type = None
+        for tok in tokens:
+            if tok.type in (tokenize.COMMENT, tokenize.NL, tokenize.ENCODING):
+                continue
+            if (
+                tok.type == tokenize.STRING
+                and _is_triple_quoted(tok)
+                and (prev_type == tokenize.INDENT or not result)
+            ):
+                prev_type = tok.type
+                continue
+            result.append((tok.type, tok.string))
+            prev_type = tok.type
+        return result
     except tokenize.TokenError:
         return None
 
