@@ -83,7 +83,22 @@ jobs:
         pip install -r requirements.lock
         pip install ruff
 
+    - name: Cache pre-commit
+      if: needs['check-comments'].outputs.only_comments != 'true'
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pre-commit
+          .ruff_cache
+        key: pre-commit-${{ matrix.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
+        restore-keys: |
+          pre-commit-${{ matrix.python-version }}-
+
     - uses: pre-commit/action@v3
+      if: needs['check-comments'].outputs.only_comments != 'true'
+      env:
+        PRE_COMMIT_HOME: ~/.cache/pre-commit
+
 
     - name: Run unit tests
       run: |
