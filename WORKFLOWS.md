@@ -97,3 +97,11 @@ removed from the queue and will need to be re-queued after fixes are pushed.
 Contributors do not need to take any manual steps beyond opening the pull
 request. The merge queue will handle running `python-ci` automatically and will
 merge the branch once all checks pass.
+
+## Automatic Merging for Comment-Only Changes
+
+A separate workflow (`automerge-comments.yml`) listens to pull request events. It
+runs `scripts/only_comments_changed.py` to check if the changes are restricted to
+comments or documentation. When the script reports `only_comments=true`, the
+workflow invokes `peter-evans/enable-pull-request-automerge@v2` to automatically
+enable auto-merge for the pull request.

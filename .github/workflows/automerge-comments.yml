@@ -1,0 +1,25 @@
+name: Auto-merge comment-only PRs
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect comment-only changes
+        id: comment_check
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python scripts/only_comments_changed.py
+
+      - name: Enable auto-merge
+        if: steps.comment_check.outputs.only_comments == 'true'
+        uses: peter-evans/enable-pull-request-automerge@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
