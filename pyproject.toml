@@ -12,6 +12,10 @@ description = "Simulated DNA data encoding & decoding toolkit"
 authors = [{ name = "GeneCoder Team" }]
 readme = "README.md"
 
+[project.urls]
+Homepage = "https://github.com/d0tTino/GeneCoder"
+Changelog = "https://github.com/d0tTino/GeneCoder/blob/main/CHANGELOG.md"
+
 [tool.setuptools.package-dir]
 "" = "src"
 
