@@ -233,6 +233,13 @@ Feel free to:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details on the merge queue, automatic merging of comment-only PRs and how to run `pre-commit` locally.
 
+For a quick developer setup run `./codex_setup.sh` in the project root:
+
+```bash
+./codex_setup.sh
+```
+This script creates a virtual environment, installs dependencies, installs the pre-commit hook and runs the checks (skipped automatically for comment-only changes).
+
 ---
 
 ## License
