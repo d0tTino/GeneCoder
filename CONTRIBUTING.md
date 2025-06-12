@@ -33,3 +33,12 @@ pre-commit run --files path/to/file.py
 
 The hook also runs automatically on each commit if installed.
 
+## Running the Test Suite
+
+Unit tests use `pytest`. Install the pinned dependencies and run:
+
+```bash
+pip install -r requirements.lock
+pytest -q
+```
+

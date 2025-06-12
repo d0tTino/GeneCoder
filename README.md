@@ -102,6 +102,15 @@ pip install -r requirements.txt
 # For exact versions used in CI, see requirements.lock
 ```
 
+### Running Tests
+
+Install the dependencies and execute the test suite with `pytest`:
+
+```bash
+pip install -r requirements.lock
+pytest -q
+```
+
 
 ## Usage
 
