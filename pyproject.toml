@@ -5,6 +5,19 @@ line-length = 88
   [tool.ruff.lint]
   extend-select = []
 
+[project]
+name = "GeneCoder"
+version = "0.1.0"
+description = "Simulated DNA data encoding & decoding toolkit"
+authors = [{ name = "GeneCoder Team" }]
+readme = "README.md"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
