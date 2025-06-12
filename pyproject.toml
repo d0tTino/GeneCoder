@@ -23,6 +23,10 @@ urls = {"Homepage" = "https://github.com/d0tTino/GeneCoder"}
 [project.scripts]
 genecoder = "src.cli:main"
 
+[project.urls]
+Homepage = "https://github.com/d0tTino/GeneCoder"
+Changelog = "https://github.com/d0tTino/GeneCoder/blob/main/CHANGELOG.md"
+
 [tool.setuptools.package-dir]
 "" = "src"
 
