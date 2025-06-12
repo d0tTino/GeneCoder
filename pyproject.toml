@@ -18,6 +18,7 @@ dependencies = [
     "matplotlib",
     "reedsolo",
 ]
+
 [project.scripts]
 genecoder = "src.cli:main"
 
