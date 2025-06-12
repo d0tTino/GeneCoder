@@ -98,8 +98,8 @@ The current version of GeneCoder, built around a Command-Line Interface (CLI), d
 Clone the repository and install the required packages:
 
 ```bash
-pip install -r requirements.txt
-# For exact versions used in CI, see requirements.lock
+pip install -r requirements.txt  # installs flet>=0.28,<0.29
+# For the exact versions used in CI (flet 0.28.x), see requirements.lock
 ```
 
 ### Running Tests
