@@ -1,6 +1,6 @@
-# GeneCoder: Simulated DNA Data Encoding & Exploration
+# GeneCoder
 
-[![Codecov Coverage](https://codecov.io/gh/d0tTino/GeneCoder/branch/main/graph/badge.svg)](https://codecov.io/gh/d0tTino/GeneCoder)
+GeneCoder is an educational toolkit for exploring DNA-based data storage through simulation. It provides a CLI and GUI for encoding and decoding files into DNA sequences with various error correction schemes.
 
 **An open, educational software toolkit for simulating DNA data encoding and decoding, bringing the concepts of molecular data storage to your fingertips.**
 
@@ -255,3 +255,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 Happy Forging (or rather, Happy Coding)! We're excited to see how GeneCoder evolves with community input.
+
