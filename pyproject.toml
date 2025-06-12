@@ -18,7 +18,6 @@ dependencies = [
     "matplotlib",
     "reedsolo",
 ]
-urls = {"Homepage" = "https://github.com/d0tTino/GeneCoder"}
 
 [project.scripts]
 genecoder = "src.cli:main"

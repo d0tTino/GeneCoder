@@ -7,12 +7,27 @@ import io
 import os
 import subprocess
 import re
+import sys
 import tokenize
 
 
-def run(cmd):
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    return result.stdout
+def run(cmd: list[str]) -> str:
+    """Run ``cmd`` and return stdout.
+
+    Failures are reported so CI doesn't silently continue when git commands fail.
+    """
+
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True
+        )
+        return result.stdout
+    except subprocess.CalledProcessError as exc:
+        print(
+            f"Command {cmd} failed with exit code {exc.returncode}\n{exc.stderr}",
+            file=sys.stderr,
+        )
+        raise
 
 
 _TRIPLE_QUOTE_RE = re.compile(r"^[uUbBfFrR]*(['\"]{3})")
