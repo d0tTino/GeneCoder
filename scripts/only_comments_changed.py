@@ -10,9 +10,13 @@ import re
 import tokenize
 
 
-def run(cmd):
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    return result.stdout
+def run(cmd: list[str]) -> str:
+    """Return stdout from ``cmd`` or an empty string on failure."""
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode == 0:
+        return result.stdout
+    return ""
 
 
 _TRIPLE_QUOTE_RE = re.compile(r"^[uUbBfFrR]*(['\"]{3})")
