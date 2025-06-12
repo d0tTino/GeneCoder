@@ -14,7 +14,7 @@ readme = "README.md"
 license = { text = "MIT" }
 keywords = ["DNA", "storage", "encoding", "simulation"]
 dependencies = [
-    "flet",
+    "flet>=0.28,<0.29",
     "matplotlib",
     "reedsolo",
 ]
