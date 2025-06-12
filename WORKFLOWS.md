@@ -98,18 +98,26 @@ Contributors do not need to take any manual steps beyond opening the pull
 request. The merge queue will handle running `python-ci` automatically and will
 merge the branch once all checks pass.
 
+### `changes` Job
+
+The workflow begins with a **`changes`** job that uses
+`dorny/paths-filter` to check whether source files were modified. It looks at
+`src/`, `tests/`, configuration files, workflow definitions and the `scripts/`
+directory. If no files in those paths changed, the heavy test matrix is
+skipped.
+
 ### `check-comments` Job
 
 The `python-ci` workflow contains a **`check-comments`** job that runs
 `scripts/only_comments_changed.py` to detect pull requests that exclusively
 touch comments, docstrings or documentation files. When the script outputs
-`only_comments=true`, the workflow skips the `build` job entirely so the full
-test matrix does not run. This short‑circuits CI for documentation‑only updates
-and significantly reduces build time.
+`only_comments=true`, the workflow skips the `lint` and `build` jobs entirely so
+the full test matrix does not run. This short‑circuits CI for
+documentation‑only updates and significantly reduces build time.
 
-Within the `build` job, code style checks are executed via `pre-commit`, which
-invokes `ruff`. The previous dedicated "Lint with ruff" step has been removed
-because ruff now runs automatically through the pre‑commit hook.
+Code style checks are handled in a dedicated **`lint`** job that runs
+`pre-commit` with Python 3.11. The `build` matrix depends on this job so
+linting only executes once per change.
 
 
 ## Automatic Merging for Comment-Only Changes
