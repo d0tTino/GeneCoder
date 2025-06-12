@@ -1,0 +1,13 @@
+site_name: GeneCoder Documentation
+site_url: https://d0ttino.github.io/GeneCoder/
+nav:
+  - Home: index.md
+  - Vision & Core Concept: vision.md
+  - Implemented Features: features.md
+  - Installation: installation.md
+  - Usage:
+      - Usage Guide: usage.md
+      - n8n Overview: n8n_overview.md
+  - Technology Stack: technology_stack.md
+  - Development Roadmap: development_roadmap.md
+  - Development Vision: DEVELOPMENT_VISION.md
