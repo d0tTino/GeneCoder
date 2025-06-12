@@ -23,7 +23,10 @@ def parse_int_input(value: str | None, default: int, min_value: int = 1) -> int:
         The parsed integer if valid and >= ``min_value``; otherwise ``default``.
     """
     try:
-        parsed = int(value) if value not in (None, "") else default
+        if value is not None and value != "":
+            parsed = int(value)
+        else:
+            parsed = default
     except (TypeError, ValueError):
         return default
     return parsed if parsed >= min_value else default

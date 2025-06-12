@@ -869,8 +869,9 @@ def main() -> None:
             )
             # Using max_workers=None lets ThreadPoolExecutor decide, often os.cpu_count() * 5
             # For I/O bound tasks, more workers can be beneficial.
+            cpu_count = os.cpu_count() or 1
             with concurrent.futures.ThreadPoolExecutor(
-                max_workers=min(8, os.cpu_count() + 4)
+                max_workers=min(8, cpu_count + 4)
             ) as executor:
                 futures = [
                     executor.submit(process_single_encode, task[0], task[1], task[2])
@@ -931,8 +932,9 @@ def main() -> None:
             print(
                 f"Starting batch decoding for {num_input_files} files using ThreadPoolExecutor..."
             )
+            cpu_count = os.cpu_count() or 1
             with concurrent.futures.ThreadPoolExecutor(
-                max_workers=min(8, os.cpu_count() + 4)
+                max_workers=min(8, cpu_count + 4)
             ) as executor:
                 futures = [
                     executor.submit(process_single_decode, task[0], task[1], task[2])

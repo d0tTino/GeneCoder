@@ -105,8 +105,9 @@ def encode_base4_direct(
     return encoded
 
   if stream:
+    from typing import Iterable as _Iterable
     if isinstance(data, (bytes, bytearray)):
-      iterable = [data]
+      iterable: _Iterable[bytes] = [data]
     else:
       iterable = data
     return (_encode_chunk(chunk) for chunk in iterable)
@@ -209,8 +210,9 @@ def decode_base4_direct(
     return bytes(decoded_bytes), parity_errors
 
   if stream:
+    from typing import Iterable as _Iterable
     if isinstance(dna_sequence, str):
-      iterable = [dna_sequence]
+      iterable: _Iterable[str] = [dna_sequence]
     else:
       iterable = dna_sequence
     return (_decode_chunk(seq) for seq in iterable)
