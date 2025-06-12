@@ -90,4 +90,4 @@ def stream_decode_file(
                 parity_rule=parity_rule,
                 stream=True,
             ):
-                f_out.write(decoded_chunk)
+                f_out.write(bytes(decoded_chunk))

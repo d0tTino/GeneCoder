@@ -7,18 +7,23 @@ number of parity symbols (``nsym``) is currently exposed as a parameter.
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING
 
-try:  # pragma: no cover - optional dependency
+_HAS_REEDSOLO: bool = False
+
+if TYPE_CHECKING:
     from reedsolo import RSCodec, ReedSolomonError
-    _HAS_REEDSOLO = True
-except ImportError:  # pragma: no cover - missing optional dependency
-    RSCodec = None
+else:
+    try:  # pragma: no cover - optional dependency
+        from reedsolo import RSCodec, ReedSolomonError
+        _HAS_REEDSOLO = True
+    except ImportError:  # pragma: no cover - missing optional dependency
+        RSCodec = None
 
-    class ReedSolomonError(Exception):
-        """Placeholder used when :mod:`reedsolo` is unavailable."""
+        class ReedSolomonError(Exception):
+            """Placeholder used when :mod:`reedsolo` is unavailable."""
 
-    _HAS_REEDSOLO = False
+        _HAS_REEDSOLO = False
 
 
 def _require_reedsolo() -> None:  # pragma: no cover - helper

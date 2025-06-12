@@ -60,7 +60,7 @@ def decode_triple_repeat(dna_sequence: str) -> tuple[str, int, int]:
         triplet = dna_sequence[i:i+3]
         
         # Count occurrences of each nucleotide in the triplet
-        counts = {}
+        counts: dict[str, int] = {}
         for nucleotide in triplet:
             counts[nucleotide] = counts.get(nucleotide, 0) + 1
         
