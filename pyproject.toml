@@ -11,6 +11,17 @@ version = "0.1.0"
 description = "Simulated DNA data encoding & decoding toolkit"
 authors = [{ name = "GeneCoder Team" }]
 readme = "README.md"
+license = { text = "MIT" }
+keywords = ["DNA", "storage", "encoding", "simulation"]
+dependencies = [
+    "flet",
+    "matplotlib",
+    "reedsolo",
+]
+urls = {"Homepage" = "https://github.com/d0tTino/GeneCoder"}
+
+[project.scripts]
+genecoder = "src.cli:main"
 
 [tool.setuptools.package-dir]
 "" = "src"
