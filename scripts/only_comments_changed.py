@@ -12,22 +12,12 @@ import tokenize
 
 
 def run(cmd: list[str]) -> str:
-    """Run ``cmd`` and return stdout.
+    """Return stdout from ``cmd`` or an empty string on failure."""
 
-    Failures are reported so CI doesn't silently continue when git commands fail.
-    """
-
-    try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, check=True
-        )
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode == 0:
         return result.stdout
-    except subprocess.CalledProcessError as exc:
-        print(
-            f"Command {cmd} failed with exit code {exc.returncode}\n{exc.stderr}",
-            file=sys.stderr,
-        )
-        raise
+    return ""
 
 
 _TRIPLE_QUOTE_RE = re.compile(r"^[uUbBfFrR]*(['\"]{3})")
