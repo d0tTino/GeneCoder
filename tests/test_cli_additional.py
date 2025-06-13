@@ -7,6 +7,7 @@ from src.cli import (
 )
 
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
+from tests.test_cli import run_cli_command
 
 
 def test_encoding_decoding_triple_repeat(tmp_path):
@@ -55,4 +56,10 @@ def test_run_encoding_unknown_fec_warning(capsys):
     assert "Unknown FEC method 'bogus'" in captured.err
     assert "fec=bogus" not in header
     assert dna
+
+
+def test_genecoder_cli_version():
+    result = run_cli_command(["--version"])
+    assert result.returncode == 0
+    assert "0.1.0" in result.stdout
 
