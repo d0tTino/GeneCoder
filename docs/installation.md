@@ -1,6 +1,6 @@
 # Installation
 
-Clone the repository and install dependencies:
+GeneCoder requires Python 3.10 or higher. Clone the repository and install dependencies:
 
 ```bash
 pip install -r requirements.txt  # installs flet>=0.28,<0.29
