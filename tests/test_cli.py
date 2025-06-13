@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from src.genecoder.formats import to_fasta, from_fasta
 
 # Helper to get the root of the project
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -13,6 +14,14 @@ def temp_dir():
     """Create a temporary directory for test files."""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
+
+
+@pytest.fixture
+def small_fasta_file(temp_dir: Path) -> Path:
+    """Create a simple FASTA file for CLI error simulation tests."""
+    fasta_path = temp_dir / "input.fasta"
+    fasta_path.write_text(to_fasta("ATGCATGC", "seq1"))
+    return fasta_path
 
 def run_cli_command(command_args: list[str], env=None) -> subprocess.CompletedProcess:
     """Helper function to run CLI commands."""
@@ -317,4 +326,27 @@ def test_analyze_multiple_files(temp_dir: Path):
     assert result.returncode == 0
     # Should produce analysis for both files
     assert result.stdout.count("Sequence length:") == 2
+
+
+def test_simulate_errors_command(temp_dir: Path, small_fasta_file: Path):
+    """CLI simulate-errors should output a corrupted FASTA file."""
+    out_file = temp_dir / "corrupted.fasta"
+    cmd_args = [
+        "simulate-errors",
+        "--input-file",
+        str(small_fasta_file),
+        "--output-file",
+        str(out_file),
+        "--sub-prob",
+        "0.5",
+        "--seed",
+        "1",
+    ]
+    result = run_cli_command(cmd_args)
+    assert result.returncode == 0, f"simulate-errors failed: {result.stderr}"
+    assert out_file.exists()
+
+    original_seq = from_fasta(small_fasta_file.read_text())[0][1]
+    new_seq = from_fasta(out_file.read_text())[0][1]
+    assert new_seq != original_seq
 
