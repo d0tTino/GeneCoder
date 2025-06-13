@@ -15,7 +15,7 @@ circular imports.  Only the Python standard library is otherwise
 required.
 """
 
-from typing import Optional
+from typing import Optional, Tuple, cast
 from .utils import check_homopolymer_length, get_max_homopolymer_length
 
 def calculate_gc_content(dna_sequence: str) -> float:
@@ -55,7 +55,7 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
     """
     from .encoders import encode_base4_direct  # Local import to avoid circular dependency
 
-    initial_sequence = encode_base4_direct(data, add_parity=False)
+    initial_sequence = cast(str, encode_base4_direct(data, add_parity=False))
 
     gc_content_ok = target_gc_min <= calculate_gc_content(initial_sequence) <= target_gc_max
     homopolymer_ok = not check_homopolymer_length(initial_sequence, max_homopolymer)
@@ -69,7 +69,7 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
         # bits of ``data`` are inverted using XOR with ``0xFF`` (bitwise NOT for
         # each byte) and that modified payload is encoded instead.
         modified_data = bytes(b ^ 0xFF for b in data)
-        alternative_sequence = encode_base4_direct(modified_data, add_parity=False)
+        alternative_sequence = cast(str, encode_base4_direct(modified_data, add_parity=False))
         # ``"1"`` is prepended so the decoder knows to invert the bits again.
         # A more sophisticated implementation could attempt multiple
         # alternatives before falling back to this simple inversion.
@@ -123,10 +123,12 @@ def decode_gc_balanced(
         raise ValueError("Input DNA sequence is too short (only signal bit found, no payload).")
 
     if signal_bit == "0":
-        decoded_data, _ = decode_base4_direct(payload_dna_sequence, check_parity=False)
+        decoded_tuple = decode_base4_direct(payload_dna_sequence, check_parity=False)
+        decoded_data = cast(Tuple[bytes, list[int]], decoded_tuple)[0]
     elif signal_bit == "1":
         # Decode the payload first
-        temp_decoded_data, _ = decode_base4_direct(payload_dna_sequence, check_parity=False)
+        decoded_tuple = decode_base4_direct(payload_dna_sequence, check_parity=False)
+        temp_decoded_data = cast(Tuple[bytes, list[int]], decoded_tuple)[0]
         # Then invert the bits of the decoded data
         decoded_data = bytes(b ^ 0xFF for b in temp_decoded_data)
     else:

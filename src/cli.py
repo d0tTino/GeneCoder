@@ -9,6 +9,8 @@ and Huffman coding.
 
 import argparse
 import sys
+
+from genecoder import __version__
 import json
 import os
 import random
@@ -611,6 +613,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="GeneCoder: Encode and decode data into simulated DNA sequences."
     )
+    parser.add_argument("--version", action="version", version=f"GeneCoder {__version__}")
     subparsers = parser.add_subparsers(
         dest="command",
         help="Available commands. Use `<command> -h` for more details.",
@@ -869,8 +872,9 @@ def main() -> None:
             )
             # Using max_workers=None lets ThreadPoolExecutor decide, often os.cpu_count() * 5
             # For I/O bound tasks, more workers can be beneficial.
+            cpu_count = os.cpu_count() or 1
             with concurrent.futures.ThreadPoolExecutor(
-                max_workers=min(8, os.cpu_count() + 4)
+                max_workers=min(8, cpu_count + 4)
             ) as executor:
                 futures = [
                     executor.submit(process_single_encode, task[0], task[1], task[2])
@@ -931,8 +935,9 @@ def main() -> None:
             print(
                 f"Starting batch decoding for {num_input_files} files using ThreadPoolExecutor..."
             )
+            cpu_count = os.cpu_count() or 1
             with concurrent.futures.ThreadPoolExecutor(
-                max_workers=min(8, os.cpu_count() + 4)
+                max_workers=min(8, cpu_count + 4)
             ) as executor:
                 futures = [
                     executor.submit(process_single_decode, task[0], task[1], task[2])

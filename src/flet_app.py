@@ -116,10 +116,14 @@ def main(page: ft.Page):
         keyboard_type=ft.KeyboardType.NUMBER
     )
 
+    def _toggle_k_value(e: ft.ControlEvent) -> None:
+        k_value_input.disabled = not e.control.value
+        page.update()
+
     parity_checkbox = ft.Checkbox(
         label="Add Parity",
         value=False,
-        on_change=lambda e: setattr(k_value_input, 'disabled', not e.control.value) or page.update()
+        on_change=_toggle_k_value
     )
 
     def on_fec_change(e: ft.ControlEvent):

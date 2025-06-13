@@ -12,9 +12,10 @@ description = "Simulated DNA data encoding & decoding toolkit"
 authors = [{ name = "GeneCoder Team" }]
 readme = "README.md"
 license = { text = "MIT" }
+requires-python = ">=3.10"
 keywords = ["DNA", "storage", "encoding", "simulation"]
 dependencies = [
-    "flet",
+    "flet>=0.28,<0.29",
     "matplotlib",
     "reedsolo",
 ]

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple, cast
 
 from .encoders import (
     encode_base4_direct,
@@ -85,12 +85,12 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
     num_padding_bits = 0
     method = options.method
     if method == "Base-4 Direct":
-        raw_dna = encode_base4_direct(
+        raw_dna = cast(str, encode_base4_direct(
             current_input,
             should_add_parity,
             options.k_value,
             PARITY_RULE_GC_EVEN_A_ODD_T,
-        )
+        ))
     elif method == "Huffman":
         raw_dna, huffman_table, num_padding_bits = encode_huffman(
             current_input,
@@ -261,11 +261,13 @@ def perform_decoding(fasta_data: str) -> DecodeResult:
         parity_k_str = header.split("parity_k=")[1].split()[0]
         k_val = int(parity_k_str)
 
-    decoded_bytes, parity_errors = b"", []
+    decoded_bytes: bytes = b""
+    parity_errors: List[int] = []
     if method == "base4_direct":
-        decoded_bytes, parity_errors = decode_base4_direct(
+        decoded_tuple = decode_base4_direct(
             sequence_for_decode, check_parity, k_val, PARITY_RULE_GC_EVEN_A_ODD_T
         )
+        decoded_bytes, parity_errors = cast(Tuple[bytes, List[int]], decoded_tuple)
     elif method == "huffman":
         if huffman_table is None:
             raise ValueError("Huffman parameters missing")

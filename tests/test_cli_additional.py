@@ -8,7 +8,6 @@ from src.cli import (
 
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 
-
 def test_encoding_decoding_triple_repeat(tmp_path):
     data = b"hello world"
     enc_args = argparse.Namespace(
@@ -55,4 +54,5 @@ def test_run_encoding_unknown_fec_warning(capsys):
     assert "Unknown FEC method 'bogus'" in captured.err
     assert "fec=bogus" not in header
     assert dna
+
 
