@@ -9,6 +9,8 @@ and Huffman coding.
 
 import argparse
 import sys
+
+from genecoder import __version__
 import json
 import os
 import random
@@ -611,6 +613,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="GeneCoder: Encode and decode data into simulated DNA sequences."
     )
+    parser.add_argument("--version", action="version", version=f"GeneCoder {__version__}")
     subparsers = parser.add_subparsers(
         dest="command",
         help="Available commands. Use `<command> -h` for more details.",

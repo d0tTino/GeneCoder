@@ -21,10 +21,13 @@ from .app_helpers import (
     perform_decoding,
 )
 
+__version__ = "0.1.0"
+
 __all__ = [
     "EncodeOptions",
     "EncodeResult",
     "DecodeResult",
     "perform_encoding",
     "perform_decoding",
+    "__version__",
 ]
