@@ -22,7 +22,7 @@ from genecoder import (
     perform_encoding,
 
 )
-from src.flet_helpers import parse_int_input
+from genecoder.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
 
 

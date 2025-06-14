@@ -32,6 +32,7 @@ Changelog = "https://github.com/d0tTino/GeneCoder/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["genecoder*"]
 
 [build-system]
 requires = ["setuptools", "wheel"]

@@ -1,4 +1,4 @@
-from src.flet_helpers import parse_int_input
+from genecoder.flet_helpers import parse_int_input
 
 
 def test_parse_int_input_basic():

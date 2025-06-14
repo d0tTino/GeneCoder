@@ -16,7 +16,7 @@ This document outlines the high level steps for encoding and decoding data with 
 6. `genecoder.formats.to_fasta` creates the FASTA record which is written to disk.
 
 ### Flet GUI
-1. `src/flet_app.py` loads the selected file asynchronously when *Encode* is clicked.
+1. `src/genecoder/flet_app.py` loads the selected file asynchronously when *Encode* is clicked.
 2. The same encoding functions (`encode_base4_direct`, `encode_huffman`, `encode_gc_balanced`) are executed.
 3. Triple‑Repeat FEC, if enabled, is applied using `encode_triple_repeat`.
 4. The output FASTA string is displayed and can be saved from the interface.
@@ -53,7 +53,7 @@ Encoded FASTA file
 6. The resulting data is written to the specified output file.
 
 ### Flet GUI
-1. When *Decode* is clicked in `src/flet_app.py`, the selected FASTA file is parsed by `from_fasta`.
+1. When *Decode* is clicked in `src/genecoder/flet_app.py`, the selected FASTA file is parsed by `from_fasta`.
 2. Triple‑Repeat FEC and then the main decoding method are applied using the same modules as in the CLI.
 3. Decoded bytes can be saved from the interface.
 
@@ -83,7 +83,7 @@ Both interfaces rely primarily on modules under `genecoder/`:
 - `formats.py`
 - `plotting.py` (GUI metrics)
 
-These modules contain the core logic used by `src/cli.py` and `src/flet_app.py`.
+These modules contain the core logic used by `src/cli.py` and `src/genecoder/flet_app.py`.
 
 ## Continuous Integration and Merge Queue
 

@@ -84,7 +84,7 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 Launch the Flet application:
 
 ```bash
-python src/flet_app.py
+python src/genecoder/flet_app.py
 ```
 
 The GUI exposes encoding options, error correction choices and displays metrics and analysis plots.
