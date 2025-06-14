@@ -4,7 +4,7 @@
 
 **An open, educational software toolkit for simulating DNA data encoding and decoding, bringing the concepts of molecular data storage to your fingertips.**
 
-*The badge above reports the current coverage of GeneCoder's unit tests.* The coverage report intentionally **excludes** `src/flet_app.py` via the `.coveragerc` configuration.
+*The badge above reports the current coverage of GeneCoder's unit tests.* The coverage report intentionally **excludes** `src/genecoder/flet_app.py` via the `.coveragerc` configuration.
 
 ---
 
