@@ -202,3 +202,13 @@ def test_generate_sequence_analysis_plot_empty():
     assert isinstance(buf, io.BytesIO)
     assert buf.getvalue().startswith(b"\x89PNG\r\n\x1a\n")
     buf.close()
+
+
+def test_generate_sequence_analysis_plot_negative_length():
+    gc_data = ([0, 1], [0.5, 0.5])
+    homos = [(0, 0, "A")]
+    buf = generate_sequence_analysis_plot(gc_data, homos, sequence_length=-5)
+    assert isinstance(buf, io.BytesIO)
+    assert buf.getvalue().startswith(b"\x89PNG\r\n\x1a\n")
+    buf.close()
+

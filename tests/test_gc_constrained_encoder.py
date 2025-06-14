@@ -403,3 +403,14 @@ def test_decode_gc_balanced_homopolymer_constraint_violation():
 # It's ignored for the GC count (numerator) but not for the length (denominator).
 # This seems fine.
 
+
+
+@patch("genecoder.encoders.encode_base4_direct")
+def test_encode_gc_balanced_boundary_gc(mock_encode_base4):
+    data = b"xx"
+    seq = "ATGC"
+    mock_encode_base4.return_value = seq
+    result = encode_gc_balanced(data, target_gc_min=0.5, target_gc_max=0.5, max_homopolymer=1)
+    assert result == "0" + seq
+    mock_encode_base4.assert_called_once_with(data, add_parity=False)
+
