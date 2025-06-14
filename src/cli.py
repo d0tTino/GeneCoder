@@ -518,6 +518,16 @@ def process_single_decode(
                 )
                 sys.exit(1)
 
+        if args.simulate_errors > 0.0:
+            from genecoder.channel_sim import simulate_errors
+
+            sequence_from_fasta = simulate_errors(
+                sequence_from_fasta, args.simulate_errors
+            )
+            print(
+                f"Applied simulated errors (p={args.simulate_errors}) before decoding."
+            )
+
         options = build_decoding_options(args)
         final_decoded_data = run_decoding_pipeline(
             sequence_from_fasta, header, options, os.path.basename(input_file_path)
@@ -749,6 +759,12 @@ def main() -> None:
         "--stream",
         action="store_true",
         help="Stream decode large files (base4_direct only).",
+    )
+    decode_parser.add_argument(
+        "--simulate-errors",
+        type=float,
+        default=0.0,
+        help="Probability of random substitution errors applied before decoding.",
     )
 
     # Analyze command parser

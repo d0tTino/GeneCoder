@@ -79,6 +79,13 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --stream --method base4_direct
    ```
 
+9. **Decode with simulated channel errors**
+
+   ```bash
+   python src/cli.py decode --input-files encoded.fasta \
+       --output-file decoded.bin --simulate-errors 0.02
+   ```
+
 ## Graphical User Interface (GUI)
 
 Launch the Flet application:
