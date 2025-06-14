@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-genecoder = "src.cli:main"
+genecoder = "genecoder.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/d0tTino/GeneCoder"
