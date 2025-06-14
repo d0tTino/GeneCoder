@@ -5,7 +5,7 @@ This document outlines the high level steps for encoding and decoding data with 
 ## Encoding a File to DNA
 
 ### CLI
-1. `src/cli.py` reads the input file.
+1. `genecoder.cli` reads the input file.
 2. If `--fec hamming_7_4` is selected, `genecoder.hamming_codec.encode_data_with_hamming` adds binary level FEC.
 3. The chosen encoder from `genecoder.encoders` or `genecoder.huffman_coding` converts the bytes to DNA:
    - `encode_base4_direct`
@@ -42,7 +42,7 @@ Encoded FASTA file
 ## Decoding DNA back to a File
 
 ### CLI
-1. `src/cli.py` reads the FASTA file and parses it with `genecoder.formats.from_fasta`.
+1. `genecoder.cli` reads the FASTA file and parses it with `genecoder.formats.from_fasta`.
 2. If `fec=triple_repeat` is indicated, `genecoder.error_correction.decode_triple_repeat` is invoked.
 3. The primary decoding function is chosen based on the header:
    - `decode_base4_direct`
@@ -83,7 +83,7 @@ Both interfaces rely primarily on modules under `genecoder/`:
 - `formats.py`
 - `plotting.py` (GUI metrics)
 
-These modules contain the core logic used by `src/cli.py` and `src/flet_app.py`.
+These modules contain the core logic used by `genecoder.cli` and `src/flet_app.py`.
 
 ## Continuous Integration and Merge Queue
 

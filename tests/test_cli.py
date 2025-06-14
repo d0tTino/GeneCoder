@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from src.genecoder.formats import to_fasta, from_fasta
+from genecoder.formats import to_fasta, from_fasta
 
 # Helper to get the root of the project
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -179,8 +179,8 @@ def create_dummy_fasta_file(file_path: Path, content: str, method: str = "base4_
     """Helper to create a dummy FASTA file for decoding tests."""
     # This is a simplified FASTA creation, assuming base4_direct for simplicity
     # A more robust way would be to call the encoder itself.
-    from src.genecoder.encoders import encode_base4_direct
-    from src.genecoder.formats import to_fasta
+    from genecoder.encoders import encode_base4_direct
+    from genecoder.formats import to_fasta
     
     encoded_dna = encode_base4_direct(content.encode('utf-8'))
     header = f"method={method} input_file={input_filename}"
@@ -288,7 +288,7 @@ def test_decode_method_mismatch(temp_dir: Path):
 
 
 def create_simple_fasta(file_path: Path, seq: str, header: str = "seq1"):
-    from src.genecoder.formats import to_fasta
+    from genecoder.formats import to_fasta
     file_path.write_text(to_fasta(seq, header))
 
 
