@@ -24,11 +24,11 @@ pytest -q
 ```
 ## Windows Quick Start
 
-Install [Miniforge](https://github.com/conda-forge/miniforge#miniforge3) and then create and activate a dedicated environment:
+Install [Miniforge](https://github.com/conda-forge/miniforge#miniforge3). Then create and activate a dedicated environment:
 
 ```bash
 mamba create -n genecoder python=3.10
-mamba activate genecoder
+conda activate genecoder
 ```
 
 Finally, install the dependencies and the project in editable mode:
