@@ -24,7 +24,7 @@ pytest -q
 ```
 ## Windows Quick Start
 
-Install [Miniforge](https://github.com/conda-forge/miniforge#miniforge3). Then create and activate a dedicated environment:
+Install [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge), then create and activate a dedicated environment:
 
 ```bash
 mamba create -n genecoder python=3.10
