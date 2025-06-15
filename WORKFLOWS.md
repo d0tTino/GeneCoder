@@ -126,7 +126,7 @@ A separate workflow (`automerge-comments.yml`) listens to pull request events. I
 also runs `scripts/only_comments_changed.py` to verify that the diff only
 contains comments, docstrings or documentation files. When `only_comments=true`
 is reported, the workflow calls
-`peter-evans/enable-pull-request-automerge@v2` to enable auto-merge. As a
-result, pull requests containing only documentation or comment updates merge
+`peter-evans/enable-pull-request-automerge@v2` (passing it the current pull
+request number) to enable auto-merge. As a result, pull requests containing only documentation or comment updates merge
 automatically once the standard checks succeed.
 
