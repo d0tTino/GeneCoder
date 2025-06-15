@@ -16,7 +16,8 @@ pip install -e .
 
 ## Running Tests
 
-Install locked dependencies and run the test suite:
+Before running `pytest`, make sure you've installed the locked dependencies.
+Skipping this step can lead to missing packages and failing tests:
 
 ```bash
 pip install -r requirements.lock
