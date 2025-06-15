@@ -16,6 +16,13 @@ Run `genecoder --help` to see all available commands:
 genecoder --help
 ```
 
+If you're running from a clone without installing the package, prefix the
+command with `PYTHONPATH=.` so Python can find the `src` modules:
+
+```bash
+PYTHONPATH=. genecoder --help
+```
+
 * `--input-files` – one or more input files.
 * `--output-file` – output path for a single input file.
 * `--output-dir` – directory for batch operations.
