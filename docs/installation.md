@@ -16,8 +16,8 @@ pip install -e .
 
 ## Running Tests
 
-Before running `pytest`, make sure you've installed the locked dependencies.
-Skipping this step can lead to missing packages and failing tests:
+Unit tests use `pytest`. Install the pinned dependencies first so your
+environment matches CI; otherwise tests may fail due to missing packages.
 
 ```bash
 pip install -r requirements.lock
