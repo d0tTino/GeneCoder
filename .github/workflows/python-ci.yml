@@ -164,7 +164,19 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.lock
 
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
 
+    - name: Install Node dependencies
+      run: |
+        cd openai_testing
+        npm install
+        cd ..
+
+    - name: Smoke test CUA server
+      run: node -e "console.log('cua smoke')"
 
     - name: Run unit tests
       run: |
