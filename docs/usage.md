@@ -18,6 +18,8 @@ genecoder --help
 
 Example output:
 
+A quick sanity check is to run the command and ensure the usage header appears.
+
 ```bash
 $ genecoder --help | head -n 5
 Usage: genecoder [-h] [--version] {encode,decode,analyze,simulate-errors} ...
