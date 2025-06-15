@@ -1,5 +1,5 @@
 import argparse
-from src.cli import (
+from genecoder.cli import (
     build_encoding_options,
     build_decoding_options,
     run_encoding_pipeline,

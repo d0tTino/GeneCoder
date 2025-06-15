@@ -2,7 +2,7 @@ import argparse
 import pytest
 from pathlib import Path
 from genecoder.formats import to_fasta, from_fasta
-from src.cli import (
+from genecoder.cli import (
     build_encoding_options,
     build_decoding_options,
     run_encoding_pipeline,

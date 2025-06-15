@@ -27,13 +27,13 @@ def run_cli_command(command_args: list[str], env=None) -> subprocess.CompletedPr
     """Helper function to run CLI commands."""
     if env is None:
         env = os.environ.copy()
-        # Ensure PYTHONPATH includes the project root so src.cli can be found
+        # Ensure PYTHONPATH includes the project root so genecoder.cli can be found
         src_path = PROJECT_ROOT / "src"
         env['PYTHONPATH'] = str(src_path) + os.pathsep + env.get('PYTHONPATH', '')
 
     # Construct the command
-    # Using python -m src.cli is generally more robust for module resolution
-    full_command = [sys.executable, "-m", "src.cli"] + command_args
+    # Using python -m genecoder.cli is generally more robust for module resolution
+    full_command = [sys.executable, "-m", "genecoder.cli"] + command_args
     
     return subprocess.run(
         full_command,

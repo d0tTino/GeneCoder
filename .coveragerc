@@ -1,4 +1,4 @@
 [run]
 omit =
     src/genecoder/flet_app.py
-    src/cli.py
+    src/genecoder/cli.py
