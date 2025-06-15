@@ -127,6 +127,9 @@ also runs `scripts/only_comments_changed.py` to verify that the diff only
 contains comments, docstrings or documentation files. When `only_comments=true`
 is reported, the workflow calls
 `peter-evans/enable-pull-request-automerge@v2` (passing it the current pull
-request number) to enable auto-merge. As a result, pull requests containing only documentation or comment updates merge
-automatically once the standard checks succeed.
+request number) to enable auto-merge. The workflow uses the
+`pull_request_target` event and grants `pull-requests: write` permission so the
+token has rights to modify the pull request. As a result, pull requests
+containing only documentation or comment updates merge automatically once the
+standard checks succeed.
 
