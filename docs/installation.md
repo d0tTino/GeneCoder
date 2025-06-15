@@ -41,3 +41,19 @@ genecoder --version
 pytest -q
 ```
 
+## Configuring the OpenAI API Key
+
+The OpenAI testing agent requires an API key. Set the `OPENAI_API_KEY` environment variable before running the agent tests.
+
+Create a `.env` file in the project root containing:
+
+```bash
+OPENAI_API_KEY=sk-yourkey
+```
+
+Or export the variable in your shell:
+
+```bash
+export OPENAI_API_KEY=sk-yourkey
+```
+
