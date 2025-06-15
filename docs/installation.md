@@ -24,7 +24,7 @@ pytest -q
 ```
 ## Windows Quick Start
 
-Install [Miniforge](https://github.com/conda-forge/miniforge) and create a dedicated environment using `mamba`:
+Install Miniforge with `winget` and create a dedicated environment using `mamba`:
 
 ```powershell
 winget install conda-forge.miniforge
