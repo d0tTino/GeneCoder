@@ -16,8 +16,9 @@ pip install -e .
 
 ## Running Tests
 
-Unit tests use `pytest`. Install the pinned dependencies first so your
-environment matches CI; otherwise tests may fail due to missing packages.
+Unit tests use `pytest`. Install the exact versions from `requirements.lock`
+before running the suite so your environment matches CI. Otherwise tests may
+fail due to missing packages.
 
 ```bash
 pip install -r requirements.lock
