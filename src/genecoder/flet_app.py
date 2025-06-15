@@ -24,6 +24,7 @@ from genecoder import (
 )
 from genecoder.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
+from genecoder.helix_view import show_helix
 
 
 encode_fasta_data_to_save_ref = ft.Ref[str]()
@@ -54,6 +55,9 @@ def main(page: ft.Page):
         tooltip="Sequence GC & Homopolymer Analysis"
     )
     analysis_status_text = ft.Text("Encode data to view analysis plots.", italic=True)
+
+    # Container used for the Helix View tab. Filled when the tab is selected.
+    helix_container = ft.Column()
 
     window_size_input = ft.TextField(
         label="GC Window Size",
@@ -548,12 +552,25 @@ def main(page: ft.Page):
                 icon=ft.icons.ANALYTICS_OUTLINED,
                 content=ft.Container(analysis_tab_content_column, padding=10, alignment=ft.alignment.top_left),
                 disabled=True # Initially disabled until data is encoded
+            ),
+            ft.Tab(
+                text="Helix View",
+                icon=ft.icons.DNA,
+                content=ft.Container(helix_container, padding=10, alignment=ft.alignment.top_left)
             )
         ],
         expand=True
     )
 
-    page.add(app_tabs) # Add tabs to page first
+    def on_tab_change(e: ft.ControlEvent):
+        if app_tabs.selected_index == 3:
+            helix_container.controls.clear()
+            helix_container.controls.append(show_helix())
+        page.update()
+
+    app_tabs.on_change = on_tab_change
+
+    page.add(app_tabs)  # Add tabs to page first
     page.update()
 
 
