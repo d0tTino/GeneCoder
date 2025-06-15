@@ -19,16 +19,10 @@ genecoder --help
 Example output:
 
 ```bash
-$ genecoder --help | head -n 3
+$ genecoder --help | head -n 5
 Usage: genecoder [-h] [--version] {encode,decode,analyze,simulate-errors} ...
 GeneCoder: Encode and decode data into simulated DNA sequences.
-```
-
-If you're running from a clone without installing the package, prefix the
-command with `PYTHONPATH=.` so Python can find the `src` modules:
-
-```bash
-PYTHONPATH=. genecoder --help
+...
 ```
 
 If the `genecoder` command isn't found, install the project in editable mode:
