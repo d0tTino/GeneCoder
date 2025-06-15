@@ -24,17 +24,21 @@ pytest -q
 ```
 ## Windows Quick Start
 
-Install [Miniforge](https://github.com/conda-forge/miniforge), then use `mamba` to create and activate a dedicated environment:
+Install [Miniforge](https://github.com/conda-forge/miniforge) and create a
+dedicated environment using `mamba`:
 
-```bash
-mamba create -n genecoder python=3.10
-conda activate genecoder
+```powershell
+winget install conda-forge.miniforge
+mamba create -n genecoder python=3.12 flet reedsolo matplotlib pytest ruff mypy
+mamba activate genecoder
+pip install -e .
+pre-commit install
 ```
 
-Finally, install the dependencies and the project in editable mode:
+Verify the installation with a quick smoke test:
 
-```bash
-pip install -r requirements.txt
-pip install -e .
+```powershell
+genecoder --version
+pytest -q
 ```
 
