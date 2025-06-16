@@ -20,6 +20,12 @@ dependencies = [
     "reedsolo",
 ]
 
+[project.optional-dependencies]
+gui = [
+    "flet>=0.28,<0.29",
+    "matplotlib",
+]
+
 [project.scripts]
 genecoder = "genecoder.cli:main"
 
