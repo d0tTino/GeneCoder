@@ -1,0 +1,7 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "GeneCoder"
+version: "0.1.0"
+doi: 10.0000/placeholder
+authors:
+  - name: "GeneCoder Team"

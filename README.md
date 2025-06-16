@@ -41,3 +41,5 @@ See [openai_testing/README.md](openai_testing/README.md) for full details.
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 GeneCoder is released under the [MIT License](LICENSE).
+
+See [CITATION.cff](CITATION.cff) for citation information.
