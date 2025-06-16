@@ -118,10 +118,11 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
 ## Graphical User Interface (GUI)
 
-Launch the Flet application:
+Install the optional GUI extras and launch the Flet application:
 
 ```bash
-python src/genecoder/flet_app.py
+pip install .[gui]  # or pip install -e .[gui] for development
+python -m genecoder.flet_app
 ```
 
 The GUI exposes encoding options, error correction choices and displays metrics and analysis plots.
