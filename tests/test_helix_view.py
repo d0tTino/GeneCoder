@@ -1,8 +1,5 @@
 import pytest
 
-ft = pytest.importorskip("flet")
-if not hasattr(ft, "HtmlElement"):
-    pytest.skip("Flet HtmlElement not available", allow_module_level=True)
 
 
 def test_show_helix_basic():

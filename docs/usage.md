@@ -111,17 +111,22 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
 10. **Decode using an external simulator**
 
+   The ``--simulator`` option accepts ``nanopore``, ``dnarsim`` or ``squigulator``.
+   When the specified tool is not installed, GeneCoder falls back to an internal
+   error model.
+
    ```bash
    genecoder decode --input-files encoded.fasta \
-       --output-file decoded.bin --simulator nanopore
+       --output-file decoded.bin --simulator squigulator
    ```
 
 ## Graphical User Interface (GUI)
 
-Launch the Flet application:
+Install the optional GUI extras and launch the Flet application:
 
 ```bash
-python src/genecoder/flet_app.py
+pip install .[gui]  # or pip install -e .[gui] for development
+python -m genecoder.flet_app
 ```
 
 The GUI exposes encoding options, error correction choices and displays metrics and analysis plots.
