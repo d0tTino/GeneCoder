@@ -5,6 +5,13 @@ from pathlib import Path
 
 import genecoder
 
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("SKIP_PACKAGING_TESTS") == "1",
+    reason="Skipping packaging tests to avoid coverage hangs",
+)
+
 PROJECT_ROOT = Path(__file__).parent.parent
 
 
