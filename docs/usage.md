@@ -111,9 +111,13 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
 10. **Decode using an external simulator**
 
+   The ``--simulator`` option accepts ``nanopore``, ``dnarsim`` or ``squigulator``.
+   When the specified tool is not installed, GeneCoder falls back to an internal
+   error model.
+
    ```bash
    genecoder decode --input-files encoded.fasta \
-       --output-file decoded.bin --simulator nanopore
+       --output-file decoded.bin --simulator squigulator
    ```
 
 ## Graphical User Interface (GUI)
