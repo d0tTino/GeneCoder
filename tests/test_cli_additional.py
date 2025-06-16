@@ -1,4 +1,5 @@
 import argparse
+import logging
 from genecoder.cli import (
     build_encoding_options,
     build_decoding_options,
@@ -36,7 +37,8 @@ def test_encoding_decoding_triple_repeat(tmp_path):
     assert out_bytes == data
 
 
-def test_run_encoding_unknown_fec_warning(capsys):
+def test_run_encoding_unknown_fec_warning(caplog):
+    caplog.set_level(logging.WARNING)
     data = b"abc"
     enc_args = argparse.Namespace(
         method="base4_direct",
@@ -50,8 +52,7 @@ def test_run_encoding_unknown_fec_warning(capsys):
     )
     enc_opts = build_encoding_options(enc_args)
     dna, header, *_ = run_encoding_pipeline(data, enc_opts, "x.bin")
-    captured = capsys.readouterr()
-    assert "Unknown FEC method 'bogus'" in captured.err
+    assert "Unknown FEC method 'bogus'" in caplog.text
     assert "fec=bogus" not in header
     assert dna
 

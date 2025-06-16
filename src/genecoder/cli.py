@@ -9,6 +9,7 @@ and Huffman coding.
 
 import argparse
 import sys
+import logging
 
 from genecoder import __version__
 import json
@@ -45,6 +46,42 @@ from genecoder.plotting import (
     identify_homopolymer_regions,
     generate_sequence_analysis_plot,
 )
+
+logger = logging.getLogger(__name__)
+
+
+class _LessThanFilter(logging.Filter):
+    """Filter logging records below a specific level."""
+
+    def __init__(self, exclusive_maximum: int) -> None:
+        super().__init__()
+        self.max = exclusive_maximum
+
+    def filter(self, record: logging.LogRecord) -> bool:  # pragma: no cover - trivial
+        return record.levelno < self.max
+
+
+def setup_logging(level: int) -> None:
+    """Configure basic logging for the CLI."""
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+
+    fmt = logging.Formatter("%(message)s")
+
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setLevel(logging.DEBUG)
+    stdout_handler.addFilter(_LessThanFilter(logging.WARNING))
+    stdout_handler.setFormatter(fmt)
+
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.setLevel(logging.WARNING)
+    stderr_handler.setFormatter(fmt)
+
+    root_logger.addHandler(stdout_handler)
+    root_logger.addHandler(stderr_handler)
 
 
 @dataclass
@@ -108,26 +145,24 @@ def run_encoding_pipeline(
 
     if options.fec == "hamming_7_4":
         if options.add_parity:
-            print(
-                f"Warning for {input_file_name}: --add-parity is ignored when Hamming(7,4) FEC is applied to binary data.",
-                file=sys.stderr,
+            logger.warning(
+                f"Warning for {input_file_name}: --add-parity is ignored when Hamming(7,4) FEC is applied to binary data."
             )
         current_input, fec_padding_bits = encode_data_with_hamming(data)
         header_parts.append("fec=hamming_7_4")
         header_parts.append(f"fec_padding_bits={fec_padding_bits}")
-        print(
+        logger.info(
             f"Applied Hamming(7,4) FEC to {input_file_name}. Original binary size: {len(data)}, Hamming encoded binary size: {len(current_input)} (padding bits: {fec_padding_bits})."
         )
     elif options.fec == "reed_solomon":
         if options.add_parity:
-            print(
-                f"Warning for {input_file_name}: --add-parity is ignored when Reed-Solomon FEC is applied to binary data.",
-                file=sys.stderr,
+            logger.warning(
+                f"Warning for {input_file_name}: --add-parity is ignored when Reed-Solomon FEC is applied to binary data."
             )
         current_input, rs_nsym = encode_data_rs(data)
         header_parts.append("fec=reed_solomon")
         header_parts.append(f"fec_nsym={rs_nsym}")
-        print(
+        logger.info(
             f"Applied Reed-Solomon FEC to {input_file_name}. Original binary size: {len(data)}, RS encoded binary size: {len(current_input)} (nsym={rs_nsym})."
         )
 
@@ -165,9 +200,8 @@ def run_encoding_pipeline(
             )
     elif options.method == "gc_balanced":
         if should_add_parity:
-            print(
-                f"Warning for {input_file_name}: --add-parity not directly used by 'gc_balanced' core logic.",
-                file=sys.stderr,
+            logger.warning(
+                f"Warning for {input_file_name}: --add-parity not directly used by 'gc_balanced' core logic."
             )
         raw_dna = encode_gc_balanced(
             current_input,
@@ -189,13 +223,12 @@ def run_encoding_pipeline(
     if options.fec == "triple_repeat":
         final_dna = encode_triple_repeat(raw_dna)
         header_parts.append("fec=triple_repeat")
-        print(
+        logger.info(
             f"Applied Triple-Repeat FEC to {input_file_name}. DNA length before: {len(raw_dna)}, after: {len(final_dna)}."
         )
     elif options.fec is not None and options.fec not in ("hamming_7_4", "reed_solomon"):
-        print(
-            f"Warning for {input_file_name}: Unknown FEC method '{options.fec}'. No DNA-level FEC applied.",
-            file=sys.stderr,
+        logger.warning(
+            f"Warning for {input_file_name}: Unknown FEC method '{options.fec}'. No DNA-level FEC applied."
         )
 
     return final_dna, " ".join(header_parts), raw_dna, current_input, fec_padding_bits
@@ -208,21 +241,19 @@ def run_decoding_pipeline(
 
     dna_for_primary = sequence
     if "fec=triple_repeat" in header:
-        print(f"Triple-Repeat FEC detected in header for {input_file_name}.")
+        logger.info(f"Triple-Repeat FEC detected in header for {input_file_name}.")
         if len(sequence) % 3 != 0:
-            print(
+            logger.warning(
                 f"Warning for {input_file_name}: Sequence length {len(sequence)} is not multiple of 3 for Triple-Repeat FEC. Attempting decode, but it might fail or be incorrect.",
-                file=sys.stderr,
             )
         try:
             dna_for_primary, corrected_tr, uncorr_tr = decode_triple_repeat(sequence)
-            print(
+            logger.info(
                 f"Triple-Repeat FEC decoding for {input_file_name}: {corrected_tr} corrected, {uncorr_tr} uncorrectable errors in triplets."
             )
         except ValueError as ve:
-            print(
+            logger.error(
                 f"Error during Triple-Repeat FEC decoding for {input_file_name}: {ve}. Using sequence as is for primary decode.",
-                file=sys.stderr,
             )
 
     parity_errors: list[int] = []
@@ -273,9 +304,8 @@ def run_decoding_pipeline(
         )
     elif options.method == "gc_balanced":
         if should_check_parity:
-            print(
+            logger.warning(
                 f"Warning for {input_file_name}: --check-parity is not applicable to 'gc_balanced' method's DNA layer.",
-                file=sys.stderr,
             )
         gc_min_match = re.search(r"gc_min=([\d.]+)", header)
         gc_max_match = re.search(r"gc_max=([\d.]+)", header)
@@ -293,43 +323,40 @@ def run_decoding_pipeline(
         raise ValueError(f"Unknown decoding method '{options.method}'.")
 
     if should_check_parity and parity_errors:
-        print(
+        logger.warning(
             f"Warning for {input_file_name}: DNA-level parity errors in data blocks: {parity_errors}",
-            file=sys.stderr,
         )
 
     final_data = binary_data
     if "fec=hamming_7_4" in header:
-        print(f"Hamming(7,4) FEC detected in header for {input_file_name}.")
+        logger.info(f"Hamming(7,4) FEC detected in header for {input_file_name}.")
         fec_padding_bits_match = re.search(r"fec_padding_bits=(\d+)", header)
         if not fec_padding_bits_match:
             raise ValueError("'fec_padding_bits' missing in header for Hamming(7,4) FEC.")
         fec_padding_bits = int(fec_padding_bits_match.group(1))
         try:
             final_data, corrected_ham = decode_data_with_hamming(binary_data, fec_padding_bits)
-            print(
+            logger.info(
                 f"Hamming(7,4) FEC decoding for {input_file_name}: {corrected_ham} corrected errors in codewords."
             )
         except ValueError as ve:
-            print(
+            logger.info(
                 f"Error during Hamming(7,4) FEC decoding for {input_file_name}: {ve}. Output may be incorrect.",
-                file=sys.stderr,
             )
     if "fec=reed_solomon" in header:
-        print(f"Reed-Solomon FEC detected in header for {input_file_name}.")
+        logger.info(f"Reed-Solomon FEC detected in header for {input_file_name}.")
         nsym_match = re.search(r"fec_nsym=(\d+)", header)
         if not nsym_match:
             raise ValueError("'fec_nsym' missing in header for Reed-Solomon FEC.")
         nsym = int(nsym_match.group(1))
         try:
             final_data, corrected_rs = decode_data_rs(final_data, nsym)
-            print(
+            logger.info(
                 f"Reed-Solomon FEC decoding for {input_file_name}: {corrected_rs} corrections."
             )
         except ValueError as ve:
-            print(
+            logger.info(
                 f"Error during Reed-Solomon FEC decoding for {input_file_name}: {ve}. Output may be incorrect.",
-                file=sys.stderr,
             )
 
     return final_data
@@ -340,7 +367,7 @@ def process_single_encode(
     input_file_path: str, output_file_path: str, args: argparse.Namespace
 ) -> None:
     """Encodes a single file based on provided arguments."""
-    print(
+    logger.info(
         f"\nProcessing encode for input: {input_file_path} -> output: {output_file_path}"
     )
     try:
@@ -370,19 +397,19 @@ def process_single_encode(
                 (original_size_bytes * 8) / total_len if total_len else 0.0
             )
 
-            print(f"\n--- Encoding Metrics for {input_file_path} ---")
-            print(f"Original file size: {original_size_bytes} bytes")
-            print(
+            logger.info(f"\n--- Encoding Metrics for {input_file_path} ---")
+            logger.info(f"Original file size: {original_size_bytes} bytes")
+            logger.info(
                 f"Final Encoded DNA length: {total_len} nucleotides (streamed)"
             )
-            print(
+            logger.info(
                 f"Compression ratio: {compression_ratio:.2f} (original bytes / final DNA bytes equivalent)"
             )
-            print(
+            logger.info(
                 f"Bits per nucleotide: {bits_per_nucleotide:.2f} bits/nt"
             )
-            print("----------------------")
-            print(
+            logger.info("----------------------")
+            logger.info(
                 f"Successfully encoded '{input_file_path}' to '{output_file_path}' using streaming."
             )
             return
@@ -423,19 +450,19 @@ def process_single_encode(
             else 0.0
         )
 
-        print(f"\n--- Encoding Metrics for {input_file_path} ---")
-        print(f"Original file size: {original_size_bytes} bytes")
+        logger.info(f"\n--- Encoding Metrics for {input_file_path} ---")
+        logger.info(f"Original file size: {original_size_bytes} bytes")
         if args.fec == "hamming_7_4":
-            print(
+            logger.info(
                 f"Binary size after Hamming(7,4) FEC: {len(current_input_data)} bytes (padding: {fec_padding_bits} bits)"
             )
-        print(
+        logger.info(
             f"Final Encoded DNA length: {final_encoded_length_nucleotides} nucleotides (after any DNA-level FEC like triple_repeat)"
         )
-        print(
+        logger.info(
             f"Compression ratio: {compression_ratio:.2f} (original bytes / final DNA bytes equivalent)"
         )
-        print(
+        logger.info(
             f"Bits per nucleotide: {bits_per_nucleotide:.2f} bits/nt (based on original data and final DNA length)"
         )
 
@@ -445,23 +472,22 @@ def process_single_encode(
             gc_balanced_payload_dna = (
                 raw_encoded_dna[1:] if len(raw_encoded_dna) > 0 else ""
             )
-            print(
+            logger.info(
                 f"Actual GC content (gc_balanced payload, pre-DNA FEC): {calculate_gc_content(gc_balanced_payload_dna):.2%}"
             )
-            print(
+            logger.info(
                 f"Actual max homopolymer length (gc_balanced payload, pre-DNA FEC): {get_max_homopolymer_length(gc_balanced_payload_dna)}"
             )
-        print("----------------------")
-        print(f"Successfully encoded '{input_file_path}' to '{output_file_path}'.")
+        logger.info("----------------------")
+        logger.info(f"Successfully encoded '{input_file_path}' to '{output_file_path}'.")
 
     except FileNotFoundError:
-        print(f"Error for {input_file_path}: Input file not found.", file=sys.stderr)
+        logger.error(f"Error for {input_file_path}: Input file not found.")
     except IOError as e:
-        print(f"Error for {input_file_path}: I/O error: {e}", file=sys.stderr)
+        logger.error(f"Error for {input_file_path}: I/O error: {e}")
     except Exception as e:
-        print(
+        logger.error(
             f"Error for {input_file_path}: Unexpected error during encoding: {e}",
-            file=sys.stderr,
         )
 
 
@@ -470,7 +496,7 @@ def process_single_decode(
     input_file_path: str, output_file_path: str, args: argparse.Namespace
 ) -> None:
     """Decodes a single file based on provided arguments."""
-    print(
+    logger.info(
         f"\nProcessing decode for input: {input_file_path} -> output: {output_file_path}"
     )
     try:
@@ -484,7 +510,7 @@ def process_single_decode(
                 k_value=args.k_value,
                 parity_rule=args.parity_rule,
             )
-            print(
+            logger.info(
                 f"Successfully decoded '{input_file_path}' to '{output_file_path}' using streaming."
             )
             return
@@ -494,16 +520,14 @@ def process_single_decode(
 
         parsed_records = from_fasta(file_content_str)
         if not parsed_records:
-            print(
+            logger.info(
                 f"Error for {input_file_path}: No valid FASTA records found.",
-                file=sys.stderr,
             )
             return
 
         if len(parsed_records) > 1:
-            print(
+            logger.info(
                 f"Warning for {input_file_path}: Multiple FASTA records found. Processing the first one only.",
-                file=sys.stderr,
             )
 
         header, sequence_from_fasta = parsed_records[0]
@@ -512,9 +536,8 @@ def process_single_decode(
         if header_method_match:
             header_method = header_method_match.group(1)
             if header_method != args.method:
-                print(
+                logger.info(
                     f"Error for {input_file_path}: FASTA header specifies method '{header_method}', but --method '{args.method}' was provided. Aborting.",
-                    file=sys.stderr,
                 )
                 sys.exit(1)
 
@@ -524,7 +547,7 @@ def process_single_decode(
             sequence_from_fasta = simulate_errors(
                 sequence_from_fasta, args.simulate_errors
             )
-            print(
+            logger.info(
                 f"Applied simulated errors (p={args.simulate_errors}) before decoding."
             )
 
@@ -537,39 +560,36 @@ def process_single_decode(
         with open(output_file_path, "wb") as f_out:
             f_out.write(final_decoded_data)
 
-        print(f"Successfully decoded '{input_file_path}' to '{output_file_path}'.")
+        logger.info(f"Successfully decoded '{input_file_path}' to '{output_file_path}'.")
 
     except FileNotFoundError:
-        print(f"Error for {input_file_path}: Input file not found.", file=sys.stderr)
+        logger.error(f"Error for {input_file_path}: Input file not found.")
     except IOError as e:
-        print(f"Error for {input_file_path}: I/O error: {e}", file=sys.stderr)
+        logger.error(f"Error for {input_file_path}: I/O error: {e}")
     except Exception as e:
-        print(
+        logger.error(
             f"Error for {input_file_path}: Unexpected error during decoding: {e}",
-            file=sys.stderr,
         )
 
 
 # --- Helper function for single file analysis ---
 def process_single_analyze(input_file_path: str, args: argparse.Namespace) -> None:
     """Analyzes a single FASTA file and prints summary statistics."""
-    print(f"\nProcessing analysis for input: {input_file_path}")
+    logger.info(f"\nProcessing analysis for input: {input_file_path}")
     try:
         with open(input_file_path, "r", encoding="utf-8") as f_in:
             file_content_str = f_in.read()
 
         parsed_records = from_fasta(file_content_str)
         if not parsed_records:
-            print(
+            logger.info(
                 f"Error for {input_file_path}: No valid FASTA records found.",
-                file=sys.stderr,
             )
             return
 
         if len(parsed_records) > 1:
-            print(
+            logger.info(
                 f"Warning for {input_file_path}: Multiple FASTA records found. Processing the first one only.",
-                file=sys.stderr,
             )
 
         header, sequence = parsed_records[0]
@@ -583,16 +603,16 @@ def process_single_analyze(input_file_path: str, args: argparse.Namespace) -> No
         )
         avg_gc = sum(gc_values) / len(gc_values) if gc_values else 0.0
 
-        print(f"Sequence length: {len(sequence)} nucleotides")
-        print(f"GC content: {gc_content:.2%}")
-        print(f"Max homopolymer length: {max_hp}")
+        logger.info(f"Sequence length: {len(sequence)} nucleotides")
+        logger.info(f"GC content: {gc_content:.2%}")
+        logger.info(f"Max homopolymer length: {max_hp}")
         if gc_values:
-            print(
+            logger.info(
                 f"Windowed GC stats (window={args.window_size}, step={args.step}): "
                 f"min={min(gc_values):.2%}, max={max(gc_values):.2%}, avg={avg_gc:.2%}"
             )
         else:
-            print("Sequence shorter than window size; no windowed GC stats.")
+            logger.info("Sequence shorter than window size; no windowed GC stats.")
 
         if getattr(args, "plot_dir", None):
             homopolymers = identify_homopolymer_regions(sequence, args.min_homopolymer)
@@ -607,14 +627,13 @@ def process_single_analyze(input_file_path: str, args: argparse.Namespace) -> No
             with open(plot_path, "wb") as f_out:
                 f_out.write(buf.getvalue())
             buf.close()
-            print(f"Plot saved to {plot_path}")
+            logger.info(f"Plot saved to {plot_path}")
 
     except FileNotFoundError:
-        print(f"Error for {input_file_path}: Input file not found.", file=sys.stderr)
+        logger.error(f"Error for {input_file_path}: Input file not found.")
     except Exception as e:
-        print(
+        logger.error(
             f"Error for {input_file_path}: Unexpected error during analysis: {e}",
-            file=sys.stderr,
         )
 
 
@@ -624,6 +643,8 @@ def main() -> None:
         description="GeneCoder: Encode and decode data into simulated DNA sequences."
     )
     parser.add_argument("--version", action="version", version=f"GeneCoder {__version__}")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase output verbosity (can be used multiple times).")
+    parser.add_argument("-q", "--quiet", action="count", default=0, help="Decrease output verbosity (can be used multiple times).")
     subparsers = parser.add_subparsers(
         dest="command",
         help="Available commands. Use `<command> -h` for more details.",
@@ -836,6 +857,11 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+
+    level = logging.INFO - (args.verbose * 10) + (args.quiet * 10)
+    level = max(logging.DEBUG, min(logging.CRITICAL, level))
+    setup_logging(level)
+
     if hasattr(args, "input_files"):
         num_input_files = len(args.input_files)
     else:
@@ -843,21 +869,18 @@ def main() -> None:
 
     if args.command == "encode":
         if num_input_files > 1 and not args.output_dir:
-            print(
+            logger.error(
                 "Error: --output-dir is required when providing multiple input files for encoding.",
-                file=sys.stderr,
             )
             sys.exit(1)
         if num_input_files == 1 and not args.output_file and not args.output_dir:
-            print(
+            logger.error(
                 "Error: For single input file, either --output-file or --output-dir must be specified.",
-                file=sys.stderr,
             )
             sys.exit(1)
         if args.output_file and args.output_dir and num_input_files == 1:
-            print(
+            logger.warning(
                 "Warning: Both --output-file and --output-dir provided for single input. Using --output-file.",
-                file=sys.stderr,
             )
 
         tasks = []
@@ -875,15 +898,14 @@ def main() -> None:
                 # Potentially add method/fec to filename here if desired: e.g. f"{base_name}_{args.method}{'_fec' if args.fec else ''}.fasta"
                 output_file_path = os.path.join(args.output_dir, output_file_name)
             else:  # Should be caught by earlier checks, but as a safeguard
-                print(
+                logger.error(
                     f"Error determining output path for {input_file_path}. Please check arguments.",
-                    file=sys.stderr,
                 )
                 continue
             tasks.append((input_file_path, output_file_path, args))
 
         if num_input_files > 1:
-            print(
+            logger.info(
                 f"Starting batch encoding for {num_input_files} files using ThreadPoolExecutor..."
             )
             # Using max_workers=None lets ThreadPoolExecutor decide, often os.cpu_count() * 5
@@ -900,32 +922,28 @@ def main() -> None:
                     try:
                         future.result()  # To raise exceptions if any occurred in the thread
                     except Exception as exc:
-                        print(
+                        logger.error(
                             f"A file processing task generated an exception: {exc}",
-                            file=sys.stderr,
                         )
-            print("\nBatch encoding finished.")
+            logger.info("\nBatch encoding finished.")
         else:  # Single file
             if tasks:
                 process_single_encode(tasks[0][0], tasks[0][1], tasks[0][2])
 
     elif args.command == "decode":
         if num_input_files > 1 and not args.output_dir:
-            print(
+            logger.error(
                 "Error: --output-dir is required when providing multiple input files for decoding.",
-                file=sys.stderr,
             )
             sys.exit(1)
         if num_input_files == 1 and not args.output_file and not args.output_dir:
-            print(
+            logger.error(
                 "Error: For single input file, either --output-file or --output-dir must be specified for decoding.",
-                file=sys.stderr,
             )
             sys.exit(1)
         if args.output_file and args.output_dir and num_input_files == 1:
-            print(
+            logger.warning(
                 "Warning: Both --output-file and --output-dir provided for single input decode. Using --output-file.",
-                file=sys.stderr,
             )
 
         tasks = []
@@ -940,15 +958,14 @@ def main() -> None:
                 output_file_name = name_part + "_decoded.bin"
                 output_file_path = os.path.join(args.output_dir, output_file_name)
             else:  # Safeguard
-                print(
+                logger.error(
                     f"Error determining output path for decoding {input_file_path}. Please check arguments.",
-                    file=sys.stderr,
                 )
                 continue
             tasks.append((input_file_path, output_file_path, args))
 
         if num_input_files > 1:
-            print(
+            logger.info(
                 f"Starting batch decoding for {num_input_files} files using ThreadPoolExecutor..."
             )
             cpu_count = os.cpu_count() or 1
@@ -963,11 +980,10 @@ def main() -> None:
                     try:
                         future.result()
                     except Exception as exc:
-                        print(
+                        logger.error(
                             f"A file decoding task generated an exception: {exc}",
-                            file=sys.stderr,
                         )
-            print("\nBatch decoding finished.")
+            logger.info("\nBatch decoding finished.")
         else:  # Single file
             if tasks:
                 process_single_decode(tasks[0][0], tasks[0][1], tasks[0][2])
@@ -982,9 +998,8 @@ def main() -> None:
                 fasta_str = f_in.read()
             records = from_fasta(fasta_str)
             if not records:
-                print(
+                logger.error(
                     f"Error: No FASTA records found in {args.input_file}.",
-                    file=sys.stderr,
                 )
                 sys.exit(1)
             header, seq = records[0]
@@ -1001,12 +1016,12 @@ def main() -> None:
             os.makedirs(os.path.dirname(args.output_file) or ".", exist_ok=True)
             with open(args.output_file, "w", encoding="utf-8") as f_out:
                 f_out.write(fasta_out)
-            print(f"Corrupted FASTA sequence written to {args.output_file}")
+            logger.info(f"Corrupted FASTA sequence written to {args.output_file}")
         except FileNotFoundError:
-            print(f"Error: Input file {args.input_file} not found.", file=sys.stderr)
+            logger.error(f"Error: Input file {args.input_file} not found.")
             sys.exit(1)
         except Exception as e:
-            print(f"Error during simulate-errors: {e}", file=sys.stderr)
+            logger.error(f"Error during simulate-errors: {e}")
             sys.exit(1)
 
 

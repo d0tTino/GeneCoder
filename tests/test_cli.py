@@ -284,7 +284,7 @@ def test_decode_method_mismatch(temp_dir: Path):
     result = run_cli_command(cmd_args)
 
     assert result.returncode != 0, "CLI decode should fail on method mismatch"
-    assert "FASTA header specifies method" in result.stderr
+    assert "FASTA header specifies method" in result.stdout
 
 
 def create_simple_fasta(file_path: Path, seq: str, header: str = "seq1"):
