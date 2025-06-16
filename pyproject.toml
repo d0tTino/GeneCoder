@@ -4,6 +4,7 @@ line-length = 88
 
   [tool.ruff.lint]
   extend-select = []
+  extend-ignore = ["E402"]
 
 [project]
 name = "GeneCoder"
@@ -43,3 +44,10 @@ include = ["genecoder*"]
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.flet]
+product = "GeneCoder"
+
+  [tool.flet.app]
+  module = "genecoder.flet_app"
+  path = "src"
