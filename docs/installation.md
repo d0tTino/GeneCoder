@@ -24,6 +24,17 @@ fail due to missing packages.
 pip install -r requirements.lock
 pytest -q
 ```
+
+## Mamba-Based Setup
+
+The progress report outlines a conda workflow using `mamba` to create a dedicated development environment:
+
+```bash
+mamba create -n genecoder python=3.12 flet reedsolo matplotlib pytest ruff mypy
+mamba activate genecoder
+pip install -e .
+pre-commit install
+```
 ## Windows Quick Start
 
 Install Miniforge with `winget` and create a dedicated environment using `mamba`:
