@@ -34,7 +34,7 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
 
     If the requested simulator command isn't available, fall back to a simple
     substitution error model implemented in :func:`simulate_errors`.
-    ``simulator`` may be ``none``, ``nanopore`` or ``dnarsim``.
+    ``simulator`` may be ``none``, ``nanopore``, ``dnarsim`` or ``squigulator``.
     """
     if simulator == "none":
         return sequence
@@ -51,6 +51,11 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     if simulator == "dnarsim":
         if shutil.which("dnarsim"):
             return _run_external("dnarsim", sequence)
+        return simulate_errors(sequence, error_rate)
+
+    if simulator == "squigulator":
+        if shutil.which("squigulator"):
+            return _run_external("squigulator", sequence)
         return simulate_errors(sequence, error_rate)
 
     raise ValueError(f"Unknown simulator: {simulator}")

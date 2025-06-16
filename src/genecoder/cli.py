@@ -801,7 +801,7 @@ def main() -> None:
         "--simulator",
         type=str,
         default="none",
-        choices=["none", "nanopore", "dnarsim"],
+        choices=["none", "nanopore", "dnarsim", "squigulator"],
         help="Apply an external simulator before decoding (default: none).",
     )
 
