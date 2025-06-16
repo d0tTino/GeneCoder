@@ -24,7 +24,7 @@ def test_cli_version(tmp_path: Path):
     genecoder_path = venv_dir / bin_dir / "genecoder"
 
     subprocess.run([str(pip_path), "install", "-U", "pip", "setuptools", "wheel"], check=True)
-    subprocess.run([str(pip_path), "install", "matplotlib", "flet>=0.28,<0.29", "reedsolo"], check=True)
+    subprocess.run([str(pip_path), "install", "matplotlib", "flet~=0.28", "reedsolo"], check=True)
 
     subprocess.run([
         str(pip_path),

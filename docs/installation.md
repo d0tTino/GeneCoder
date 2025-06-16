@@ -32,7 +32,7 @@ pytest -q
 The progress report outlines a conda workflow using `mamba` to create a dedicated development environment:
 
 ```bash
-mamba create -n genecoder python=3.12 flet reedsolo matplotlib pytest ruff mypy
+mamba create -n genecoder python=3.12 flet=0.28.* reedsolo matplotlib pytest ruff mypy
 mamba activate genecoder
 pip install -e .
 pre-commit install
