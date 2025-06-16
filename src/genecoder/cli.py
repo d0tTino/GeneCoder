@@ -541,6 +541,16 @@ def process_single_decode(
                 )
                 sys.exit(1)
 
+        if args.simulator != "none":
+            from genecoder.nanopore_sim import simulate_reads
+
+            sequence_from_fasta = simulate_reads(
+                sequence_from_fasta, args.simulator
+            )
+            logger.info(
+                f"Applied {args.simulator} simulator before decoding."
+            )
+
         if args.simulate_errors > 0.0:
             from genecoder.channel_sim import simulate_errors
 
@@ -786,6 +796,13 @@ def main() -> None:
         type=float,
         default=0.0,
         help="Probability of random substitution errors applied before decoding.",
+    )
+    decode_parser.add_argument(
+        "--simulator",
+        type=str,
+        default="none",
+        choices=["none", "nanopore", "dnarsim"],
+        help="Apply an external simulator before decoding (default: none).",
     )
 
     # Analyze command parser

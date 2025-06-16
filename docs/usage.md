@@ -109,6 +109,13 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --output-file decoded.bin --simulate-errors 0.02
    ```
 
+10. **Decode using an external simulator**
+
+   ```bash
+   genecoder decode --input-files encoded.fasta \
+       --output-file decoded.bin --simulator nanopore
+   ```
+
 ## Graphical User Interface (GUI)
 
 Launch the Flet application:
