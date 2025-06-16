@@ -17,6 +17,7 @@ For full usage instructions and additional documentation see the [docs/](docs/) 
 
 ```bash
 pip install -r requirements.txt
+pip install .[gui]  # install GUI extras when desired
 ```
 
 See [docs/installation.md](docs/installation.md) for detailed setup and testing instructions.
