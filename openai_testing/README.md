@@ -37,4 +37,14 @@ connect to the running CUA server:
 make openai-testing
 ```
 
+## License and origin
+
+The applications in this directory originate from the
+[openai-testing-agent-demo](https://github.com/openai/openai-testing-agent-demo)
+project and are redistributed here for convenience. The demo is released under
+the MIT License. You may use these files under the terms of that license and in
+accordance with [GeneCoder's MIT License](../LICENSE). When interacting with the
+CUA model, please ensure your usage complies with OpenAI's usage policies. These
+examples are intended for demonstration purposes and are not production ready.
+
 
