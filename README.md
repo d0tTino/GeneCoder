@@ -19,7 +19,7 @@ For full usage instructions and additional documentation see the [docs/](docs/) 
 pip install -r requirements.txt
 ```
 
-See [docs/installation.md](docs/installation.md) for detailed setup and testing instructions.
+See [docs/installation.md](docs/installation.md) for detailed setup and testing instructions, including the [mamba-based setup](docs/installation.md#mamba-based-setup).
 
 ## OpenAI Testing Environment
 
