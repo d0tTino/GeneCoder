@@ -1,4 +1,4 @@
-flet>=0.28,<0.29
+flet~=0.28
 matplotlib
 
 # Packages used for running the test suite
