@@ -5,7 +5,7 @@
 GeneCoder is an educational toolkit for exploring DNA-based data storage. It provides a command line interface and a GUI for encoding and decoding files into simulated DNA sequences.
 
 For full usage instructions and additional documentation see the [docs/](docs/) directory or the hosted documentation linked above.
-For instructions on launching the GUI see the [usage guide](docs/usage.md#graphical-user-interface-gui).
+For instructions on launching the GUI see the [usage guide](docs/usage.md#launching-the-flet-app).
 
 ## Features
 

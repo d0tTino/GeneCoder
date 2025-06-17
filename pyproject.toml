@@ -16,14 +16,14 @@ license = { text = "MIT" }
 requires-python = ">=3.10"
 keywords = ["DNA", "storage", "encoding", "simulation"]
 dependencies = [
-    "flet~=0.28",
+    "flet>=0.28,<0.29",
     "matplotlib",
     "reedsolo",
 ]
 
 [project.optional-dependencies]
 gui = [
-    "flet~=0.28",
+    "flet>=0.28,<0.29",
     "matplotlib",
 ]
 
@@ -47,7 +47,5 @@ build-backend = "setuptools.build_meta"
 
 [tool.flet]
 product = "GeneCoder"
-
-  [tool.flet.app]
-  module = "genecoder.flet_app"
-  path = "src"
+app.module = "genecoder.flet_app"
+app.path = "src"
