@@ -52,17 +52,13 @@ controls.enableDamping = true;
 camera.position.set(2, 2, 5);
 controls.update();
 
-const text = 'GeneCoder';
-const bytes = new TextEncoder().encode(text);
+const seq = '%(DNA_SEQ)s';
 const bases = [];
 const bits = [];
-for (const byte of bytes) {
-    for (let shift = 6; shift >= 0; shift -= 2) {
-        const val = (byte >> shift) & 3;
-        const base = ['A', 'C', 'G', 'T'][val];
-        bases.push(base);
-        bits.push(`${byte.toString(16).padStart(2,'0')}[${val.toString(2).padStart(2,'0')}]`);
-    }
+for (let i = 0; i < seq.length; i++) {
+    const base = seq[i];
+    bases.push(base);
+    bits.push(base);
 }
 
 const colors = { A: 0xff5555, C: 0x5555ff, G: 0x55ff55, T: 0xffff55 };
@@ -114,12 +110,16 @@ animate();
 </script>
 """
 
-HELIX_HTML = HELIX_TEMPLATE % {
-    "THREE_JS_URL": THREE_JS_URL,
-    "ORBIT_JS_URL": ORBIT_JS_URL,
-}
+def _make_helix_html(dna_sequence: str) -> str:
+    return HELIX_TEMPLATE % {
+        "THREE_JS_URL": THREE_JS_URL,
+        "ORBIT_JS_URL": ORBIT_JS_URL,
+        "DNA_SEQ": dna_sequence,
+    }
 
-def show_helix() -> ft.WebView:
+
+def show_helix(dna_sequence: str = "ACGT") -> ft.WebView:
     """Return a ``WebView`` displaying a DNA helix scene with controls."""
-    data_url = "data:text/html," + quote(HELIX_HTML)
+    helix_html = _make_helix_html(dna_sequence)
+    data_url = "data:text/html," + quote(helix_html)
     return ft.WebView(url=data_url, width=600, height=400)
