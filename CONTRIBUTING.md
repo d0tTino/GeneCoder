@@ -10,6 +10,20 @@ All pull requests are merged through GitHub's **merge queue**. When you open a P
 
 The CI system can detect pull requests that only modify documentation, comments or docstrings. In that situation the `automerge-comments.yml` workflow enables auto-merge so the PR merges as soon as the basic checks finish. The detection logic lives in `scripts/only_comments_changed.py` and is also used to skip the heavy test matrix in the `python-ci` workflow.
 
+### Checking your branch locally
+
+You can run the detection script yourself to see if your changes qualify as
+comment-only. Execute it from the repository root:
+
+```bash
+python scripts/only_comments_changed.py
+```
+
+By default it compares the working tree against `origin/main`. Set `BASE_SHA`
+to override the reference if your branch uses a different base. When the script
+prints `only_comments=true` the CI workflow will auto-merge once the lightweight
+checks pass.
+
 ## Running `pre-commit` Locally
 
 Code style is enforced with [pre-commit](https://pre-commit.com/). Install the tool and set up the git hook:
@@ -41,4 +55,7 @@ Unit tests use `pytest`. Install the pinned dependencies and run:
 pip install -r requirements.lock
 pytest -q
 ```
+
+All code changes must pass `pre-commit` and the test suite. These checks are not
+required for documentation-only pull requests.
 
