@@ -99,7 +99,10 @@ def test_strip_verify_empty_sequence():
 
 
 def test_strip_verify_malformed_length():
-    pass
+    assert strip_and_verify_parity("ATGCAT", 3, PARITY_RULE_GC_EVEN_A_ODD_T) == (
+        "ATGA",
+        [0],
+    )
 
 
 def test_strip_verify_invalid_k():
