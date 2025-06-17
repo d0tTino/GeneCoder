@@ -29,8 +29,9 @@ if [ "$only_comments" != "true" ]; then
     files=$(git diff --name-only "$BASE_SHA")
     if [ -n "$files" ]; then
         pre-commit run --files $files
+    else
+        pre-commit run --all-files
     fi
-    pytest -q
 else
     echo "Only documentation or comment changes detected. Skipping pre-commit and tests."
 fi
