@@ -1,7 +1,10 @@
+
+
+
+import flet as ft
 import pytest
 
-
-
+@pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
 def test_show_helix_basic():
     from genecoder.helix_view import show_helix
 
