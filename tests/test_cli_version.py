@@ -8,8 +8,8 @@ import genecoder
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    os.environ.get("SKIP_PACKAGING_TESTS") == "1",
-    reason="Skipping packaging tests to avoid coverage hangs",
+    os.environ.get("SKIP_PACKAGING_TESTS") == "1" or "COVERAGE_PROCESS_START" in os.environ,
+    reason="Skipping packaging tests during coverage to avoid hangs",
 )
 
 PROJECT_ROOT = Path(__file__).parent.parent
