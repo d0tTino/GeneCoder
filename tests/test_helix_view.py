@@ -1,4 +1,5 @@
 import pytest
+from urllib.parse import unquote
 
 ft = pytest.importorskip("flet")
 if not hasattr(ft, "HtmlElement"):
@@ -22,3 +23,6 @@ def test_show_helix_basic():
     assert elem.width == 600
     assert elem.height == 400
     assert elem.url.startswith("data:text/html,")
+    html = unquote(elem.url.split(",", 1)[1])
+    assert "cdn.jsdelivr" not in html
+    assert "data:application/javascript;base64" in html
