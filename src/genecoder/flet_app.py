@@ -26,6 +26,7 @@ from genecoder.manifest import generate_manifest
 from genecoder.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
 from genecoder.helix_view import show_helix
+from genecoder.formats import from_fasta
 
 
 encode_fasta_data_to_save_ref = ft.Ref[str]()
@@ -692,8 +693,14 @@ def main(page: ft.Page):
 
     def on_tab_change(e: ft.ControlEvent):
         if app_tabs.selected_index == 3:
+            dna_seq = ""
+            if encode_hidden_fasta_content.value:
+                parsed = from_fasta(encode_hidden_fasta_content.value)
+                if parsed:
+                    dna_seq = parsed[0][1]
             helix_container.controls.clear()
-            helix_container.controls.append(show_helix(encode_hidden_sequence.value))
+            helix_container.controls.append(show_helix(dna_seq))
+
         page.update()
 
     app_tabs.on_change = on_tab_change

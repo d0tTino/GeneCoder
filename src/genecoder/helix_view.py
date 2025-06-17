@@ -59,8 +59,15 @@ controls.enableDamping = true;
 camera.position.set(2, 2, 5);
 controls.update();
 
-const sequence = '%(SEQUENCE)s';
-const bases = Array.from(sequence);
+const seq = '%(DNA_SEQ)s';
+const bases = [];
+const bits = [];
+for (let i = 0; i < seq.length; i++) {
+    const base = seq[i];
+    bases.push(base);
+    bits.push(base);
+}
+
 
 const colors = { A: 0xff5555, C: 0x5555ff, G: 0x55ff55, T: 0xffff55 };
 const group = new THREE.Group();
@@ -111,13 +118,17 @@ animate();
 </script>
 """
 
-
-def show_helix(sequence: str) -> ft.WebView:
-    """Return a ``WebView`` displaying a DNA helix scene with controls."""
-    html = HELIX_TEMPLATE % {
+def _make_helix_html(dna_sequence: str) -> str:
+    return HELIX_TEMPLATE % {
         "THREE_JS_URL": THREE_JS_URL,
         "ORBIT_JS_URL": ORBIT_JS_URL,
-        "SEQUENCE": sequence,
+        "DNA_SEQ": dna_sequence,
     }
-    data_url = "data:text/html," + quote(html)
+
+
+def show_helix(dna_sequence: str = "ACGT") -> ft.WebView:
+    """Return a ``WebView`` displaying a DNA helix scene with controls."""
+    helix_html = _make_helix_html(dna_sequence)
+    data_url = "data:text/html," + quote(helix_html)
+
     return ft.WebView(url=data_url, width=600, height=400)
