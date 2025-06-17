@@ -122,10 +122,17 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
 ## Graphical User Interface (GUI)
 
-Install the optional GUI extras and launch the Flet application:
+### Launching the Flet App
+
+Install the optional GUI extras:
 
 ```bash
 pip install .[gui]  # or pip install -e .[gui] for development
+```
+
+Run the application:
+
+```bash
 python -m genecoder.flet_app
 ```
 

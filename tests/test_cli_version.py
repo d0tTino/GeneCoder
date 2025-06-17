@@ -8,8 +8,8 @@ import genecoder
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    os.environ.get("SKIP_PACKAGING_TESTS") == "1",
-    reason="Skipping packaging tests to avoid coverage hangs",
+    os.environ.get("SKIP_PACKAGING_TESTS") == "1" or "COVERAGE_PROCESS_START" in os.environ,
+    reason="Skipping packaging tests during coverage to avoid hangs",
 )
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -24,7 +24,7 @@ def test_cli_version(tmp_path: Path):
     genecoder_path = venv_dir / bin_dir / "genecoder"
 
     subprocess.run([str(pip_path), "install", "-U", "pip", "setuptools", "wheel"], check=True)
-    subprocess.run([str(pip_path), "install", "matplotlib", "flet~=0.28", "reedsolo"], check=True)
+    subprocess.run([str(pip_path), "install", "matplotlib", "flet>=0.28,<0.29", "reedsolo"], check=True)
 
     subprocess.run([
         str(pip_path),
