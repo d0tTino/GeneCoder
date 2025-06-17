@@ -19,6 +19,7 @@ import random
 import re  # For parsing header parameters
 import concurrent.futures
 from dataclasses import dataclass
+from genecoder.manifest import generate_manifest
 from genecoder.encoders import (
     encode_base4_direct,
     decode_base4_direct,
@@ -518,6 +519,13 @@ def process_single_encode(
             else 0.0
         )
 
+        metrics = {
+            "original_size": original_size_bytes,
+            "dna_length": final_encoded_length_nucleotides,
+            "compression_ratio": compression_ratio,
+            "bits_per_nt": bits_per_nucleotide,
+        }
+
         logger.info(f"\n--- Encoding Metrics for {input_file_path} ---")
         logger.info(f"Original file size: {original_size_bytes} bytes")
         if args.fec == "hamming_7_4":
@@ -546,9 +554,18 @@ def process_single_encode(
             logger.info(
                 f"Actual max homopolymer length (gc_balanced payload, pre-DNA FEC): {get_max_homopolymer_length(gc_balanced_payload_dna)}"
             )
+            metrics["actual_gc"] = calculate_gc_content(gc_balanced_payload_dna)
+            metrics["max_homopolymer"] = get_max_homopolymer_length(
+                gc_balanced_payload_dna
+            )
         logger.info("----------------------")
         logger.info(f"Successfully encoded '{input_file_path}' to '{output_file_path}'.")
         return os.path.basename(input_file_path), final_encoded_dna_sequence
+
+        manifest = generate_manifest(os.path.basename(input_file_path), options, metrics)
+        manifest_path = os.path.splitext(output_file_path)[0] + ".manifest.json"
+        with open(manifest_path, "w", encoding="utf-8") as mf:
+            json.dump(manifest, mf, indent=2)
 
     except FileNotFoundError:
         logger.error(f"Error for {input_file_path}: Input file not found.")

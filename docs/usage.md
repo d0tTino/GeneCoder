@@ -120,12 +120,22 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --output-file decoded.bin --simulator squigulator
    ```
 
-11. **Export sequences for synthesis**
+### Manifest files
 
-   ```bash
-   genecoder encode --input-files design.txt \
-       --output-dir encoded/ --export-csv order.csv
-   ```
+Each encoded file produces a companion JSON manifest capturing the encoding
+parameters and basic metrics. The manifest is saved alongside the FASTA output
+using the `.manifest.json` extension.
+
+Example snippet:
+
+```json
+{
+  "file": "example.txt",
+  "encoding_parameters": {"method": "base4_direct"},
+  "metrics": {"dna_length": 42}
+}
+```
+
 
 ## Graphical User Interface (GUI)
 
