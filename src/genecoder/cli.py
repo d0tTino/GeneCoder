@@ -13,6 +13,7 @@ import logging
 
 from genecoder import __version__
 import json
+import csv
 import os
 import random
 import re  # For parsing header parameters
@@ -26,6 +27,7 @@ from genecoder.encoders import (
     calculate_gc_content,
 )
 from genecoder.utils import get_max_homopolymer_length
+from genecoder.synthesis import SynthesisConstraints
 from genecoder.encoders import (
     encode_triple_repeat,
     decode_triple_repeat,
@@ -365,7 +367,7 @@ def run_decoding_pipeline(
 # --- Helper function for single file encoding ---
 def process_single_encode(
     input_file_path: str, output_file_path: str, args: argparse.Namespace
-) -> None:
+) -> tuple[str, str] | None:
     """Encodes a single file based on provided arguments."""
     logger.info(
         f"\nProcessing encode for input: {input_file_path} -> output: {output_file_path}"
@@ -412,7 +414,7 @@ def process_single_encode(
             logger.info(
                 f"Successfully encoded '{input_file_path}' to '{output_file_path}' using streaming."
             )
-            return
+            return os.path.basename(input_file_path), ""  # streamed DNA not collected
 
         with open(input_file_path, "rb") as f_in:
             original_input_data = f_in.read()  # Store original for metrics
@@ -480,6 +482,7 @@ def process_single_encode(
             )
         logger.info("----------------------")
         logger.info(f"Successfully encoded '{input_file_path}' to '{output_file_path}'.")
+        return os.path.basename(input_file_path), final_encoded_dna_sequence
 
     except FileNotFoundError:
         logger.error(f"Error for {input_file_path}: Input file not found.")
@@ -489,6 +492,7 @@ def process_single_encode(
         logger.error(
             f"Error for {input_file_path}: Unexpected error during encoding: {e}",
         )
+    return None
 
 
 # --- Helper function for single file decoding ---
@@ -616,6 +620,16 @@ def process_single_analyze(input_file_path: str, args: argparse.Namespace) -> No
         logger.info(f"Sequence length: {len(sequence)} nucleotides")
         logger.info(f"GC content: {gc_content:.2%}")
         logger.info(f"Max homopolymer length: {max_hp}")
+
+        constraints = SynthesisConstraints()
+        if len(sequence) < constraints.min_length or len(sequence) > constraints.max_length:
+            logger.warning(
+                f"Warning for {input_file_path}: Sequence length {len(sequence)} is outside the synthesis range {constraints.min_length}-{constraints.max_length}."
+            )
+        if max_hp > constraints.max_homopolymer:
+            logger.warning(
+                f"Warning for {input_file_path}: Maximum homopolymer {max_hp} exceeds allowed {constraints.max_homopolymer}."
+            )
         if gc_values:
             logger.info(
                 f"Windowed GC stats (window={args.window_size}, step={args.step}): "
@@ -737,6 +751,11 @@ def main() -> None:
         "--stream",
         action="store_true",
         help="Stream encode large files (base4_direct only).",
+    )
+    encode_parser.add_argument(
+        "--export-csv",
+        type=str,
+        help="Path to write a Twist/IDT order CSV with Name and Sequence columns.",
     )
 
     # Decode command parser
@@ -901,6 +920,7 @@ def main() -> None:
             )
 
         tasks = []
+        csv_rows: list[tuple[str, str]] = []
         for input_file_path in args.input_files:
             output_file_path = ""
             if (
@@ -931,13 +951,15 @@ def main() -> None:
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=min(8, cpu_count + 4)
             ) as executor:
-                futures = [
-                    executor.submit(process_single_encode, task[0], task[1], task[2])
-                    for task in tasks
-                ]
+                futures = {
+                    executor.submit(process_single_encode, t[0], t[1], t[2]): t[0]
+                    for t in tasks
+                }
                 for future in concurrent.futures.as_completed(futures):
                     try:
-                        future.result()  # To raise exceptions if any occurred in the thread
+                        res = future.result()
+                        if args.export_csv and res:
+                            csv_rows.append(res)
                     except Exception as exc:
                         logger.error(
                             f"A file processing task generated an exception: {exc}",
@@ -945,7 +967,17 @@ def main() -> None:
             logger.info("\nBatch encoding finished.")
         else:  # Single file
             if tasks:
-                process_single_encode(tasks[0][0], tasks[0][1], tasks[0][2])
+                res = process_single_encode(tasks[0][0], tasks[0][1], tasks[0][2])
+                if args.export_csv and res:
+                    csv_rows.append(res)
+
+        if args.export_csv and csv_rows:
+            os.makedirs(os.path.dirname(args.export_csv) or ".", exist_ok=True)
+            with open(args.export_csv, "w", newline="", encoding="utf-8") as csv_f:
+                writer = csv.writer(csv_f)
+                writer.writerow(["Name", "Sequence"])
+                writer.writerows(csv_rows)
+            logger.info(f"CSV order file written to {args.export_csv}")
 
     elif args.command == "decode":
         if num_input_files > 1 and not args.output_dir:
