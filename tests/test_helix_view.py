@@ -3,9 +3,12 @@
 if not hasattr(ft, "HtmlElement"):
     pytest.skip("HtmlElement not available", allow_module_level=True)
 
-ft = pytest.importorskip("flet")
+import flet as ft
+import pytest
 
-def test_show_helix_basic() -> None:
+@pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
+def test_show_helix_basic():
+
     from genecoder.helix_view import show_helix
 
     elem = show_helix()

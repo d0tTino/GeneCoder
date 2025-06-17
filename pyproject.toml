@@ -47,7 +47,5 @@ build-backend = "setuptools.build_meta"
 
 [tool.flet]
 product = "GeneCoder"
-
-  [tool.flet.app]
-  module = "genecoder.flet_app"
-  path = "src"
+app.module = "genecoder.flet_app"
+app.path = "src"
