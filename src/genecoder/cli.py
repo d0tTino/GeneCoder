@@ -50,6 +50,7 @@ from genecoder.plotting import (
     identify_homopolymer_regions,
     generate_sequence_analysis_plot,
 )
+from genecoder.synthesis import SynthesisConstraints
 
 logger = logging.getLogger(__name__)
 
@@ -863,8 +864,7 @@ def main() -> None:
     encode_parser.add_argument(
         "--capsule",
         type=str,
-        help="Path to write a capsule file capturing the FASTA header, sequence, and metadata.",
-
+        help="Write capsule JSON with header, sequence and metadata.",
 
     )
 
@@ -1143,11 +1143,14 @@ def main() -> None:
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=min(8, cpu_count + 4)
             ) as executor:
-                decode_futures = [
-                    executor.submit(process_single_decode, task[0], task[1], task[2])
+                futures_list: list[concurrent.futures.Future[None]] = [
+                    executor.submit(
+                        process_single_decode, task[0], task[1], task[2]
+                    )
                     for task in tasks
                 ]
-                for decode_future in concurrent.futures.as_completed(decode_futures):
+                for decode_future in concurrent.futures.as_completed(futures_list):
+
                     try:
                         decode_future.result()
                     except Exception as exc:
