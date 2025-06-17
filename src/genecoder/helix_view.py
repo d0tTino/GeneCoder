@@ -32,7 +32,7 @@ except FileNotFoundError:
     pass
 
 HELIX_TEMPLATE = """
-<div id='helix-container' style='position:relative;width:100%;height:100%'></div>
+<div id='helix-container' style='position:relative;width:100%%;height:100%%'></div>
 <div id='tooltip' style='position:absolute;display:none;padding:2px;background:#fff;border:1px solid #333;font-size:12px'></div>
 <script type='module'>
 import * as THREE from '%(THREE_JS_URL)s';
