@@ -16,3 +16,6 @@ visualization renders each nucleotide as a colored sphere with hover tooltips
 showing the original byte information.  Orbit controls allow zooming and
 rotating the helix.  The scene is loaded on demand so it works in both desktop
 and web deployments.
+
+All required JavaScript libraries are bundled with the package so the helix
+visualization functions entirely offline.

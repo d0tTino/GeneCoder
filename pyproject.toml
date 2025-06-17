@@ -42,7 +42,7 @@ where = ["src"]
 include = ["genecoder*"]
 
 [tool.setuptools.package-data]
-"genecoder" = ["py.typed"]
+"genecoder" = ["py.typed", "static/*"]
 
 [build-system]
 requires = ["setuptools", "wheel"]
