@@ -64,21 +64,28 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --add-parity --fec triple_repeat
    ```
 
-4. **Encode with Base-4 Direct and Hamming(7,4) FEC**
+4. **Encode using the base6 alphabet**
+
+   ```bash
+   genecoder encode --input-files data.bin \
+       --output-file encoded_base6.fasta --alphabet base6
+   ```
+
+5. **Encode with Base-4 Direct and Hamming(7,4) FEC**
 
    ```bash
    genecoder encode --input-files path/to/important_data.txt \
        --output-dir encoded_hamming/ --method base4_direct --fec hamming_7_4
    ```
 
-5. **Decode a Hamming(7,4) encoded file**
+6. **Decode a Hamming(7,4) encoded file**
 
    ```bash
    genecoder decode --input-files encoded_hamming/important_data.txt.fasta \
        --output-file decoded_important_data.txt --method base4_direct
    ```
 
-6. **Batch encode multiple files using GC-Balanced**
+7. **Batch encode multiple files using GC-Balanced**
 
    ```bash
    genecoder encode --input-files file1.txt notes.md image.png \
@@ -86,14 +93,14 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --gc-min 0.40 --gc-max 0.60 --max-homopolymer 4
    ```
 
-7. **Batch decode multiple FASTA files**
+8. **Batch decode multiple FASTA files**
 
    ```bash
    genecoder decode --input-files gc_encoded_batch/*.fasta \
        --output-dir decoded_batch/ --method gc_balanced
    ```
 
-8. **Stream encode and decode a large file**
+9. **Stream encode and decode a large file**
 
    ```bash
    genecoder encode --input-files big.bin --output-file big.fasta \
@@ -102,14 +109,14 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --stream --method base4_direct
    ```
 
-9. **Decode with simulated channel errors**
+10. **Decode with simulated channel errors**
 
    ```bash
    genecoder decode --input-files encoded.fasta \
        --output-file decoded.bin --simulate-errors 0.02
    ```
 
-10. **Decode using an external simulator**
+11. **Decode using an external simulator**
 
    The ``--simulator`` option accepts ``nanopore``, ``dnarsim`` or ``squigulator``.
    When the specified tool is not installed, GeneCoder falls back to an internal

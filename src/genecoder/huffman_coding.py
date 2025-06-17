@@ -143,7 +143,8 @@ def encode_huffman(
     data: bytes,
     add_parity: bool = False,
     k_value: int = 7,
-    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T
+    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
+    encode_map: dict[str, str] | None = None,
 ) -> Tuple[str, Dict[int, str], int]:
     """Encodes a byte string using Huffman coding and maps to a DNA sequence.
 
@@ -209,8 +210,7 @@ def encode_huffman(
 
     # Convert the padded binary string to a DNA sequence.
     dna_sequence_parts: List[str] = []
-    # Map every pair of bits to a nucleotide using the shared mapping.
-    dna_mapping = DNA_ENCODE_MAP
+    dna_mapping = encode_map or DNA_ENCODE_MAP
 
     # This check covers cases where data was non-empty but resulted in an empty
     # encoded_binary_string (e.g., if all Huffman codes were empty strings, which
@@ -236,12 +236,13 @@ def encode_huffman(
 # --- Main Decoding Function ---
 
 def decode_huffman(
-    dna_sequence: str, 
-    huffman_table: Dict[int, str], 
+    dna_sequence: str,
+    huffman_table: Dict[int, str],
     num_padding_bits: int,
     check_parity: bool = False,
     k_value: int = 7,
-    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T
+    parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
+    decode_map: dict[str, str] | None = None,
 ) -> Tuple[bytes, List[int]]:
     """Decodes a Huffman-encoded DNA sequence back into the original byte string.
 
@@ -314,8 +315,9 @@ def decode_huffman(
 
     # 1. Convert DNA sequence (potentially stripped of parity) to its binary string.
     binary_digits_list: List[str] = []
-    for char_dna in sequence_for_huffman_decode:  # Use the (potentially) stripped sequence
-        binary_pair = DNA_DECODE_MAP.get(char_dna)
+    mapping = decode_map or DNA_DECODE_MAP
+    for char_dna in sequence_for_huffman_decode:
+        binary_pair = mapping.get(char_dna)
         if binary_pair is None:
             raise ValueError(
                 f"Invalid DNA character '{char_dna}' in sequence for Huffman decoding."

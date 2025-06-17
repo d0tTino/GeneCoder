@@ -16,9 +16,12 @@ from .gc_constrained_encoder import (
     decode_gc_balanced,
     calculate_gc_content,
 )
-from .utils import get_max_homopolymer_length
+from .utils import (
+    get_max_homopolymer_length,
+    DNA_ENCODE_MAP,
+    DNA_DECODE_MAP,
+)
 from genecoder.error_correction import encode_triple_repeat, decode_triple_repeat
-from .utils import DNA_ENCODE_MAP, DNA_DECODE_MAP
 
 __all__ = [
     "encode_base4_direct",
@@ -36,6 +39,7 @@ def encode_base4_direct(
     add_parity: bool = False,
     k_value: int = 7,
     parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
+    encode_map: dict[str, str] | None = None,
     *,
     stream: bool = False,
 ) -> Iterator[str] | str:
@@ -82,11 +86,12 @@ def encode_base4_direct(
   """
   def _encode_chunk(chunk: bytes) -> str:
     dna_sequence_parts: list[str] = []
+    use_map = encode_map or DNA_ENCODE_MAP
     mapping = {
-        0: DNA_ENCODE_MAP["00"],
-        1: DNA_ENCODE_MAP["01"],
-        2: DNA_ENCODE_MAP["10"],
-        3: DNA_ENCODE_MAP["11"],
+        0: use_map["00"],
+        1: use_map["01"],
+        2: use_map["10"],
+        3: use_map["11"],
     }
     for byte_val in chunk:
       pairs = [
@@ -122,6 +127,7 @@ def decode_base4_direct(
     check_parity: bool = False,
     k_value: int = 7,
     parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
+    decode_map: dict[str, str] | None = None,
     *,
     stream: bool = False,
 ) -> Tuple[bytes, List[int]] | Iterator[Tuple[bytes, List[int]]]:
@@ -184,21 +190,17 @@ def decode_base4_direct(
       sequence_to_decode, parity_errors = strip_and_verify_parity(
           chunk_seq, k_value, parity_rule
       )
-    if not all(c in 'ATCG' for c in sequence_to_decode):
+    use_map = decode_map or DNA_DECODE_MAP
+    if not all(c in use_map for c in sequence_to_decode):
       raise ValueError(
-          "Invalid character in sequence to decode. Only 'A', 'T', 'C', 'G' are allowed."
+          "Invalid character in sequence to decode."
       )
     if len(sequence_to_decode) % 4 != 0:
       raise ValueError(
           "Length of sequence to decode must be a multiple of 4."
       )
     decoded_bytes: list[int] = []
-    reverse_mapping = {
-        'A': int(DNA_DECODE_MAP['A'], 2),
-        'C': int(DNA_DECODE_MAP['C'], 2),
-        'G': int(DNA_DECODE_MAP['G'], 2),
-        'T': int(DNA_DECODE_MAP['T'], 2),
-    }
+    reverse_mapping = {k: int(v, 2) for k, v in use_map.items()}
     for i in range(0, len(sequence_to_decode), 4):
       chars = sequence_to_decode[i:i+4]
       current_byte_val = 0

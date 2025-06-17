@@ -11,6 +11,7 @@ from .encoders import (
     calculate_gc_content,
 )
 from .utils import get_max_homopolymer_length
+from .utils import get_alphabet_maps
 from .encoders import encode_triple_repeat, decode_triple_repeat
 from .hamming_codec import encode_data_with_hamming, decode_data_with_hamming
 from .huffman_coding import encode_huffman, decode_huffman
@@ -44,6 +45,7 @@ class EncodeOptions:
     window_size: int = 50
     step_size: int = 10
     min_homopolymer_len: int = 4
+    alphabet: str = "base4"
 
 
 @dataclass
@@ -67,6 +69,7 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
     info_msgs: List[str] = []
     current_input = data
     fec_padding_bits = 0
+    encode_map, decode_map = get_alphabet_maps(options.alphabet)
     if options.fec_method == "Hamming(7,4)":
         if options.add_parity:
             info_msgs.append(
@@ -90,6 +93,7 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
             should_add_parity,
             options.k_value,
             PARITY_RULE_GC_EVEN_A_ODD_T,
+            encode_map,
         ))
     elif method == "Huffman":
         raw_dna, huffman_table, num_padding_bits = encode_huffman(
@@ -97,6 +101,7 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
             should_add_parity,
             options.k_value,
             PARITY_RULE_GC_EVEN_A_ODD_T,
+            encode_map,
         )
     elif method == "GC-Balanced":
         raw_dna = encode_gc_balanced(
@@ -197,11 +202,12 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
     )
 
 
-def perform_decoding(fasta_data: str) -> DecodeResult:
+def perform_decoding(fasta_data: str, alphabet: str = "base4") -> DecodeResult:
     parsed = from_fasta(fasta_data)
     if not parsed:
         raise ValueError("No valid FASTA records found")
     header, sequence = parsed[0]
+    _encode_map, decode_map = get_alphabet_maps(alphabet)
 
     messages: List[str] = []
     fec_messages: List[str] = []
@@ -265,7 +271,11 @@ def perform_decoding(fasta_data: str) -> DecodeResult:
     parity_errors: List[int] = []
     if method == "base4_direct":
         decoded_tuple = decode_base4_direct(
-            sequence_for_decode, check_parity, k_val, PARITY_RULE_GC_EVEN_A_ODD_T
+            sequence_for_decode,
+            check_parity,
+            k_val,
+            PARITY_RULE_GC_EVEN_A_ODD_T,
+            decode_map,
         )
         decoded_bytes, parity_errors = cast(Tuple[bytes, List[int]], decoded_tuple)
     elif method == "huffman":
@@ -278,6 +288,7 @@ def perform_decoding(fasta_data: str) -> DecodeResult:
             check_parity,
             k_val,
             PARITY_RULE_GC_EVEN_A_ODD_T,
+            decode_map,
         )
     elif method == "gc_balanced":
         gc_min_match = re.search(r"gc_min=([\d.]+)", header)

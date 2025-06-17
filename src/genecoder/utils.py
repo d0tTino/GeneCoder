@@ -1,10 +1,32 @@
 """Utility helpers shared across modules."""
 
 DNA_ENCODE_MAP = {"00": "A", "01": "C", "10": "G", "11": "T"}
-"""Mapping from two-bit binary strings to DNA bases."""
+"""Mapping from two-bit binary strings to DNA bases (Base-4 alphabet)."""
 
 DNA_DECODE_MAP = {v: k for k, v in DNA_ENCODE_MAP.items()}
 """Reverse mapping from DNA bases back to two-bit binary strings."""
+
+ALPHABETS: dict[str, str] = {
+    "base4": "ACGT",
+    "base5": "ACGTN",
+    "base6": "ACGTRY",
+}
+"""Supported nucleotide alphabets for encoding."""
+
+
+def get_alphabet_maps(alphabet: str) -> tuple[dict[str, str], dict[str, str]]:
+    """Return encode/decode maps for the selected alphabet."""
+    if alphabet not in ALPHABETS:
+        raise ValueError(f"Unknown alphabet '{alphabet}'")
+    letters = ALPHABETS[alphabet]
+    encode_map = {
+        "00": letters[0],
+        "01": letters[1],
+        "10": letters[2],
+        "11": letters[3],
+    }
+    decode_map = {v: k for k, v in encode_map.items()}
+    return encode_map, decode_map
 
 
 def get_max_homopolymer_length(dna_sequence: str) -> int:
