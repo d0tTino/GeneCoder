@@ -6,12 +6,20 @@ theme:
     primary: indigo
 nav:
   - Home: index.md
-  - Vision & Core Concept: vision.md
-  - Implemented Features: features.md
-  - Installation: installation.md
-  - Usage:
+  - Getting Started:
+      - Installation: installation.md
       - Usage Guide: usage.md
+  - Project Overview:
+      - Vision & Core Concept: vision.md
+      - Implemented Features: features.md
+      - Technology Stack: technology_stack.md
+  - Development:
+      - Development Roadmap: development_roadmap.md
+      - Development Vision: DEVELOPMENT_VISION.md
+  - Integrations:
       - n8n Overview: n8n_overview.md
   - Technology Stack: technology_stack.md
   - Development Roadmap: development_roadmap.md
   - Development Vision: DEVELOPMENT_VISION.md
+  - Plugin System: plugins.md
+

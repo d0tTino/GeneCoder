@@ -13,6 +13,7 @@ import logging
 
 from genecoder import __version__
 import json
+import csv
 import os
 import random
 import re  # For parsing header parameters
@@ -27,6 +28,7 @@ from genecoder.encoders import (
     calculate_gc_content,
 )
 from genecoder.utils import get_max_homopolymer_length
+from genecoder.synthesis import SynthesisConstraints
 from genecoder.encoders import (
     encode_triple_repeat,
     decode_triple_repeat,
@@ -166,9 +168,40 @@ def run_encoding_pipeline(
         logger.info(
             f"Applied Reed-Solomon FEC to {input_file_name}. Original binary size: {len(data)}, RS encoded binary size: {len(current_input)} (nsym={rs_nsym})."
         )
+    elif options.fec == "ldpc":
+        if options.add_parity:
+            logger.warning(
+                f"Warning for {input_file_name}: --add-parity is ignored when LDPC FEC is applied to binary data."
+            )
+        from genecoder.ldpc_codec import encode_data_ldpc
+
+        current_input, ldpc_info = encode_data_ldpc(data)
+        header_parts.append("fec=ldpc")
+        header_parts.append(f"ldpc_bits={ldpc_info['n_bits']}")
+        logger.info(
+            f"Applied LDPC FEC to {input_file_name}. Original binary size: {len(data)}, LDPC encoded binary size: {len(current_input)}."
+        )
+    elif options.fec == "fountain":
+        if options.add_parity:
+            logger.warning(
+                f"Warning for {input_file_name}: --add-parity is ignored when Fountain FEC is applied to binary data."
+            )
+        from genecoder.fountain_codec import encode_data_fountain
+
+        current_input, fountain_info = encode_data_fountain(data)
+        header_parts.append("fec=fountain")
+        header_parts.append(f"fountain_chunk={fountain_info['chunk_size']}")
+        logger.info(
+            f"Applied Fountain FEC to {input_file_name}. Original binary size: {len(data)}, Fountain encoded binary size: {len(current_input)}."
+        )
 
     raw_dna = ""
-    should_add_parity = options.add_parity and options.fec not in ("hamming_7_4", "reed_solomon")
+    should_add_parity = options.add_parity and options.fec not in (
+        "hamming_7_4",
+        "reed_solomon",
+        "ldpc",
+        "fountain",
+    )
 
     if options.method == "base4_direct":
         if should_add_parity and options.k_value <= 0:
@@ -359,6 +392,25 @@ def run_decoding_pipeline(
             logger.info(
                 f"Error during Reed-Solomon FEC decoding for {input_file_name}: {ve}. Output may be incorrect.",
             )
+    if "fec=ldpc" in header:
+        logger.info(f"LDPC FEC detected in header for {input_file_name}.")
+        bits_match = re.search(r"ldpc_bits=(\d+)", header)
+        if not bits_match:
+            raise ValueError("'ldpc_bits' missing in header for LDPC FEC.")
+        n_bits = int(bits_match.group(1))
+        from genecoder.ldpc_codec import decode_data_ldpc
+        final_data, corrected_ldpc = decode_data_ldpc(final_data, {"H": None, "n_bits": n_bits})
+        logger.info(
+            f"LDPC FEC decoding for {input_file_name}: {corrected_ldpc} corrections."
+        )
+    if "fec=fountain" in header:
+        logger.info(f"Fountain FEC detected in header for {input_file_name}.")
+        chunk_match = re.search(r"fountain_chunk=(\d+)", header)
+        if not chunk_match:
+            raise ValueError("'fountain_chunk' missing in header for Fountain FEC.")
+        chunk_size = int(chunk_match.group(1))
+        from genecoder.fountain_codec import decode_data_fountain
+        final_data, _ = decode_data_fountain(final_data, {"chunk_size": chunk_size, "orig_len": len(final_data)})
 
     return final_data
 
@@ -366,7 +418,7 @@ def run_decoding_pipeline(
 # --- Helper function for single file encoding ---
 def process_single_encode(
     input_file_path: str, output_file_path: str, args: argparse.Namespace
-) -> None:
+) -> tuple[str, str] | None:
     """Encodes a single file based on provided arguments."""
     logger.info(
         f"\nProcessing encode for input: {input_file_path} -> output: {output_file_path}"
@@ -413,7 +465,7 @@ def process_single_encode(
             logger.info(
                 f"Successfully encoded '{input_file_path}' to '{output_file_path}' using streaming."
             )
-            return
+            return os.path.basename(input_file_path), ""  # streamed DNA not collected
 
         with open(input_file_path, "rb") as f_in:
             original_input_data = f_in.read()  # Store original for metrics
@@ -434,6 +486,22 @@ def process_single_encode(
         os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
         with open(output_file_path, "w", encoding="utf-8") as f_out:
             f_out.write(fasta_output)
+
+        if getattr(args, "capsule", None):
+            from genecoder.cache_dna import write_capsule
+
+            metadata = {
+                "input_file": os.path.basename(input_file_path),
+                "method": args.method,
+                "fec": args.fec,
+            }
+            write_capsule(
+                final_encoded_dna_sequence,
+                fasta_header,
+                metadata,
+                args.capsule,
+            )
+            logger.info(f"Capsule written to {args.capsule}")
 
         # Metrics based on original_input_data and final_encoded_dna_sequence
         original_size_bytes = len(original_input_data)
@@ -492,6 +560,7 @@ def process_single_encode(
             )
         logger.info("----------------------")
         logger.info(f"Successfully encoded '{input_file_path}' to '{output_file_path}'.")
+        return os.path.basename(input_file_path), final_encoded_dna_sequence
 
         manifest = generate_manifest(os.path.basename(input_file_path), options, metrics)
         manifest_path = os.path.splitext(output_file_path)[0] + ".manifest.json"
@@ -506,6 +575,7 @@ def process_single_encode(
         logger.error(
             f"Error for {input_file_path}: Unexpected error during encoding: {e}",
         )
+    return None
 
 
 # --- Helper function for single file decoding ---
@@ -633,6 +703,16 @@ def process_single_analyze(input_file_path: str, args: argparse.Namespace) -> No
         logger.info(f"Sequence length: {len(sequence)} nucleotides")
         logger.info(f"GC content: {gc_content:.2%}")
         logger.info(f"Max homopolymer length: {max_hp}")
+
+        constraints = SynthesisConstraints()
+        if len(sequence) < constraints.min_length or len(sequence) > constraints.max_length:
+            logger.warning(
+                f"Warning for {input_file_path}: Sequence length {len(sequence)} is outside the synthesis range {constraints.min_length}-{constraints.max_length}."
+            )
+        if max_hp > constraints.max_homopolymer:
+            logger.warning(
+                f"Warning for {input_file_path}: Maximum homopolymer {max_hp} exceeds allowed {constraints.max_homopolymer}."
+            )
         if gc_values:
             logger.info(
                 f"Windowed GC stats (window={args.window_size}, step={args.step}): "
@@ -729,8 +809,8 @@ def main() -> None:
         "--fec",
         type=str,
         default=None,
-        choices=[None, "triple_repeat", "hamming_7_4", "reed_solomon"],  # Added hamming_7_4 and reed_solomon
-        help="Forward Error Correction method to apply. Optional. (Note: hamming_7_4 and reed_solomon are applied to binary data before DNA encoding; triple_repeat is applied to DNA sequence after encoding).",
+        choices=[None, "triple_repeat", "hamming_7_4", "reed_solomon", "ldpc", "fountain"],
+        help="Forward Error Correction method to apply. Optional. (Note: hamming_7_4, reed_solomon, ldpc and fountain are applied to binary data before DNA encoding; triple_repeat is applied to DNA sequence after encoding).",
     )
     encode_parser.add_argument(
         "--gc-min",
@@ -754,6 +834,12 @@ def main() -> None:
         "--stream",
         action="store_true",
         help="Stream encode large files (base4_direct only).",
+    )
+    encode_parser.add_argument(
+        "--export-csv",
+        type=str,
+        help="Path to write a Twist/IDT order CSV with Name and Sequence columns.",
+
     )
 
     # Decode command parser
@@ -916,8 +1002,14 @@ def main() -> None:
             logger.warning(
                 "Warning: Both --output-file and --output-dir provided for single input. Using --output-file.",
             )
+        if args.capsule and num_input_files != 1:
+            logger.error(
+                "Error: --capsule can only be used with a single input file.",
+            )
+            sys.exit(1)
 
         tasks = []
+        csv_rows: list[tuple[str, str]] = []
         for input_file_path in args.input_files:
             output_file_path = ""
             if (
@@ -948,13 +1040,15 @@ def main() -> None:
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=min(8, cpu_count + 4)
             ) as executor:
-                futures = [
-                    executor.submit(process_single_encode, task[0], task[1], task[2])
-                    for task in tasks
-                ]
+                futures = {
+                    executor.submit(process_single_encode, t[0], t[1], t[2]): t[0]
+                    for t in tasks
+                }
                 for future in concurrent.futures.as_completed(futures):
                     try:
-                        future.result()  # To raise exceptions if any occurred in the thread
+                        res = future.result()
+                        if args.export_csv and res:
+                            csv_rows.append(res)
                     except Exception as exc:
                         logger.error(
                             f"A file processing task generated an exception: {exc}",
@@ -962,7 +1056,17 @@ def main() -> None:
             logger.info("\nBatch encoding finished.")
         else:  # Single file
             if tasks:
-                process_single_encode(tasks[0][0], tasks[0][1], tasks[0][2])
+                res = process_single_encode(tasks[0][0], tasks[0][1], tasks[0][2])
+                if args.export_csv and res:
+                    csv_rows.append(res)
+
+        if args.export_csv and csv_rows:
+            os.makedirs(os.path.dirname(args.export_csv) or ".", exist_ok=True)
+            with open(args.export_csv, "w", newline="", encoding="utf-8") as csv_f:
+                writer = csv.writer(csv_f)
+                writer.writerow(["Name", "Sequence"])
+                writer.writerows(csv_rows)
+            logger.info(f"CSV order file written to {args.export_csv}")
 
     elif args.command == "decode":
         if num_input_files > 1 and not args.output_dir:

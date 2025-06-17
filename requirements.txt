@@ -5,3 +5,5 @@ matplotlib
 pytest
 pytest-cov
 reedsolo
+pyfinite
+pyldpc

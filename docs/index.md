@@ -13,3 +13,5 @@
 GeneCoder has been enhanced with new encoding strategies, error correction, batch processing and an improved GUI. The toolkit now offers sophisticated ways to simulate DNA data storage including GC-content balancing, triple-repeat error correction and batch processing.
 
 For more details, explore the sections below.
+
+* [Plugin System](plugins.md) – Extend GeneCoder with custom codecs and viewers.
