@@ -9,6 +9,7 @@ import pkgutil
 
 # Flet <0.29 removed ``HtmlElement``. Provide a minimal fallback for tests.
 if not hasattr(ft, "HtmlElement"):
+
     class _HtmlElement:
         """Lightweight stand-in for :class:`flet.HtmlElement`."""
 
@@ -25,9 +26,15 @@ try:
     three_data = pkgutil.get_data("genecoder", "static/three.min.js")
     orbit_data = pkgutil.get_data("genecoder", "static/OrbitControls.min.js")
     if three_data:
-        THREE_JS_URL = "data:application/javascript;base64," + base64.b64encode(three_data).decode()
+        THREE_JS_URL = (
+            "data:application/javascript;base64,"
+            + base64.b64encode(three_data).decode()
+        )
     if orbit_data:
-        ORBIT_JS_URL = "data:application/javascript;base64," + base64.b64encode(orbit_data).decode()
+        ORBIT_JS_URL = (
+            "data:application/javascript;base64,"
+            + base64.b64encode(orbit_data).decode()
+        )
 except FileNotFoundError:
     pass
 
@@ -61,17 +68,18 @@ for (let i = 0; i < seq.length; i++) {
     bits.push(base);
 }
 
+
 const colors = { A: 0xff5555, C: 0x5555ff, G: 0x55ff55, T: 0xffff55 };
 const group = new THREE.Group();
 const radius = 0.1;
 const height = 0.4;
 for (let i = 0; i < bases.length; i++) {
     const geometry = new THREE.SphereGeometry(radius, 16, 16);
-    const material = new THREE.MeshBasicMaterial({ color: colors[bases[i]] });
+    const material = new THREE.MeshBasicMaterial({ color: colors[bases[i]] || 0xffffff });
     const mesh = new THREE.Mesh(geometry, material);
     const angle = i * 0.3;
     mesh.position.set(Math.cos(angle), Math.sin(angle), i * height);
-    mesh.userData = { info: bits[i] };
+    mesh.userData = { info: `${bases[i]} (${i})` };
     group.add(mesh);
 }
 scene.add(group);
@@ -122,4 +130,5 @@ def show_helix(dna_sequence: str = "ACGT") -> ft.WebView:
     """Return a ``WebView`` displaying a DNA helix scene with controls."""
     helix_html = _make_helix_html(dna_sequence)
     data_url = "data:text/html," + quote(helix_html)
+
     return ft.WebView(url=data_url, width=600, height=400)
