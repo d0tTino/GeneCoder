@@ -8,7 +8,8 @@ GeneCoder provides a CLI and GUI for encoding and decoding data into simulated D
 * **Parity checks** for additional error detection.
 * **Batch processing** and streaming support for large files.
 * **Flet-based GUI** with analysis plots and asynchronous operations.
-* **Capsule export** to cache encoded DNA and metadata via ``--capsule``.
+* **CSV export for synthesis** with length and homopolymer validation. The analysis command warns when sequences violate these constraints.
+
 
 ## Helix View
 

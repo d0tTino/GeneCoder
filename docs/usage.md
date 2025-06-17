@@ -120,6 +120,13 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --output-file decoded.bin --simulator squigulator
    ```
 
+11. **Export sequences for synthesis**
+
+   ```bash
+   genecoder encode --input-files design.txt \
+       --output-dir encoded/ --export-csv order.csv
+   ```
+
 ## Graphical User Interface (GUI)
 
 ### Launching the Flet App
