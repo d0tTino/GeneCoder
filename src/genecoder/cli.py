@@ -49,6 +49,7 @@ from genecoder.plotting import (
     identify_homopolymer_regions,
     generate_sequence_analysis_plot,
 )
+from genecoder.synthesis import SynthesisConstraints
 
 logger = logging.getLogger(__name__)
 
@@ -858,6 +859,11 @@ def main() -> None:
         help="Path to write a Twist/IDT order CSV with Name and Sequence columns.",
 
     )
+    encode_parser.add_argument(
+        "--capsule",
+        type=str,
+        help="Write capsule JSON with header, sequence and metadata.",
+    )
 
     # Decode command parser
     decode_parser = subparsers.add_parser(
@@ -1134,13 +1140,15 @@ def main() -> None:
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=min(8, cpu_count + 4)
             ) as executor:
-                futures = [
-                    executor.submit(process_single_decode, task[0], task[1], task[2])
+                futures_list: list[concurrent.futures.Future[None]] = [
+                    executor.submit(
+                        process_single_decode, task[0], task[1], task[2]
+                    )
                     for task in tasks
                 ]
-                for future in concurrent.futures.as_completed(futures):
+                for decode_future in concurrent.futures.as_completed(futures_list):
                     try:
-                        future.result()
+                        decode_future.result()
                     except Exception as exc:
                         logger.error(
                             f"A file decoding task generated an exception: {exc}",
