@@ -2,9 +2,6 @@ import pytest
 from urllib.parse import unquote
 
 ft = pytest.importorskip("flet")
-if not hasattr(ft, "HtmlElement"):
-    pytest.skip("Flet HtmlElement not available", allow_module_level=True)
-
 from genecoder.helix_view import show_helix
 
 
