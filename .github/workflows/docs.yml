@@ -22,10 +22,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install MkDocs Material
-        run: pip install mkdocs-material
+      - name: Install documentation requirements
+        run: pip install -r docs/requirements.txt
       - name: Build site
         run: mkdocs build --strict
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-pdf
+          path: site/pdf/combined.pdf
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
