@@ -44,6 +44,7 @@ from genecoder.error_detection import (
     PARITY_RULE_GC_EVEN_A_ODD_T,
 )  # Import parity constant
 from genecoder.error_simulation import introduce_errors
+from genecoder.synthesis import SynthesisConstraints
 from genecoder.plotting import (
     calculate_windowed_gc_content,
     identify_homopolymer_regions,
@@ -99,7 +100,7 @@ class EncodingOptions:
     gc_min: float
     gc_max: float
     max_homopolymer: int
-    alphabet: str
+    alphabet: str = "base4"
 
 
 @dataclass
@@ -858,6 +859,11 @@ def main() -> None:
         help="Path to write a Twist/IDT order CSV with Name and Sequence columns.",
 
     )
+    encode_parser.add_argument(
+        "--capsule",
+        type=str,
+        help="Path to save a capsule describing the encoded sequence.",
+    )
 
     # Decode command parser
     decode_parser = subparsers.add_parser(
@@ -1064,11 +1070,11 @@ def main() -> None:
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=min(8, cpu_count + 4)
             ) as executor:
-                futures = {
+                future_to_file = {
                     executor.submit(process_single_encode, t[0], t[1], t[2]): t[0]
                     for t in tasks
                 }
-                for future in concurrent.futures.as_completed(futures):
+                for future in concurrent.futures.as_completed(future_to_file):
                     try:
                         res = future.result()
                         if args.export_csv and res:
@@ -1134,13 +1140,13 @@ def main() -> None:
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=min(8, cpu_count + 4)
             ) as executor:
-                futures = [
+                decode_futures = [
                     executor.submit(process_single_decode, task[0], task[1], task[2])
                     for task in tasks
                 ]
-                for future in concurrent.futures.as_completed(futures):
+                for decode_future in concurrent.futures.as_completed(decode_futures):
                     try:
-                        future.result()
+                        decode_future.result()
                     except Exception as exc:
                         logger.error(
                             f"A file decoding task generated an exception: {exc}",
