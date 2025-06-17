@@ -571,12 +571,13 @@ def process_single_encode(
             )
         logger.info("----------------------")
         logger.info(f"Successfully encoded '{input_file_path}' to '{output_file_path}'.")
-        return os.path.basename(input_file_path), final_encoded_dna_sequence
 
         manifest = generate_manifest(os.path.basename(input_file_path), options, metrics)
         manifest_path = os.path.splitext(output_file_path)[0] + ".manifest.json"
         with open(manifest_path, "w", encoding="utf-8") as mf:
             json.dump(manifest, mf, indent=2)
+
+        return os.path.basename(input_file_path), final_encoded_dna_sequence
 
     except FileNotFoundError:
         logger.error(f"Error for {input_file_path}: Input file not found.")
@@ -862,7 +863,9 @@ def main() -> None:
     encode_parser.add_argument(
         "--capsule",
         type=str,
-        help="Path to save a capsule describing the encoded sequence.",
+        help="Path to write a capsule file capturing the FASTA header, sequence, and metadata.",
+
+
     )
 
     # Decode command parser
