@@ -57,3 +57,9 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for gu
 GeneCoder is released under the [MIT License](LICENSE).
 
 See [CITATION.cff](CITATION.cff) for citation information.
+
+### Plugins
+
+GeneCoder can be extended through plugins discovered via the
+`genecoder.plugins` entry point. See [docs/plugins.md](docs/plugins.md) for
+details on writing and registering new codecs or viewers.
