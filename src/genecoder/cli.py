@@ -44,6 +44,7 @@ from genecoder.error_detection import (
     PARITY_RULE_GC_EVEN_A_ODD_T,
 )  # Import parity constant
 from genecoder.error_simulation import introduce_errors
+from genecoder.synthesis import SynthesisConstraints
 from genecoder.plotting import (
     calculate_windowed_gc_content,
     identify_homopolymer_regions,
@@ -100,7 +101,7 @@ class EncodingOptions:
     gc_min: float
     gc_max: float
     max_homopolymer: int
-    alphabet: str
+    alphabet: str = "base4"
 
 
 @dataclass
@@ -571,12 +572,13 @@ def process_single_encode(
             )
         logger.info("----------------------")
         logger.info(f"Successfully encoded '{input_file_path}' to '{output_file_path}'.")
-        return os.path.basename(input_file_path), final_encoded_dna_sequence
 
         manifest = generate_manifest(os.path.basename(input_file_path), options, metrics)
         manifest_path = os.path.splitext(output_file_path)[0] + ".manifest.json"
         with open(manifest_path, "w", encoding="utf-8") as mf:
             json.dump(manifest, mf, indent=2)
+
+        return os.path.basename(input_file_path), final_encoded_dna_sequence
 
     except FileNotFoundError:
         logger.error(f"Error for {input_file_path}: Input file not found.")
@@ -863,6 +865,7 @@ def main() -> None:
         "--capsule",
         type=str,
         help="Write capsule JSON with header, sequence and metadata.",
+
     )
 
     # Decode command parser
@@ -1070,11 +1073,11 @@ def main() -> None:
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=min(8, cpu_count + 4)
             ) as executor:
-                futures = {
+                future_to_file = {
                     executor.submit(process_single_encode, t[0], t[1], t[2]): t[0]
                     for t in tasks
                 }
-                for future in concurrent.futures.as_completed(futures):
+                for future in concurrent.futures.as_completed(future_to_file):
                     try:
                         res = future.result()
                         if args.export_csv and res:
@@ -1147,6 +1150,7 @@ def main() -> None:
                     for task in tasks
                 ]
                 for decode_future in concurrent.futures.as_completed(futures_list):
+
                     try:
                         decode_future.result()
                     except Exception as exc:
