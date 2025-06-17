@@ -115,6 +115,16 @@ def main(page: ft.Page):
         value="Base-4 Direct"
     )
 
+    alphabet_dropdown = ft.Dropdown(
+        label="Alphabet",
+        options=[
+            ft.dropdown.Option("base4"),
+            ft.dropdown.Option("base5"),
+            ft.dropdown.Option("base6"),
+        ],
+        value="base4",
+    )
+
     k_value_input = ft.TextField(
         label="k-value (for parity)", 
         value="7", 
@@ -272,6 +282,7 @@ def main(page: ft.Page):
                 window_size=parse_int_input(window_size_input.value, 50),
                 step_size=parse_int_input(step_size_input.value, 10),
                 min_homopolymer_len=parse_int_input(min_homopolymer_input.value, 4),
+                alphabet=alphabet_dropdown.value,
             )
 
             result = await asyncio.to_thread(perform_encoding, input_data, options)
@@ -416,6 +427,15 @@ def main(page: ft.Page):
     decode_button = ft.ElevatedButton("Decode")
 
     decode_stream_checkbox = ft.Checkbox(label="Stream large files", value=False)
+    decode_alphabet_dropdown = ft.Dropdown(
+        label="Alphabet",
+        options=[
+            ft.dropdown.Option("base4"),
+            ft.dropdown.Option("base5"),
+            ft.dropdown.Option("base6"),
+        ],
+        value="base4",
+    )
 
     async def on_decode_file_picker_result(e: ft.FilePickerResultEvent): # Made async
         if e.files and len(e.files) > 0:
@@ -465,7 +485,9 @@ def main(page: ft.Page):
                 file_content_str = await asyncio.to_thread(f_in.read)
 
             try:
-                result = await asyncio.to_thread(perform_decoding, file_content_str)
+                result = await asyncio.to_thread(
+                    perform_decoding, file_content_str, decode_alphabet_dropdown.value
+                )
             except Exception as ex:
                 decode_status_text.value = f"Error: {ex}"
                 decode_status_text.color = ft.colors.RED_ACCENT_700
@@ -520,6 +542,7 @@ def main(page: ft.Page):
         controls=[
             ft.Row([decode_browse_button, decode_selected_input_file_text], alignment=ft.MainAxisAlignment.START),
             ft.Row([decode_button, decode_progress_ring]), # Added progress ring
+            decode_alphabet_dropdown,
             decode_stream_checkbox,
             ft.Divider(),
             ft.Text("Status:", weight=ft.FontWeight.BOLD),
@@ -568,6 +591,7 @@ def main(page: ft.Page):
                         controls=[
                             ft.Row([encode_browse_button, encode_selected_input_file_text]),
                             method_dropdown,
+                            alphabet_dropdown,
                             ft.Row([parity_checkbox, k_value_input]),
                             fec_dropdown,
 

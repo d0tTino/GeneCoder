@@ -27,8 +27,8 @@ from genecoder.encoders import (
     decode_gc_balanced,
     calculate_gc_content,
 )
-from genecoder.utils import get_max_homopolymer_length
-from genecoder.synthesis import SynthesisConstraints
+from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
+
 from genecoder.encoders import (
     encode_triple_repeat,
     decode_triple_repeat,
@@ -99,6 +99,7 @@ class EncodingOptions:
     gc_min: float
     gc_max: float
     max_homopolymer: int
+    alphabet: str
 
 
 @dataclass
@@ -109,6 +110,7 @@ class DecodingOptions:
     check_parity: bool
     k_value: int
     parity_rule: str
+    alphabet: str
 
 
 def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
@@ -123,6 +125,7 @@ def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
         gc_min=args.gc_min,
         gc_max=args.gc_max,
         max_homopolymer=args.max_homopolymer,
+        alphabet=getattr(args, "alphabet", "base4"),
     )
 
 
@@ -134,6 +137,7 @@ def build_decoding_options(args: argparse.Namespace) -> DecodingOptions:
         check_parity=args.check_parity,
         k_value=args.k_value,
         parity_rule=args.parity_rule,
+        alphabet=getattr(args, "alphabet", "base4"),
     )
 
 
@@ -144,6 +148,7 @@ def run_encoding_pipeline(
 
     current_input = data
     fec_padding_bits = -1
+    encode_map, decode_map = get_alphabet_maps(options.alphabet)
     header_parts = [f"method={options.method}", f"input_file={input_file_name}"]
 
     if options.fec == "hamming_7_4":
@@ -211,6 +216,7 @@ def run_encoding_pipeline(
             add_parity=should_add_parity,
             k_value=options.k_value,
             parity_rule=options.parity_rule,
+            encode_map=encode_map,
         )
         if should_add_parity:
             header_parts.extend(
@@ -224,6 +230,7 @@ def run_encoding_pipeline(
             add_parity=should_add_parity,
             k_value=options.k_value,
             parity_rule=options.parity_rule,
+            encode_map=encode_map,
         )
         serializable_table = {str(k): v for k, v in huffman_table.items()}
         huffman_params = {"table": serializable_table, "padding": num_padding_bits}
@@ -274,6 +281,7 @@ def run_decoding_pipeline(
     """Decode ``sequence`` according to ``header`` and ``options``."""
 
     dna_for_primary = sequence
+    encode_map, decode_map = get_alphabet_maps(options.alphabet)
     if "fec=triple_repeat" in header:
         logger.info(f"Triple-Repeat FEC detected in header for {input_file_name}.")
         if len(sequence) % 3 != 0:
@@ -301,6 +309,7 @@ def run_decoding_pipeline(
             check_parity=should_check_parity,
             k_value=options.k_value,
             parity_rule=options.parity_rule,
+            decode_map=decode_map,
         )
     elif options.method == "huffman":
         if should_check_parity and options.k_value <= 0:
@@ -335,6 +344,7 @@ def run_decoding_pipeline(
             check_parity=should_check_parity,
             k_value=options.k_value,
             parity_rule=options.parity_rule,
+            decode_map=decode_map,
         )
     elif options.method == "gc_balanced":
         if should_check_parity:
@@ -831,6 +841,13 @@ def main() -> None:
         help="Maximum homopolymer length for gc_balanced encoding (default: 3).",
     )
     encode_parser.add_argument(
+        "--alphabet",
+        type=str,
+        default="base4",
+        choices=["base4", "base5", "base6"],
+        help="Alphabet mapping to use (default: base4).",
+    )
+    encode_parser.add_argument(
         "--stream",
         action="store_true",
         help="Stream encode large files (base4_direct only).",
@@ -888,6 +905,13 @@ def main() -> None:
         default=PARITY_RULE_GC_EVEN_A_ODD_T,
         choices=[PARITY_RULE_GC_EVEN_A_ODD_T],  # Add more rules here in future
         help="Parity rule used during encoding (default: GC_even_A_odd_T).",
+    )
+    decode_parser.add_argument(
+        "--alphabet",
+        type=str,
+        default="base4",
+        choices=["base4", "base5", "base6"],
+        help="Alphabet mapping used during encoding (default: base4).",
     )
     decode_parser.add_argument(
         "--stream",
