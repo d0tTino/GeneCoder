@@ -33,7 +33,7 @@ pip install .[web]
 uvicorn web.main:app --reload
 ```
 
-See [docs/installation.md](docs/installation.md) for detailed setup and testing instructions, including the [mamba-based setup](docs/installation.md#mamba-based-setup).
+See [docs/installation.md](docs/installation.md) for detailed setup and testing instructions, including the [mamba-based setup](docs/installation.md#mamba-based-setup) and the [Windows Quick Start](docs/installation.md#windows-quick-start).
 
 ## OpenAI Testing Environment
 

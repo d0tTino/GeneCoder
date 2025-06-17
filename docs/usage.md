@@ -144,6 +144,28 @@ Example snippet:
 ```
 
 
+
+### Capsule output
+
+Use `--capsule` to store the encoded DNA and related metadata in a single JSON file. The structure includes:
+
+```
+{
+  "version": 1,
+  "header": "<fasta header>",
+  "sequence": "<dna sequence>",
+  "metadata": {"input_file": "<source file>", "method": "<encoding method>", "fec": "<fec method or null>"},
+  "created": "<timestamp>"
+}
+```
+
+This option works only with one input file. Example:
+
+```bash
+genecoder encode --input-files msg.txt \
+    --output-dir out/ --method base4_direct \
+    --capsule seq.capsule
+```
 ## Graphical User Interface (GUI)
 
 ### Launching the Flet App
