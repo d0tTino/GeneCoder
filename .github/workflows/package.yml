@@ -1,0 +1,30 @@
+name: Build Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  package:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+      - name: Build package
+        run: ./scripts/package_desktop.sh ${{ github.ref_name }}
+        shell: bash
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: GeneCoder-${{ matrix.os }}
+          path: dist/*

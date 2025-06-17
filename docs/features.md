@@ -10,6 +10,7 @@ GeneCoder provides a CLI and GUI for encoding and decoding data into simulated D
 * **Flet-based GUI** with analysis plots and asynchronous operations.
 * **CSV export for synthesis** with length and homopolymer validation. The analysis command warns when sequences violate these constraints.
 
+
 ## Helix View
 
 The GUI now includes a **Helix View** tab powered by a Three.js scene. The

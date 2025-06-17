@@ -436,6 +436,22 @@ def process_single_encode(
         with open(output_file_path, "w", encoding="utf-8") as f_out:
             f_out.write(fasta_output)
 
+        if getattr(args, "capsule", None):
+            from genecoder.cache_dna import write_capsule
+
+            metadata = {
+                "input_file": os.path.basename(input_file_path),
+                "method": args.method,
+                "fec": args.fec,
+            }
+            write_capsule(
+                final_encoded_dna_sequence,
+                fasta_header,
+                metadata,
+                args.capsule,
+            )
+            logger.info(f"Capsule written to {args.capsule}")
+
         # Metrics based on original_input_data and final_encoded_dna_sequence
         original_size_bytes = len(original_input_data)
         final_encoded_length_nucleotides = len(final_encoded_dna_sequence)
@@ -756,6 +772,7 @@ def main() -> None:
         "--export-csv",
         type=str,
         help="Path to write a Twist/IDT order CSV with Name and Sequence columns.",
+
     )
 
     # Decode command parser
@@ -918,6 +935,11 @@ def main() -> None:
             logger.warning(
                 "Warning: Both --output-file and --output-dir provided for single input. Using --output-file.",
             )
+        if args.capsule and num_input_files != 1:
+            logger.error(
+                "Error: --capsule can only be used with a single input file.",
+            )
+            sys.exit(1)
 
         tasks = []
         csv_rows: list[tuple[str, str]] = []

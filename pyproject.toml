@@ -26,9 +26,16 @@ gui = [
     "flet>=0.28,<0.29",
     "matplotlib",
 ]
+web = [
+    "fastapi",
+    "uvicorn[standard]",
+]
 
 [project.scripts]
 genecoder = "genecoder.cli:main"
+
+[project.entry-points."genecoder.plugins"]
+reverse = "plugins.reverse_codec"
 
 [project.urls]
 Homepage = "https://github.com/d0tTino/GeneCoder"
@@ -39,7 +46,7 @@ Changelog = "https://github.com/d0tTino/GeneCoder/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["genecoder*"]
+include = ["genecoder*", "plugins*"]
 
 [tool.setuptools.package-data]
 "genecoder" = ["py.typed"]

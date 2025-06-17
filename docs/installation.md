@@ -79,3 +79,14 @@ Or export the variable directly:
 export OPENAI_API_KEY=sk-yourkey
 ```
 
+## Building the Documentation
+
+Install the documentation dependencies and generate the static site:
+
+```bash
+pip install -r docs/requirements.txt
+mkdocs build
+```
+
+The combined PDF will be available at `site/pdf/combined.pdf`.
+
