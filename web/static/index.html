@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>GeneCoder Web</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.0/full/pyodide.js"></script>
+</head>
+<body>
+    <h1>GeneCoder Web</h1>
+    <p id="status">Loading Pyodide...</p>
+    <script type="text/javascript">
+        async function main() {
+            const pyodide = await loadPyodide();
+            document.getElementById("status").textContent = "Pyodide loaded";
+        }
+        main();
+    </script>
+</body>
+</html>

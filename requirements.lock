@@ -3,3 +3,5 @@ matplotlib==3.10.3
 pytest==8.4.0
 pytest-cov==6.2.1
 reedsolo==1.7.0
+pyfinite==1.9.1
+pyldpc==0.7.9

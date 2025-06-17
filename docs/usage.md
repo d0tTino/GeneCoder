@@ -36,7 +36,7 @@ pip install -e .
 * `--input-files` – one or more input files.
 * `--output-file` – output path for a single input file.
 * `--output-dir` – directory for batch operations.
-* `--fec` – optional FEC method (`triple_repeat`, `hamming_7_4`, `reed_solomon`).
+* `--fec` – optional FEC method (`triple_repeat`, `hamming_7_4`, `reed_solomon`, `ldpc`, `fountain`).
 
 See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
@@ -126,6 +126,23 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    genecoder decode --input-files encoded.fasta \
        --output-file decoded.bin --simulator squigulator
    ```
+
+### Manifest files
+
+Each encoded file produces a companion JSON manifest capturing the encoding
+parameters and basic metrics. The manifest is saved alongside the FASTA output
+using the `.manifest.json` extension.
+
+Example snippet:
+
+```json
+{
+  "file": "example.txt",
+  "encoding_parameters": {"method": "base4_direct"},
+  "metrics": {"dna_length": 42}
+}
+```
+
 
 ## Graphical User Interface (GUI)
 

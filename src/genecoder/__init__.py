@@ -10,7 +10,11 @@ _LAZY_ATTRS = {
     "perform_decoding",
 }
 
-__all__ = [*sorted(_LAZY_ATTRS), "__version__"]
+from .plugins import CODEC_REGISTRY, load_plugins
+
+load_plugins()
+
+__all__ = [*sorted(_LAZY_ATTRS), "__version__", "CODEC_REGISTRY", "load_plugins"]
 
 
 def __getattr__(name: str):

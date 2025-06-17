@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import flet as ft
 from urllib.parse import quote
+import base64
+import pkgutil
 
 # Flet <0.29 removed ``HtmlElement``. Provide a minimal fallback for tests.
 if not hasattr(ft, "HtmlElement"):
@@ -17,12 +19,24 @@ if not hasattr(ft, "HtmlElement"):
 
     ft.HtmlElement = _HtmlElement  # type: ignore[attr-defined]
 
-HELIX_HTML = """
+THREE_JS_URL = ""
+ORBIT_JS_URL = ""
+try:
+    three_data = pkgutil.get_data("genecoder", "static/three.min.js")
+    orbit_data = pkgutil.get_data("genecoder", "static/OrbitControls.min.js")
+    if three_data:
+        THREE_JS_URL = "data:application/javascript;base64," + base64.b64encode(three_data).decode()
+    if orbit_data:
+        ORBIT_JS_URL = "data:application/javascript;base64," + base64.b64encode(orbit_data).decode()
+except FileNotFoundError:
+    pass
+
+HELIX_TEMPLATE = """
 <div id='helix-container' style='position:relative;width:100%;height:100%'></div>
 <div id='tooltip' style='position:absolute;display:none;padding:2px;background:#fff;border:1px solid #333;font-size:12px'></div>
 <script type='module'>
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.150.1/examples/jsm/controls/OrbitControls.js';
+import * as THREE from '%(THREE_JS_URL)s';
+import { OrbitControls } from '%(ORBIT_JS_URL)s';
 
 const container = document.getElementById('helix-container');
 const tooltip = document.getElementById('tooltip');
@@ -99,6 +113,11 @@ function animate() {
 animate();
 </script>
 """
+
+HELIX_HTML = HELIX_TEMPLATE % {
+    "THREE_JS_URL": THREE_JS_URL,
+    "ORBIT_JS_URL": ORBIT_JS_URL,
+}
 
 def show_helix() -> ft.WebView:
     """Return a ``WebView`` displaying a DNA helix scene with controls."""

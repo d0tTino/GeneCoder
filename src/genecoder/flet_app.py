@@ -15,6 +15,7 @@ responsive.
 import flet as ft
 import os
 import asyncio  # For asynchronous operations
+import json
 
 # Project module imports
 from genecoder import (
@@ -22,6 +23,7 @@ from genecoder import (
     perform_encoding,
 
 )
+from genecoder.manifest import generate_manifest
 from genecoder.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
 from genecoder.helix_view import show_helix
@@ -189,12 +191,24 @@ def main(page: ft.Page):
     )
 
     encode_save_button = ft.ElevatedButton(
-        "Save Encoded FASTA...", 
+        "Save Encoded FASTA...",
         icon=ft.icons.SAVE,
-        visible=False 
+        visible=False
     )
-    
+
+    encode_manifest_save_button = ft.ElevatedButton(
+        "Save Manifest...",
+        icon=ft.icons.SAVE,
+        visible=False,
+    )
+
     encode_hidden_fasta_content = ft.Text(ref=encode_fasta_data_to_save_ref, visible=False, value="")
+    encode_manifest_to_save_ref = ft.Ref[str]()
+    encode_hidden_manifest_content = ft.Text(
+        ref=encode_manifest_to_save_ref,
+        visible=False,
+        value="",
+    )
 
     # --- Main App Structure (Tabs) defined here so encode_data can access app_tabs.tabs[2] ---
     # This is a forward declaration of sorts for app_tabs, its full definition with content is later.
@@ -236,7 +250,9 @@ def main(page: ft.Page):
         encode_actual_homopolymer_text.value = "Actual max homopolymer (payload): -"
         encode_dna_snippet_text.value = ""
         encode_save_button.visible = False
+        encode_manifest_save_button.visible = False
         encode_hidden_fasta_content.value = ""
+        encode_hidden_manifest_content.value = ""
         
         codeword_hist_image.src_base64 = None
         nucleotide_freq_image.src_base64 = None
@@ -274,6 +290,11 @@ def main(page: ft.Page):
             encode_hidden_fasta_content.value = result.fasta
             encode_dna_snippet_text.value = result.encoded_dna[:200]
             encode_save_button.visible = True
+            manifest = generate_manifest(
+                os.path.basename(input_path), options, result.metrics
+            )
+            encode_hidden_manifest_content.value = json.dumps(manifest, indent=2)
+            encode_manifest_save_button.visible = True
 
             metrics = result.metrics
             encode_orig_size_text.value = f"Original size: {metrics['original_size']} bytes"
@@ -362,6 +383,32 @@ def main(page: ft.Page):
         dialog_title="Save Encoded FASTA File",
         file_name="encoded_output.fasta",
         allowed_extensions=["fasta", "fa"]
+    )
+
+    async def on_manifest_save_file_result(e: ft.FilePickerResultEvent) -> None:
+        if e.path:
+            try:
+                with open(e.path, "w", encoding="utf-8") as f_out:
+                    f_out.write(encode_hidden_manifest_content.value)
+                encode_status_text.value = f"Manifest saved successfully to: {e.path}"
+                encode_status_text.color = ft.colors.GREEN_700
+            except Exception as ex:
+                encode_status_text.value = f"Error saving manifest: {ex}"
+                encode_status_text.color = ft.colors.RED_ACCENT_700
+        else:
+            encode_status_text.value = "Save operation cancelled by user."
+            encode_status_text.color = ft.colors.AMBER_ACCENT_700
+        page.update()
+
+    manifest_file_picker = ft.FilePicker(on_result=on_manifest_save_file_result)
+    page.overlay.append(manifest_file_picker)
+
+    encode_manifest_save_button.on_click = (
+        lambda _: manifest_file_picker.save_file(
+            dialog_title="Save Manifest File",
+            file_name="encoded_output.manifest.json",
+            allowed_extensions=["json"],
+        )
     )
 
 
@@ -560,8 +607,10 @@ def main(page: ft.Page):
                             ft.Text("Output Preview:", weight=ft.FontWeight.BOLD),
                             encode_dna_snippet_text,
                             encode_save_button,
+                            encode_manifest_save_button,
                             encode_status_text,
                             encode_hidden_fasta_content,
+                            encode_hidden_manifest_content,
                         ],
                         spacing=15, scroll=ft.ScrollMode.AUTO
                     ), padding=10, alignment=ft.alignment.TOP_LEFT
