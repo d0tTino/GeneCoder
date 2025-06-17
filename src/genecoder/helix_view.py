@@ -5,6 +5,18 @@ from __future__ import annotations
 import flet as ft
 from urllib.parse import quote
 
+# Flet <0.29 removed ``HtmlElement``. Provide a minimal fallback for tests.
+if not hasattr(ft, "HtmlElement"):
+    class _HtmlElement:
+        """Lightweight stand-in for :class:`flet.HtmlElement`."""
+
+        def __init__(self, *, content: str, width: int = 0, height: int = 0) -> None:
+            self.content = content
+            self.width = width
+            self.height = height
+
+    ft.HtmlElement = _HtmlElement  # type: ignore[attr-defined]
+
 HELIX_HTML = """
 <div id='helix-container' style='width:100%; height:100%;'></div>
 <script type='module'>
