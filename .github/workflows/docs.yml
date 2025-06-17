@@ -22,8 +22,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install MkDocs
-        run: pip install mkdocs
+      - name: Install MkDocs Material
+        run: pip install mkdocs-material
       - name: Build site
         run: mkdocs build --strict
       - name: Upload artifact

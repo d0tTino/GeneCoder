@@ -1,5 +1,9 @@
 site_name: GeneCoder Documentation
 site_url: https://d0ttino.github.io/GeneCoder/
+theme:
+  name: material
+  palette:
+    primary: indigo
 nav:
   - Home: index.md
   - Vision & Core Concept: vision.md
