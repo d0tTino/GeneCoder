@@ -26,6 +26,10 @@ gui = [
     "flet>=0.28,<0.29",
     "matplotlib",
 ]
+web = [
+    "fastapi",
+    "uvicorn[standard]",
+]
 
 [project.scripts]
 genecoder = "genecoder.cli:main"
