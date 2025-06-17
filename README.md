@@ -10,7 +10,7 @@ For instructions on launching the GUI see the [usage guide](docs/usage.md#launch
 ## Features
 
 - Multiple encoding strategies including Base-4 Direct, Huffman-4 and GC-Balanced.
-- Optional error correction with Triple-Repeat, Hamming(7,4) and Reed-Solomon.
+- Optional error correction with Triple-Repeat, Hamming(7,4), Reed-Solomon, LDPC and Fountain codes.
 - Batch processing, parity checks and streaming support.
 - Flet-based GUI with analysis plots.
 

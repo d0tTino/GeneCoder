@@ -36,7 +36,7 @@ pip install -e .
 * `--input-files` – one or more input files.
 * `--output-file` – output path for a single input file.
 * `--output-dir` – directory for batch operations.
-* `--fec` – optional FEC method (`triple_repeat`, `hamming_7_4`, `reed_solomon`).
+* `--fec` – optional FEC method (`triple_repeat`, `hamming_7_4`, `reed_solomon`, `ldpc`, `fountain`).
 
 See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 

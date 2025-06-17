@@ -165,9 +165,40 @@ def run_encoding_pipeline(
         logger.info(
             f"Applied Reed-Solomon FEC to {input_file_name}. Original binary size: {len(data)}, RS encoded binary size: {len(current_input)} (nsym={rs_nsym})."
         )
+    elif options.fec == "ldpc":
+        if options.add_parity:
+            logger.warning(
+                f"Warning for {input_file_name}: --add-parity is ignored when LDPC FEC is applied to binary data."
+            )
+        from genecoder.ldpc_codec import encode_data_ldpc
+
+        current_input, ldpc_info = encode_data_ldpc(data)
+        header_parts.append("fec=ldpc")
+        header_parts.append(f"ldpc_bits={ldpc_info['n_bits']}")
+        logger.info(
+            f"Applied LDPC FEC to {input_file_name}. Original binary size: {len(data)}, LDPC encoded binary size: {len(current_input)}."
+        )
+    elif options.fec == "fountain":
+        if options.add_parity:
+            logger.warning(
+                f"Warning for {input_file_name}: --add-parity is ignored when Fountain FEC is applied to binary data."
+            )
+        from genecoder.fountain_codec import encode_data_fountain
+
+        current_input, fountain_info = encode_data_fountain(data)
+        header_parts.append("fec=fountain")
+        header_parts.append(f"fountain_chunk={fountain_info['chunk_size']}")
+        logger.info(
+            f"Applied Fountain FEC to {input_file_name}. Original binary size: {len(data)}, Fountain encoded binary size: {len(current_input)}."
+        )
 
     raw_dna = ""
-    should_add_parity = options.add_parity and options.fec not in ("hamming_7_4", "reed_solomon")
+    should_add_parity = options.add_parity and options.fec not in (
+        "hamming_7_4",
+        "reed_solomon",
+        "ldpc",
+        "fountain",
+    )
 
     if options.method == "base4_direct":
         if should_add_parity and options.k_value <= 0:
@@ -358,6 +389,25 @@ def run_decoding_pipeline(
             logger.info(
                 f"Error during Reed-Solomon FEC decoding for {input_file_name}: {ve}. Output may be incorrect.",
             )
+    if "fec=ldpc" in header:
+        logger.info(f"LDPC FEC detected in header for {input_file_name}.")
+        bits_match = re.search(r"ldpc_bits=(\d+)", header)
+        if not bits_match:
+            raise ValueError("'ldpc_bits' missing in header for LDPC FEC.")
+        n_bits = int(bits_match.group(1))
+        from genecoder.ldpc_codec import decode_data_ldpc
+        final_data, corrected_ldpc = decode_data_ldpc(final_data, {"H": None, "n_bits": n_bits})
+        logger.info(
+            f"LDPC FEC decoding for {input_file_name}: {corrected_ldpc} corrections."
+        )
+    if "fec=fountain" in header:
+        logger.info(f"Fountain FEC detected in header for {input_file_name}.")
+        chunk_match = re.search(r"fountain_chunk=(\d+)", header)
+        if not chunk_match:
+            raise ValueError("'fountain_chunk' missing in header for Fountain FEC.")
+        chunk_size = int(chunk_match.group(1))
+        from genecoder.fountain_codec import decode_data_fountain
+        final_data, _ = decode_data_fountain(final_data, {"chunk_size": chunk_size, "orig_len": len(final_data)})
 
     return final_data
 
@@ -712,8 +762,8 @@ def main() -> None:
         "--fec",
         type=str,
         default=None,
-        choices=[None, "triple_repeat", "hamming_7_4", "reed_solomon"],  # Added hamming_7_4 and reed_solomon
-        help="Forward Error Correction method to apply. Optional. (Note: hamming_7_4 and reed_solomon are applied to binary data before DNA encoding; triple_repeat is applied to DNA sequence after encoding).",
+        choices=[None, "triple_repeat", "hamming_7_4", "reed_solomon", "ldpc", "fountain"],
+        help="Forward Error Correction method to apply. Optional. (Note: hamming_7_4, reed_solomon, ldpc and fountain are applied to binary data before DNA encoding; triple_repeat is applied to DNA sequence after encoding).",
     )
     encode_parser.add_argument(
         "--gc-min",
