@@ -50,6 +50,11 @@ make openai-testing
 
 See [openai_testing/README.md](openai_testing/README.md) for full details.
 
+## Continuous Integration
+
+GitHub Actions run linting and tests whenever source code changes. Documentation
+or comment-only updates skip the heavy jobs, keeping CI usage efficient.
+
 ## Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

@@ -133,3 +133,11 @@ token has rights to modify the pull request. As a result, pull requests
 containing only documentation or comment updates merge automatically once the
 standard checks succeed.
 
+## CI Optimizations
+
+Workflows now include a `concurrency` block so that only the newest run for a
+branch executes. The documentation deployment workflow triggers only when
+`docs/` or `mkdocs.yml` changes, and the packaging workflow behaves similarly
+for version tags. These adjustments keep CI usage minimal while still running
+tests and linters for real code changes.
+

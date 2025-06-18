@@ -105,6 +105,15 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     return adapter(sequence, error_rate)
 
 
+def _wrap(name: str) -> Callable[[str, float], str]:
+    """Return a simulator function bound to ``name``."""
+
+    def simulate(seq: str, error_rate: float = 0.05) -> str:
+        return simulate_reads(seq, name, error_rate)
+
+    return simulate
+
+
 
 def register(register_simulator: Callable[[str, Callable[..., Any]], None]) -> None:
     """Register the builtin simulators."""
