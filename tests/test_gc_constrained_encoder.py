@@ -179,7 +179,6 @@ def test_decode_gc_balanced_with_inversion():
 
 @pytest.mark.parametrize("invalid_sequence, error_message_match", [
     ("", "Input DNA sequence is too short to decode (missing signal bit)."),
-    ("0", "Input DNA sequence is too short (only signal bit found, no payload)."),
     ("1", "Input DNA sequence is too short (only signal bit found, no payload)."),
     ("2ATGC", "Invalid signal bit: '2'. Expected '0' or '1'."),
     ("AATGC", "Invalid signal bit: 'A'. Expected '0' or '1'."), # Another invalid signal bit
@@ -270,10 +269,14 @@ def test_encode_gc_balanced_initial_fails_homopolymer_alternative_used(mock_enco
     mock_encode_base4.assert_any_call(dummy_data, add_parity=False)
     mock_encode_base4.assert_any_call(inverted_dummy_data, add_parity=False)
 
-# Test decode_gc_balanced with empty payload (after signal bit)
+# Test encode_gc_balanced with empty data
+def test_encode_gc_balanced_empty_data():
+    result = encode_gc_balanced(b"", target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=3)
+    assert result == "0"
+
+# Test decode_gc_balanced with empty payload (signal bit only)
 def test_decode_gc_balanced_empty_payload():
-    with pytest.raises(ValueError, match="Input DNA sequence is too short \(only signal bit found, no payload\)\."):
-        decode_gc_balanced("0")
+    assert decode_gc_balanced("0") == b""
     with pytest.raises(ValueError, match="Input DNA sequence is too short \(only signal bit found, no payload\)\."):
         decode_gc_balanced("1")
 

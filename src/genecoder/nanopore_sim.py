@@ -104,8 +104,6 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
 
     return adapter(sequence, error_rate)
 
-from typing import Any
-
 
 def register(register_simulator: Callable[[str, Callable[..., Any]], None]) -> None:
     """Register the builtin simulators."""
@@ -116,7 +114,7 @@ def register(register_simulator: Callable[[str, Callable[..., Any]], None]) -> N
 
         return simulate
 
-    for name in ("none", "nanopore", "dnarsim", "squigulator"):
+    for name in ("d2sim", "nanopore", "dnarsim", "squigulator", "none"):
         register_simulator(name, _wrap(name))
 
 

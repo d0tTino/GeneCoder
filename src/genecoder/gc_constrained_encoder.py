@@ -55,6 +55,9 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
     """
     from .encoders import encode_base4_direct  # Local import to avoid circular dependency
 
+    if not data:
+        return "0"
+
     initial_sequence = cast(str, encode_base4_direct(data, add_parity=False))
 
     gc_content_ok = target_gc_min <= calculate_gc_content(initial_sequence) <= target_gc_max
@@ -107,8 +110,11 @@ def decode_gc_balanced(
     # They are included for future extensibility, e.g., to verify if the decoded sequence
     # would have met these constraints if they were re-calculated on the payload.
 
-    if not dna_sequence or len(dna_sequence) < 1: # Sequence must have at least signal bit
+    if not dna_sequence or len(dna_sequence) < 1:  # Sequence must have at least signal bit
         raise ValueError("Input DNA sequence is too short to decode (missing signal bit).")
+
+    if dna_sequence == "0":
+        return b""
 
     from .encoders import decode_base4_direct  # Local import to avoid circular dependency
 
