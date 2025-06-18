@@ -16,5 +16,5 @@ def test_fec_plugins_registered():
 
 
 def test_simulator_plugins_registered():
-    for name in ["none", "nanopore", "dnarsim", "squigulator"]:
+    for name in ["none", "d2sim", "dnarsim", "squigulator", "nanopore"]:
         assert name in SIMULATOR_REGISTRY

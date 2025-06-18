@@ -47,10 +47,14 @@ def _simulate_adapter(command: str, sequence: str, error_rate: float) -> str:
     return simulate_errors(sequence, error_rate)
 
 
-def simulate_nanopore(sequence: str, error_rate: float = 0.05) -> str:
+def simulate_d2sim(sequence: str, error_rate: float = 0.05) -> str:
     """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
 
     return _simulate_adapter("d2sim", sequence, error_rate)
+
+
+# Backwards compatibility alias
+simulate_nanopore = simulate_d2sim
 
 
 def simulate_dnarsim(sequence: str, error_rate: float = 0.05) -> str:
@@ -73,10 +77,13 @@ def simulate_none(sequence: str, error_rate: float = 0.0) -> str:
 
 
 SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
-    "nanopore": simulate_nanopore,
+    "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,
     "squigulator": simulate_squigulator,
-    "none": simulate_none,
+    # backward compatibility names
+    "nanopore": simulate_d2sim,
+    "none": lambda seq, _rate=0.05: seq,
+
 }
 
 
@@ -98,16 +105,10 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
 
     return adapter(sequence, error_rate)
 
-def register(register_simulator: Callable[[str, Callable[..., Any]], None]) -> None:
-    """Register the builtin simulators."""
+def register(register_simulator: Callable[[str, Callable[..., str]], None]) -> None:
+    """Register built-in read simulators."""
 
-    def _wrap(name: str) -> Callable[[str, float], str]:
-        def simulate(seq: str, error_rate: float = 0.05) -> str:
-            return simulate_reads(seq, name, error_rate)
-
-        return simulate
-
-    for name in ("none", "nanopore", "dnarsim", "squigulator"):
-        register_simulator(name, _wrap(name))
+    for name, func in SIMULATOR_ADAPTERS.items():
+        register_simulator(name, func)
 
 
