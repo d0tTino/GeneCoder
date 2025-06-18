@@ -1,3 +1,5 @@
+import logging
+import subprocess
 import pytest
 
 from genecoder import nanopore_sim
@@ -75,3 +77,36 @@ def test_simulate_reads_none(monkeypatch):
     result = nanopore_sim.simulate_reads("ACGT", "none")
     assert result == "ACGT"
     assert call_count == []
+
+
+@pytest.mark.parametrize("simulator", SIMULATORS.keys())
+def test_simulate_reads_external_error(monkeypatch, caplog, simulator):
+    cmd = SIMULATORS[simulator]
+    which_called: list[str] = []
+    external_called: list[tuple[str, str]] = []
+    errors_called: list[tuple[str, float]] = []
+
+    def fake_which(name: str) -> str:
+        which_called.append(name)
+        return "/usr/bin/" + name
+
+    def fake_external(command: str, seq: str) -> str:
+        external_called.append((command, seq))
+        raise subprocess.CalledProcessError(1, command)
+
+    def fake_errors(seq: str, rate: float) -> str:
+        errors_called.append((seq, rate))
+        return "fallback"
+
+    monkeypatch.setattr(nanopore_sim.shutil, "which", fake_which)
+    monkeypatch.setattr(nanopore_sim, "_run_external", fake_external)
+    monkeypatch.setattr(nanopore_sim, "simulate_errors", fake_errors)
+
+    with caplog.at_level(logging.WARNING):
+        result = nanopore_sim.simulate_reads("ACGT", simulator, error_rate=0.2)
+
+    assert result == "fallback"
+    assert which_called == [cmd]
+    assert external_called == [(cmd, "ACGT")]
+    assert errors_called == [("ACGT", 0.2)]
+    assert any("falling back" in rec.message for rec in caplog.records)

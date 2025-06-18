@@ -7,6 +7,9 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .channel_sim import simulate_errors
 from .formats import from_fasta, to_fasta
@@ -45,17 +48,38 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
 
     if simulator == "nanopore":
         if shutil.which("d2sim"):
-            return _run_external("d2sim", sequence)
+            try:
+                return _run_external("d2sim", sequence)
+            except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
+                logger.warning(
+                    "d2sim failed with return code %s; falling back to simple error model",
+                    exc.returncode,
+                )
+                return simulate_errors(sequence, error_rate)
         return simulate_errors(sequence, error_rate)
 
     if simulator == "dnarsim":
         if shutil.which("dnarsim"):
-            return _run_external("dnarsim", sequence)
+            try:
+                return _run_external("dnarsim", sequence)
+            except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
+                logger.warning(
+                    "dnarsim failed with return code %s; falling back to simple error model",
+                    exc.returncode,
+                )
+                return simulate_errors(sequence, error_rate)
         return simulate_errors(sequence, error_rate)
 
     if simulator == "squigulator":
         if shutil.which("squigulator"):
-            return _run_external("squigulator", sequence)
+            try:
+                return _run_external("squigulator", sequence)
+            except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
+                logger.warning(
+                    "squigulator failed with return code %s; falling back to simple error model",
+                    exc.returncode,
+                )
+                return simulate_errors(sequence, error_rate)
         return simulate_errors(sequence, error_rate)
 
     raise ValueError(f"Unknown simulator: {simulator}")
