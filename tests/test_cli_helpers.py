@@ -95,7 +95,7 @@ def test_reed_solomon_pipeline(tmp_path: Path):
     enc_opts = build_encoding_options(enc_args)
     dna, header, *_ = run_encoding_pipeline(data, enc_opts, input_file.name)
     assert "fec=reed_solomon" in header
-    assert "fec_nsym=" in header
+    assert "fec_info=" in header
     assert "parity_k" not in header
 
     dec_args = argparse.Namespace(
