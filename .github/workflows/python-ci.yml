@@ -1,6 +1,7 @@
 name: Python CI
 
 on:
+  # Run when source code or configuration files change
   push:
     branches: [main] # Adjust if your main branch is different (e.g., master)
     paths:
