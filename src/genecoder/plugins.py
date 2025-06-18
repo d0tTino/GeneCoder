@@ -71,4 +71,9 @@ def load_plugins() -> None:
     from . import fountain_codec as _fountain
     _fountain.register(register_fec)
     from . import nanopore_sim as _nano
-    _nano.register(register_simulator)
+    if hasattr(_nano, "register"):
+        _nano.register(register_simulator)
+    else:
+        for name, func in _nano.SIMULATOR_ADAPTERS.items():
+            register_simulator(name, func)
+        register_simulator("none", lambda seq, error_rate=0.05: seq)
