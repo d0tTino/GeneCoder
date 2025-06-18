@@ -174,6 +174,47 @@ def test_cli_roundtrip_ldpc(tmp_path: Path):
     assert output_file.read_text().startswith("ldpc test")
 
 
+def test_cli_ldpc_check_parity(tmp_path: Path):
+    pytest.importorskip("pyldpc")
+
+    input_file = tmp_path / "ldpc_parity.txt"
+    input_file.write_text("ldpc parity")
+
+    encode_result = run_cli_command(
+        [
+            "encode",
+            "--input-files",
+            str(input_file),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--fec",
+            "ldpc",
+        ]
+    )
+    assert encode_result.returncode == 0, encode_result.stderr
+    fasta_file = tmp_path / "ldpc_parity.txt.fasta"
+    assert fasta_file.exists()
+
+    decode_result = run_cli_command(
+        [
+            "decode",
+            "--input-files",
+            str(fasta_file),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--check-parity",
+        ]
+    )
+    assert decode_result.returncode == 0, decode_result.stderr
+    output_file = tmp_path / "ldpc_parity.txt_decoded.bin"
+    assert output_file.exists()
+    assert output_file.read_text().startswith("ldpc parity")
+
+
 def test_cli_roundtrip_fountain(tmp_path: Path):
     pytest.importorskip("pyfinite")
 

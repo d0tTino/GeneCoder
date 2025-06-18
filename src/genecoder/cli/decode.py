@@ -60,7 +60,11 @@ def run_decoding_pipeline(
             )
 
     parity_errors: list[int] = []
-    should_check_parity = options.check_parity and "fec=hamming_7_4" not in header and "fec=reed_solomon" not in header
+    fec_names = [f"fec={name}" for name in FEC_REGISTRY]
+    should_check_parity = (
+        options.check_parity
+        and not any(tag in header for tag in fec_names)
+    )
 
     if options.method == "base4_direct":
         if should_check_parity and options.k_value <= 0:
