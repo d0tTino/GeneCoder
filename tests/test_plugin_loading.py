@@ -24,3 +24,4 @@ def test_fec_plugins_registered() -> None:
 
 def test_simulator_plugins_registered() -> None:
     assert isinstance(SIMULATOR_REGISTRY, dict)
+

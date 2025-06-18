@@ -5,3 +5,4 @@ pytest-cov==6.2.1
 reedsolo==1.7.0
 pyfinite==1.9.1
 pyldpc==0.7.9
+httpx==0.28.1
