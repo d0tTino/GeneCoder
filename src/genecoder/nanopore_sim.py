@@ -65,10 +65,17 @@ def simulate_squigulator(sequence: str, error_rate: float = 0.05) -> str:
     return _simulate_adapter("squigulator", sequence, error_rate)
 
 
+def simulate_none(sequence: str, error_rate: float = 0.0) -> str:
+    """Return ``sequence`` unchanged."""
+
+    return sequence
+
+
 SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
     "nanopore": simulate_nanopore,
     "dnarsim": simulate_dnarsim,
     "squigulator": simulate_squigulator,
+    "none": simulate_none,
 }
 
 
@@ -78,9 +85,6 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     If the requested simulator command isn't available, fall back to a simple
     substitution error model implemented in :func:`simulate_errors`.
     """
-
-    if simulator == "none":
-        return sequence
 
     seed_env = os.getenv("GENECODER_SIM_SEED")
     if seed_env is not None:
@@ -92,4 +96,11 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
         raise ValueError(f"Unknown simulator: {simulator}") from exc
 
     return adapter(sequence, error_rate)
+
+
+def register(register_simulator: Callable[[str, Callable[[str, float], str]], None]) -> None:
+    """Register available simulator adapters."""
+
+    for name, func in SIMULATOR_ADAPTERS.items():
+        register_simulator(name, func)
 
