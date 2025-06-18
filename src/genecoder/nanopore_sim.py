@@ -67,6 +67,7 @@ def simulate_squigulator(sequence: str, error_rate: float = 0.05) -> str:
 
 def _simulate_none(sequence: str, _error_rate: float | None = None) -> str:
     """Return ``sequence`` unchanged."""
+
     return sequence
 
 
@@ -74,6 +75,7 @@ SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
     "nanopore": simulate_nanopore,
     "dnarsim": simulate_dnarsim,
     "squigulator": simulate_squigulator,
+    "none": simulate_none,
 }
 
 
@@ -98,9 +100,9 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
 
     return adapter(sequence, error_rate)
 
-
 def register(register_simulator: Callable[[str, Callable[[str, float], str]], None]) -> None:
     """Register this module's read simulators."""
+
     register_simulator("none", _simulate_none)
     register_simulator("nanopore", simulate_nanopore)
     register_simulator("dnarsim", simulate_dnarsim)
