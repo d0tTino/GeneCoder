@@ -65,10 +65,17 @@ def simulate_squigulator(sequence: str, error_rate: float = 0.05) -> str:
     return _simulate_adapter("squigulator", sequence, error_rate)
 
 
+def simulate_none(sequence: str, error_rate: float = 0.0) -> str:
+    """Return ``sequence`` unchanged."""
+
+    return sequence
+
+
 SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
     "nanopore": simulate_nanopore,
     "dnarsim": simulate_dnarsim,
     "squigulator": simulate_squigulator,
+    "none": simulate_none,
 }
 
 
@@ -92,4 +99,11 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
         raise ValueError(f"Unknown simulator: {simulator}") from exc
 
     return adapter(sequence, error_rate)
+
+
+def register(register_simulator: Callable[[str, Callable[[str, float], str]], None]) -> None:
+    """Register available simulator adapters."""
+
+    for name, func in SIMULATOR_ADAPTERS.items():
+        register_simulator(name, func)
 
