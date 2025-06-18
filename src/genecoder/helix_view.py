@@ -49,30 +49,25 @@ DEFAULT_COLORS: dict[str, int] = {
 HELIX_TEMPLATE = """
 <div id='helix-container' style='position:relative;width:100%%;height:100%%'></div>
 <div id='tooltip' style='position:absolute;display:none;padding:2px;background:#fff;border:1px solid #333;font-size:12px;pointer-events:none'></div>
-<canvas id='metrics-overlay' style='position:absolute;top:0;left:0;pointer-events:none;opacity:0.6'></canvas>
 <script type='module'>
 import * as THREE from '%(THREE_JS_URL)s';
 import { OrbitControls } from '%(ORBIT_JS_URL)s';
 
 const container = document.getElementById('helix-container');
 const tooltip = document.getElementById('tooltip');
-const metricsCanvas = document.getElementById('metrics-overlay');
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-camera.position.set(2 * %(ZOOM)s, 2 * %(ZOOM)s, 5 * %(ZOOM)s);
+camera.position.set(2, 2, 5);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
 container.appendChild(renderer.domElement);
-metricsCanvas.width = container.clientWidth;
-metricsCanvas.height = 30;
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.update();
 
 const seq = '%(DNA_SEQ)s';
-const animateHelix = %(ANIMATE)s;
 const bases = [];
 for (let i = 0; i < seq.length; i++) {
     bases.push(seq[i]);
@@ -95,22 +90,6 @@ for (let i = 0; i < bases.length; i++) {
 }
 scene.add(group);
 
-const ctx = metricsCanvas.getContext('2d');
-const barWidth = metricsCanvas.width / bases.length;
-const runs = new Array(bases.length).fill(1);
-for (let i = 0; i < bases.length; i++) {
-    if (i > 0 && bases[i] === bases[i - 1]) {
-        runs[i] = runs[i - 1] + 1;
-    }
-    const gcColor = bases[i] === 'G' || bases[i] === 'C' ? '#88f' : '#ddd';
-    ctx.fillStyle = gcColor;
-    ctx.fillRect(i * barWidth, 0, barWidth, 14);
-}
-for (let i = 0; i < bases.length; i++) {
-    const intensity = Math.min(runs[i] / 6, 1);
-    ctx.fillStyle = `rgba(255,0,0,${intensity})`;
-    ctx.fillRect(i * barWidth, 16, barWidth, 14);
-}
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -145,7 +124,6 @@ window.addEventListener('resize', () => {
     camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(container.clientWidth, container.clientHeight);
-    metricsCanvas.width = container.clientWidth;
 });
 
 let offset = 0;

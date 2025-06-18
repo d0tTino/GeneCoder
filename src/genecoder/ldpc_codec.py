@@ -47,7 +47,8 @@ def encode_data_ldpc(data: bytes) -> Tuple[bytes, Any]:
     n_bits = len(data) * 8
     H, G = make_ldpc(n_bits, d_v=2, d_c=4, systematic=True)
     bits = np.unpackbits(np.frombuffer(data, dtype=np.uint8))
-    message = np.pad(bits, (0, G.shape[1] - bits.size), "constant")[: G.shape[1]]
+    pad_width = max(0, G.shape[1] - bits.size)
+    message = np.pad(bits, (0, pad_width), "constant")[: G.shape[1]]
     codeword = utils.binaryproduct(G, message).astype(np.uint8)
     return np.packbits(codeword).tobytes(), {"H": H, "n_bits": bits.size}
 
