@@ -23,4 +23,5 @@ def test_fec_plugins_registered() -> None:
 
 
 def test_simulator_plugins_registered() -> None:
-    assert isinstance(SIMULATOR_REGISTRY, dict)
+    for name in ["none", "nanopore", "dnarsim", "squigulator"]:
+        assert name in SIMULATOR_REGISTRY
