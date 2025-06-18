@@ -68,6 +68,8 @@ def main(page: ft.Page) -> None:
 
     # Container used for the Helix View tab. Filled when the tab is selected.
     helix_container = ft.Column()
+    animate_checkbox = ft.Checkbox(label="Animate", value=True)
+    zoom_slider = ft.Slider(min=0.5, max=2.0, value=1.0, divisions=15, width=200)
 
     window_size_input = ft.TextField(
         label="GC Window Size",
@@ -692,15 +694,31 @@ def main(page: ft.Page) -> None:
         expand=True,
     )
 
+    def refresh_helix_view(_: ft.ControlEvent | None = None) -> None:
+        dna_seq = ""
+        if encode_hidden_fasta_content.value:
+            parsed = from_fasta(encode_hidden_fasta_content.value)
+            if parsed:
+                dna_seq = parsed[0][1]
+        helix_container.controls.clear()
+        helix_container.controls.append(
+            ft.Row([
+                animate_checkbox,
+                ft.Text("Zoom:"),
+                zoom_slider,
+            ])
+        )
+        helix_container.controls.append(
+            show_helix(dna_seq, animate=animate_checkbox.value, zoom=zoom_slider.value)
+        )
+        page.update()
+
+    animate_checkbox.on_change = refresh_helix_view
+    zoom_slider.on_change = refresh_helix_view
+
     def on_tab_change(e: ft.ControlEvent) -> None:
         if app_tabs.selected_index == 3:
-            dna_seq = ""
-            if encode_hidden_fasta_content.value:
-                parsed = from_fasta(encode_hidden_fasta_content.value)
-                if parsed:
-                    dna_seq = parsed[0][1]
-            helix_container.controls.clear()
-            helix_container.controls.append(show_helix(dna_seq))
+            refresh_helix_view()
 
         page.update()
 

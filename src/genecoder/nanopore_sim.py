@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 import logging
-from typing import Callable
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -92,4 +92,16 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
         raise ValueError(f"Unknown simulator: {simulator}") from exc
 
     return adapter(sequence, error_rate)
+
+def register(register_simulator: Callable[[str, Callable[..., Any]], None]) -> None:
+    """Register the builtin simulators."""
+
+    def _wrap(name: str) -> Callable[[str, float], str]:
+        def simulate(seq: str, error_rate: float = 0.05) -> str:
+            return simulate_reads(seq, name, error_rate)
+
+        return simulate
+
+    for name in ("none", "nanopore", "dnarsim", "squigulator"):
+        register_simulator(name, _wrap(name))
 
