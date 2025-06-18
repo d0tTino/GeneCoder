@@ -21,3 +21,14 @@ and web deployments.
 
 All required JavaScript libraries are bundled with the package so the helix
 visualization functions entirely offline.
+
+<!-- screenshot omitted in this repository because binary files are not supported -->
+
+### Usage
+
+Import `show_helix` and pass a DNA sequence. Optional `length` and `colors` arguments control the rendered sequence length and sphere colors:
+
+```python
+from genecoder.helix_view import show_helix
+webview = show_helix("ACGT", length=50, colors={"A": "#ff0000", "T": "#00ffff"})
+```
