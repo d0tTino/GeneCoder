@@ -726,41 +726,22 @@ def main(page: ft.Page) -> None:
                 dna_seq = parsed[0][1]
         helix_container.controls.clear()
         helix_container.controls.append(
-            ft.Row([
-                animate_checkbox,
-                ft.Text("Zoom:"),
-                zoom_slider,
-            ])
-        )
-        helix_container.controls.append(
-            show_helix(dna_seq, animate=animate_checkbox.value, zoom=zoom_slider.value)
+            show_helix(
+                dna_seq,
+                length=parse_int_input(helix_length_input.value, len(dna_seq) or 1),
+                colors={
+                    "A": helix_color_a.value,
+                    "C": helix_color_c.value,
+                    "G": helix_color_g.value,
+                    "T": helix_color_t.value,
+                },
+            )
         )
         page.update()
 
-    animate_checkbox.on_change = refresh_helix_view
-    zoom_slider.on_change = refresh_helix_view
-
     def on_tab_change(e: ft.ControlEvent) -> None:
         if app_tabs.selected_index == 3:
-            dna_seq = ""
-            if encode_hidden_fasta_content.value:
-                parsed = from_fasta(encode_hidden_fasta_content.value)
-                if parsed:
-                    dna_seq = parsed[0][1]
-            helix_container.controls.clear()
-            helix_container.controls.append(
-                show_helix(
-                    dna_seq,
-                    length=parse_int_input(helix_length_input.value, len(dna_seq) or 1),
-                    colors={
-                        "A": helix_color_a.value,
-                        "C": helix_color_c.value,
-                        "G": helix_color_g.value,
-                        "T": helix_color_t.value,
-                    },
-                )
-            )
-
+            refresh_helix_view()
 
         page.update()
 
