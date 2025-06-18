@@ -5,7 +5,7 @@ import pytest
 from genecoder import nanopore_sim
 
 ADAPTERS = {
-    "nanopore": (nanopore_sim.simulate_nanopore, "d2sim"),
+    "d2sim": (nanopore_sim.simulate_d2sim, "d2sim"),
     "dnarsim": (nanopore_sim.simulate_dnarsim, "dnarsim"),
     "squigulator": (nanopore_sim.simulate_squigulator, "squigulator"),
 }
