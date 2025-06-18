@@ -118,13 +118,13 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
 11. **Decode using an external simulator**
 
-   The ``--simulator`` option accepts ``nanopore``, ``dnarsim`` or ``squigulator``.
+   The ``--simulator`` option accepts ``d2sim``, ``dnarsim`` or ``squigulator``.
    Install the desired simulator separately and ensure the command is on your
    ``PATH``:
 
-   * ``nanopore`` uses the ``d2sim`` command
-   * ``dnarsim`` uses the ``dnarsim`` command
-   * ``squigulator`` uses the ``squigulator`` command
+   * ``d2sim`` — [D2Sim](https://github.com/kurimsw/d2sim)
+   * ``dnarsim`` — [DNArSim](https://github.com/Purdue-ScottLab/DNArSim)
+   * ``squigulator`` — [Squigulator](https://github.com/hasindu2008/squigulator)
 
    When a command is missing GeneCoder automatically falls back to an internal
    error model.
@@ -191,3 +191,7 @@ python -m genecoder.flet_app
 ```
 
 The GUI exposes encoding options, error correction choices and displays metrics and analysis plots.
+
+The **Helix View** tab now features an animated 3D helix complete with nucleotide
+tooltips and simple overlays illustrating GC content and homopolymer regions.
+Toggle the *Animate* checkbox or adjust the *Zoom* slider to explore the visualization.

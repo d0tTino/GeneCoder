@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 import logging
-from typing import Callable
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +47,14 @@ def _simulate_adapter(command: str, sequence: str, error_rate: float) -> str:
     return simulate_errors(sequence, error_rate)
 
 
-def simulate_nanopore(sequence: str, error_rate: float = 0.05) -> str:
+def simulate_d2sim(sequence: str, error_rate: float = 0.05) -> str:
     """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
 
     return _simulate_adapter("d2sim", sequence, error_rate)
+
+
+# Backwards compatibility alias
+simulate_nanopore = simulate_d2sim
 
 
 def simulate_dnarsim(sequence: str, error_rate: float = 0.05) -> str:
@@ -65,10 +69,21 @@ def simulate_squigulator(sequence: str, error_rate: float = 0.05) -> str:
     return _simulate_adapter("squigulator", sequence, error_rate)
 
 
+def simulate_none(sequence: str, error_rate: float = 0.0) -> str:
+
+    """Return ``sequence`` unchanged."""
+
+    return sequence
+
+
 SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
-    "nanopore": simulate_nanopore,
+    "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,
     "squigulator": simulate_squigulator,
+    # backward compatibility names
+    "nanopore": simulate_d2sim,
+    "none": lambda seq, _rate=0.05: seq,
+
 }
 
 
@@ -78,9 +93,6 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     If the requested simulator command isn't available, fall back to a simple
     substitution error model implemented in :func:`simulate_errors`.
     """
-
-    if simulator == "none":
-        return sequence
 
     seed_env = os.getenv("GENECODER_SIM_SEED")
     if seed_env is not None:
@@ -92,7 +104,6 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
         raise ValueError(f"Unknown simulator: {simulator}") from exc
 
     return adapter(sequence, error_rate)
-
 
 from typing import Any
 
