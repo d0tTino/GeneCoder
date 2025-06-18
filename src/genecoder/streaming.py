@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Iterator
+import os
 
 from .encoders import encode_base4_direct, decode_base4_direct
 from .error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
@@ -22,6 +23,8 @@ def stream_encode_file(
 
     Returns the total encoded DNA length.
     """
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     def data_iter() -> Iterator[bytes]:
         with open(input_path, "rb") as f_in:
@@ -63,6 +66,8 @@ def stream_decode_file(
     parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
 ) -> None:
     """Decode ``input_path`` FASTA file to ``output_path`` streaming chunks."""
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     with open(input_path, "r", encoding="utf-8") as f_in:
         header_line = f_in.readline()
