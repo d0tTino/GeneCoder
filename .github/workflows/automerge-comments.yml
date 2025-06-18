@@ -3,11 +3,19 @@ name: Auto-merge comment-only PRs
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
+# Allow only one workflow run per PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
+  contents: write
   pull-requests: write
 
 jobs:
   automerge:
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +27,27 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: python scripts/only_comments_changed.py
+
+      - name: Check repository auto-merge capability
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const repo = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            console.log('allow_auto_merge:', repo.data.allow_auto_merge);
+            try {
+              await github.rest.repos.getBranchProtection({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: context.payload.pull_request.base.ref,
+              });
+              console.log('branch protection enabled: true');
+            } catch (error) {
+              console.log('branch protection enabled: false');
+            }
 
       - name: Enable auto-merge
         if: steps.comment_check.outputs.only_comments == 'true'
