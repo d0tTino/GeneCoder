@@ -32,7 +32,7 @@ web = [
 ]
 
 [project.scripts]
-genecoder = "genecoder.cli:main"
+genecoder = "genecoder.cli.cli:main"
 
 [project.entry-points."genecoder.plugins"]
 reverse = "plugins.reverse_codec"

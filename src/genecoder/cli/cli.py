@@ -1,0 +1,119 @@
+import argparse
+import logging
+import sys
+
+from genecoder import __version__
+from . import encode, decode, analyze
+
+logger = logging.getLogger(__name__)
+
+
+class _LessThanFilter(logging.Filter):
+    def __init__(self, exclusive_maximum: int) -> None:
+        super().__init__()
+        self.max = exclusive_maximum
+
+    def filter(self, record: logging.LogRecord) -> bool:  # pragma: no cover - trivial
+        return record.levelno < self.max
+
+
+def setup_logging(level: int) -> None:
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+
+    fmt = logging.Formatter("%(message)s")
+
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setLevel(logging.DEBUG)
+    stdout_handler.addFilter(_LessThanFilter(logging.WARNING))
+    stdout_handler.setFormatter(fmt)
+
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.setLevel(logging.WARNING)
+    stderr_handler.setFormatter(fmt)
+
+    root_logger.addHandler(stdout_handler)
+    root_logger.addHandler(stderr_handler)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="GeneCoder: Encode and decode data into simulated DNA sequences."
+    )
+    parser.add_argument("--version", action="version", version=f"GeneCoder {__version__}")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase output verbosity (can be used multiple times).")
+    parser.add_argument("-q", "--quiet", action="count", default=0, help="Decrease output verbosity (can be used multiple times).")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    encode.register_subcommand(subparsers)
+    decode.register_subcommand(subparsers)
+    analyze.register_subcommand(subparsers)
+
+    sim_parser = subparsers.add_parser(
+        "simulate-errors", help="Introduce random errors into a FASTA sequence."
+    )
+    sim_parser.add_argument("--input-file", type=str, required=True, help="Path to the input FASTA file.")
+    sim_parser.add_argument("--output-file", type=str, required=True, help="Path to save the corrupted FASTA file.")
+    sim_parser.add_argument("--sub-prob", type=float, default=0.01, help="Substitution probability per nucleotide.")
+    sim_parser.add_argument("--ins-prob", type=float, default=0.0, help="Insertion probability after each nucleotide.")
+    sim_parser.add_argument("--del-prob", type=float, default=0.0, help="Deletion probability per nucleotide.")
+    sim_parser.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output.")
+    sim_parser.set_defaults(func=_handle_sim_errors)
+
+    return parser
+
+
+def _handle_sim_errors(args: argparse.Namespace) -> None:
+    from genecoder.formats import to_fasta, from_fasta
+    from genecoder.error_simulation import introduce_errors
+    import os
+    import random
+
+    try:
+        with open(args.input_file, "r", encoding="utf-8") as f_in:
+            fasta_str = f_in.read()
+        records = from_fasta(fasta_str)
+        if not records:
+            logger.error(f"Error: No FASTA records found in {args.input_file}.")
+            raise SystemExit(1)
+        header, seq = records[0]
+        rng = random.Random(args.seed)
+        corrupted = introduce_errors(
+            seq,
+            substitution_prob=args.sub_prob,
+            insertion_prob=args.ins_prob,
+            deletion_prob=args.del_prob,
+            rng=rng,
+        )
+        new_header = f"{header} sub_prob={args.sub_prob} ins_prob={args.ins_prob} del_prob={args.del_prob}"
+        fasta_out = to_fasta(corrupted, new_header, line_width=80)
+        os.makedirs(os.path.dirname(args.output_file) or ".", exist_ok=True)
+        with open(args.output_file, "w", encoding="utf-8") as f_out:
+            f_out.write(fasta_out)
+        logger.info(f"Corrupted FASTA sequence written to {args.output_file}")
+    except FileNotFoundError:
+        logger.error(f"Error: Input file {args.input_file} not found.")
+        raise SystemExit(1)
+    except Exception as e:
+        logger.error(f"Error during simulate-errors: {e}")
+        raise SystemExit(1)
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    level = logging.INFO - (args.verbose * 10) + (args.quiet * 10)
+    level = max(logging.DEBUG, min(logging.CRITICAL, level))
+    setup_logging(level)
+
+    if hasattr(args, "func"):
+        args.func(args)
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

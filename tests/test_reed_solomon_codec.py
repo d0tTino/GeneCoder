@@ -1,6 +1,14 @@
 import pytest
 
-from genecoder.reed_solomon_codec import encode_data_rs, decode_data_rs
+from genecoder.reed_solomon_codec import (
+    _HAS_REEDSOLO,
+    decode_data_rs,
+    encode_data_rs,
+)
+
+pytestmark = pytest.mark.skipif(
+    not _HAS_REEDSOLO, reason="reedsolo not installed"
+)
 
 
 def test_rs_roundtrip_no_errors():
