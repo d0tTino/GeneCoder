@@ -6,14 +6,17 @@ rendered to in-memory buffers for display in Flet or other GUI frameworks.
 """
 import io
 import collections
-from typing import Dict, List  # For older Python; can be dict, list for 3.9+
+from typing import Dict, List
 
 import matplotlib
 matplotlib.use('Agg') # Set Matplotlib backend to Agg for headless environments
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 
-def prepare_huffman_codeword_length_data(huffman_table: Dict[int, str]) -> collections.Counter:
+def prepare_huffman_codeword_length_data(
+    huffman_table: Dict[int, str],
+) -> collections.Counter[int]:
     """Prepares data for a Huffman codeword length histogram.
 
     Calculates the length of each codeword in the provided Huffman table and
@@ -36,7 +39,9 @@ def prepare_huffman_codeword_length_data(huffman_table: Dict[int, str]) -> colle
     return length_counts
 
 
-def generate_codeword_length_histogram(length_counts: collections.Counter) -> io.BytesIO:
+def generate_codeword_length_histogram(
+    length_counts: collections.Counter[int],
+) -> io.BytesIO:
     """Generates a histogram of Huffman codeword lengths as a PNG image in a BytesIO buffer.
 
     Args:
@@ -77,7 +82,7 @@ def generate_codeword_length_histogram(length_counts: collections.Counter) -> io
             pass 
         
         # Ensure y-axis ticks are integers if counts are always integers
-        ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
 
     plt.tight_layout()  # Adjust layout to prevent labels from being cut off
@@ -92,7 +97,7 @@ def generate_codeword_length_histogram(length_counts: collections.Counter) -> io
     return buf
 
 
-def prepare_nucleotide_frequency_data(dna_sequence: str) -> collections.Counter:
+def prepare_nucleotide_frequency_data(dna_sequence: str) -> collections.Counter[str]:
     """Prepares data for a nucleotide frequency plot.
 
     Counts occurrences of 'A', 'T', 'C', 'G' in the DNA sequence.
@@ -118,7 +123,9 @@ def prepare_nucleotide_frequency_data(dna_sequence: str) -> collections.Counter:
     return nucleotide_counts
 
 
-def generate_nucleotide_frequency_plot(nucleotide_counts: collections.Counter) -> io.BytesIO:
+def generate_nucleotide_frequency_plot(
+    nucleotide_counts: collections.Counter[str],
+) -> io.BytesIO:
     """Generates a bar plot of nucleotide frequencies as a PNG image in a BytesIO buffer.
 
     Args:
@@ -145,7 +152,7 @@ def generate_nucleotide_frequency_plot(nucleotide_counts: collections.Counter) -
     ax.set_xlabel("Nucleotide")
     ax.set_ylabel("Frequency (Count)")
     ax.set_title("Nucleotide Frequency Distribution")
-    ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True)) # Ensure y-axis has integer ticks
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))  # Ensure y-axis has integer ticks
 
     plt.tight_layout()
 

@@ -11,7 +11,7 @@ This module provides functions to:
 """
 import collections
 import heapq
-from typing import Dict, Tuple, List, Union # For type hints
+from typing import Dict, Tuple, List, Union
 from .utils import DNA_ENCODE_MAP, DNA_DECODE_MAP
 from genecoder.error_detection import (
     add_parity_to_sequence, 
@@ -20,11 +20,11 @@ from genecoder.error_detection import (
 )
 
 # Type alias for Huffman tree nodes used internally
-HuffmanNode = Union[int, List[Union[int, 'HuffmanNode', List['HuffmanNode']]]] # type: ignore
+HuffmanNode = Union[int, List[Union[int, 'HuffmanNode', List['HuffmanNode']]]]
 
 # --- Helper Functions ---
 
-def _calculate_frequencies(data: bytes) -> collections.Counter:
+def _calculate_frequencies(data: bytes) -> collections.Counter[int]:
     """Calculates the frequency of each byte in the input data.
 
     Args:
@@ -38,7 +38,9 @@ def _calculate_frequencies(data: bytes) -> collections.Counter:
         return collections.Counter()
     return collections.Counter(data)
 
-def _build_huffman_tree_and_codes(frequencies: collections.Counter) -> Dict[int, str]:
+def _build_huffman_tree_and_codes(
+    frequencies: collections.Counter[int],
+) -> Dict[int, str]:
     """Builds a Huffman tree from byte frequencies and generates Huffman codes.
 
     Args:
@@ -72,10 +74,10 @@ def _build_huffman_tree_and_codes(frequencies: collections.Counter) -> Dict[int,
     # Edge case: If there's only one unique byte in the input data.
     # The Huffman code for this single byte is defined as '0'.
     if len(heap) == 1:
-        _freq, _uid, byte_val = heap[0]
-        # Ensure byte_val is an int, as expected by type hints, not a list.
-        if isinstance(byte_val, int):
-            return {byte_val: '0'}
+        _freq, _uid, single_node = heap[0]
+        # Ensure ``single_node`` is an int, as expected by type hints, not a list.
+        if isinstance(single_node, int):
+            return {single_node: "0"}
         else:
             # This case should ideally not be reached if frequencies are from bytes.
             # However, for robustness, handle potential malformed heap item.

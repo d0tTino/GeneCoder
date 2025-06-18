@@ -3,7 +3,9 @@
 from typing import Callable
 
 
-def register(register_codec: Callable[[str, Callable, Callable], None]) -> None:
+def register(
+    register_codec: Callable[[str, Callable[[bytes], str], Callable[[str], bytes]], None]
+) -> None:
     """Register the reverse codec."""
 
     def encode_reverse(data: bytes) -> str:

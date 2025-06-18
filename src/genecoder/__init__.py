@@ -17,7 +17,10 @@ load_plugins()
 __all__ = [*sorted(_LAZY_ATTRS), "__version__", "CODEC_REGISTRY", "load_plugins"]
 
 
-def __getattr__(name: str):
+from typing import Any
+
+
+def __getattr__(name: str) -> Any:
     if name in _LAZY_ATTRS:
         from .app_helpers import (
             EncodeOptions,

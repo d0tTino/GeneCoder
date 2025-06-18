@@ -50,7 +50,6 @@ from genecoder.plotting import (
     identify_homopolymer_regions,
     generate_sequence_analysis_plot,
 )
-from genecoder.synthesis import SynthesisConstraints
 
 logger = logging.getLogger(__name__)
 
@@ -373,7 +372,7 @@ def run_decoding_pipeline(
             f"Warning for {input_file_name}: DNA-level parity errors in data blocks: {parity_errors}",
         )
 
-    final_data = binary_data
+    final_data: bytes = binary_data
     if "fec=hamming_7_4" in header:
         logger.info(f"Hamming(7,4) FEC detected in header for {input_file_name}.")
         fec_padding_bits_match = re.search(r"fec_padding_bits=(\d+)", header)

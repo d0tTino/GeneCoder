@@ -17,7 +17,7 @@ if not hasattr(ft, "HtmlElement"):
             self.width = width
             self.height = height
 
-    ft.HtmlElement = _HtmlElement  # type: ignore[attr-defined]
+    ft.HtmlElement = _HtmlElement
 
 THREE_JS_URL = ""
 ORBIT_JS_URL = ""
