@@ -105,10 +105,18 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
 
     return adapter(sequence, error_rate)
 
-def register(register_simulator: Callable[[str, Callable[..., str]], None]) -> None:
-    """Register built-in read simulators."""
+from typing import Any
 
-    for name, func in SIMULATOR_ADAPTERS.items():
-        register_simulator(name, func)
 
+def register(register_simulator: Callable[[str, Callable[..., Any]], None]) -> None:
+    """Register the builtin simulators."""
+
+    def _wrap(name: str) -> Callable[[str, float], str]:
+        def simulate(seq: str, error_rate: float = 0.05) -> str:
+            return simulate_reads(seq, name, error_rate)
+
+        return simulate
+
+    for name in ("none", "nanopore", "dnarsim", "squigulator"):
+        register_simulator(name, _wrap(name))
 
