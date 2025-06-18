@@ -4,22 +4,22 @@ import pytest
 
 from genecoder import nanopore_sim
 
-SIMULATORS = {
-    "nanopore": "d2sim",
-    "dnarsim": "dnarsim",
-    "squigulator": "squigulator",
+ADAPTERS = {
+    "nanopore": (nanopore_sim.simulate_nanopore, "d2sim"),
+    "dnarsim": (nanopore_sim.simulate_dnarsim, "dnarsim"),
+    "squigulator": (nanopore_sim.simulate_squigulator, "squigulator"),
 }
 
 
-@pytest.mark.parametrize("simulator", SIMULATORS.keys())
-def test_simulate_reads_runs_external(monkeypatch, simulator):
-    cmd = SIMULATORS[simulator]
+@pytest.mark.parametrize("name", ADAPTERS.keys())
+def test_adapters_run_external(monkeypatch, name):
+    func, cmd = ADAPTERS[name]
     which_called = []
     run_called = []
 
-    def fake_which(name):
-        which_called.append(name)
-        return "/usr/bin/" + name
+    def fake_which(target):
+        which_called.append(target)
+        return "/usr/bin/" + target
 
     def fake_run_external(command, seq):
         run_called.append((command, seq))
@@ -28,85 +28,60 @@ def test_simulate_reads_runs_external(monkeypatch, simulator):
     monkeypatch.setattr(nanopore_sim.shutil, "which", fake_which)
     monkeypatch.setattr(nanopore_sim, "_run_external", fake_run_external)
 
-    result = nanopore_sim.simulate_reads("ACGT", simulator)
+    result = func("ACGT")
     assert result == "external"
     assert which_called == [cmd]
     assert run_called == [(cmd, "ACGT")]
 
 
-@pytest.mark.parametrize("simulator", SIMULATORS.keys())
-def test_simulate_reads_falls_back(monkeypatch, simulator):
-    cmd = SIMULATORS[simulator]
-    which_called: list[str] = []
-    errors_called: list[tuple[str, float]] = []
-    external_called: list[tuple[str, str]] = []
+@pytest.mark.parametrize("name", ADAPTERS.keys())
+def test_adapters_fall_back(monkeypatch, name):
+    func, cmd = ADAPTERS[name]
+    which_called = []
+    errors_called = []
 
-    def fake_which(name: str) -> None:
-        which_called.append(name)
-        return None
+    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda target: which_called.append(target) or None)
+    monkeypatch.setattr(nanopore_sim, "simulate_errors", lambda seq, rate: errors_called.append((seq, rate)) or "fallback")
+    monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
 
-    def fake_errors(seq: str, rate: float) -> str:
-        errors_called.append((seq, rate))
-        return "fallback"
-
-    def fake_external(command: str, seq: str) -> str:
-        external_called.append((command, seq))
-        return "should not be used"
-
-    monkeypatch.setattr(nanopore_sim.shutil, "which", fake_which)
-    monkeypatch.setattr(nanopore_sim, "simulate_errors", fake_errors)
-    monkeypatch.setattr(nanopore_sim, "_run_external", fake_external)
-
-    result = nanopore_sim.simulate_reads("ACGT", simulator, error_rate=0.1)
+    result = func("ACGT", error_rate=0.1)
     assert result == "fallback"
     assert which_called == [cmd]
     assert errors_called == [("ACGT", 0.1)]
-    assert external_called == []
 
 
-def test_simulate_reads_none(monkeypatch):
-    call_count = []
+@pytest.mark.parametrize("name", ADAPTERS.keys())
+def test_adapters_external_error(monkeypatch, caplog, name):
+    func, cmd = ADAPTERS[name]
+    which_called = []
+    run_called = []
+    errors_called = []
 
-    def fake_which(name: str) -> str:
-        call_count.append(name)
-        return "/usr/bin/" + name
+    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda target: which_called.append(target) or "/usr/bin/" + target)
 
-    monkeypatch.setattr(nanopore_sim.shutil, "which", fake_which)
-    monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
-
-    result = nanopore_sim.simulate_reads("ACGT", "none")
-    assert result == "ACGT"
-    assert call_count == []
-
-
-@pytest.mark.parametrize("simulator", SIMULATORS.keys())
-def test_simulate_reads_external_error(monkeypatch, caplog, simulator):
-    cmd = SIMULATORS[simulator]
-    which_called: list[str] = []
-    external_called: list[tuple[str, str]] = []
-    errors_called: list[tuple[str, float]] = []
-
-    def fake_which(name: str) -> str:
-        which_called.append(name)
-        return "/usr/bin/" + name
-
-    def fake_external(command: str, seq: str) -> str:
-        external_called.append((command, seq))
+    def fake_run_external(command, seq):
+        run_called.append((command, seq))
         raise subprocess.CalledProcessError(1, command)
 
-    def fake_errors(seq: str, rate: float) -> str:
-        errors_called.append((seq, rate))
-        return "fallback"
-
-    monkeypatch.setattr(nanopore_sim.shutil, "which", fake_which)
-    monkeypatch.setattr(nanopore_sim, "_run_external", fake_external)
-    monkeypatch.setattr(nanopore_sim, "simulate_errors", fake_errors)
+    monkeypatch.setattr(nanopore_sim, "_run_external", fake_run_external)
+    monkeypatch.setattr(nanopore_sim, "simulate_errors", lambda s, r: errors_called.append((s, r)) or "fallback")
 
     with caplog.at_level(logging.WARNING):
-        result = nanopore_sim.simulate_reads("ACGT", simulator, error_rate=0.2)
+        result = func("ACGT", error_rate=0.2)
 
     assert result == "fallback"
     assert which_called == [cmd]
-    assert external_called == [(cmd, "ACGT")]
+    assert run_called == [(cmd, "ACGT")]
     assert errors_called == [("ACGT", 0.2)]
     assert any("falling back" in rec.message for rec in caplog.records)
+
+
+def test_simulate_reads_dispatch(monkeypatch):
+    called = []
+    def fake_adapter(seq: str, rate: float = 0.05) -> str:
+        called.append((seq, rate))
+        return "ok"
+
+    monkeypatch.setitem(nanopore_sim.SIMULATOR_ADAPTERS, "dummy", fake_adapter)
+    assert nanopore_sim.simulate_reads("AAAA", "dummy") == "ok"
+    assert called == [("AAAA", 0.05)]

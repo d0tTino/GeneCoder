@@ -118,10 +118,17 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
 11. **Decode using an external simulator**
 
-   The ``--simulator`` option lists all registered simulators. GeneCoder ships
-   with wrappers for ``nanopore``, ``dnarsim`` and ``squigulator`` which are
-   loaded via the plugin system. When a tool is not installed, GeneCoder falls
-   back to an internal error model.
+   The ``--simulator`` option accepts ``nanopore``, ``dnarsim`` or ``squigulator``.
+   Install the desired simulator separately and ensure the command is on your
+   ``PATH``:
+
+   * ``nanopore`` uses the ``d2sim`` command
+   * ``dnarsim`` uses the ``dnarsim`` command
+   * ``squigulator`` uses the ``squigulator`` command
+
+   When a command is missing GeneCoder automatically falls back to an internal
+   error model.
+
 
    ```bash
    genecoder decode --input-files encoded.fasta \
