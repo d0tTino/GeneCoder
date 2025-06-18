@@ -32,18 +32,27 @@ def load_plugins() -> None:
         register = getattr(plugin, "register", None)
         if callable(register):
             register(register_codec)
+        register_c = getattr(plugin, "register_codec", None)
+        if callable(register_c):
+            register_c(register_codec)
 
     for ep in entry_points(group="genecoder.fec"):
         plugin = ep.load()
         register = getattr(plugin, "register", None)
         if callable(register):
             register(register_fec)
+        register_f = getattr(plugin, "register_fec", None)
+        if callable(register_f):
+            register_f(register_fec)
 
     for ep in entry_points(group="genecoder.simulators"):
         plugin = ep.load()
         register = getattr(plugin, "register", None)
         if callable(register):
             register(register_simulator)
+        register_s = getattr(plugin, "register_simulator", None)
+        if callable(register_s):
+            register_s(register_simulator)
 
     # Also load plugins from a local ``plugins`` package if present
     try:

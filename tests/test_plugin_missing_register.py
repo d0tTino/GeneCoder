@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 from types import ModuleType
 import importlib
+from typing import Callable
 import pytest
 
 from genecoder import plugins
@@ -62,4 +63,39 @@ def test_entry_point_without_register(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "dummy_ep" not in plugins.CODEC_REGISTRY
     assert "dummy_ep" not in plugins.FEC_REGISTRY
     assert "dummy_ep" not in plugins.SIMULATOR_REGISTRY
+
+
+def test_entry_point_with_sub_register(monkeypatch: pytest.MonkeyPatch) -> None:
+    dummy_mod = ModuleType("dummy_codec_mod")
+
+    def register_codec(register_codec_fn: Callable[..., None]) -> None:
+        def enc(data: bytes) -> str:
+            return "X"
+
+        def dec(text: str) -> bytes:
+            return b"X"
+
+        register_codec_fn("dummy", enc, dec)
+
+    dummy_mod.register_codec = register_codec  # type: ignore[attr-defined]
+
+    class DummyEP:
+        def load(self) -> ModuleType:
+            return dummy_mod
+
+    def fake_entry_points(*, group: str | None = None) -> list[object]:
+        if group == "genecoder.plugins":
+            return [DummyEP()]
+        return []
+
+    _clear_registries()
+    monkeypatch.setattr(plugins, "entry_points", fake_entry_points)
+    dummy_pkg = ModuleType("plugins")
+    dummy_pkg.__path__ = []
+    monkeypatch.setitem(sys.modules, "plugins", dummy_pkg)
+    plugins.load_plugins()
+    assert "dummy" in plugins.CODEC_REGISTRY
+    monkeypatch.setattr(plugins, "entry_points", importlib.metadata.entry_points)
+    sys.modules.pop("plugins", None)
+    plugins.load_plugins()
 
