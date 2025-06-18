@@ -65,10 +65,17 @@ def simulate_squigulator(sequence: str, error_rate: float = 0.05) -> str:
     return _simulate_adapter("squigulator", sequence, error_rate)
 
 
+def simulate_none(sequence: str, error_rate: float = 0.0) -> str:
+    """Return ``sequence`` unchanged."""
+
+    return sequence
+
+
 SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
     "nanopore": simulate_nanopore,
     "dnarsim": simulate_dnarsim,
     "squigulator": simulate_squigulator,
+    "none": simulate_none,
 }
 
 
@@ -109,4 +116,5 @@ def register(
     register_simulator("nanopore", simulate_nanopore)
     register_simulator("dnarsim", simulate_dnarsim)
     register_simulator("squigulator", simulate_squigulator)
+
 
