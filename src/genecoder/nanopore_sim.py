@@ -66,6 +66,7 @@ def simulate_squigulator(sequence: str, error_rate: float = 0.05) -> str:
 
 
 def simulate_none(sequence: str, error_rate: float = 0.0) -> str:
+
     """Return ``sequence`` unchanged."""
 
     return sequence
@@ -97,10 +98,8 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
 
     return adapter(sequence, error_rate)
 
-
 def register(register_simulator: Callable[[str, Callable[[str, float], str]], None]) -> None:
     """Register available simulator adapters."""
 
     for name, func in SIMULATOR_ADAPTERS.items():
         register_simulator(name, func)
-
