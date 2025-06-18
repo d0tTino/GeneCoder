@@ -62,3 +62,11 @@ def decode_data_ldpc(encoded: bytes, info: Any) -> Tuple[bytes, int]:
     data_bits = decoded[:n_bits]
     corrections = int((bits[:n_bits] != data_bits).sum())
     return np.packbits(data_bits).tobytes(), corrections
+
+
+from typing import Callable
+
+
+def register(register_fec: Callable[[str, Callable[[bytes], tuple[bytes, Any]], Callable[[bytes, Any], tuple[bytes, int]]], None]) -> None:
+    """Register this module's FEC backend."""
+    register_fec("ldpc", encode_data_ldpc, decode_data_ldpc)

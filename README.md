@@ -61,5 +61,6 @@ See [CITATION.cff](CITATION.cff) for citation information.
 ### Plugins
 
 GeneCoder can be extended through plugins discovered via the
-`genecoder.plugins` entry point. See [docs/plugins.md](docs/plugins.md) for
-details on writing and registering new codecs or viewers.
+`genecoder.plugins`, `genecoder.fec` and `genecoder.simulators` entry points.
+See [docs/plugins.md](docs/plugins.md) for details on writing and registering
+new codecs, FEC back-ends or simulators.
