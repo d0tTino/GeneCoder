@@ -3,7 +3,7 @@ name: Auto-merge comment-only PRs
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
-# Ensure only a single workflow run per PR or branch
+# Allow only one workflow run per PR
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
