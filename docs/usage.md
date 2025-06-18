@@ -129,6 +129,7 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    When a command is missing GeneCoder automatically falls back to an internal
    error model.
 
+
    ```bash
    genecoder decode --input-files encoded.fasta \
        --output-file decoded.bin --simulator squigulator

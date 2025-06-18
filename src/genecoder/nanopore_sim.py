@@ -92,3 +92,4 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
         raise ValueError(f"Unknown simulator: {simulator}") from exc
 
     return adapter(sequence, error_rate)
+

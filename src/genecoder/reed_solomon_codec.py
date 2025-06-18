@@ -84,3 +84,11 @@ def decode_data_rs(encoded: bytes, nsym: int) -> Tuple[bytes, int]:
     except ReedSolomonError as exc:  # pragma: no cover - error path
         raise ValueError(f"Reed-Solomon decode failed: {exc}") from exc
     return bytes(decoded), len(err_pos)
+
+
+from typing import Callable, Any
+
+
+def register(register_fec: Callable[[str, Callable[[bytes], tuple[bytes, Any]], Callable[[bytes, Any], tuple[bytes, int]]], None]) -> None:
+    """Register this module's FEC backend."""
+    register_fec("reed_solomon", encode_data_rs, decode_data_rs)

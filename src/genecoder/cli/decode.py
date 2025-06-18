@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 from genecoder.encoders import decode_base4_direct, decode_gc_balanced, decode_triple_repeat
 from genecoder.hamming_codec import decode_data_with_hamming
-from genecoder.reed_solomon_codec import decode_data_rs
+from genecoder.plugins import FEC_REGISTRY, SIMULATOR_REGISTRY
 from genecoder.formats import from_fasta
 from genecoder.utils import get_alphabet_maps
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
@@ -105,13 +105,19 @@ def run_decoding_pipeline(
             raise ValueError("'fec_padding_bits' missing in header for Hamming(7,4) FEC.")
         fec_padding_bits = int(fec_padding_bits_match.group(1))
         final_data, _ = decode_data_with_hamming(binary_data, fec_padding_bits)
-    if "fec=reed_solomon" in header:
-        logger.info(f"Reed-Solomon FEC detected in header for {input_file_name}.")
-        nsym_match = re.search(r"fec_nsym=(\d+)", header)
-        if not nsym_match:
-            raise ValueError("'fec_nsym' missing in header for Reed-Solomon FEC.")
-        nsym = int(nsym_match.group(1))
-        final_data, _ = decode_data_rs(final_data, nsym)
+    else:
+        fec_match = re.search(r"fec=([\w_]+)", header)
+        if fec_match:
+            fec_name = fec_match.group(1)
+            if fec_name in FEC_REGISTRY:
+                info_match = re.search(r"fec_info=([^ ]+)", header)
+                info = None
+                if info_match:
+                    import base64
+                    import pickle
+
+                    info = pickle.loads(base64.b64decode(info_match.group(1)))
+                final_data, _ = FEC_REGISTRY[fec_name]["decode"](final_data, info)
     return final_data
 
 
@@ -162,10 +168,9 @@ def process_single_decode(
                 )
                 raise SystemExit(1)
 
-        if args.simulator != "none":
-            from genecoder.nanopore_sim import simulate_reads
-
-            sequence_from_fasta = simulate_reads(sequence_from_fasta, args.simulator)
+        if args.simulator in SIMULATOR_REGISTRY:
+            simulate_func = SIMULATOR_REGISTRY[args.simulator]
+            sequence_from_fasta = simulate_func(sequence_from_fasta)
             logger.info(
                 f"Applied {args.simulator} simulator before decoding."
             )
@@ -263,11 +268,12 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         default=0.0,
         help="Probability of random substitution errors applied before decoding.",
     )
+    sim_choices = list(sorted(SIMULATOR_REGISTRY.keys())) or ["none"]
     parser.add_argument(
         "--simulator",
         type=str,
         default="none",
-        choices=["none", "nanopore", "dnarsim", "squigulator"],
+        choices=sim_choices,
         help="Apply an external simulator before decoding (default: none).",
     )
     parser.set_defaults(func=_handle_command)

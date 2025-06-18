@@ -18,7 +18,7 @@ from genecoder.encoders import (
     encode_triple_repeat,
 )
 from genecoder.hamming_codec import encode_data_with_hamming
-from genecoder.reed_solomon_codec import encode_data_rs
+from genecoder.plugins import FEC_REGISTRY
 from genecoder.formats import to_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
@@ -73,21 +73,27 @@ def run_encoding_pipeline(
         logger.info(
             f"Applied Hamming(7,4) FEC to {input_file_name}. Original binary size: {len(data)}, Hamming encoded binary size: {len(current_input)} (padding bits: {fec_padding_bits})."
         )
-    elif options.fec == "reed_solomon":
+    elif options.fec and options.fec in FEC_REGISTRY:
         if options.add_parity:
             logger.warning(
-                f"Warning for {input_file_name}: --add-parity is ignored when Reed-Solomon FEC is applied to binary data."
+                f"Warning for {input_file_name}: --add-parity is ignored when {options.fec} FEC is applied to binary data."
             )
-        current_input, rs_nsym = encode_data_rs(data)
-        header_parts.append("fec=reed_solomon")
-        header_parts.append(f"fec_nsym={rs_nsym}")
+        enc = FEC_REGISTRY[options.fec]
+        current_input, info = enc["encode"](data)
+        header_parts.append(f"fec={options.fec}")
+        if info is not None:
+            import base64
+            import pickle
+
+            encoded_info = base64.b64encode(pickle.dumps(info)).decode()
+            header_parts.append(f"fec_info={encoded_info}")
         logger.info(
-            f"Applied Reed-Solomon FEC to {input_file_name}. Original binary size: {len(data)}, RS encoded binary size: {len(current_input)} (nsym={rs_nsym})."
+            f"Applied {options.fec} FEC to {input_file_name}. Original binary size: {len(data)}, encoded size: {len(current_input)}."
         )
     raw_dna = ""
-    should_add_parity = options.add_parity and options.fec not in (
-        "hamming_7_4",
-        "reed_solomon",
+    disabled_fec = {"hamming_7_4", *FEC_REGISTRY.keys()}
+    should_add_parity = options.add_parity and (
+        options.fec is None or options.fec not in disabled_fec
     )
 
     if options.method == "base4_direct":
@@ -360,11 +366,12 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         choices=[PARITY_RULE_GC_EVEN_A_ODD_T],
         help="Parity rule to use (default: GC_even_A_odd_T).",
     )
+    fec_choices = [None, "triple_repeat", "hamming_7_4", *sorted(FEC_REGISTRY.keys())]
     parser.add_argument(
         "--fec",
         type=str,
         default=None,
-        choices=[None, "triple_repeat", "hamming_7_4", "reed_solomon"],
+        choices=fec_choices,
         help="Forward Error Correction method to apply.",
     )
     parser.add_argument(

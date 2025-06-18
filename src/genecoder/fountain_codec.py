@@ -51,3 +51,11 @@ def decode_data_fountain(encoded: bytes, info: Any) -> Tuple[bytes, int]:
     ]
     data = b"".join(blocks)[:orig_len]
     return data, 0
+
+
+from typing import Callable
+
+
+def register(register_fec: Callable[[str, Callable[[bytes], tuple[bytes, Any]], Callable[[bytes, Any], tuple[bytes, int]]], None]) -> None:
+    """Register this module's FEC backend."""
+    register_fec("fountain", encode_data_fountain, decode_data_fountain)
