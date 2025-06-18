@@ -43,7 +43,7 @@ Install Miniforge with `winget` and create a dedicated environment using `mamba`
 
 ```powershell
 winget install conda-forge.miniforge
-mamba create -n genecoder python=3.12 reedsolo pytest ruff mypy
+mamba create -n genecoder python=3.12 flet>=0.28,<0.29 reedsolo matplotlib pytest ruff mypy
 mamba activate genecoder
 pip install -e .[gui]
 pre-commit install

@@ -9,6 +9,7 @@ import pkgutil
 
 # Flet <0.29 removed ``HtmlElement``. Provide a minimal fallback for tests.
 if not hasattr(ft, "HtmlElement"):
+
     class _HtmlElement:
         """Lightweight stand-in for :class:`flet.HtmlElement`."""
 
@@ -25,9 +26,15 @@ try:
     three_data = pkgutil.get_data("genecoder", "static/three.min.js")
     orbit_data = pkgutil.get_data("genecoder", "static/OrbitControls.min.js")
     if three_data:
-        THREE_JS_URL = "data:application/javascript;base64," + base64.b64encode(three_data).decode()
+        THREE_JS_URL = (
+            "data:application/javascript;base64,"
+            + base64.b64encode(three_data).decode()
+        )
     if orbit_data:
-        ORBIT_JS_URL = "data:application/javascript;base64," + base64.b64encode(orbit_data).decode()
+        ORBIT_JS_URL = (
+            "data:application/javascript;base64,"
+            + base64.b64encode(orbit_data).decode()
+        )
 except FileNotFoundError:
     pass
 
@@ -52,18 +59,15 @@ controls.enableDamping = true;
 camera.position.set(2, 2, 5);
 controls.update();
 
-const text = 'GeneCoder';
-const bytes = new TextEncoder().encode(text);
+const seq = '%(DNA_SEQ)s';
 const bases = [];
 const bits = [];
-for (const byte of bytes) {
-    for (let shift = 6; shift >= 0; shift -= 2) {
-        const val = (byte >> shift) & 3;
-        const base = ['A', 'C', 'G', 'T'][val];
-        bases.push(base);
-        bits.push(`${byte.toString(16).padStart(2,'0')}[${val.toString(2).padStart(2,'0')}]`);
-    }
+for (let i = 0; i < seq.length; i++) {
+    const base = seq[i];
+    bases.push(base);
+    bits.push(base);
 }
+
 
 const colors = { A: 0xff5555, C: 0x5555ff, G: 0x55ff55, T: 0xffff55 };
 const group = new THREE.Group();
@@ -71,11 +75,11 @@ const radius = 0.1;
 const height = 0.4;
 for (let i = 0; i < bases.length; i++) {
     const geometry = new THREE.SphereGeometry(radius, 16, 16);
-    const material = new THREE.MeshBasicMaterial({ color: colors[bases[i]] });
+    const material = new THREE.MeshBasicMaterial({ color: colors[bases[i]] || 0xffffff });
     const mesh = new THREE.Mesh(geometry, material);
     const angle = i * 0.3;
     mesh.position.set(Math.cos(angle), Math.sin(angle), i * height);
-    mesh.userData = { info: bits[i] };
+    mesh.userData = { info: `${bases[i]} (${i})` };
     group.add(mesh);
 }
 scene.add(group);
@@ -114,12 +118,17 @@ animate();
 </script>
 """
 
-HELIX_HTML = HELIX_TEMPLATE % {
-    "THREE_JS_URL": THREE_JS_URL,
-    "ORBIT_JS_URL": ORBIT_JS_URL,
-}
+def _make_helix_html(dna_sequence: str) -> str:
+    return HELIX_TEMPLATE % {
+        "THREE_JS_URL": THREE_JS_URL,
+        "ORBIT_JS_URL": ORBIT_JS_URL,
+        "DNA_SEQ": dna_sequence,
+    }
 
-def show_helix() -> ft.WebView:
+
+def show_helix(dna_sequence: str = "ACGT") -> ft.WebView:
     """Return a ``WebView`` displaying a DNA helix scene with controls."""
-    data_url = "data:text/html," + quote(HELIX_HTML)
+    helix_html = _make_helix_html(dna_sequence)
+    data_url = "data:text/html," + quote(helix_html)
+
     return ft.WebView(url=data_url, width=600, height=400)
