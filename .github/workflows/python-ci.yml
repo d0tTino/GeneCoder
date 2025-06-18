@@ -2,17 +2,23 @@ name: Python CI
 
 on:
   push:
-    branches: [ main ] # Adjust if your main branch is different (e.g., master)
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-      - '**/*.rst'
+    branches: [main] # Adjust if your main branch is different (e.g., master)
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'requirements.lock'
+      - '.github/workflows/**'
+      - 'scripts/**'
   pull_request:
-    branches: [ main ] # Adjust if your main branch is different
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-      - '**/*.rst'
+    branches: [main] # Adjust if your main branch is different
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'requirements.lock'
+      - '.github/workflows/**'
+      - 'scripts/**'
 
 # Ensure only a single workflow run per PR or branch
 concurrency:

@@ -78,6 +78,8 @@ def main(page: ft.Page) -> None:
     helix_color_c = ft.TextField(label="C", value="#5555ff", width=100)
     helix_color_g = ft.TextField(label="G", value="#55ff55", width=100)
     helix_color_t = ft.TextField(label="T", value="#ffff55", width=100)
+    animate_checkbox = ft.Checkbox(label="Animate", value=False)
+    zoom_slider = ft.Slider(min=1, max=10, value=5, divisions=9)
     helix_controls = ft.Row(
         [
             helix_length_input,
