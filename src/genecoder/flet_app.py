@@ -68,6 +68,8 @@ def main(page: ft.Page) -> None:
 
     # Container used for the Helix View tab. Filled when the tab is selected.
     helix_container = ft.Column()
+    animate_checkbox = ft.Checkbox(label="Animate", value=True)
+    zoom_slider = ft.Slider(min=0.5, max=2.0, value=1.0, divisions=15, width=200)
     helix_length_input = ft.TextField(
         label="Sequence Length",
         value="50",
