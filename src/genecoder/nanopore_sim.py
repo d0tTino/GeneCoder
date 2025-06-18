@@ -76,13 +76,17 @@ def simulate_none(sequence: str, error_rate: float = 0.0) -> str:
     return sequence
 
 
+def _no_sim(sequence: str, error_rate: float = 0.05) -> str:
+    return sequence
+
+
 SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
     "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,
     "squigulator": simulate_squigulator,
     # backward compatibility names
     "nanopore": simulate_d2sim,
-    "none": lambda seq, _rate=0.05: seq,
+    "none": _no_sim,
 }
 
 
@@ -104,19 +108,12 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
 
     return adapter(sequence, error_rate)
 
-from typing import Any
 
 
 def register(register_simulator: Callable[[str, Callable[..., Any]], None]) -> None:
     """Register the builtin simulators."""
 
-    def _wrap(name: str) -> Callable[[str, float], str]:
-        def simulate(seq: str, error_rate: float = 0.05) -> str:
-            return simulate_reads(seq, name, error_rate)
-
-        return simulate
-
-    for name in ("none", "nanopore", "dnarsim", "squigulator"):
-        register_simulator(name, _wrap(name))
+    for name, func in SIMULATOR_ADAPTERS.items():
+        register_simulator(name, func)
 
 

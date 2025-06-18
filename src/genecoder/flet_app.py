@@ -89,6 +89,9 @@ def main(page: ft.Page) -> None:
         alignment=ft.MainAxisAlignment.START,
     )
 
+    animate_checkbox = ft.Checkbox(label="Animate", value=True)
+    zoom_slider = ft.Slider(min=0.5, max=2.0, value=1.0, divisions=15, width=200)
+
 
     window_size_input = ft.TextField(
         label="GC Window Size",
