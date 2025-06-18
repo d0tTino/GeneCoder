@@ -1,9 +1,10 @@
 # Plugin System
 
 GeneCoder discovers additional functionality using Python entry points. Any
-package can expose a `genecoder.plugins` entry point that points to a module with
-a `register` function. The function receives a `register_codec` callable used to
-add new codecs to the registry.
+package can expose entry points under `genecoder.plugins`, `genecoder.fec` or
+`genecoder.simulators` that point to modules with a `register` function. The
+function receives a callback used to add the implementation to the appropriate
+registry.
 
 Example `pyproject.toml` snippet:
 
@@ -24,6 +25,29 @@ def register(register_codec):
         ...
     register_codec("mycodec", encode, decode)
 ```
+
+To add a custom FEC implementation you would use the `genecoder.fec` group and
+call the provided `register_fec` callback:
+
+```toml
+[project.entry-points."genecoder.fec"]
+myfec = "my_package.my_fec"
+```
+
+```python
+# my_package/my_fec.py
+
+def register(register_fec):
+    def encode(data: bytes):
+        ...
+    def decode(encoded: bytes, info):
+        ...
+register_fec("myfec", encode, decode)
+```
+
+Simulator plugins follow the same pattern using the `genecoder.simulators`
+group with a `register_simulator` callback that receives a function taking a
+DNA sequence and returning a mutated version.
 
 Registered codecs are available via `genecoder.CODEC_REGISTRY` after importing
 GeneCoder.

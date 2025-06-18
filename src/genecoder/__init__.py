@@ -10,11 +10,23 @@ _LAZY_ATTRS = {
     "perform_decoding",
 }
 
-from .plugins import CODEC_REGISTRY, load_plugins
+from .plugins import (
+    CODEC_REGISTRY,
+    FEC_REGISTRY,
+    SIMULATOR_REGISTRY,
+    load_plugins,
+)
 
 load_plugins()
 
-__all__ = [*sorted(_LAZY_ATTRS), "__version__", "CODEC_REGISTRY", "load_plugins"]
+__all__ = [
+    *sorted(_LAZY_ATTRS),
+    "__version__",
+    "CODEC_REGISTRY",
+    "FEC_REGISTRY",
+    "SIMULATOR_REGISTRY",
+    "load_plugins",
+]
 
 
 from typing import Any

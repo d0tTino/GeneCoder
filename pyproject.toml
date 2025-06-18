@@ -37,6 +37,14 @@ genecoder = "genecoder.cli.cli:main"
 [project.entry-points."genecoder.plugins"]
 reverse = "plugins.reverse_codec"
 
+[project.entry-points."genecoder.fec"]
+reed_solomon = "genecoder.reed_solomon_codec"
+ldpc = "genecoder.ldpc_codec"
+fountain = "genecoder.fountain_codec"
+
+[project.entry-points."genecoder.simulators"]
+nanopore = "genecoder.nanopore_sim"
+
 [project.urls]
 Homepage = "https://github.com/d0tTino/GeneCoder"
 Changelog = "https://github.com/d0tTino/GeneCoder/blob/main/CHANGELOG.md"
