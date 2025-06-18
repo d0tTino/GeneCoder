@@ -51,19 +51,31 @@ def load_plugins() -> None:
     except ModuleNotFoundError:
         plugins = None
     if plugins is not None:
-        for _, module_name, _ in pkgutil.iter_modules(plugins.__path__):
-            module = importlib.import_module(f"plugins.{module_name}")
-            register = getattr(module, "register", None)
-            if callable(register):
-                register(register_codec)
-            register_f = getattr(module, "register_fec", None)
-            if callable(register_f):
-                register_f(register_fec)
-            register_s = getattr(module, "register_simulator", None)
-            if callable(register_s):
-                register_s(register_simulator)
+        if hasattr(plugins, "__path__"):
+            for _, module_name, _ in pkgutil.iter_modules(plugins.__path__):
+                module = importlib.import_module(f"plugins.{module_name}")
+                register = getattr(module, "register", None)
+                if callable(register):
+                    register(register_codec)
+                register_f = getattr(module, "register_fec", None)
+                if callable(register_f):
+                    register_f(register_fec)
+                register_s = getattr(module, "register_simulator", None)
+                if callable(register_s):
+                    register_s(register_simulator)
+        register = getattr(plugins, "register", None)
+        if callable(register):
+            register(register_codec)
+        register_f = getattr(plugins, "register_fec", None)
+        if callable(register_f):
+            register_f(register_fec)
+        register_s = getattr(plugins, "register_simulator", None)
+        if callable(register_s):
+            register_s(register_simulator)
 
     # Load built-in back-ends directly when running from source
+    from plugins import reverse_codec as _reverse
+    _reverse.register(register_codec)
     from . import reed_solomon_codec as _rs
     _rs.register(register_fec)
     from . import ldpc_codec as _ldpc

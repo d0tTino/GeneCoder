@@ -68,6 +68,8 @@ def main(page: ft.Page) -> None:
 
     # Container used for the Helix View tab. Filled when the tab is selected.
     helix_container = ft.Column()
+    animate_checkbox = ft.Checkbox(label="Animate", value=True)
+    zoom_slider = ft.Slider(min=0.5, max=2.0, value=1.0, divisions=15, width=200)
     helix_length_input = ft.TextField(
         label="Sequence Length",
         value="50",
@@ -742,24 +744,7 @@ def main(page: ft.Page) -> None:
 
     def on_tab_change(e: ft.ControlEvent) -> None:
         if app_tabs.selected_index == 3:
-            dna_seq = ""
-            if encode_hidden_fasta_content.value:
-                parsed = from_fasta(encode_hidden_fasta_content.value)
-                if parsed:
-                    dna_seq = parsed[0][1]
-            helix_container.controls.clear()
-            helix_container.controls.append(
-                show_helix(
-                    dna_seq,
-                    length=parse_int_input(helix_length_input.value, len(dna_seq) or 1),
-                    colors={
-                        "A": helix_color_a.value,
-                        "C": helix_color_c.value,
-                        "G": helix_color_g.value,
-                        "T": helix_color_t.value,
-                    },
-                )
-            )
+            refresh_helix_view()
 
 
         page.update()

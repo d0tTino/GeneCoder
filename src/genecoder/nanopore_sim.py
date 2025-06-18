@@ -82,7 +82,7 @@ SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
     "squigulator": simulate_squigulator,
     # backward compatibility names
     "nanopore": simulate_d2sim,
-    "none": lambda seq, _rate=0.05: seq,
+    "none": simulate_none,
 }
 
 
@@ -105,11 +105,14 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     return adapter(sequence, error_rate)
 
 
+
 def register(register_simulator: Callable[[str, Callable[..., Any]], None]) -> None:
     """Register the builtin simulators."""
 
     for name, func in SIMULATOR_ADAPTERS.items():
         register_simulator(name, func)
 
+    for name in ("none", "nanopore", "dnarsim", "squigulator", "d2sim"):
+        register_simulator(name, _wrap(name))
 
 
