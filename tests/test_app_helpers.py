@@ -2,6 +2,7 @@ import re
 import pytest
 
 from genecoder.app_helpers import EncodeOptions, perform_encoding, perform_decoding
+from genecoder.reed_solomon_codec import _HAS_REEDSOLO
 
 
 def test_roundtrip_base4_direct_hamming():
@@ -25,6 +26,8 @@ def test_roundtrip_base4_direct_hamming():
 
 
 def test_reed_solomon_roundtrip():
+    if not _HAS_REEDSOLO:
+        pytest.skip("reedsolo not installed")
     data = b"RS GUI"
     opts = EncodeOptions(method="Base-4 Direct", fec_method="Reed-Solomon")
     enc = perform_encoding(data, opts)
@@ -57,6 +60,8 @@ def test_decoding_invalid_huffman_json():
 
 
 def test_decoding_missing_rs_nsym():
+    if not _HAS_REEDSOLO:
+        pytest.skip("reedsolo not installed")
     data = b"DATA"
     opts = EncodeOptions(method="Base-4 Direct", fec_method="Reed-Solomon")
     enc = perform_encoding(data, opts)
@@ -89,6 +94,8 @@ def test_gc_balanced_roundtrip_with_parity():
 
 
 def test_huffman_rs_parity_ignored():
+    if not _HAS_REEDSOLO:
+        pytest.skip("reedsolo not installed")
     data = b"HF RS"
     opts = EncodeOptions(method="Huffman", add_parity=True, fec_method="Reed-Solomon", k_value=4)
     enc = perform_encoding(data, opts)

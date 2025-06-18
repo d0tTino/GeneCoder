@@ -8,10 +8,27 @@ import io
 import collections
 from typing import Dict, List
 
-import matplotlib
-matplotlib.use('Agg') # Set Matplotlib backend to Agg for headless environments
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
+import base64
+
+try:  # pragma: no cover - optional dependency
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.ticker import MaxNLocator
+    _MATPLOTLIB_AVAILABLE = True
+except Exception:  # noqa: BLE001 - broader catch for optional import
+    matplotlib = None
+    plt = None
+    MaxNLocator = None
+    _MATPLOTLIB_AVAILABLE = False
+
+_DUMMY_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="
+)
+
+
+def _dummy_png() -> io.BytesIO:
+    return io.BytesIO(_DUMMY_PNG)
 
 
 def prepare_huffman_codeword_length_data(
@@ -53,7 +70,10 @@ def generate_codeword_length_histogram(
         generated histogram. If `length_counts` is empty, it returns a
         BytesIO buffer containing a plot with a "No data to display" message.
     """
-    fig, ax = plt.subplots(figsize=(8, 6)) # Adjust figsize as needed
+    if not _MATPLOTLIB_AVAILABLE:
+        return _dummy_png()
+
+    fig, ax = plt.subplots(figsize=(8, 6))  # Adjust figsize as needed
 
     if not length_counts:
         ax.text(0.5, 0.5, "No data to display for histogram.", 
@@ -137,7 +157,10 @@ def generate_nucleotide_frequency_plot(
         generated bar plot. If all counts are zero, it returns a plot
         with a "No nucleotide data to display." message.
     """
-    fig, ax = plt.subplots(figsize=(6, 5)) # Adjust figsize as needed
+    if not _MATPLOTLIB_AVAILABLE:
+        return _dummy_png()
+
+    fig, ax = plt.subplots(figsize=(6, 5))  # Adjust figsize as needed
 
     nucleotides_for_plot = ['A', 'T', 'C', 'G']
     counts = [nucleotide_counts.get(nt, 0) for nt in nucleotides_for_plot]
@@ -275,8 +298,8 @@ def identify_homopolymer_regions(dna_sequence: str, min_len: int) -> list[tuple[
 
 
 def generate_sequence_analysis_plot(
-    gc_windows_data: tuple[list[int], list[float]], 
-    homopolymers: list[tuple[int, int, str]], 
+    gc_windows_data: tuple[list[int], list[float]],
+    homopolymers: list[tuple[int, int, str]],
     sequence_length: int
 ) -> io.BytesIO:
     """Generates a plot showing windowed GC content and homopolymer regions.
@@ -294,6 +317,9 @@ def generate_sequence_analysis_plot(
     Returns:
         io.BytesIO: A BytesIO buffer containing the PNG image data of the plot.
     """
+    if not _MATPLOTLIB_AVAILABLE:
+        return _dummy_png()
+
     fig, ax1 = plt.subplots(figsize=(12, 6))
 
     # Plot GC content

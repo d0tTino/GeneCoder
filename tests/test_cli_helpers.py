@@ -8,6 +8,7 @@ from genecoder.cli import (
     run_encoding_pipeline,
     run_decoding_pipeline,
 )
+from genecoder.reed_solomon_codec import _HAS_REEDSOLO
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 
 
@@ -75,6 +76,8 @@ def test_hamming_pipeline(tmp_path: Path):
 
 
 def test_reed_solomon_pipeline(tmp_path: Path):
+    if not _HAS_REEDSOLO:
+        pytest.skip("reedsolo not installed")
     data = b"RS test"
     input_file = tmp_path / "rs.bin"
     input_file.write_bytes(data)
