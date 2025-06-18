@@ -9,7 +9,7 @@ on:
       - 'docs/**'
       - 'mkdocs.yml'
 
-# Cancel any stale docs builds if new commits arrive
+# Cancel stale docs builds if a newer run starts
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
