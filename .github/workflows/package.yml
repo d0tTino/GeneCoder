@@ -5,7 +5,7 @@ on:
     tags:
       - 'v*'
 
-# Standard concurrency block to avoid overlapping runs
+# Ensure only a single workflow run per PR or branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
