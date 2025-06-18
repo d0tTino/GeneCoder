@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 import logging
-from typing import Callable
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +69,13 @@ def simulate_squigulator(sequence: str, error_rate: float = 0.05) -> str:
     return _simulate_adapter("squigulator", sequence, error_rate)
 
 
+def simulate_none(sequence: str, error_rate: float = 0.0) -> str:
+
+    """Return ``sequence`` unchanged."""
+
+    return sequence
+
+
 SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
     "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,
@@ -86,9 +93,6 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     substitution error model implemented in :func:`simulate_errors`.
     """
 
-    if simulator == "none":
-        return sequence
-
     seed_env = os.getenv("GENECODER_SIM_SEED")
     if seed_env is not None:
         random.seed(int(seed_env))
@@ -99,7 +103,6 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
         raise ValueError(f"Unknown simulator: {simulator}") from exc
 
     return adapter(sequence, error_rate)
-
 
 def register(register_simulator: Callable[[str, Callable[..., str]], None]) -> None:
     """Register built-in read simulators."""
