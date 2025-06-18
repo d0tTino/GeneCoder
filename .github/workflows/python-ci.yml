@@ -2,7 +2,7 @@ name: Python CI
 
 on:
   push:
-    branches: [ main ] # Adjust if your main branch is different (e.g., master)
+    branches: [main] # Adjust if your main branch is different (e.g., master)
     paths:
       - 'src/**'
       - 'tests/**'
@@ -11,7 +11,7 @@ on:
       - '.github/workflows/**'
       - 'scripts/**'
   pull_request:
-    branches: [ main ] # Adjust if your main branch is different
+    branches: [main] # Adjust if your main branch is different
     paths:
       - 'src/**'
       - 'tests/**'
