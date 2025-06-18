@@ -74,6 +74,10 @@ def load_plugins() -> None:
     if hasattr(_nano, "register"):
         _nano.register(register_simulator)
     else:
-        for name, func in _nano.SIMULATOR_ADAPTERS.items():
-            register_simulator(name, func)
+        for name in _nano.SIMULATOR_ADAPTERS:
+            def wrapper(seq: str, error_rate: float = 0.05, *, _name: str = name) -> str:
+                return _nano.simulate_reads(seq, _name, error_rate)
+
+            register_simulator(name, wrapper)
+
         register_simulator("none", lambda seq, error_rate=0.05: seq)
