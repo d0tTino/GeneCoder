@@ -29,6 +29,7 @@ gui = [
 web = [
     "fastapi",
     "uvicorn[standard]",
+    "httpx",
 ]
 
 [project.scripts]
