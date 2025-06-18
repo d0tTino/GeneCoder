@@ -8,14 +8,14 @@ _HAS_PYLDPC = False
 
 if TYPE_CHECKING:
     import numpy as np
-    from pyldpc import make_ldpc, encode, decode
+    from pyldpc import make_ldpc, decode, utils
 else:
     try:  # pragma: no cover - optional dependency
         import numpy as np
-        from pyldpc import make_ldpc, encode, decode
+        from pyldpc import make_ldpc, decode, utils
         _HAS_PYLDPC = True
     except Exception:  # pragma: no cover - missing optional dependency
-        make_ldpc = encode = decode = None  # type: ignore
+        make_ldpc = decode = utils = None  # type: ignore
         np = None  # type: ignore
         _HAS_PYLDPC = False
 
@@ -47,8 +47,9 @@ def encode_data_ldpc(data: bytes) -> Tuple[bytes, Any]:
     n_bits = len(data) * 8
     H, G = make_ldpc(n_bits, d_v=2, d_c=4, systematic=True)
     bits = np.unpackbits(np.frombuffer(data, dtype=np.uint8))
-    codeword = encode(G, bits, snr=2)
-    return np.packbits(codeword).tobytes(), {"H": H, "n_bits": n_bits}
+    message = np.pad(bits, (0, G.shape[1] - bits.size), "constant")[: G.shape[1]]
+    codeword = utils.binaryproduct(G, message).astype(np.uint8)
+    return np.packbits(codeword).tobytes(), {"H": H, "n_bits": bits.size}
 
 
 def decode_data_ldpc(encoded: bytes, info: Any) -> Tuple[bytes, int]:
