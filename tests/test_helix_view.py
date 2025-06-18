@@ -5,12 +5,15 @@ ft = pytest.importorskip("flet")
 from genecoder.helix_view import show_helix
 
 
-def _get_ft_and_show_helix():
+from typing import Any, Callable
+
+
+def _get_ft_and_show_helix() -> tuple[Any, Callable[..., Any]]:
     return ft, show_helix
 
 
 @pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
-def test_show_helix_basic():
+def test_show_helix_basic() -> None:
     ft, show_helix = _get_ft_and_show_helix()
 
     elem = show_helix("ACGT")
@@ -24,10 +27,19 @@ def test_show_helix_basic():
 
 
 @pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
-def test_show_helix_sequence_in_html():
+def test_show_helix_sequence_in_html() -> None:
     ft, show_helix = _get_ft_and_show_helix()
     seq = "AACCGGTT"
     elem = show_helix(seq)
     html = unquote(elem.url.split(",", 1)[1])
     assert seq in html
+
+
+@pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
+def test_show_helix_options() -> None:
+    ft, show_helix = _get_ft_and_show_helix()
+    elem = show_helix("AC", length=5, colors={"A": "#123456"})
+    html = unquote(elem.url.split(",", 1)[1])
+    assert "ACACA" in html  # sequence repeated to length
+    assert "0x123456" in html
 

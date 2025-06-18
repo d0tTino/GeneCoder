@@ -38,6 +38,14 @@ try:
 except FileNotFoundError:
     pass
 
+# Default colors used for nucleotide spheres in the helix view.
+DEFAULT_COLORS: dict[str, int] = {
+    "A": 0xFF5555,
+    "C": 0x5555FF,
+    "G": 0x55FF55,
+    "T": 0xFFFF55,
+}
+
 HELIX_TEMPLATE = """
 <div id='helix-container' style='position:relative;width:100%%;height:100%%'></div>
 <div id='tooltip' style='position:absolute;display:none;padding:2px;background:#fff;border:1px solid #333;font-size:12px'></div>
@@ -61,21 +69,18 @@ controls.update();
 
 const seq = '%(DNA_SEQ)s';
 const bases = [];
-const bits = [];
 for (let i = 0; i < seq.length; i++) {
-    const base = seq[i];
-    bases.push(base);
-    bits.push(base);
+    bases.push(seq[i]);
 }
 
 
-const colors = { A: 0xff5555, C: 0x5555ff, G: 0x55ff55, T: 0xffff55 };
+const colors = %(COLOR_MAP)s;
 const group = new THREE.Group();
 const radius = 0.1;
 const height = 0.4;
 for (let i = 0; i < bases.length; i++) {
     const geometry = new THREE.SphereGeometry(radius, 16, 16);
-    const material = new THREE.MeshBasicMaterial({ color: colors[bases[i]] || 0xffffff });
+    const material = new THREE.MeshPhongMaterial({ color: colors[bases[i]] || 0xffffff });
     const mesh = new THREE.Mesh(geometry, material);
     const angle = i * 0.3;
     mesh.position.set(Math.cos(angle), Math.sin(angle), i * height);
@@ -86,6 +91,7 @@ scene.add(group);
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+let highlighted = null;
 function onMouseMove(event) {
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -97,8 +103,17 @@ function onMouseMove(event) {
         tooltip.style.left = `${event.clientX + 5}px`;
         tooltip.style.top = `${event.clientY + 5}px`;
         tooltip.textContent = hit.object.userData.info;
+        if (highlighted && highlighted !== hit.object) {
+            highlighted.material.emissive.set(0x000000);
+        }
+        highlighted = hit.object;
+        highlighted.material.emissive.set(0x333333);
     } else {
         tooltip.style.display = 'none';
+        if (highlighted) {
+            highlighted.material.emissive.set(0x000000);
+            highlighted = null;
+        }
     }
 }
 renderer.domElement.addEventListener('mousemove', onMouseMove);
@@ -111,6 +126,7 @@ window.addEventListener('resize', () => {
 
 function animate() {
     requestAnimationFrame(animate);
+    group.rotation.z += 0.01;
     controls.update();
     renderer.render(scene, camera);
 }
@@ -118,17 +134,64 @@ animate();
 </script>
 """
 
-def _make_helix_html(dna_sequence: str) -> str:
+def _make_helix_html(
+    dna_sequence: str,
+    *,
+    length: int | None = None,
+    colors: dict[str, int] | None = None,
+) -> str:
+    """Return HTML for the helix viewer.
+
+    Parameters
+    ----------
+    dna_sequence:
+        Base sequence used for rendering.
+    length:
+        Optional length of the rendered helix. The sequence is repeated as
+        needed.
+    colors:
+        Optional mapping of nucleotide to hex color value or string.
+    """
+    if length is not None:
+        repeats = (length + len(dna_sequence) - 1) // len(dna_sequence)
+        dna_sequence = (dna_sequence * repeats)[:length]
+
+    color_map = DEFAULT_COLORS.copy()
+    if colors:
+        for base, col in colors.items():
+            if isinstance(col, str):
+                col = int(col.lstrip("#").removeprefix("0x"), 16)
+            color_map[base.upper()] = col
+
+    colors_js = "{ " + ", ".join(f"{b}: 0x{v:06x}" for b, v in color_map.items()) + " }"
+
     return HELIX_TEMPLATE % {
         "THREE_JS_URL": THREE_JS_URL,
         "ORBIT_JS_URL": ORBIT_JS_URL,
         "DNA_SEQ": dna_sequence,
+        "COLOR_MAP": colors_js,
     }
 
 
-def show_helix(dna_sequence: str = "ACGT") -> ft.WebView:
-    """Return a ``WebView`` displaying a DNA helix scene with controls."""
-    helix_html = _make_helix_html(dna_sequence)
+def show_helix(
+    dna_sequence: str = "ACGT",
+    *,
+    length: int | None = None,
+    colors: dict[str, int] | None = None,
+) -> ft.WebView:
+    """Return a ``WebView`` displaying a DNA helix scene with controls.
+
+    Parameters
+    ----------
+    dna_sequence:
+        Base sequence used for rendering.
+    length:
+        Optional length of the rendered helix. The sequence is repeated as
+        needed.
+    colors:
+        Mapping of nucleotide to hex color value or string.
+    """
+    helix_html = _make_helix_html(dna_sequence, length=length, colors=colors)
     data_url = "data:text/html," + quote(helix_html)
 
     return ft.WebView(url=data_url, width=600, height=400)
