@@ -65,7 +65,8 @@ def simulate_squigulator(sequence: str, error_rate: float = 0.05) -> str:
     return _simulate_adapter("squigulator", sequence, error_rate)
 
 
-def _simulate_none(sequence: str, _error_rate: float | None = None) -> str:
+def simulate_none(sequence: str, error_rate: float = 0.0) -> str:
+
     """Return ``sequence`` unchanged."""
 
     return sequence
@@ -86,9 +87,6 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     substitution error model implemented in :func:`simulate_errors`.
     """
 
-    if simulator == "none":
-        return sequence
-
     seed_env = os.getenv("GENECODER_SIM_SEED")
     if seed_env is not None:
         random.seed(int(seed_env))
@@ -101,10 +99,7 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     return adapter(sequence, error_rate)
 
 def register(register_simulator: Callable[[str, Callable[[str, float], str]], None]) -> None:
-    """Register this module's read simulators."""
+    """Register available simulator adapters."""
 
-    register_simulator("none", _simulate_none)
-    register_simulator("nanopore", simulate_nanopore)
-    register_simulator("dnarsim", simulate_dnarsim)
-    register_simulator("squigulator", simulate_squigulator)
-
+    for name, func in SIMULATOR_ADAPTERS.items():
+        register_simulator(name, func)
