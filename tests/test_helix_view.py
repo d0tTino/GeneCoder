@@ -38,8 +38,16 @@ def test_show_helix_sequence_in_html() -> None:
 @pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
 def test_show_helix_options() -> None:
     ft, show_helix = _get_ft_and_show_helix()
-    elem = show_helix("AC", length=5, colors={"A": "#123456"})
+    elem = show_helix(
+        "AC",
+        length=5,
+        colors={"A": "#123456"},
+        animate=False,
+        zoom=1.5,
+    )
     html = unquote(elem.url.split(",", 1)[1])
     assert "ACACA" in html  # sequence repeated to length
     assert "0x123456" in html
+    assert "false" in html
+    assert "1.5" in html
 

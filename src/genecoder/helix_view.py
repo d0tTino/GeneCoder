@@ -163,6 +163,8 @@ animate();
 def _make_helix_html(
     dna_sequence: str,
     *,
+    animate: bool = True,
+    zoom: float = 1.0,
     length: int | None = None,
     colors: dict[str, int] | None = None,
 ) -> str:
@@ -172,6 +174,10 @@ def _make_helix_html(
     ----------
     dna_sequence:
         Base sequence used for rendering.
+    animate:
+        Whether to animate rotation of the helix.
+    zoom:
+        Camera zoom level.
     length:
         Optional length of the rendered helix. The sequence is repeated as
         needed.
@@ -191,18 +197,21 @@ def _make_helix_html(
 
     colors_js = "{ " + ", ".join(f"{b}: 0x{v:06x}" for b, v in color_map.items()) + " }"
 
-
     return HELIX_TEMPLATE % {
         "THREE_JS_URL": THREE_JS_URL,
         "ORBIT_JS_URL": ORBIT_JS_URL,
         "DNA_SEQ": dna_sequence,
         "COLOR_MAP": colors_js,
+        "ANIMATE": "true" if animate else "false",
+        "ZOOM": zoom,
     }
 
 
 def show_helix(
     dna_sequence: str = "ACGT",
     *,
+    animate: bool = True,
+    zoom: float = 1.0,
     length: int | None = None,
     colors: dict[str, int] | None = None,
 ) -> ft.WebView:
@@ -212,13 +221,23 @@ def show_helix(
     ----------
     dna_sequence:
         Base sequence used for rendering.
+    animate:
+        Whether to animate rotation of the helix.
+    zoom:
+        Camera zoom level.
     length:
         Optional length of the rendered helix. The sequence is repeated as
         needed.
     colors:
         Mapping of nucleotide to hex color value or string.
     """
-    helix_html = _make_helix_html(dna_sequence, length=length, colors=colors)
+    helix_html = _make_helix_html(
+        dna_sequence,
+        animate=animate,
+        zoom=zoom,
+        length=length,
+        colors=colors,
+    )
 
     data_url = "data:text/html," + quote(helix_html)
 
