@@ -128,7 +128,7 @@ jobs:
         pip install mypy
 
     - name: Run mypy
-      run: mypy --config-file mypy.ini src
+      run: mypy --config-file mypy.ini src --show-error-codes --no-error-summary
 
   build:
     needs: [changes, check-comments, lint, mypy]

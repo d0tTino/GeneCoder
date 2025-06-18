@@ -33,7 +33,7 @@ encode_fasta_data_to_save_ref = ft.Ref[str]()
 decoded_bytes_to_save: bytes = b""
 
 
-def main(page: ft.Page):
+def main(page: ft.Page) -> None:
     """Create the UI and register callbacks for Flet's event loop."""
     page.title = "GeneCoder"
     page.vertical_alignment = ft.MainAxisAlignment.START
@@ -90,8 +90,9 @@ def main(page: ft.Page):
 
     # --- Encode Tab UI Controls ---
     encode_selected_input_file_text = ft.Text("No file selected.", italic=True)
+    
+    def on_encode_file_picker_result(e: ft.FilePickerResultEvent) -> None:
 
-    def on_encode_file_picker_result(e: ft.FilePickerResultEvent):
         if e.files and len(e.files) > 0:
             selected_encode_input_file_path.current = e.files[0].path
             encode_selected_input_file_text.value = (
@@ -151,7 +152,7 @@ def main(page: ft.Page):
         label="Add Parity", value=False, on_change=_toggle_k_value
     )
 
-    def on_fec_change(e: ft.ControlEvent):
+    def on_fec_change(e: ft.ControlEvent) -> None:
         """Toggle parity checkbox based on selected FEC."""
         selected = e.control.value
         if selected in ("Hamming(7,4)", "Reed-Solomon"):
@@ -223,7 +224,7 @@ def main(page: ft.Page):
     app_tabs = ft.Tabs()
 
     # --- Encode Event Handlers ---
-    async def encode_data(e):
+    async def encode_data(e: ft.ControlEvent) -> None:
         """
         Handles the encoding process when the 'Encode' button is clicked.
 
@@ -376,9 +377,8 @@ def main(page: ft.Page):
 
     encode_button.on_click = encode_data
 
-    async def on_encode_save_file_result(
-        e: ft.FilePickerResultEvent,
-    ):  # Made async for consistency, though not strictly needed here
+    async def on_encode_save_file_result(e: ft.FilePickerResultEvent) -> None:  # Made async for consistency, though not strictly needed here
+
         if e.path:
             try:
                 with open(e.path, "w", encoding="utf-8") as f_out:
@@ -457,7 +457,8 @@ def main(page: ft.Page):
         value="base4",
     )
 
-    async def on_decode_file_picker_result(e: ft.FilePickerResultEvent):  # Made async
+    async def on_decode_file_picker_result(e: ft.FilePickerResultEvent) -> None:  # Made async
+
         if e.files and len(e.files) > 0:
             selected_decode_input_file_path.current = e.files[0].path
             decode_selected_input_file_text.value = (
@@ -485,7 +486,7 @@ def main(page: ft.Page):
         ),
     )
 
-    async def decode_file_data(e):
+    async def decode_file_data(e: ft.ControlEvent) -> None:
         """Decode an input FASTA file using :func:`perform_decoding`."""
         global decoded_bytes_to_save
 
@@ -544,7 +545,7 @@ def main(page: ft.Page):
 
     decode_button.on_click = decode_file_data
 
-    async def on_save_decoded_file_result(e: ft.FilePickerResultEvent):  # Made async
+    async def on_save_decoded_file_result(e: ft.FilePickerResultEvent) -> None:  # Made async
         if e.path:
             try:
                 with open(e.path, "wb") as f_out:
@@ -691,7 +692,7 @@ def main(page: ft.Page):
         expand=True,
     )
 
-    def on_tab_change(e: ft.ControlEvent):
+    def on_tab_change(e: ft.ControlEvent) -> None:
         if app_tabs.selected_index == 3:
             dna_seq = ""
             if encode_hidden_fasta_content.value:

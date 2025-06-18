@@ -23,7 +23,7 @@ def load_plugins() -> None:
 
     # Also load plugins from a local ``plugins`` package if present
     try:
-        import plugins  # type: ignore
+        import plugins
     except ModuleNotFoundError:
         return
     for _, module_name, _ in pkgutil.iter_modules(plugins.__path__):
