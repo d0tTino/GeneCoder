@@ -59,3 +59,26 @@ pytest -q
 All code changes must pass `pre-commit` and the test suite. These checks are not
 required for documentation-only pull requests.
 
+## Making a Release
+
+Follow these steps to publish a new version:
+
+1. Update `CHANGELOG.md` with a new version heading and notes.
+2. Bump the version in `pyproject.toml` and `CITATION.cff`.
+3. Commit the changes and create an annotated tag:
+
+   ```bash
+   git tag -a vX.Y.Z -m "vX.Y.Z"
+   git push --tags
+   ```
+
+4. Build and upload the package to PyPI:
+
+   ```bash
+   python -m pip install build twine
+   python -m build
+   twine upload dist/*
+   ```
+
+5. Create a GitHub release pointing at the same tag.
+

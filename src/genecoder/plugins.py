@@ -79,4 +79,5 @@ def load_plugins() -> None:
                 return _nano.simulate_reads(seq, _name, error_rate)
 
             register_simulator(name, wrapper)
+
         register_simulator("none", lambda seq, error_rate=0.05: seq)

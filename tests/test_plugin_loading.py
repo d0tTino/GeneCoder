@@ -25,3 +25,4 @@ def test_fec_plugins_registered() -> None:
 def test_simulator_plugins_registered() -> None:
     for name in ["none", "nanopore", "dnarsim", "squigulator"]:
         assert name in SIMULATOR_REGISTRY
+

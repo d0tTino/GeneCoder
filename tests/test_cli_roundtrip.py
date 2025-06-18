@@ -45,7 +45,7 @@ def test_cli_decode_with_simulator(tmp_path: Path):
     env["GENECODER_SIM_SEED"] = "1"
 
     input_file = tmp_path / "sim.txt"
-    input_file.write_text("nanopore test")
+    input_file.write_text("d2sim test")
 
     # Encode with triple_repeat FEC for robustness
     encode_result = run_cli_command(
@@ -66,7 +66,7 @@ def test_cli_decode_with_simulator(tmp_path: Path):
     fasta_file = tmp_path / "sim.txt.fasta"
     assert fasta_file.exists()
 
-    # Decode using the nanopore simulator
+    # Decode using the d2sim simulator
     decode_result = run_cli_command(
         [
             "decode",
@@ -77,14 +77,14 @@ def test_cli_decode_with_simulator(tmp_path: Path):
             "--method",
             "base4_direct",
             "--simulator",
-            "nanopore",
+            "d2sim",
         ],
         env=env,
     )
     assert decode_result.returncode == 0, decode_result.stderr
     output_file = tmp_path / "sim.txt_decoded.bin"
     assert output_file.exists()
-    assert output_file.read_text() == "nanopore test"
+    assert output_file.read_text() == "d2sim test"
 
 
 def test_cli_decode_with_squigulator(tmp_path: Path):
