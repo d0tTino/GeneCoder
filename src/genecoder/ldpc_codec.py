@@ -8,14 +8,14 @@ _HAS_PYLDPC = False
 
 if TYPE_CHECKING:
     import numpy as np
-    from pyldpc import make_ldpc, decode, utils
+    from pyldpc import make_ldpc, encode, decode, get_message, utils
 else:
     try:  # pragma: no cover - optional dependency
         import numpy as np
-        from pyldpc import make_ldpc, decode, utils
+        from pyldpc import make_ldpc, encode, decode, get_message, utils
         _HAS_PYLDPC = True
     except Exception:  # pragma: no cover - missing optional dependency
-        make_ldpc = decode = utils = None  # type: ignore
+        make_ldpc = encode = decode = get_message = utils = None  # type: ignore
         np = None  # type: ignore
         _HAS_PYLDPC = False
 
@@ -45,11 +45,16 @@ def encode_data_ldpc(data: bytes) -> Tuple[bytes, Any]:
     _require_pyldpc()
     assert np is not None
     n_bits = len(data) * 8
-    H, G = make_ldpc(n_bits, d_v=2, d_c=4, systematic=True)
+    # ``make_ldpc`` expects the length of the encoded codeword (n). Use
+    # twice the number of data bits to ensure the generated generator matrix
+    # has enough columns for the message bits.
+    n = n_bits * 2
+    H, G = make_ldpc(n, d_v=2, d_c=4, systematic=True)
     bits = np.unpackbits(np.frombuffer(data, dtype=np.uint8))
-    message = np.pad(bits, (0, G.shape[1] - bits.size), "constant")[: G.shape[1]]
-    codeword = utils.binaryproduct(G, message).astype(np.uint8)
-    return np.packbits(codeword).tobytes(), {"H": H, "n_bits": bits.size}
+    message = np.pad(bits, (0, G.shape[1] - bits.size), "constant")
+    # Encode the message using a high SNR so no noise is introduced.
+    codeword = encode(G, message, snr=100)
+    return np.packbits(codeword > 0).tobytes(), {"H": H, "G": G, "n_bits": bits.size}
 
 
 def decode_data_ldpc(encoded: bytes, info: Any) -> Tuple[bytes, int]:
@@ -57,11 +62,13 @@ def decode_data_ldpc(encoded: bytes, info: Any) -> Tuple[bytes, int]:
     _require_pyldpc()
     assert np is not None
     H = info["H"]
+    G = info["G"]
     n_bits = info["n_bits"]
     bits = np.unpackbits(np.frombuffer(encoded, dtype=np.uint8))
-    decoded = decode(H, bits, snr=2)
-    data_bits = decoded[:n_bits]
-    corrections = int((bits[:n_bits] != data_bits).sum())
+    decoded = decode(H, bits, snr=100)
+    message = get_message(G, decoded)
+    data_bits = message[:n_bits]
+    corrections = int((decoded[: n_bits] != message[:n_bits]).sum())
     return np.packbits(data_bits).tobytes(), corrections
 
 

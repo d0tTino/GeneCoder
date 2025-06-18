@@ -9,7 +9,13 @@ fi
 source .venv/bin/activate
 
 # 2. Install dependencies and pre-commit
-pip install -r requirements.lock
+# Install build tools and numpy early so packages with optional C extensions
+# and legacy build backends compile successfully
+pip install setuptools wheel numpy
+# Building some packages requires numpy but their build dependencies don't
+# declare it. Install the rest of the requirements without build isolation so
+# the globally installed numpy is visible during installation.
+pip install --no-build-isolation -r requirements.lock
 pip install pre-commit
 
 # 3. Install the pre-commit hook
