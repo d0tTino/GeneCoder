@@ -9,7 +9,7 @@ on:
       - 'docs/**'
       - 'mkdocs.yml'
 
-concurrency: # Cancel stale docs runs
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
