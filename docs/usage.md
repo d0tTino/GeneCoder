@@ -119,7 +119,14 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 11. **Decode using an external simulator**
 
    The ``--simulator`` option accepts ``nanopore``, ``dnarsim`` or ``squigulator``.
-   When the specified tool is not installed, GeneCoder falls back to an internal
+   Install the desired simulator separately and ensure the command is on your
+   ``PATH``:
+
+   * ``nanopore`` uses the ``d2sim`` command
+   * ``dnarsim`` uses the ``dnarsim`` command
+   * ``squigulator`` uses the ``squigulator`` command
+
+   When a command is missing GeneCoder automatically falls back to an internal
    error model.
 
    ```bash

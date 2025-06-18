@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 import logging
+from typing import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +33,52 @@ def _run_external(command: str, sequence: str) -> str:
         return records[0][1]
 
 
+def _simulate_adapter(command: str, sequence: str, error_rate: float) -> str:
+    """Return ``sequence`` processed by an external ``command`` if available."""
+    if shutil.which(command):
+        try:
+            return _run_external(command, sequence)
+        except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
+            logger.warning(
+                "%s failed with return code %s; falling back to simple error model",
+                command,
+                exc.returncode,
+            )
+    return simulate_errors(sequence, error_rate)
+
+
+def simulate_nanopore(sequence: str, error_rate: float = 0.05) -> str:
+    """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
+
+    return _simulate_adapter("d2sim", sequence, error_rate)
+
+
+def simulate_dnarsim(sequence: str, error_rate: float = 0.05) -> str:
+    """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`."""
+
+    return _simulate_adapter("dnarsim", sequence, error_rate)
+
+
+def simulate_squigulator(sequence: str, error_rate: float = 0.05) -> str:
+    """Use ``squigulator`` if available, else fall back to :func:`simulate_errors`."""
+
+    return _simulate_adapter("squigulator", sequence, error_rate)
+
+
+SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
+    "nanopore": simulate_nanopore,
+    "dnarsim": simulate_dnarsim,
+    "squigulator": simulate_squigulator,
+}
+
+
 def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> str:
     """Return ``sequence`` corrupted using the chosen simulator.
 
     If the requested simulator command isn't available, fall back to a simple
     substitution error model implemented in :func:`simulate_errors`.
-    ``simulator`` may be ``none``, ``nanopore``, ``dnarsim`` or ``squigulator``.
     """
+
     if simulator == "none":
         return sequence
 
@@ -46,40 +86,9 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     if seed_env is not None:
         random.seed(int(seed_env))
 
-    if simulator == "nanopore":
-        if shutil.which("d2sim"):
-            try:
-                return _run_external("d2sim", sequence)
-            except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
-                logger.warning(
-                    "d2sim failed with return code %s; falling back to simple error model",
-                    exc.returncode,
-                )
-                return simulate_errors(sequence, error_rate)
-        return simulate_errors(sequence, error_rate)
+    try:
+        adapter = SIMULATOR_ADAPTERS[simulator]
+    except KeyError as exc:
+        raise ValueError(f"Unknown simulator: {simulator}") from exc
 
-    if simulator == "dnarsim":
-        if shutil.which("dnarsim"):
-            try:
-                return _run_external("dnarsim", sequence)
-            except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
-                logger.warning(
-                    "dnarsim failed with return code %s; falling back to simple error model",
-                    exc.returncode,
-                )
-                return simulate_errors(sequence, error_rate)
-        return simulate_errors(sequence, error_rate)
-
-    if simulator == "squigulator":
-        if shutil.which("squigulator"):
-            try:
-                return _run_external("squigulator", sequence)
-            except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
-                logger.warning(
-                    "squigulator failed with return code %s; falling back to simple error model",
-                    exc.returncode,
-                )
-                return simulate_errors(sequence, error_rate)
-        return simulate_errors(sequence, error_rate)
-
-    raise ValueError(f"Unknown simulator: {simulator}")
+    return adapter(sequence, error_rate)
