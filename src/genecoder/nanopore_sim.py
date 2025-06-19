@@ -34,7 +34,7 @@ def _run_external(command: str, sequence: str) -> str:
 
 
 def _simulate_adapter(
-    command: str, sequence: str, error_rate: float, rng: random.Random | None
+    command: str, sequence: str, error_rate: float, rng: random.Random
 ) -> str:
 
     """Return ``sequence`` processed by an external ``command`` if available."""
@@ -48,8 +48,8 @@ def _simulate_adapter(
                 exc.returncode,
             )
     # use a deterministic local RNG for external simulators but fall back to
-    # the default randomness when falling back to :func:`simulate_errors`
-    return simulate_errors(sequence, error_rate, rng=None)
+    # :func:`simulate_errors` with the provided randomness source
+    return simulate_errors(sequence, error_rate, rng=rng)
 
 
 def simulate_d2sim(
@@ -61,6 +61,8 @@ def simulate_d2sim(
 
 
 
+    if rng is None:
+        rng = random.Random()
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
 
@@ -78,6 +80,8 @@ def simulate_dnarsim(
     """
 
 
+    if rng is None:
+        rng = random.Random()
     return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
 
@@ -91,6 +95,8 @@ def simulate_squigulator(
     """
 
 
+    if rng is None:
+        rng = random.Random()
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
 
@@ -108,7 +114,7 @@ def simulate_none(
     return sequence
 
 
-SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random | None], str]] = {
+SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random], str]] = {
 
     "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,
