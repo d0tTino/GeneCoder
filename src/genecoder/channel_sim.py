@@ -15,6 +15,8 @@ class RandomLike(Protocol):
 
 from typing import Optional
 
+from typing import Optional
+
 NUCLEOTIDES = ["A", "T", "C", "G"]
 
 
