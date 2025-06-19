@@ -46,6 +46,7 @@ def test_adapters_fall_back(monkeypatch, name):
         nanopore_sim,
         "simulate_errors",
         lambda seq, rate, rng=None: errors_called.append((seq, rate, rng)) or "fallback",
+
     )
     monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
 
@@ -73,6 +74,7 @@ def test_adapters_external_error(monkeypatch, caplog, name):
         nanopore_sim,
         "simulate_errors",
         lambda s, r, rng=None: errors_called.append((s, r, rng)) or "fallback",
+
     )
 
     with caplog.at_level(logging.WARNING):
@@ -114,3 +116,4 @@ def test_simulate_reads_does_not_affect_global_rng(monkeypatch):
     after = random.random()
 
     assert after == expected_second
+

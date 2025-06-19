@@ -2,6 +2,16 @@
 from __future__ import annotations
 
 import random
+from typing import Protocol
+
+
+__all__ = ["simulate_errors", "RandomLike"]
+
+
+class RandomLike(Protocol):
+    def random(self) -> float: ...
+
+    def choice(self, seq: list[str]) -> str: ...
 
 NUCLEOTIDES = ["A", "T", "C", "G"]
 
@@ -9,6 +19,7 @@ NUCLEOTIDES = ["A", "T", "C", "G"]
 def simulate_errors(
     seq: str, p_error: float, rng: random.Random | None = None
 ) -> str:
+
     """Introduce random substitution errors into *seq* with probability ``p_error``.
 
     Each nucleotide has an independent chance ``p_error`` of being replaced by a
@@ -26,6 +37,7 @@ def simulate_errors(
         if rand.random() < p_error:
             choices = [n for n in NUCLEOTIDES if n != nt]
             result.append(rand.choice(choices))
+
         else:
             result.append(nt)
     return "".join(result)
