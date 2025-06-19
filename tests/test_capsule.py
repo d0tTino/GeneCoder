@@ -97,3 +97,9 @@ def test_read_capsule_malformed(tmp_path: Path) -> None:
     path.write_text("{ invalid json ]")
     with pytest.raises(ValueError, match="Invalid capsule file"):
         read_capsule(str(path))
+
+
+def test_read_capsule_missing(tmp_path: Path) -> None:
+    path = tmp_path / "missing.capsule"
+    with pytest.raises(FileNotFoundError, match="Capsule file not found"):
+        read_capsule(str(path))

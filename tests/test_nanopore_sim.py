@@ -1,6 +1,7 @@
 import logging
 import random
 import subprocess
+import random
 import pytest
 
 from genecoder import nanopore_sim
@@ -46,13 +47,14 @@ def test_adapters_fall_back(monkeypatch, name):
         nanopore_sim,
         "simulate_errors",
         lambda seq, rate, rng=None: errors_called.append((seq, rate)) or "fallback",
+
     )
     monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
 
     result = func("ACGT", error_rate=0.1)
     assert result == "fallback"
     assert which_called == [cmd]
-    assert errors_called == [("ACGT", 0.1)]
+    assert errors_called == [("ACGT", 0.1, None)]
 
 
 @pytest.mark.parametrize("name", ADAPTERS.keys())
@@ -77,7 +79,7 @@ def test_adapters_external_error(monkeypatch, caplog, name):
     assert result == "fallback"
     assert which_called == [cmd]
     assert run_called == [(cmd, "ACGT")]
-    assert errors_called == [("ACGT", 0.2)]
+    assert errors_called == [("ACGT", 0.2, None)]
     assert any("falling back" in rec.message for rec in caplog.records)
 
 
@@ -85,6 +87,7 @@ def test_simulate_reads_dispatch(monkeypatch):
     called = []
     def fake_adapter(seq: str, rate: float = 0.05, rng=None) -> str:
         called.append((seq, rate, isinstance(rng, random.Random)))
+v
         return "ok"
 
     monkeypatch.setitem(nanopore_sim.SIMULATOR_ADAPTERS, "dummy", fake_adapter)
@@ -107,3 +110,4 @@ def test_simulate_reads_preserves_global_rng(monkeypatch):
     after = random.random()
     assert before == expected_first
     assert after == expected_second
+
