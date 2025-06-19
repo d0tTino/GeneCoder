@@ -1,5 +1,6 @@
 import logging
 import subprocess
+import random
 import pytest
 
 from genecoder import nanopore_sim
@@ -41,7 +42,11 @@ def test_adapters_fall_back(monkeypatch, name):
     errors_called = []
 
     monkeypatch.setattr(nanopore_sim.shutil, "which", lambda target: which_called.append(target) or None)
-    monkeypatch.setattr(nanopore_sim, "simulate_errors", lambda seq, rate: errors_called.append((seq, rate)) or "fallback")
+    monkeypatch.setattr(
+        nanopore_sim,
+        "simulate_errors",
+        lambda seq, rate, rng=None: errors_called.append((seq, rate)) or "fallback",
+    )
     monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
 
     result = func("ACGT", error_rate=0.1)
@@ -64,7 +69,11 @@ def test_adapters_external_error(monkeypatch, caplog, name):
         raise subprocess.CalledProcessError(1, command)
 
     monkeypatch.setattr(nanopore_sim, "_run_external", fake_run_external)
-    monkeypatch.setattr(nanopore_sim, "simulate_errors", lambda s, r: errors_called.append((s, r)) or "fallback")
+    monkeypatch.setattr(
+        nanopore_sim,
+        "simulate_errors",
+        lambda s, r, rng=None: errors_called.append((s, r)) or "fallback",
+    )
 
     with caplog.at_level(logging.WARNING):
         result = func("ACGT", error_rate=0.2)
@@ -78,10 +87,23 @@ def test_adapters_external_error(monkeypatch, caplog, name):
 
 def test_simulate_reads_dispatch(monkeypatch):
     called = []
-    def fake_adapter(seq: str, rate: float = 0.05) -> str:
-        called.append((seq, rate))
+    def fake_adapter(seq: str, rate: float = 0.05, rng=None) -> str:
+        called.append((seq, rate, rng))
         return "ok"
 
     monkeypatch.setitem(nanopore_sim.SIMULATOR_ADAPTERS, "dummy", fake_adapter)
     assert nanopore_sim.simulate_reads("AAAA", "dummy") == "ok"
-    assert called == [("AAAA", 0.05)]
+    assert len(called) == 1
+    assert called[0][0] == "AAAA"
+    assert called[0][1] == 0.05
+    assert called[0][2] is not None
+
+
+def test_simulate_reads_no_global_random(monkeypatch):
+    monkeypatch.setenv("GENECODER_SIM_SEED", "1")
+    random.seed(123)
+    expected = [random.random(), random.random()]
+    random.seed(123)
+    nanopore_sim.simulate_reads("ACGT", "none")
+    result = [random.random(), random.random()]
+    assert result == expected
