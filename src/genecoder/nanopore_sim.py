@@ -47,9 +47,11 @@ def _simulate_adapter(
                 command,
                 exc.returncode,
             )
-    # use a deterministic local RNG for external simulators but fall back to
-    # the default randomness when falling back to :func:`simulate_errors`
-    return simulate_errors(sequence, error_rate, rng=None)
+    # use a deterministic local RNG for external simulators and forward it when
+    # falling back to :func:`simulate_errors` so calls remain reproducible
+    if rng is None:
+        rng = random.Random()
+    return simulate_errors(sequence, error_rate, rng=rng)
 
 
 def simulate_d2sim(
