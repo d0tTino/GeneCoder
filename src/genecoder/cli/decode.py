@@ -141,6 +141,7 @@ def process_single_decode(
                 check_parity=args.check_parity,
                 k_value=args.k_value,
                 parity_rule=args.parity_rule,
+                alphabet=args.alphabet,
             )
             logger.info(
                 f"Successfully decoded '{input_file_path}' to '{output_file_path}' using streaming."
