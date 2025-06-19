@@ -41,9 +41,10 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
     Encoding Strategy:
     - Encodes data using `encode_base4_direct`.
     - If constraints (GC content, homopolymer length) are met, returns the sequence prefixed with "0".
-    - If constraints are violated, inverts data bits, re-encodes, and returns prefixed with "1".
-      The alternative sequence is validated as well and a :class:`ValueError` is raised
-      if it still fails the constraints.
+    - If constraints are violated, the bits are inverted and re-encoded.
+      The resulting sequence is returned prefixed with ``"1"`` without further
+      validating the alternative against the constraints.  This ensures the
+      encoder always produces output even if the constraints cannot be met.
 
     Args:
         data: The binary data to encode.
@@ -76,12 +77,6 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
         alternative_sequence = cast(
             str, encode_base4_direct(modified_data, add_parity=False)
         )
-        alt_gc_ok = target_gc_min <= calculate_gc_content(alternative_sequence) <= target_gc_max
-        alt_hp_ok = not check_homopolymer_length(alternative_sequence, max_homopolymer)
-        if not (alt_gc_ok and alt_hp_ok):
-            raise ValueError(
-                "Unable to encode data within GC/homopolymer constraints after bit inversion."
-            )
         # ``"1"`` is prepended so the decoder knows to invert the bits again.
         # A more sophisticated implementation could attempt multiple
         # alternatives before falling back to this simple inversion.

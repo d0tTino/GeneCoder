@@ -34,7 +34,7 @@ def _run_external(command: str, sequence: str) -> str:
 
 
 def _simulate_adapter(
-    command: str, sequence: str, error_rate: float, rng: random.Random
+    command: str, sequence: str, error_rate: float, rng: random.Random | None
 ) -> str:
 
     """Return ``sequence`` processed by an external ``command`` if available."""
@@ -56,9 +56,6 @@ def simulate_d2sim(
 ) -> str:
     """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
 
-    if rng is None:
-        rng = random.Random()
-
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
 
@@ -71,8 +68,6 @@ def simulate_dnarsim(
 ) -> str:
     """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`."""
 
-    if rng is None:
-        rng = random.Random()
     return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
 
@@ -81,14 +76,13 @@ def simulate_squigulator(
 ) -> str:
     """Use ``squigulator`` if available, else fall back to :func:`simulate_errors`."""
 
-    if rng is None:
-        rng = random.Random()
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
 
 def simulate_none(
     sequence: str, error_rate: float = 0.0, rng: random.Random | None = None
 ) -> str:
+
     """Return ``sequence`` unchanged.
 
     The ``rng`` parameter is accepted for API compatibility but ignored.
@@ -97,7 +91,7 @@ def simulate_none(
     return sequence
 
 
-SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random], str]] = {
+SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random | None], str]] = {
 
     "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,
