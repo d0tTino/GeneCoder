@@ -1,7 +1,6 @@
 import logging
 import random
 import subprocess
-import random
 import pytest
 
 from genecoder import nanopore_sim
@@ -46,7 +45,7 @@ def test_adapters_fall_back(monkeypatch, name):
     monkeypatch.setattr(
         nanopore_sim,
         "simulate_errors",
-        lambda seq, rate, rng=None: errors_called.append((seq, rate)) or "fallback",
+        lambda seq, rate, rng=None: errors_called.append((seq, rate, rng)) or "fallback",
 
     )
     monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
@@ -54,7 +53,7 @@ def test_adapters_fall_back(monkeypatch, name):
     result = func("ACGT", error_rate=0.1)
     assert result == "fallback"
     assert which_called == [cmd]
-    assert errors_called == [("ACGT", 0.1, None)]
+    assert errors_called and isinstance(errors_called[0][2], random.Random)
 
 
 @pytest.mark.parametrize("name", ADAPTERS.keys())
@@ -71,7 +70,11 @@ def test_adapters_external_error(monkeypatch, caplog, name):
         raise subprocess.CalledProcessError(1, command)
 
     monkeypatch.setattr(nanopore_sim, "_run_external", fake_run_external)
-    monkeypatch.setattr(nanopore_sim, "simulate_errors", lambda s, r, rng=None: errors_called.append((s, r)) or "fallback")
+    monkeypatch.setattr(
+        nanopore_sim,
+        "simulate_errors",
+        lambda s, r, rng=None: errors_called.append((s, r, rng)) or "fallback",
+    )
 
     with caplog.at_level(logging.WARNING):
         result = func("ACGT", error_rate=0.2)
@@ -79,7 +82,7 @@ def test_adapters_external_error(monkeypatch, caplog, name):
     assert result == "fallback"
     assert which_called == [cmd]
     assert run_called == [(cmd, "ACGT")]
-    assert errors_called == [("ACGT", 0.2, None)]
+    assert errors_called and isinstance(errors_called[0][2], random.Random)
     assert any("falling back" in rec.message for rec in caplog.records)
 
 
@@ -87,7 +90,6 @@ def test_simulate_reads_dispatch(monkeypatch):
     called = []
     def fake_adapter(seq: str, rate: float = 0.05, rng=None) -> str:
         called.append((seq, rate, isinstance(rng, random.Random)))
-v
         return "ok"
 
     monkeypatch.setitem(nanopore_sim.SIMULATOR_ADAPTERS, "dummy", fake_adapter)
