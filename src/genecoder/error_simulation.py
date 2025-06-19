@@ -34,11 +34,24 @@ def introduce_errors(
     rng:
         Optional :class:`random.Random` instance for deterministic behaviour.
 
+    Raises
+    ------
+    ValueError
+        If any of ``substitution_prob``, ``insertion_prob`` or ``deletion_prob``
+        is outside the range [0.0, 1.0].
+
     Returns
     -------
     str
         The mutated DNA sequence.
     """
+    if not 0.0 <= substitution_prob <= 1.0:
+        raise ValueError("substitution_prob must be between 0 and 1")
+    if not 0.0 <= insertion_prob <= 1.0:
+        raise ValueError("insertion_prob must be between 0 and 1")
+    if not 0.0 <= deletion_prob <= 1.0:
+        raise ValueError("deletion_prob must be between 0 and 1")
+
     if rng is None:
         rng = random.Random()
 
