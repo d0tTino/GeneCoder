@@ -96,8 +96,8 @@ def _handle_sim_errors(args: argparse.Namespace) -> None:
     except FileNotFoundError:
         logger.error(f"Error: Input file {args.input_file} not found.")
         raise SystemExit(1)
-    except Exception:
-        logger.exception("Error during simulate-errors")
+    except Exception as e:
+        logger.error(f"Error during simulate-errors: {e}")
         raise SystemExit(1)
 
 
