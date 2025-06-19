@@ -33,7 +33,9 @@ def _run_external(command: str, sequence: str) -> str:
         return records[0][1]
 
 
-def _simulate_adapter(command: str, sequence: str, error_rate: float) -> str:
+def _simulate_adapter(
+    command: str, sequence: str, error_rate: float, rng: random.Random | None
+) -> str:
     """Return ``sequence`` processed by an external ``command`` if available."""
     if shutil.which(command):
         try:
@@ -44,39 +46,61 @@ def _simulate_adapter(command: str, sequence: str, error_rate: float) -> str:
                 command,
                 exc.returncode,
             )
-    return simulate_errors(sequence, error_rate)
+    return simulate_errors(sequence, error_rate, rng=rng)
 
 
-def simulate_d2sim(sequence: str, error_rate: float = 0.05) -> str:
-    """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
+def simulate_d2sim(
+    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
+) -> str:
+    """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`.
 
-    return _simulate_adapter("d2sim", sequence, error_rate)
+    The optional ``rng`` parameter allows callers to supply a randomness source
+    for the fallback path.
+    """
+
+    return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
 
 # Backwards compatibility alias
 simulate_nanopore = simulate_d2sim
 
 
-def simulate_dnarsim(sequence: str, error_rate: float = 0.05) -> str:
-    """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`."""
+def simulate_dnarsim(
+    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
+) -> str:
+    """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`.
 
-    return _simulate_adapter("dnarsim", sequence, error_rate)
+    ``rng`` is forwarded to :func:`simulate_errors` if the external command is
+    unavailable.
+    """
+
+    return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
 
-def simulate_squigulator(sequence: str, error_rate: float = 0.05) -> str:
-    """Use ``squigulator`` if available, else fall back to :func:`simulate_errors`."""
+def simulate_squigulator(
+    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
+) -> str:
+    """Use ``squigulator`` if available, else fall back to :func:`simulate_errors`.
 
-    return _simulate_adapter("squigulator", sequence, error_rate)
+    ``rng`` provides the randomness source for the fallback simulator.
+    """
+
+    return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
 
-def simulate_none(sequence: str, error_rate: float = 0.0) -> str:
+def simulate_none(
+    sequence: str, error_rate: float = 0.0, rng: random.Random | None = None
+) -> str:
 
-    """Return ``sequence`` unchanged."""
+    """Return ``sequence`` unchanged.
+
+    The ``rng`` parameter is accepted for API compatibility but ignored.
+    """
 
     return sequence
 
 
-SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
+SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random | None], str]] = {
     "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,
     "squigulator": simulate_squigulator,
@@ -89,20 +113,22 @@ SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
 def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> str:
     """Return ``sequence`` corrupted using the chosen simulator.
 
-    If the requested simulator command isn't available, fall back to a simple
-    substitution error model implemented in :func:`simulate_errors`.
+    A per-call :class:`~random.Random` instance is used so calls do not affect
+    the global RNG.  If the ``GENECODER_SIM_SEED`` environment variable is set,
+    it will be used to seed this local RNG.  If the requested simulator command
+    isn't available, fall back to a simple substitution error model implemented
+    in :func:`simulate_errors`.
     """
 
     seed_env = os.getenv("GENECODER_SIM_SEED")
-    if seed_env is not None:
-        random.seed(int(seed_env))
+    rng = random.Random(int(seed_env)) if seed_env is not None else random.Random()
 
     try:
         adapter = SIMULATOR_ADAPTERS[simulator]
     except KeyError as exc:
         raise ValueError(f"Unknown simulator: {simulator}") from exc
 
-    return adapter(sequence, error_rate)
+    return adapter(sequence, error_rate, rng)
 
 
 def _wrap(name: str) -> Callable[[str, float], str]:
