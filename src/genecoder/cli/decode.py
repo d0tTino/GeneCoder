@@ -205,9 +205,9 @@ def process_single_decode(
         logger.error(f"Error for {input_file_path}: Input file not found.")
     except IOError as e:
         logger.error(f"Error for {input_file_path}: I/O error: {e}")
-    except Exception as e:
-        logger.error(
-            f"Error for {input_file_path}: Unexpected error during decoding: {e}"
+    except Exception:
+        logger.exception(
+            "Error for %s: Unexpected error during decoding", input_file_path
         )
 
 
@@ -331,8 +331,8 @@ def _handle_command(args: argparse.Namespace) -> None:
             for decode_future in concurrent.futures.as_completed(futures_list):
                 try:
                     decode_future.result()
-                except Exception as exc:
-                    logger.error(f"A file decoding task generated an exception: {exc}")
+                except Exception:
+                    logger.exception("A file decoding task generated an exception")
         logger.info("\nBatch decoding finished.")
     else:
         if tasks:
