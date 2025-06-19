@@ -21,6 +21,8 @@ on:
       - '.github/workflows/**'
       - 'scripts/**'
       - 'openai_testing/**'
+  pull_request_target:
+    types: [opened, synchronize, reopened]
 
 # Ensure only a single workflow run per PR or branch
 concurrency:
@@ -32,6 +34,7 @@ permissions:
 
 jobs:
   changes:
+    if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
     outputs:
       src: ${{ steps.filter.outputs.src }}
@@ -50,6 +53,7 @@ jobs:
               - 'openai_testing/**'
 
   check-comments:
+    if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
     outputs:
       only_comments: ${{ steps.comment_check.outputs.only_comments }}
@@ -65,8 +69,8 @@ jobs:
         run: python scripts/only_comments_changed.py
 
   lint:
+    if: github.event_name != 'pull_request_target' && needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
     needs: [changes, check-comments]
-    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -114,8 +118,8 @@ jobs:
         key: pre-commit-3.11-${{ hashFiles('.pre-commit-config.yaml') }}
 
   mypy:
+    if: github.event_name != 'pull_request_target' && needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
     needs: [changes, check-comments, lint]
-    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -143,8 +147,8 @@ jobs:
       run: mypy --config-file mypy.ini src --show-error-codes --no-error-summary
 
   build:
+    if: github.event_name != 'pull_request_target' && needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
     needs: [changes, check-comments, lint, mypy]
-    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
     runs-on: self-hosted
     timeout-minutes: 30
     strategy:
@@ -213,3 +217,30 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         files: coverage.xml
+
+  automerge:
+    if: github.event_name == 'pull_request_target'
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      - name: Detect comment-only changes
+        id: comment_check
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python scripts/only_comments_changed.py
+
+      - name: Enable auto-merge
+        if: steps.comment_check.outputs.only_comments == 'true'
+        uses: peter-evans/enable-pull-request-automerge@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-number: ${{ github.event.pull_request.number }}
+          merge-method: MERGE

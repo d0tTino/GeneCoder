@@ -47,9 +47,9 @@ def _simulate_adapter(
                 command,
                 exc.returncode,
             )
-    # use a deterministic local RNG for external simulators but fall back to
-    # the default randomness when falling back to :func:`simulate_errors`
-    return simulate_errors(sequence, error_rate, rng=None)
+    # use a deterministic local RNG for external simulators but preserve the
+    # caller-provided RNG when falling back to :func:`simulate_errors`
+    return simulate_errors(sequence, error_rate, rng=rng)
 
 
 def simulate_d2sim(
@@ -61,6 +61,8 @@ def simulate_d2sim(
 
 
 
+    if rng is None:
+        rng = random.Random()
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
 
@@ -78,6 +80,8 @@ def simulate_dnarsim(
     """
 
 
+    if rng is None:
+        rng = random.Random()
     return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
 
@@ -91,6 +95,8 @@ def simulate_squigulator(
     """
 
 
+    if rng is None:
+        rng = random.Random()
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
 
