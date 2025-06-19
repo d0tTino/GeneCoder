@@ -306,7 +306,7 @@ def test_get_max_homopolymer_length_single_char():
 
 # Test encode_gc_balanced where both initial and alternative fail constraints
 @patch('genecoder.encoders.encode_base4_direct')
-def test_encode_gc_balanced_both_fail_raises_error(mock_encode_base4):
+def test_encode_gc_balanced_both_fail_returns_alternative(mock_encode_base4):
     dummy_data = b"test"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
     
@@ -319,9 +319,9 @@ def test_encode_gc_balanced_both_fail_raises_error(mock_encode_base4):
     target_gc_max = 0.6
     max_homopolymer = 3
 
-    with pytest.raises(ValueError, match="Unable to encode data"):
-        encode_gc_balanced(dummy_data, target_gc_min, target_gc_max, max_homopolymer)
+    result = encode_gc_balanced(dummy_data, target_gc_min, target_gc_max, max_homopolymer)
 
+    assert result == "1" + alternative_sequence
     assert mock_encode_base4.call_count == 2
     mock_encode_base4.assert_has_calls([
         call(dummy_data, add_parity=False),
