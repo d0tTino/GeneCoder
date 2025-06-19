@@ -6,6 +6,7 @@ import argparse
 import concurrent.futures
 import logging
 import os
+import random
 import re
 from dataclasses import dataclass
 
@@ -183,8 +184,10 @@ def process_single_decode(
         if args.simulate_errors > 0.0:
             from genecoder.channel_sim import simulate_errors
 
+            seed_env = os.getenv("GENECODER_SIM_SEED")
+            rng = random.Random(int(seed_env)) if seed_env is not None else random.Random()
             sequence_from_fasta = simulate_errors(
-                sequence_from_fasta, args.simulate_errors
+                sequence_from_fasta, args.simulate_errors, rng=rng
             )
             logger.info(
                 f"Applied simulated errors (p={args.simulate_errors}) before decoding."
@@ -195,7 +198,7 @@ def process_single_decode(
             sequence_from_fasta, header, options, os.path.basename(input_file_path)
         )
 
-        os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
+        os.makedirs(os.path.dirname(output_file_path) or ".", exist_ok=True)
         with open(output_file_path, "wb") as f_out:
             f_out.write(final_decoded_data)
 
