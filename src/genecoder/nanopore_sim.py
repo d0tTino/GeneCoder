@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import os
 import random
-from random import Random
 import shutil
 import subprocess
 import tempfile
@@ -13,7 +12,7 @@ from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
-from .channel_sim import RandomLike, simulate_errors
+from .channel_sim import simulate_errors
 from .formats import from_fasta, to_fasta
 
 
@@ -48,7 +47,9 @@ def _simulate_adapter(
                 command,
                 exc.returncode,
             )
-    return simulate_errors(sequence, error_rate, rng=rng)
+    # use a deterministic local RNG for external simulators but fall back to
+    # the default randomness when falling back to :func:`simulate_errors`
+    return simulate_errors(sequence, error_rate, rng=None)
 
 
 def simulate_d2sim(
@@ -59,6 +60,7 @@ def simulate_d2sim(
     The optional ``rng`` parameter allows callers to supply a randomness source
     for the fallback path.
     """
+
 
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
@@ -76,6 +78,7 @@ def simulate_dnarsim(
     unavailable.
     """
 
+
     return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
 
@@ -88,6 +91,7 @@ def simulate_squigulator(
     ``rng`` provides the randomness source for the fallback simulator.
     """
 
+
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
 
@@ -98,6 +102,8 @@ def simulate_none(
 
     """Return ``sequence`` unchanged.
 
+
+    """Return ``sequence`` unchanged.
 
     The ``rng`` parameter is accepted for API compatibility but ignored.
     """

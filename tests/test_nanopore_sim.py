@@ -1,7 +1,6 @@
 import logging
 import random
 import subprocess
-import random
 import pytest
 
 from genecoder import nanopore_sim
@@ -91,6 +90,7 @@ def test_simulate_reads_dispatch(monkeypatch):
     called = []
     def fake_adapter(seq: str, rate: float = 0.05, rng=None) -> str:
         called.append((seq, rate, isinstance(rng, random.Random)))
+
         return "ok"
 
     monkeypatch.setitem(nanopore_sim.SIMULATOR_ADAPTERS, "dummy", fake_adapter)

@@ -9,6 +9,8 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  # allow workflow to read repository contents
+  contents: read
   pull-requests: write
 
 jobs:

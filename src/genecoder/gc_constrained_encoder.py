@@ -44,6 +44,7 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
     - If constraints are violated, inverts data bits, re-encodes, and returns prefixed with "1".
       (Assumes the alternative sequence is better without re-checking constraints).
 
+
     Args:
         data: The binary data to encode.
         target_gc_min: The minimum target GC content.
@@ -73,6 +74,7 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
         # each byte) and that modified payload is encoded instead.
         modified_data = bytes(b ^ 0xFF for b in data)
         alternative_sequence = cast(str, encode_base4_direct(modified_data, add_parity=False))
+
         # ``"1"`` is prepended so the decoder knows to invert the bits again.
         # A more sophisticated implementation could attempt multiple
         # alternatives before falling back to this simple inversion.
