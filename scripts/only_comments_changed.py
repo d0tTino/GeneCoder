@@ -82,10 +82,13 @@ def _tokens_without_comments(source: str) -> list[tuple[int, str]] | None:
         return None
 
 
-def only_comments_changed(base_ref: str) -> bool:
+def only_comments_changed(base_ref: str, head_ref: str | None = None) -> bool:
     """Return True if only docs or Python comments changed."""
 
-    all_files = run(["git", "diff", "--name-only", base_ref]).splitlines()
+    cmd = ["git", "diff", "--name-only", base_ref]
+    if head_ref:
+        cmd.append(head_ref)
+    all_files = run(cmd).splitlines()
     if not all_files:
         return True
 
@@ -94,11 +97,14 @@ def only_comments_changed(base_ref: str) -> bool:
             continue
         if path.endswith('.py'):
             old_src = run(["git", "show", f"{base_ref}:{path}"])
-            try:
-                with open(path, "r", encoding="utf-8") as fh:
-                    new_src = fh.read()
-            except FileNotFoundError:
-                new_src = ""
+            if head_ref:
+                new_src = run(["git", "show", f"{head_ref}:{path}"])
+            else:
+                try:
+                    with open(path, "r", encoding="utf-8") as fh:
+                        new_src = fh.read()
+                except FileNotFoundError:
+                    new_src = ""
 
             old_ast = _ast_without_docstrings(old_src)
             new_ast = _ast_without_docstrings(new_src)
@@ -120,10 +126,12 @@ def only_comments_changed(base_ref: str) -> bool:
 
 
 def main() -> int:
-    # BASE_SHA holds the commit hash for the PR base. Compare HEAD to this
-    # reference so we only analyze the pull request diff.
+    """Entry point for the script."""
+    # BASE_SHA and HEAD_SHA hold the commit hashes for the PR base and head.
+    # Compare these references to analyze only the pull request diff.
     base_ref = os.environ.get("BASE_SHA", "origin/main")
-    only_comments = only_comments_changed(base_ref)
+    head_ref = os.environ.get("HEAD_SHA", "HEAD")
+    only_comments = only_comments_changed(base_ref, head_ref)
     output_path = os.environ.get("GITHUB_OUTPUT")
     if output_path:
         with open(output_path, "a") as fh:
