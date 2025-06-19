@@ -47,7 +47,9 @@ def _simulate_adapter(
                 command,
                 exc.returncode,
             )
-    return simulate_errors(sequence, error_rate, rng=rng)
+    # use a deterministic local RNG for external simulators but fall back to
+    # the default randomness when falling back to :func:`simulate_errors`
+    return simulate_errors(sequence, error_rate, rng=None)
 
 def simulate_d2sim(
     sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
@@ -61,19 +63,26 @@ def simulate_d2sim(
 simulate_nanopore = simulate_d2sim
 
 
-def simulate_dnarsim(sequence: str, error_rate: float = 0.05, rng: random.Random | None = None) -> str:
+def simulate_dnarsim(
+    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
+) -> str:
     """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`."""
 
     return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
 
-def simulate_squigulator(sequence: str, error_rate: float = 0.05, rng: random.Random | None = None) -> str:
+def simulate_squigulator(
+    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
+) -> str:
     """Use ``squigulator`` if available, else fall back to :func:`simulate_errors`."""
 
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
 
-def simulate_none(sequence: str, error_rate: float = 0.0, rng: random.Random | None = None) -> str:
+def simulate_none(
+    sequence: str, error_rate: float = 0.0, rng: random.Random | None = None
+) -> str:
+
     """Return ``sequence`` unchanged.
 
     The ``rng`` parameter is accepted for API compatibility but ignored.

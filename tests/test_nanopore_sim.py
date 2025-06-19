@@ -70,7 +70,12 @@ def test_adapters_external_error(monkeypatch, caplog, name):
         raise subprocess.CalledProcessError(1, command)
 
     monkeypatch.setattr(nanopore_sim, "_run_external", fake_run_external)
-    monkeypatch.setattr(nanopore_sim, "simulate_errors", lambda s, r, rng=None: errors_called.append((s, r, rng)) or "fallback")
+    monkeypatch.setattr(
+        nanopore_sim,
+        "simulate_errors",
+        lambda s, r, rng=None: errors_called.append((s, r, rng)) or "fallback",
+    )
+
 
     with caplog.at_level(logging.WARNING):
         result = func("ACGT", error_rate=0.2)
@@ -86,7 +91,7 @@ def test_simulate_reads_dispatch(monkeypatch):
     called = []
     def fake_adapter(seq: str, rate: float = 0.05, rng=None) -> str:
         called.append((seq, rate, isinstance(rng, random.Random)))
-        
+
         return "ok"
 
     monkeypatch.setitem(nanopore_sim.SIMULATOR_ADAPTERS, "dummy", fake_adapter)
