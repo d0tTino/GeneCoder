@@ -76,7 +76,6 @@ def test_adapters_external_error(monkeypatch, caplog, name):
         lambda s, r, rng=None: errors_called.append((s, r, rng)) or "fallback",
     )
 
-
     with caplog.at_level(logging.WARNING):
         result = func("ACGT", error_rate=0.2)
 

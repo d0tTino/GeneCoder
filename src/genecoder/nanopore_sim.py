@@ -51,10 +51,16 @@ def _simulate_adapter(
     # the default randomness when falling back to :func:`simulate_errors`
     return simulate_errors(sequence, error_rate, rng=None)
 
+
 def simulate_d2sim(
     sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
 ) -> str:
-    """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
+    """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`.
+
+    The optional ``rng`` parameter allows callers to supply a randomness source
+    for the fallback path.
+    """
+
 
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
@@ -66,7 +72,12 @@ simulate_nanopore = simulate_d2sim
 def simulate_dnarsim(
     sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
 ) -> str:
-    """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`."""
+    """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`.
+
+    ``rng`` is forwarded to :func:`simulate_errors` if the external command is
+    unavailable.
+    """
+
 
     return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
@@ -74,14 +85,23 @@ def simulate_dnarsim(
 def simulate_squigulator(
     sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
 ) -> str:
-    """Use ``squigulator`` if available, else fall back to :func:`simulate_errors`."""
+    """Use ``squigulator`` if available, else fall back to :func:`simulate_errors`.
+
+
+    ``rng`` provides the randomness source for the fallback simulator.
+    """
+
 
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
+
 
 
 def simulate_none(
     sequence: str, error_rate: float = 0.0, rng: random.Random | None = None
 ) -> str:
+
+    """Return ``sequence`` unchanged.
+
 
     """Return ``sequence`` unchanged.
 
