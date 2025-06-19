@@ -165,6 +165,8 @@ def _make_helix_html(
     *,
     length: int | None = None,
     colors: dict[str, int] | None = None,
+    animate: bool = True,
+    zoom: float = 1.0,
 ) -> str:
     """Return HTML for the helix viewer.
 
@@ -197,6 +199,8 @@ def _make_helix_html(
         "ORBIT_JS_URL": ORBIT_JS_URL,
         "DNA_SEQ": dna_sequence,
         "COLOR_MAP": colors_js,
+        "ANIMATE": "true" if animate else "false",
+        "ZOOM": zoom,
     }
 
 
@@ -205,6 +209,8 @@ def show_helix(
     *,
     length: int | None = None,
     colors: dict[str, int] | None = None,
+    animate: bool = True,
+    zoom: float = 1.0,
 ) -> ft.WebView:
     """Return a ``WebView`` displaying a DNA helix scene with controls.
 
@@ -218,7 +224,13 @@ def show_helix(
     colors:
         Mapping of nucleotide to hex color value or string.
     """
-    helix_html = _make_helix_html(dna_sequence, length=length, colors=colors)
+    helix_html = _make_helix_html(
+        dna_sequence,
+        length=length,
+        colors=colors,
+        animate=animate,
+        zoom=zoom,
+    )
 
     data_url = "data:text/html," + quote(helix_html)
 
