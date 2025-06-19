@@ -53,6 +53,7 @@ def _simulate_adapter(
     return simulate_errors(sequence, error_rate, rng=fallback_rng)
 
 
+
 def simulate_d2sim(
     sequence: str,
     error_rate: float = 0.05,
@@ -61,6 +62,9 @@ def simulate_d2sim(
     """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
 
 
+
+    if rng is None:
+        rng = random.Random()
 
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
@@ -79,6 +83,9 @@ def simulate_dnarsim(
     """
 
 
+    if rng is None:
+        rng = random.Random()
+
     return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
 
@@ -91,6 +98,9 @@ def simulate_squigulator(
     ``rng`` provides the randomness source for the fallback simulator.
     """
 
+
+    if rng is None:
+        rng = random.Random()
 
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
