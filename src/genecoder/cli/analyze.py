@@ -84,9 +84,9 @@ def process_single_analyze(input_file_path: str, args: argparse.Namespace) -> No
 
     except FileNotFoundError:
         logger.error(f"Error for {input_file_path}: Input file not found.")
-    except Exception as e:
-        logger.error(
-            f"Error for {input_file_path}: Unexpected error during analysis: {e}"
+    except Exception:
+        logger.exception(
+            f"Error for {input_file_path}: Unexpected error during analysis"
         )
 
 
