@@ -61,3 +61,30 @@ def test_encode_capsule_multiple_inputs_error(tmp_path: Path) -> None:
     )
     assert result.returncode != 0
     assert "--capsule can only be used" in result.stderr
+
+
+def test_encode_capsule_nested_directory(tmp_path: Path) -> None:
+    """Capsule path should be created if it is in a nested directory."""
+    input_file = tmp_path / "msg.txt"
+    input_file.write_text("capsule test")
+
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+
+    capsule_path = tmp_path / "capsules" / "nested" / "seq.capsule"
+
+    result = run_cli_command(
+        [
+            "encode",
+            "--input-files",
+            str(input_file),
+            "--output-dir",
+            str(output_dir),
+            "--method",
+            "base4_direct",
+            "--capsule",
+            str(capsule_path),
+        ]
+    )
+    assert result.returncode == 0, result.stderr
+    assert capsule_path.exists(), "Capsule path was not created in nested dir"
