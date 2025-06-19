@@ -183,6 +183,7 @@ def process_single_encode(
                 add_parity=args.add_parity,
                 k_value=args.k_value,
                 parity_rule=args.parity_rule,
+                alphabet=args.alphabet,
             )
 
             original_size_bytes = os.path.getsize(input_file_path)

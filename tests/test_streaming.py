@@ -1,9 +1,16 @@
 import os
+import pytest
 
-from genecoder.streaming import stream_encode_file, stream_decode_file, encode_base4_direct, decode_base4_direct
+from genecoder.streaming import (
+    stream_encode_file,
+    stream_decode_file,
+    encode_base4_direct,
+    decode_base4_direct,
+)
 
 
-def test_stream_round_trip(tmp_path, monkeypatch):
+@pytest.mark.parametrize("alphabet", ["base4", "base5"])
+def test_stream_round_trip(tmp_path, monkeypatch, alphabet):
     data = os.urandom(1_500_000)
     input_file = tmp_path / "input.bin"
     encoded_file = tmp_path / "encoded.fasta"
@@ -20,7 +27,7 @@ def test_stream_round_trip(tmp_path, monkeypatch):
     monkeypatch.setattr("genecoder.streaming.encode_base4_direct", mock_encode)
 
     header = "method=base4_direct input_file=test.bin"
-    stream_encode_file(str(input_file), str(encoded_file), header=header)
+    stream_encode_file(str(input_file), str(encoded_file), header=header, alphabet=alphabet)
     assert True in enc_calls
 
     dec_calls = []
@@ -32,7 +39,7 @@ def test_stream_round_trip(tmp_path, monkeypatch):
 
     monkeypatch.setattr("genecoder.streaming.decode_base4_direct", mock_decode)
 
-    stream_decode_file(str(encoded_file), str(decoded_file))
+    stream_decode_file(str(encoded_file), str(decoded_file), alphabet=alphabet)
     assert True in dec_calls
 
     assert decoded_file.read_bytes() == data

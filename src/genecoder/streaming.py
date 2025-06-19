@@ -7,6 +7,7 @@ import os
 
 from .encoders import encode_base4_direct, decode_base4_direct
 from .error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
+from .utils import get_alphabet_maps
 
 
 def stream_encode_file(
@@ -18,6 +19,7 @@ def stream_encode_file(
     add_parity: bool = False,
     k_value: int = 7,
     parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
+    alphabet: str = "base4",
 ) -> int:
     """Encode ``input_path`` to ``output_path`` streaming chunks.
 
@@ -34,6 +36,8 @@ def stream_encode_file(
                     break
                 yield chunk
 
+    encode_map, _ = get_alphabet_maps(alphabet)
+
     total_len = 0
     line_width = 80
     buffer = ""
@@ -44,6 +48,7 @@ def stream_encode_file(
             add_parity=add_parity,
             k_value=k_value,
             parity_rule=parity_rule,
+            encode_map=encode_map,
             stream=True,
         ):
             total_len += len(dna_chunk)
@@ -64,10 +69,13 @@ def stream_decode_file(
     check_parity: bool = False,
     k_value: int = 7,
     parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
+    alphabet: str = "base4",
 ) -> None:
     """Decode ``input_path`` FASTA file to ``output_path`` streaming chunks."""
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
+    _, decode_map = get_alphabet_maps(alphabet)
 
     with open(input_path, "r", encoding="utf-8") as f_in:
         header_line = f_in.readline()
@@ -93,6 +101,7 @@ def stream_decode_file(
                 check_parity=check_parity,
                 k_value=k_value,
                 parity_rule=parity_rule,
+                decode_map=decode_map,
                 stream=True,
             ):
                 f_out.write(bytes(decoded_chunk))
