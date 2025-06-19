@@ -316,9 +316,9 @@ def process_single_encode(
         logger.error(f"Error for {input_file_path}: Input file not found.")
     except IOError as e:
         logger.error(f"Error for {input_file_path}: I/O error: {e}")
-    except Exception as e:
-        logger.error(
-            f"Error for {input_file_path}: Unexpected error during encoding: {e}"
+    except Exception:
+        logger.exception(
+            "Error for %s: Unexpected error during encoding", input_file_path
         )
     return None
 
@@ -457,8 +457,8 @@ def _handle_command(args: argparse.Namespace) -> None:
                     res = future.result()
                     if args.export_csv and res:
                         csv_rows.append(res)
-                except Exception as exc:
-                    logger.error(f"A file processing task generated an exception: {exc}")
+                except Exception:
+                    logger.exception("A file processing task generated an exception")
         logger.info("\nBatch encoding finished.")
     else:
         if tasks:
