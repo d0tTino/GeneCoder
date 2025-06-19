@@ -125,7 +125,8 @@ def test_gc_balanced_params_in_header_default_and_custom(temp_dir: Path):
 
     # File for default parameters
     default_file = input_dir / "default.txt"
-    default_file.write_text("default")
+    # Use data that reliably meets GC constraints with and without inversion
+    default_file.write_bytes(b"\xdc\x05b\xa4$J5\xcf3\xbfJJa\xab} ")
 
     cmd_default = [
         "encode",
@@ -147,7 +148,7 @@ def test_gc_balanced_params_in_header_default_and_custom(temp_dir: Path):
 
     # File for custom parameters
     custom_file = input_dir / "custom.txt"
-    custom_file.write_text("custom")
+    custom_file.write_bytes(b"\xdc\x05b\xa4$J5\xcf3\xbfJJa\xab} ")
 
     cmd_custom = [
         "encode",

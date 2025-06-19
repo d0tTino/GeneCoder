@@ -105,8 +105,8 @@ def test_encode_gc_balanced_violates_gc_uses_alternative(mock_encode_base4):
     dummy_data = b"test"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
     
-    initial_sequence = "AAAAAAAA" # GC=0.0 (violates 0.4-0.6), max_homopolymer=8
-    alternative_sequence = "GCGCGCGC" # GC=1.0 (could also violate, but test inversion path)
+    initial_sequence = "AAAAAAAA"  # GC=0.0 (violates 0.4-0.6), max_homopolymer=8
+    alternative_sequence = "GCATGCAT"  # GC=0.5 and no long homopolymers
 
     # Configure mock for two calls
     mock_encode_base4.side_effect = [initial_sequence, alternative_sequence]
@@ -237,9 +237,9 @@ def test_encode_gc_balanced_initial_fails_gc_alternative_used(mock_encode_base4)
     dummy_data = b"data"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
     # Initial sequence: GC=0.0 (fails 0.4-0.6), max_hp=8
-    initial_seq = "AAAAAAAA" 
-    # Alternative sequence: GC=1.0 (could also fail if range was tighter, but used for inversion path)
-    alternative_seq = "CCCCCCCC" 
+    initial_seq = "AAAAAAAA"
+    # Alternative sequence satisfies the constraints
+    alternative_seq = "ACGTACGT"
     
     mock_encode_base4.side_effect = [initial_seq, alternative_seq]
     
@@ -256,9 +256,9 @@ def test_encode_gc_balanced_initial_fails_homopolymer_alternative_used(mock_enco
     dummy_data = b"data"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
     # Initial sequence: GC=0.5 (ok), max_hp=4 (fails max_homopolymer=3)
-    initial_seq = "AGCTTTTT" 
-    # Alternative sequence
-    alternative_seq = "CGCGCGCG" 
+    initial_seq = "AGCTTTTT"
+    # Alternative sequence that meets the constraints
+    alternative_seq = "GCTAGCTA"
 
     mock_encode_base4.side_effect = [initial_seq, alternative_seq]
     
