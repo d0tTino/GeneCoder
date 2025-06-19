@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import random
+from random import Random
 import shutil
 import subprocess
 import tempfile
@@ -12,7 +13,7 @@ from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
-from .channel_sim import simulate_errors
+from .channel_sim import RandomLike, simulate_errors
 from .formats import from_fasta, to_fasta
 
 
@@ -36,6 +37,7 @@ def _run_external(command: str, sequence: str) -> str:
 def _simulate_adapter(
     command: str, sequence: str, error_rate: float, rng: random.Random
 ) -> str:
+
     """Return ``sequence`` processed by an external ``command`` if available."""
     if shutil.which(command):
         try:
@@ -49,11 +51,17 @@ def _simulate_adapter(
     return simulate_errors(sequence, error_rate, rng=rng)
 
 
+def simulate_d2sim(
+    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
+) -> str:
+    """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`.
+
 def simulate_d2sim(sequence: str, error_rate: float = 0.05, rng: random.Random | None = None) -> str:
     """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
 
     if rng is None:
         rng = random.Random()
+
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
 
@@ -79,12 +87,18 @@ def simulate_squigulator(sequence: str, error_rate: float = 0.05, rng: random.Ra
 
 def simulate_none(sequence: str, error_rate: float = 0.0, rng: random.Random | None = None) -> str:
 
-    """Return ``sequence`` unchanged."""
+
+    """Return ``sequence`` unchanged.
+
+
+    The ``rng`` parameter is accepted for API compatibility but ignored.
+    """
 
     return sequence
 
 
 SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random], str]] = {
+
     "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,
     "squigulator": simulate_squigulator,
@@ -97,12 +111,16 @@ SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random], str]] = {
 def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> str:
     """Return ``sequence`` corrupted using the chosen simulator.
 
-    If the requested simulator command isn't available, fall back to a simple
-    substitution error model implemented in :func:`simulate_errors`.
+    A per-call :class:`~random.Random` instance is used so calls do not affect
+    the global RNG.  If the ``GENECODER_SIM_SEED`` environment variable is set,
+    it will be used to seed this local RNG.  If the requested simulator command
+    isn't available, fall back to a simple substitution error model implemented
+    in :func:`simulate_errors`.
     """
 
     seed_env = os.getenv("GENECODER_SIM_SEED")
     rng = random.Random(int(seed_env)) if seed_env is not None else random.Random()
+
 
     try:
         adapter = SIMULATOR_ADAPTERS[simulator]
