@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import json
+import os
 from typing import Any, Dict
 
 
@@ -45,6 +46,7 @@ def write_capsule(sequence: str, header: str, metadata: Dict[str, Any], path: st
         metadata=metadata,
         created=datetime.utcnow().isoformat(),
     )
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(asdict(capsule), f, indent=2)
 
