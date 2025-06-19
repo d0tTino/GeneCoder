@@ -1,4 +1,5 @@
 import random
+import pytest
 from genecoder.error_simulation import introduce_errors
 
 
@@ -66,3 +67,20 @@ def test_introduce_errors_combined_operations():
 
 def test_introduce_errors_empty_sequence():
     assert introduce_errors("", substitution_prob=1.0, insertion_prob=1.0, deletion_prob=1.0, rng=random.Random(0)) == ""
+
+
+@pytest.mark.parametrize(
+    "kw,value",
+    [
+        ("substitution_prob", -0.1),
+        ("substitution_prob", 1.1),
+        ("insertion_prob", -0.1),
+        ("insertion_prob", 1.1),
+        ("deletion_prob", -0.1),
+        ("deletion_prob", 1.1),
+    ],
+)
+def test_introduce_errors_invalid_probabilities(kw: str, value: float) -> None:
+    kwargs = {kw: value, "rng": random.Random(0)}
+    with pytest.raises(ValueError):
+        introduce_errors("A", **kwargs)
