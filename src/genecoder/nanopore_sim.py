@@ -47,10 +47,11 @@ def _simulate_adapter(
                 command,
                 exc.returncode,
             )
-    # fall back to :func:`simulate_errors` using a deterministic RNG when one is
-    # not provided so tests can verify the value passed through
-    fallback_rng = rng or random.Random()
-    return simulate_errors(sequence, error_rate, rng=fallback_rng)
+    # use a deterministic local RNG for external simulators and forward it when
+    # falling back to :func:`simulate_errors` so calls remain reproducible
+    if rng is None:
+        rng = random.Random()
+    return simulate_errors(sequence, error_rate, rng=rng)
 
 
 
