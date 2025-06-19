@@ -54,5 +54,8 @@ def write_capsule(sequence: str, header: str, metadata: Dict[str, Any], path: st
 def read_capsule(path: str) -> Capsule:
     """Load a capsule from ``path``."""
     with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid capsule file: {path}") from exc
     return Capsule(**data)
