@@ -35,7 +35,7 @@ def _run_external(command: str, sequence: str) -> str:
 
 
 def _simulate_adapter(
-    command: str, sequence: str, error_rate: float, rng: random.Random | None
+    command: str, sequence: str, error_rate: float, rng: random.Random
 ) -> str:
 
     """Return ``sequence`` processed by an external ``command`` if available."""
@@ -56,9 +56,11 @@ def simulate_d2sim(
 ) -> str:
     """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`.
 
-    The optional ``rng`` parameter allows callers to supply a randomness source
-    for the fallback path.
-    """
+def simulate_d2sim(sequence: str, error_rate: float = 0.05, rng: random.Random | None = None) -> str:
+    """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
+
+    if rng is None:
+        rng = random.Random()
 
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
@@ -67,34 +69,24 @@ def simulate_d2sim(
 simulate_nanopore = simulate_d2sim
 
 
-def simulate_dnarsim(
-    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
-) -> str:
-    """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`.
+def simulate_dnarsim(sequence: str, error_rate: float = 0.05, rng: random.Random | None = None) -> str:
+    """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`."""
 
-    ``rng`` is forwarded to :func:`simulate_errors` if the external command is
-    unavailable.
-    """
-
+    if rng is None:
+        rng = random.Random()
     return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
 
-def simulate_squigulator(
-    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
-) -> str:
-    """Use ``squigulator`` if available, else fall back to :func:`simulate_errors`.
+def simulate_squigulator(sequence: str, error_rate: float = 0.05, rng: random.Random | None = None) -> str:
+    """Use ``squigulator`` if available, else fall back to :func:`simulate_errors`."""
 
-
-    ``rng`` provides the randomness source for the fallback simulator.
-    """
-
+    if rng is None:
+        rng = random.Random()
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
 
+def simulate_none(sequence: str, error_rate: float = 0.0, rng: random.Random | None = None) -> str:
 
-def simulate_none(
-    sequence: str, error_rate: float = 0.0, rng: random.Random | None = None
-) -> str:
 
     """Return ``sequence`` unchanged.
 
@@ -105,7 +97,7 @@ def simulate_none(
     return sequence
 
 
-SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random | None], str]] = {
+SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random], str]] = {
 
     "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,

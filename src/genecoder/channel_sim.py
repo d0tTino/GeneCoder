@@ -13,12 +13,12 @@ class RandomLike(Protocol):
 
     def choice(self, seq: list[str]) -> str: ...
 
+from typing import Optional
+
 NUCLEOTIDES = ["A", "T", "C", "G"]
 
 
-def simulate_errors(
-    seq: str, p_error: float, rng: random.Random | None = None
-) -> str:
+def simulate_errors(seq: str, p_error: float, rng: Optional[random.Random] = None) -> str:
 
     """Introduce random substitution errors into *seq* with probability ``p_error``.
 
@@ -30,13 +30,14 @@ def simulate_errors(
     if not 0.0 <= p_error <= 1.0:
         raise ValueError("p_error must be between 0 and 1")
 
-    rand = rng or random
+    if rng is None:
+        rng = random.Random()
 
     result = []
     for nt in seq:
-        if rand.random() < p_error:
+        if rng.random() < p_error:
             choices = [n for n in NUCLEOTIDES if n != nt]
-            result.append(rand.choice(choices))
+            result.append(rng.choice(choices))
 
         else:
             result.append(nt)

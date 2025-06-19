@@ -1,4 +1,5 @@
 import logging
+import random
 import subprocess
 import random
 import pytest
@@ -45,7 +46,7 @@ def test_adapters_fall_back(monkeypatch, name):
     monkeypatch.setattr(
         nanopore_sim,
         "simulate_errors",
-        lambda seq, rate, rng=None: errors_called.append((seq, rate, rng)) or "fallback",
+        lambda seq, rate, rng=None: errors_called.append((seq, rate)) or "fallback",
 
     )
     monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
@@ -70,12 +71,8 @@ def test_adapters_external_error(monkeypatch, caplog, name):
         raise subprocess.CalledProcessError(1, command)
 
     monkeypatch.setattr(nanopore_sim, "_run_external", fake_run_external)
-    monkeypatch.setattr(
-        nanopore_sim,
-        "simulate_errors",
-        lambda s, r, rng=None: errors_called.append((s, r, rng)) or "fallback",
+    monkeypatch.setattr(nanopore_sim, "simulate_errors", lambda s, r, rng=None: errors_called.append((s, r)) or "fallback")
 
-    )
 
     with caplog.at_level(logging.WARNING):
         result = func("ACGT", error_rate=0.2)
@@ -90,30 +87,28 @@ def test_adapters_external_error(monkeypatch, caplog, name):
 def test_simulate_reads_dispatch(monkeypatch):
     called = []
     def fake_adapter(seq: str, rate: float = 0.05, rng=None) -> str:
-        called.append((seq, rate, rng))
+        called.append((seq, rate, isinstance(rng, random.Random)))
+
         return "ok"
 
     monkeypatch.setitem(nanopore_sim.SIMULATOR_ADAPTERS, "dummy", fake_adapter)
     assert nanopore_sim.simulate_reads("AAAA", "dummy") == "ok"
-    assert len(called) == 1
-    assert called[0][0] == "AAAA"
-    assert called[0][1] == 0.05
-    assert isinstance(called[0][2], random.Random)
+    assert called == [("AAAA", 0.05, True)]
 
 
-def test_simulate_reads_does_not_affect_global_rng(monkeypatch):
-    monkeypatch.setenv("GENECODER_SIM_SEED", "5")
-    random.seed(123)
-    random.random()
-    # Reset and reproduce expected second value without calling simulate_reads
-    random.seed(123)
-    _ = random.random()
-    expected_second = random.random()
+def test_simulate_reads_preserves_global_rng(monkeypatch):
+    def fake_adapter(seq: str, rate: float = 0.05, rng=None) -> str:
+        return seq
 
+    monkeypatch.setitem(nanopore_sim.SIMULATOR_ADAPTERS, "dummy", fake_adapter)
+
+    rng = random.Random(123)
+    expected_first = rng.random()
+    expected_second = rng.random()
     random.seed(123)
-    _ = random.random()
-    nanopore_sim.simulate_reads("AAAA", "none")
+    before = random.random()
+    nanopore_sim.simulate_reads("ACGT", "dummy")
     after = random.random()
-
+    assert before == expected_first
     assert after == expected_second
 
