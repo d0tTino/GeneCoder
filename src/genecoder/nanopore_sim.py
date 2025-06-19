@@ -33,7 +33,9 @@ def _run_external(command: str, sequence: str) -> str:
         return records[0][1]
 
 
-def _simulate_adapter(command: str, sequence: str, error_rate: float) -> str:
+def _simulate_adapter(
+    command: str, sequence: str, error_rate: float, rng: random.Random
+) -> str:
     """Return ``sequence`` processed by an external ``command`` if available."""
     if shutil.which(command):
         try:
@@ -44,39 +46,45 @@ def _simulate_adapter(command: str, sequence: str, error_rate: float) -> str:
                 command,
                 exc.returncode,
             )
-    return simulate_errors(sequence, error_rate)
+    return simulate_errors(sequence, error_rate, rng=rng)
 
 
-def simulate_d2sim(sequence: str, error_rate: float = 0.05) -> str:
+def simulate_d2sim(sequence: str, error_rate: float = 0.05, rng: random.Random | None = None) -> str:
     """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
 
-    return _simulate_adapter("d2sim", sequence, error_rate)
+    if rng is None:
+        rng = random.Random()
+    return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
 
 # Backwards compatibility alias
 simulate_nanopore = simulate_d2sim
 
 
-def simulate_dnarsim(sequence: str, error_rate: float = 0.05) -> str:
+def simulate_dnarsim(sequence: str, error_rate: float = 0.05, rng: random.Random | None = None) -> str:
     """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`."""
 
-    return _simulate_adapter("dnarsim", sequence, error_rate)
+    if rng is None:
+        rng = random.Random()
+    return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
 
-def simulate_squigulator(sequence: str, error_rate: float = 0.05) -> str:
+def simulate_squigulator(sequence: str, error_rate: float = 0.05, rng: random.Random | None = None) -> str:
     """Use ``squigulator`` if available, else fall back to :func:`simulate_errors`."""
 
-    return _simulate_adapter("squigulator", sequence, error_rate)
+    if rng is None:
+        rng = random.Random()
+    return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
 
-def simulate_none(sequence: str, error_rate: float = 0.0) -> str:
+def simulate_none(sequence: str, error_rate: float = 0.0, rng: random.Random | None = None) -> str:
 
     """Return ``sequence`` unchanged."""
 
     return sequence
 
 
-SIMULATOR_ADAPTERS: dict[str, Callable[[str, float], str]] = {
+SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random], str]] = {
     "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,
     "squigulator": simulate_squigulator,
@@ -94,15 +102,14 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     """
 
     seed_env = os.getenv("GENECODER_SIM_SEED")
-    if seed_env is not None:
-        random.seed(int(seed_env))
+    rng = random.Random(int(seed_env)) if seed_env is not None else random.Random()
 
     try:
         adapter = SIMULATOR_ADAPTERS[simulator]
     except KeyError as exc:
         raise ValueError(f"Unknown simulator: {simulator}") from exc
 
-    return adapter(sequence, error_rate)
+    return adapter(sequence, error_rate, rng)
 
 
 def _wrap(name: str) -> Callable[[str, float], str]:

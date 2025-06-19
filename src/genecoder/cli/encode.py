@@ -230,7 +230,7 @@ def process_single_encode(
 
         fasta_output = to_fasta(final_encoded_dna_sequence, fasta_header, line_width=80)
 
-        os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
+        os.makedirs(os.path.dirname(output_file_path) or ".", exist_ok=True)
         with open(output_file_path, "w", encoding="utf-8") as f_out:
             f_out.write(fasta_output)
 
