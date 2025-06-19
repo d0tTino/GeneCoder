@@ -53,13 +53,12 @@ def _simulate_adapter(
 
 
 def simulate_d2sim(
-    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
+    sequence: str,
+    error_rate: float = 0.05,
+    rng: random.Random | None = None,
 ) -> str:
-    """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`.
+    """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
 
-    The optional ``rng`` parameter allows callers to supply a randomness source
-    for the fallback path.
-    """
 
 
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
@@ -95,13 +94,11 @@ def simulate_squigulator(
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
 
-
 def simulate_none(
-    sequence: str, error_rate: float = 0.0, rng: random.Random | None = None
+    sequence: str,
+    error_rate: float = 0.0,
+    rng: random.Random | None = None,
 ) -> str:
-
-    """Return ``sequence`` unchanged.
-
 
     """Return ``sequence`` unchanged.
 

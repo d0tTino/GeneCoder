@@ -73,7 +73,9 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
         # bits of ``data`` are inverted using XOR with ``0xFF`` (bitwise NOT for
         # each byte) and that modified payload is encoded instead.
         modified_data = bytes(b ^ 0xFF for b in data)
-        alternative_sequence = cast(str, encode_base4_direct(modified_data, add_parity=False))
+        alternative_sequence = cast(
+            str, encode_base4_direct(modified_data, add_parity=False)
+        )
 
         # ``"1"`` is prepended so the decoder knows to invert the bits again.
         # A more sophisticated implementation could attempt multiple
