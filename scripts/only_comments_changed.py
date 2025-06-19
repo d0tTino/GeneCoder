@@ -120,6 +120,8 @@ def only_comments_changed(base_ref: str) -> bool:
 
 
 def main() -> int:
+    # BASE_SHA holds the commit hash for the PR base. Compare HEAD to this
+    # reference so we only analyze the pull request diff.
     base_ref = os.environ.get("BASE_SHA", "origin/main")
     only_comments = only_comments_changed(base_ref)
     output_path = os.environ.get("GITHUB_OUTPUT")
