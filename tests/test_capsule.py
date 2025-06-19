@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 from tests.test_cli import run_cli_command
+from genecoder.cache_dna import read_capsule
+import pytest
 
 
 def test_encode_capsule_contents(tmp_path: Path) -> None:
@@ -88,3 +90,10 @@ def test_encode_capsule_nested_directory(tmp_path: Path) -> None:
     )
     assert result.returncode == 0, result.stderr
     assert capsule_path.exists(), "Capsule path was not created in nested dir"
+
+
+def test_read_capsule_malformed(tmp_path: Path) -> None:
+    path = tmp_path / "bad.capsule"
+    path.write_text("{ invalid json ]")
+    with pytest.raises(ValueError, match="Invalid capsule file"):
+        read_capsule(str(path))
