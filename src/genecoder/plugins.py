@@ -3,7 +3,10 @@ from __future__ import annotations
 from typing import Callable, Dict, Any
 from importlib.metadata import entry_points
 import importlib
+import logging
 import pkgutil
+
+logger = logging.getLogger(__name__)
 
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
@@ -28,19 +31,31 @@ def register_simulator(name: str, simulate: Callable[..., Any]) -> None:
 def load_plugins() -> None:
     """Load plugins defined via GeneCoder entry points."""
     for ep in entry_points(group="genecoder.plugins"):
-        plugin = ep.load()
+        try:
+            plugin = ep.load()
+        except Exception as exc:  # pragma: no cover - error path
+            logger.warning("Failed to import plugin %s: %s", ep.value, exc)
+            continue
         register = getattr(plugin, "register", None)
         if callable(register):
             register(register_codec)
 
     for ep in entry_points(group="genecoder.fec"):
-        plugin = ep.load()
+        try:
+            plugin = ep.load()
+        except Exception as exc:  # pragma: no cover - error path
+            logger.warning("Failed to import FEC plugin %s: %s", ep.value, exc)
+            continue
         register = getattr(plugin, "register", None)
         if callable(register):
             register(register_fec)
 
     for ep in entry_points(group="genecoder.simulators"):
-        plugin = ep.load()
+        try:
+            plugin = ep.load()
+        except Exception as exc:  # pragma: no cover - error path
+            logger.warning("Failed to import simulator plugin %s: %s", ep.value, exc)
+            continue
         register = getattr(plugin, "register", None)
         if callable(register):
             register(register_simulator)
@@ -53,7 +68,13 @@ def load_plugins() -> None:
     if plugins is not None:
         if hasattr(plugins, "__path__"):
             for _, module_name, _ in pkgutil.iter_modules(plugins.__path__):
-                module = importlib.import_module(f"plugins.{module_name}")
+                try:
+                    module = importlib.import_module(f"plugins.{module_name}")
+                except Exception as exc:  # pragma: no cover - error path
+                    logger.warning(
+                        "Failed to import local plugin %s: %s", module_name, exc
+                    )
+                    continue
                 register = getattr(module, "register", None)
                 if callable(register):
                     register(register_codec)
