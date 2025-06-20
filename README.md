@@ -15,11 +15,17 @@ For instructions on launching the GUI see the [usage guide](docs/usage.md#launch
 - Batch processing, parity checks and streaming support.
 - Flet-based GUI with analysis plots.
 
-## Quick Install
+## Quick Start
+
+GeneCoder requires **Python 3.10+**. Install the base dependencies and any
+optional extras you want to use:
 
 ```bash
 pip install -r requirements.txt
-pip install .[gui]  # install GUI extras when desired
+# Flet-based GUI support
+pip install .[gui]
+# FastAPI web interface
+pip install .[web]
 ```
 
 Desktop packages are available on the [releases page](https://github.com/d0tTino/GeneCoder/releases).
@@ -35,6 +41,14 @@ uvicorn web.main:app --reload
 ```
 
 See [docs/installation.md](docs/installation.md) for detailed setup and testing instructions, including the [mamba-based setup](docs/installation.md#mamba-based-setup) and the [Windows Quick Start](docs/installation.md#windows-quick-start).
+
+## Development Setup
+
+Install the project in editable mode with any extras you need:
+
+```bash
+pip install -e .[gui,web]
+```
 
 ## OpenAI Testing Environment
 
