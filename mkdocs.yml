@@ -18,8 +18,5 @@ nav:
       - Development Vision: DEVELOPMENT_VISION.md
   - Integrations:
       - n8n Overview: n8n_overview.md
-  - Technology Stack: technology_stack.md
-  - Development Roadmap: development_roadmap.md
-  - Development Vision: DEVELOPMENT_VISION.md
   - Plugin System: plugins.md
 
