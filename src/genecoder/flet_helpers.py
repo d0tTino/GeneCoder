@@ -12,8 +12,7 @@ def parse_int_input(value: str | None, default: int, min_value: int = 1) -> int:
         Text from a GUI input field. ``None`` or an empty string results
         in ``default``.
     default:
-        Value returned when parsing fails or the parsed value is less than
-        ``min_value``.
+        Value returned when parsing fails or ``value`` is empty/``None``.
     min_value:
         The minimum allowed integer value. Defaults to ``1``.
 
@@ -23,10 +22,13 @@ def parse_int_input(value: str | None, default: int, min_value: int = 1) -> int:
         The parsed integer if valid and >= ``min_value``; otherwise ``default``.
     """
     try:
-        if value is not None and value != "":
-            parsed = int(value)
-        else:
-            parsed = default
+        if value is None or value == "":
+            return default
+        parsed = int(value)
     except (TypeError, ValueError):
         return default
-    return parsed if parsed >= min_value else default
+
+    if parsed < min_value:
+        raise ValueError(f"Value must be >= {min_value}")
+
+    return parsed
