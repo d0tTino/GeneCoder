@@ -138,3 +138,14 @@ def test_hamming_missing_padding_bits():
 def test_decoding_no_fasta_records():
     with pytest.raises(ValueError, match="No valid FASTA records found"):
         perform_decoding("")
+
+
+def test_perform_encoding_unknown_method():
+    with pytest.raises(ValueError, match="Unknown method"):  # type: ignore[call-arg]
+        perform_encoding(b"data", EncodeOptions(method="bogus"))
+
+
+def test_perform_decoding_unknown_method():
+    fasta = ">method=bogus\nACGT\n"
+    with pytest.raises(ValueError, match="decoding method"):
+        perform_decoding(fasta)
