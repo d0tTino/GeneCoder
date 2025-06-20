@@ -327,6 +327,7 @@ def process_single_encode(
         logger.exception(
             "Error for %s: Unexpected error during encoding", input_file_path
         )
+        raise
     return None
 
 
