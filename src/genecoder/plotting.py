@@ -10,26 +10,26 @@ from typing import Dict, List, TYPE_CHECKING
 
 import base64
 
-_MATPLOTLIB_AVAILABLE: bool = False
+# "matplotlib" is optional, so import it under an alias to avoid mypy
+# redefinition errors when the import succeeds.
+matplotlib: Any
+plt: Any
+MaxNLocator: Any
+try:  # pragma: no cover - optional dependency
+    import matplotlib as _mpl
+    _mpl.use("Agg")
+    import matplotlib.pyplot as _plt
+    from matplotlib.ticker import MaxNLocator as _MaxNLocator
+    matplotlib = _mpl
+    plt = _plt
+    MaxNLocator = _MaxNLocator
+    _MATPLOTLIB_AVAILABLE = True
+except Exception:  # noqa: BLE001 - broader catch for optional import
+    matplotlib = None
+    plt = None
+    MaxNLocator = None
+    _MATPLOTLIB_AVAILABLE = False
 
-if TYPE_CHECKING:
-    import matplotlib
-    import matplotlib.pyplot as plt
-    from matplotlib.ticker import MaxNLocator
-else:
-    try:  # pragma: no cover - optional dependency
-
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        from matplotlib.ticker import MaxNLocator
-        _MATPLOTLIB_AVAILABLE = True
-    except Exception:  # noqa: BLE001 - broader catch for optional import
-        matplotlib = None  # type: ignore
-        plt = None  # type: ignore
-        MaxNLocator = None  # type: ignore
-
-        _MATPLOTLIB_AVAILABLE = False
 
 _DUMMY_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="
