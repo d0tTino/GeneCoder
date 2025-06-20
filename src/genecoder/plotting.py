@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from matplotlib.ticker import MaxNLocator
 else:
     try:  # pragma: no cover - optional dependency
+
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
@@ -27,6 +28,7 @@ else:
         matplotlib = None  # type: ignore
         plt = None  # type: ignore
         MaxNLocator = None  # type: ignore
+
         _MATPLOTLIB_AVAILABLE = False
 
 _DUMMY_PNG = base64.b64decode(

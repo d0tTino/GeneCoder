@@ -306,16 +306,22 @@ def main(page: ft.Page) -> None:
             with open(input_path, "rb") as f_in:
                 input_data = await asyncio.to_thread(f_in.read)
 
-            options = EncodeOptions(
-                method=method_dropdown.value,
-                add_parity=parity_checkbox.value,
-                k_value=parse_int_input(k_value_input.value, 7),
-                fec_method=fec_dropdown.value,
-                window_size=parse_int_input(window_size_input.value, 50),
-                step_size=parse_int_input(step_size_input.value, 10),
-                min_homopolymer_len=parse_int_input(min_homopolymer_input.value, 4),
-                alphabet=alphabet_dropdown.value,
-            )
+            try:
+                options = EncodeOptions(
+                    method=method_dropdown.value,
+                    add_parity=parity_checkbox.value,
+                    k_value=parse_int_input(k_value_input.value, 7),
+                    fec_method=fec_dropdown.value,
+                    window_size=parse_int_input(window_size_input.value, 50),
+                    step_size=parse_int_input(step_size_input.value, 10),
+                    min_homopolymer_len=parse_int_input(min_homopolymer_input.value, 4),
+                    alphabet=alphabet_dropdown.value,
+                )
+            except ValueError as ex:
+                encode_status_text.value = f"Invalid numeric input: {ex}"
+                encode_status_text.color = ft.colors.RED_ACCENT_700
+                page.update()
+                return
 
             result = await asyncio.to_thread(perform_encoding, input_data, options)
 
