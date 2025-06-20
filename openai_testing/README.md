@@ -1,8 +1,16 @@
 # OpenAI Testing Environment
 
+**Required tools**
+
+- Node.js runtime
+- npm package manager
+- `OPENAI_API_KEY` environment variable
+
 This directory contains the resources from the
 [openai-testing-agent-demo](https://github.com/openai/openai-testing-agent-demo)
-project.  It includes three applications used to run the demo testing agent:
+project.  It includes three applications used to run the demo testing agent.
+
+Running the demo is optional and intended for testing purposes only.
 
 - **cua-server** – Node service that communicates with the OpenAI CUA model and
   controls Playwright.
