@@ -2,6 +2,7 @@ import os
 import sys
 import pytest
 import re
+import logging
 from unittest.mock import patch, call  # call is needed for checking multiple calls to a mock
 
 from genecoder.encoders import encode_base4_direct  # noqa: E402
@@ -234,7 +235,7 @@ def test_encode_gc_balanced_initial_ok_alternative_not_used(mock_encode_base4):
 
 # Test for encode_gc_balanced when initial fails GC, alternative is used
 @patch('genecoder.encoders.encode_base4_direct')
-def test_encode_gc_balanced_initial_fails_gc_alternative_used(mock_encode_base4):
+def test_encode_gc_balanced_initial_fails_gc_alternative_used(mock_encode_base4, caplog):
     dummy_data = b"data"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
     # Initial sequence: GC=0.0 (fails 0.4-0.6), max_hp=8
@@ -244,16 +245,20 @@ def test_encode_gc_balanced_initial_fails_gc_alternative_used(mock_encode_base4)
 
     mock_encode_base4.side_effect = [initial_seq, alternative_seq]
     
-    result = encode_gc_balanced(dummy_data, target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=3)
+    with caplog.at_level(logging.WARNING):
+        result = encode_gc_balanced(
+            dummy_data, target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=3
+        )
     
     assert result == "1" + alternative_seq
     assert mock_encode_base4.call_count == 2
     mock_encode_base4.assert_any_call(dummy_data, add_parity=False)
     mock_encode_base4.assert_any_call(inverted_dummy_data, add_parity=False)
+    assert not caplog.records
 
 # Test for encode_gc_balanced when initial fails homopolymer, alternative is used
 @patch('genecoder.encoders.encode_base4_direct')
-def test_encode_gc_balanced_initial_fails_homopolymer_alternative_used(mock_encode_base4):
+def test_encode_gc_balanced_initial_fails_homopolymer_alternative_used(mock_encode_base4, caplog):
     dummy_data = b"data"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
     # Initial sequence: GC=0.5 (ok), max_hp=4 (fails max_homopolymer=3)
@@ -263,13 +268,17 @@ def test_encode_gc_balanced_initial_fails_homopolymer_alternative_used(mock_enco
 
 
     mock_encode_base4.side_effect = [initial_seq, alternative_seq]
-    
-    result = encode_gc_balanced(dummy_data, target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=3)
+
+    with caplog.at_level(logging.WARNING):
+        result = encode_gc_balanced(
+            dummy_data, target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=3
+        )
     
     assert result == "1" + alternative_seq
     assert mock_encode_base4.call_count == 2
     mock_encode_base4.assert_any_call(dummy_data, add_parity=False)
     mock_encode_base4.assert_any_call(inverted_dummy_data, add_parity=False)
+    assert not caplog.records
 
 # Test encode_gc_balanced with empty data
 def test_encode_gc_balanced_empty_data():
@@ -310,7 +319,7 @@ def test_get_max_homopolymer_length_single_char():
 # The function should still return the alternative sequence rather than erroring
 # even if it doesn't meet the GC or homopolymer limits.
 @patch('genecoder.encoders.encode_base4_direct')
-def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4):
+def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4, caplog):
 
     dummy_data = b"test"
     inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
@@ -324,7 +333,8 @@ def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4):
     target_gc_max = 0.6
     max_homopolymer = 3
 
-    result = encode_gc_balanced(dummy_data, target_gc_min, target_gc_max, max_homopolymer)
+    with caplog.at_level(logging.WARNING):
+        result = encode_gc_balanced(dummy_data, target_gc_min, target_gc_max, max_homopolymer)
 
     assert result.startswith("1")  # current logic always picks alternative if initial fails
     assert result[1:] == alternative_sequence
@@ -335,6 +345,7 @@ def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4):
         call(dummy_data, add_parity=False),
         call(inverted_dummy_data, add_parity=False)
     ])
+    assert any("Inverted sequence violates" in rec.message for rec in caplog.records)
 
 # Test decode_gc_balanced with optional arguments passed (though not used by current logic)
 def test_decode_gc_balanced_with_optional_args():
