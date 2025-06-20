@@ -29,8 +29,8 @@ checks pass.
 Code style is enforced with [pre-commit](https://pre-commit.com/). Install the tool and set up the git hook:
 
 ```bash
-pip install pre-commit
-pre-commit install
+poetry run pip install pre-commit
+poetry run pre-commit install
 ```
 
 You can then run the checks against all files with:
@@ -52,8 +52,8 @@ The hook also runs automatically on each commit if installed.
 Unit tests use `pytest`. Install the pinned dependencies and run:
 
 ```bash
-pip install -r requirements.lock
-pytest -q
+poetry install --with gui,web --no-interaction
+poetry run pytest -q
 ```
 
 All code changes must pass `pre-commit` and the test suite. These checks are not
@@ -75,9 +75,9 @@ Follow these steps to publish a new version:
 4. Build and upload the package to PyPI:
 
    ```bash
-   python -m pip install build twine
-   python -m build
-   twine upload dist/*
+   poetry run pip install build twine
+   poetry run python -m build
+   poetry run twine upload dist/*
    ```
 
 5. Create a GitHub release pointing at the same tag.

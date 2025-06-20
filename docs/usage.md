@@ -27,10 +27,10 @@ GeneCoder: Encode and decode data into simulated DNA sequences.
 ...
 ```
 
-If the `genecoder` command isn't found, install the project in editable mode:
+If the `genecoder` command isn't found, install the project with Poetry:
 
 ```bash
-pip install -e .
+poetry install --no-interaction
 ```
 
 * `--input-files` – one or more input files.
@@ -187,7 +187,7 @@ genecoder encode --input-files msg.txt \
 Install the optional GUI extras:
 
 ```bash
-pip install .[gui]  # or pip install -e .[gui] for development
+poetry install --with gui --no-interaction
 ```
 
 Run the application:
