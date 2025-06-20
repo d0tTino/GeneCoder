@@ -17,5 +17,5 @@ reached, maintainers vote and the majority decides.
 ## Contributor License Agreement
 
 All contributors must agree that their contributions are governed by the
-Mozilla Public License 2.0. By submitting a pull request you certify that you
-license your code under the MPL‑2.0.
+MIT License. By submitting a pull request you certify that you
+license your code under the MIT license.
