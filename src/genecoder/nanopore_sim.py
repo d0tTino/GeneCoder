@@ -166,10 +166,7 @@ def _wrap(name: str) -> Callable[[str, float], str]:
 def register(register_simulator: Callable[[str, Callable[..., Any]], None]) -> None:
     """Register the builtin simulators."""
 
-    for name, func in SIMULATOR_ADAPTERS.items():
-        register_simulator(name, func)
-
-    for name in ("none", "nanopore", "dnarsim", "squigulator", "d2sim"):
+    for name in SIMULATOR_ADAPTERS:
         register_simulator(name, _wrap(name))
 
 
