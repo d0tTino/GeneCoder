@@ -10,14 +10,19 @@ from typing import Any, Dict, List
 
 import base64
 
+# "matplotlib" is optional, so import it under an alias to avoid mypy
+# redefinition errors when the import succeeds.
 matplotlib: Any
 plt: Any
 MaxNLocator: Any
 try:  # pragma: no cover - optional dependency
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    from matplotlib.ticker import MaxNLocator
+    import matplotlib as _mpl
+    _mpl.use("Agg")
+    import matplotlib.pyplot as _plt
+    from matplotlib.ticker import MaxNLocator as _MaxNLocator
+    matplotlib = _mpl
+    plt = _plt
+    MaxNLocator = _MaxNLocator
     _MATPLOTLIB_AVAILABLE = True
 except Exception:  # noqa: BLE001 - broader catch for optional import
     matplotlib = None

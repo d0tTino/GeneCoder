@@ -208,10 +208,8 @@ def process_single_decode(
         logger.error(f"Error for {input_file_path}: Input file not found.")
     except IOError as e:
         logger.error(f"Error for {input_file_path}: I/O error: {e}")
-    except Exception:
-        logger.exception(
-            "Error for %s: Unexpected error during decoding", input_file_path
-        )
+    except ValueError as exc:
+        logger.error("Error for %s: %s", input_file_path, exc)
 
 
 def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
