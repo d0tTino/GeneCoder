@@ -47,6 +47,8 @@ def _simulate_adapter(
                 command,
                 exc.returncode,
             )
+    else:
+        logger.warning("%s not found; falling back to simple error model", command)
     # use a deterministic local RNG for external simulators and forward it when
     # falling back to :func:`simulate_errors` so calls remain reproducible
     if rng is None:

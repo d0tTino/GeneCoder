@@ -86,6 +86,35 @@ def test_adapters_external_error(monkeypatch, caplog, name):
     assert any("falling back" in rec.message for rec in caplog.records)
 
 
+@pytest.mark.parametrize("name", ADAPTERS.keys())
+def test_adapters_command_not_found_warning(monkeypatch, caplog, name):
+    func, cmd = ADAPTERS[name]
+    errors_called = []
+
+    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda target: None)
+
+    def boom(*_):
+        raise AssertionError("_run_external should not be called")
+
+    monkeypatch.setattr(nanopore_sim, "_run_external", boom)
+    monkeypatch.setattr(
+        nanopore_sim,
+        "simulate_errors",
+        lambda seq, rate, rng=None: errors_called.append((seq, rate, rng))
+        or "fallback",
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = func("ACGT")
+
+    assert result == "fallback"
+    assert errors_called and isinstance(errors_called[0][2], random.Random)
+    assert any(
+        rec.levelno == logging.WARNING and "not found" in rec.message
+        for rec in caplog.records
+    )
+
+
 def test_simulate_reads_dispatch(monkeypatch):
     called = []
     def fake_adapter(seq: str, rate: float = 0.05, rng=None) -> str:
