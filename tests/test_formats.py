@@ -158,3 +158,15 @@ def test_from_fasta_header_with_various_chars():
     content = f">{header}\nATGC"
     expected = [(header, "ATGC")]
     assert from_fasta(content) == expected
+
+
+def test_from_fasta_valid_extended_iupac_characters():
+    content = ">seq_valid\nACGTNRYKMSWBDHV\n"
+    expected = [("seq_valid", "ACGTNRYKMSWBDHV")]
+    assert from_fasta(content) == expected
+
+
+def test_from_fasta_invalid_character_error_line_number():
+    content = ">seq_invalid\nACGT\naXYZ\n"
+    with pytest.raises(ValueError, match="line 3"):
+        from_fasta(content)
