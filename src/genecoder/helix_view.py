@@ -20,8 +20,8 @@ if not hasattr(ft, "HtmlElement"):
 
     ft.HtmlElement = _HtmlElement
 
-THREE_JS_URL = ""
-ORBIT_JS_URL = ""
+THREE_JS_URL: str = ""
+ORBIT_JS_URL: str = ""
 try:
     three_data = pkgutil.get_data("genecoder", "static/three.min.js")
     orbit_data = pkgutil.get_data("genecoder", "static/OrbitControls.min.js")

@@ -29,7 +29,7 @@ from genecoder.helix_view import show_helix
 from genecoder.formats import from_fasta
 
 
-encode_fasta_data_to_save_ref = ft.Ref[str]()
+encode_fasta_data_to_save_ref: ft.Ref[str] = ft.Ref[str]()
 decoded_bytes_to_save: bytes = b""
 
 
@@ -39,10 +39,10 @@ def main(page: ft.Page) -> None:
     page.vertical_alignment = ft.MainAxisAlignment.START
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    selected_encode_input_file_path = ft.Ref[str]()
+    selected_encode_input_file_path: ft.Ref[str] = ft.Ref[str]()
     selected_encode_input_file_path.current = ""
 
-    selected_decode_input_file_path = ft.Ref[str]()
+    selected_decode_input_file_path: ft.Ref[str] = ft.Ref[str]()
     selected_decode_input_file_path.current = ""
 
     # --- Analysis Tab UI Controls (defined early for access in encode_data) ---
@@ -67,19 +67,19 @@ def main(page: ft.Page) -> None:
     analysis_status_text = ft.Text("Encode data to view analysis plots.", italic=True)
 
     # Container used for the Helix View tab. Filled when the tab is selected.
-    helix_container = ft.Column()
-    animate_checkbox = ft.Checkbox(label="Animate", value=True)
-    zoom_slider = ft.Slider(min=0.5, max=2.0, value=1.0, divisions=15, width=200)
-    helix_length_input = ft.TextField(
+    helix_container: ft.Column = ft.Column()
+    animate_checkbox: ft.Checkbox = ft.Checkbox(label="Animate", value=True)
+    zoom_slider: ft.Slider = ft.Slider(min=0.5, max=2.0, value=1.0, divisions=15, width=200)
+    helix_length_input: ft.TextField = ft.TextField(
         label="Sequence Length",
         value="50",
         width=150,
         keyboard_type=ft.KeyboardType.NUMBER,
     )
-    helix_color_a = ft.TextField(label="A", value="#ff5555", width=100)
-    helix_color_c = ft.TextField(label="C", value="#5555ff", width=100)
-    helix_color_g = ft.TextField(label="G", value="#55ff55", width=100)
-    helix_color_t = ft.TextField(label="T", value="#ffff55", width=100)
+    helix_color_a: ft.TextField = ft.TextField(label="A", value="#ff5555", width=100)
+    helix_color_c: ft.TextField = ft.TextField(label="C", value="#5555ff", width=100)
+    helix_color_g: ft.TextField = ft.TextField(label="G", value="#55ff55", width=100)
+    helix_color_t: ft.TextField = ft.TextField(label="T", value="#ffff55", width=100)
     helix_controls = ft.Row(
         [
             helix_length_input,
@@ -231,20 +231,20 @@ def main(page: ft.Page) -> None:
         visible=False,
     )
 
-    encode_hidden_fasta_content = ft.Text(
+    encode_hidden_fasta_content: ft.Text = ft.Text(
         ref=encode_fasta_data_to_save_ref, visible=False, value=""
     )
-    encode_manifest_to_save_ref = ft.Ref[str]()
-    encode_hidden_manifest_content = ft.Text(
+    encode_manifest_to_save_ref: ft.Ref[str] = ft.Ref[str]()
+    encode_hidden_manifest_content: ft.Text = ft.Text(
         ref=encode_manifest_to_save_ref,
         visible=False,
         value="",
     )
-    encode_hidden_sequence = ft.Text(visible=False, value="")
+    encode_hidden_sequence: ft.Text = ft.Text(visible=False, value="")
 
     # --- Main App Structure (Tabs) defined here so encode_data can access app_tabs.tabs[2] ---
     # This is a forward declaration of sorts for app_tabs, its full definition with content is later.
-    app_tabs = ft.Tabs()
+    app_tabs: ft.Tabs = ft.Tabs()
 
     # --- Encode Event Handlers ---
     async def encode_data(e: ft.ControlEvent) -> None:
