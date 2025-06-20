@@ -231,28 +231,18 @@ def perform_decoding(fasta_data: str, alphabet: str = "base4") -> DecodeResult:
     num_padding_bits = 0
     if "method=huffman" in header and "huffman_params=" in header:
         method = "huffman"
-        json_field_start = header.find("huffman_params=")
-        json_part = header[json_field_start + len("huffman_params=") :]
-        first = json_part.find("{")
-        if first == -1:
-            raise ValueError("JSON object for huffman_params not found")
-        open_br = 0
-        end_idx = -1
-        for i, ch in enumerate(json_part[first:]):
-            if ch == "{":
-                open_br += 1
-            elif ch == "}":
-                open_br -= 1
-            if open_br == 0:
-                end_idx = first + i + 1
-                break
-        if end_idx == -1:
-            raise ValueError("Huffman params JSON not closed")
-        params = json.loads(json_part[first:end_idx])
+        json_field = header.split("huffman_params=", 1)[1]
+        decoder = json.JSONDecoder()
+        try:
+            params, _ = decoder.raw_decode(json_field)
+        except json.JSONDecodeError as exc:
+            raise ValueError("Invalid Huffman parameters") from exc
+
         table_str = params.get("table")
         num_padding_bits = params.get("padding")
         if table_str is None or num_padding_bits is None:
             raise ValueError("Invalid Huffman parameters")
+
         huffman_table = {int(k): v for k, v in table_str.items()}
     elif "method=base4_direct" in header:
         method = "base4_direct"
