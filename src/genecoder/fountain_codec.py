@@ -28,6 +28,9 @@ def _require_pyfinite() -> None:  # pragma: no cover - helper
 def encode_data_fountain(data: bytes, chunk_size: int = 4) -> Tuple[bytes, Any]:
     """Encode ``data`` using a trivial Fountain scheme with one parity chunk."""
     _require_pyfinite()
+    if not data:
+        return b"", {"chunk_size": chunk_size, "orig_len": 0}
+
     F = ffield.FField(8)
     blocks = [data[i : i + chunk_size] for i in range(0, len(data), chunk_size)]
     if len(blocks[-1]) < chunk_size:
