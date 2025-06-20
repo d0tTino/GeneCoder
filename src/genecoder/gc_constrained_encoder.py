@@ -16,7 +16,11 @@ required.
 """
 
 from typing import Optional, Tuple, cast
+import logging
+
 from .utils import check_homopolymer_length, get_max_homopolymer_length
+
+logger = logging.getLogger(__name__)
 
 def calculate_gc_content(dna_sequence: str) -> float:
     """Calculates the GC content of a DNA sequence.
@@ -41,8 +45,10 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
     Encoding Strategy:
     - Encodes data using `encode_base4_direct`.
     - If constraints (GC content, homopolymer length) are met, returns the sequence prefixed with "0".
-    - If constraints are violated, inverts data bits, re-encodes, and returns prefixed with "1".
-      (Assumes the alternative sequence is better without re-checking constraints).
+    - If constraints are violated, inverts data bits and re-encodes.
+      The alternative sequence is also checked against the constraints. If it
+      still violates them, the sequence is returned prefixed with "1" and a
+      warning is logged.
 
 
     Args:
@@ -68,19 +74,26 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
         # Prefix with ``"0"`` to indicate that the sequence is the direct
         # encoding of ``data`` without any modifications.
         return "0" + initial_sequence
-    else:
-        # The sequence violates the constraints.  As a simple remediation the
-        # bits of ``data`` are inverted using XOR with ``0xFF`` (bitwise NOT for
-        # each byte) and that modified payload is encoded instead.
-        modified_data = bytes(b ^ 0xFF for b in data)
-        alternative_sequence = cast(
-            str, encode_base4_direct(modified_data, add_parity=False)
+
+    # The sequence violates the constraints. As a simple remediation the
+    # bits of ``data`` are inverted using XOR with ``0xFF`` (bitwise NOT for
+    # each byte) and that modified payload is encoded instead.
+    modified_data = bytes(b ^ 0xFF for b in data)
+    alternative_sequence = cast(
+        str, encode_base4_direct(modified_data, add_parity=False)
+    )
+
+    alt_gc_ok = target_gc_min <= calculate_gc_content(alternative_sequence) <= target_gc_max
+    alt_homopolymer_ok = not check_homopolymer_length(alternative_sequence, max_homopolymer)
+    if not (alt_gc_ok and alt_homopolymer_ok):
+        logger.warning(
+            "Inverted sequence violates GC content or homopolymer constraints"
         )
 
-        # ``"1"`` is prepended so the decoder knows to invert the bits again.
-        # A more sophisticated implementation could attempt multiple
-        # alternatives before falling back to this simple inversion.
-        return "1" + alternative_sequence
+    # ``"1"`` is prepended so the decoder knows to invert the bits again.
+    # A more sophisticated implementation could attempt multiple
+    # alternatives before falling back to this simple inversion.
+    return "1" + alternative_sequence
 
 def decode_gc_balanced(
     dna_sequence: str,
