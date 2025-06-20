@@ -6,24 +6,30 @@ rendered to in-memory buffers for display in Flet or other GUI frameworks.
 """
 import io
 import collections
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TYPE_CHECKING
 
 import base64
 
-matplotlib: Any
-plt: Any
-MaxNLocator: Any
-try:  # pragma: no cover - optional dependency
+if TYPE_CHECKING:  # pragma: no cover - for type checkers only
     import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
     from matplotlib.ticker import MaxNLocator
+    import matplotlib.pyplot as plt
     _MATPLOTLIB_AVAILABLE = True
-except Exception:  # noqa: BLE001 - broader catch for optional import
-    matplotlib = None
-    plt = None
-    MaxNLocator = None
-    _MATPLOTLIB_AVAILABLE = False
+else:  # pragma: no cover - runtime optional dependency handling
+    matplotlib: Any
+    plt: Any
+    MaxNLocator: Any
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        from matplotlib.ticker import MaxNLocator
+        _MATPLOTLIB_AVAILABLE = True
+    except Exception:  # noqa: BLE001 - broader catch for optional import
+        matplotlib = None
+        plt = None
+        MaxNLocator = None
+        _MATPLOTLIB_AVAILABLE = False
 
 _DUMMY_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="
