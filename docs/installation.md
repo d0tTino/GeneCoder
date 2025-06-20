@@ -1,19 +1,25 @@
 # Installation
 
-GeneCoder requires Python 3.10 or higher. Clone the repository and install dependencies:
+GeneCoder requires **Python 3.10+**.
+
+## Quick Start
+
+Clone the repository and install the base requirements:
 
 ```bash
 pip install -r requirements.txt
-# For the optional GUI, install the `gui` extras:
-pip install .[gui]
+# Extras for optional features
+pip install .[gui]  # Flet GUI
+pip install .[web]  # FastAPI web interface
 # For exact versions used in CI, see requirements.lock
 ```
 
-For development, install the project in editable mode. This lets you run the CLI
-as `genecoder` and immediately pick up local changes:
+## Development Setup
+
+Install the project in editable mode so local changes are picked up immediately:
 
 ```bash
-pip install -e .[gui]
+pip install -e .[gui,web]
 ```
 
 ## Running Tests
@@ -34,7 +40,7 @@ The progress report outlines a conda workflow using `mamba` to create a dedicate
 ```bash
 mamba create -n genecoder python=3.12 flet>=0.28,<0.29 reedsolo matplotlib pytest ruff mypy
 mamba activate genecoder
-pip install -e .
+pip install -e .[gui,web]
 pre-commit install
 ```
 ## Windows Quick Start
@@ -45,7 +51,7 @@ Install Miniforge with `winget` and create a dedicated environment using `mamba`
 winget install conda-forge.miniforge
 mamba create -n genecoder python=3.12 flet>=0.28,<0.29 reedsolo matplotlib pytest ruff mypy
 mamba activate genecoder
-pip install -e .[gui]
+pip install -e .[gui,web]
 pre-commit install
 ```
 

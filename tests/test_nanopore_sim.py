@@ -143,3 +143,7 @@ def test_simulate_reads_preserves_global_rng(monkeypatch):
     assert before == expected_first
     assert after == expected_second
 
+
+def test_simulate_reads_unknown_simulator():
+    with pytest.raises(ValueError, match="Unknown simulator"):
+        nanopore_sim.simulate_reads("ACGT", "bogus")

@@ -2,5 +2,12 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata below."
 title: "GeneCoder"
 version: "0.1.0"
+date-released: "2025-06-16"
+url: "https://github.com/d0tTino/GeneCoder"
+repository-code: "https://github.com/d0tTino/GeneCoder"
 authors:
-  - name: "GeneCoder Team"
+  - family-names: "Tonitini"
+    given-names: "Tino"
+contact:
+  - family-names: "Tonitini"
+    given-names: "Tino"
