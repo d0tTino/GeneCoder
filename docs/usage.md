@@ -122,9 +122,15 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    Install the desired simulator separately and ensure the command is on your
    ``PATH``:
 
-   * ``d2sim`` — [D2Sim](https://github.com/kurimsw/d2sim)
+   * ``d2sim`` — [D2Sim](https://github.com/kurimsw/d2sim). Follow the
+     instructions in the repository to build the binary and place ``d2sim`` on
+     your ``PATH``.
    * ``dnarsim`` — [DNArSim](https://github.com/Purdue-ScottLab/DNArSim)
    * ``squigulator`` — [Squigulator](https://github.com/hasindu2008/squigulator)
+
+   The ``d2sim`` adapter is bundled with GeneCoder and is registered
+   automatically. Once the ``d2sim`` command is available you can invoke it with
+   ``--simulator d2sim``.
 
    When a command is missing GeneCoder automatically falls back to an internal
    error model.
