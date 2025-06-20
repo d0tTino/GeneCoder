@@ -6,7 +6,7 @@ rendered to in-memory buffers for display in Flet or other GUI frameworks.
 """
 import io
 import collections
-from typing import Any, Dict, List
+from typing import Dict, List, TYPE_CHECKING
 
 import base64
 
@@ -29,6 +29,7 @@ except Exception:  # noqa: BLE001 - broader catch for optional import
     plt = None
     MaxNLocator = None
     _MATPLOTLIB_AVAILABLE = False
+
 
 _DUMMY_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="

@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 - CLI/GUI option ``--alphabet`` supporting ``base4``, ``base5`` and ``base6``.
 - Fixed plugin registration during package installation.
 - Pinned dependencies to stable versions.
+- ``encode_gc_balanced`` now validates the inverted sequence and logs a warning
+  if it still violates GC content or homopolymer limits.
 
 ## [0.1.0] - 2025-06-12
 ### Added
