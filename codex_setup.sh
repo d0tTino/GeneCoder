@@ -9,8 +9,8 @@ fi
 source .venv/bin/activate
 
 # 2. Install dependencies and pre-commit
-pip install -r requirements.lock
-pip install pre-commit
+pip install poetry pre-commit
+poetry install --with gui,web,dev --no-interaction --no-root
 
 # 3. Install the pre-commit hook
 pre-commit install

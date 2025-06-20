@@ -4,14 +4,17 @@ GeneCoder requires **Python 3.10+**.
 
 ## Quick Start
 
-Clone the repository and install the base requirements:
+Clone the repository and install the base requirements using
+[Poetry](https://python-poetry.org/):
 
 ```bash
-pip install -r requirements.txt
-# Extras for optional features
-pip install .[gui]  # Flet GUI
-pip install .[web]  # FastAPI web interface
-# For exact versions used in CI, see requirements.lock
+poetry install --no-interaction
+```
+
+Install optional extras with the `--with` flag:
+
+```bash
+poetry install --with gui,web --no-interaction
 ```
 
 ## Development Setup
@@ -19,18 +22,15 @@ pip install .[web]  # FastAPI web interface
 Install the project in editable mode so local changes are picked up immediately:
 
 ```bash
-pip install -e .[gui,web]
+poetry install --with gui,web,dev --no-interaction
 ```
 
 ## Running Tests
 
-Unit tests use `pytest`. Install the exact versions from `requirements.lock`
-before running the suite so your environment matches CI. Otherwise tests may
-fail due to missing packages.
+Run the tests inside the Poetry environment:
 
 ```bash
-pip install -r requirements.lock
-pytest -q
+poetry run pytest -q
 ```
 
 ## Mamba-Based Setup
@@ -40,7 +40,7 @@ The progress report outlines a conda workflow using `mamba` to create a dedicate
 ```bash
 mamba create -n genecoder python=3.12 flet>=0.28,<0.29 reedsolo matplotlib pytest ruff mypy
 mamba activate genecoder
-pip install -e .[gui,web]
+poetry install --with gui,web,dev --no-interaction
 pre-commit install
 ```
 ## Windows Quick Start
@@ -51,7 +51,7 @@ Install Miniforge with `winget` and create a dedicated environment using `mamba`
 winget install conda-forge.miniforge
 mamba create -n genecoder python=3.12 flet>=0.28,<0.29 reedsolo matplotlib pytest ruff mypy
 mamba activate genecoder
-pip install -e .[gui,web]
+poetry install --with gui,web,dev --no-interaction
 pre-commit install
 ```
 
@@ -59,7 +59,7 @@ Verify the installation with a quick smoke test:
 
 ```powershell
 genecoder --version
-pytest -q
+poetry run pytest -q
 ```
 
 ## Configuring the OpenAI API Key
@@ -90,8 +90,8 @@ export OPENAI_API_KEY=sk-yourkey
 Install the documentation dependencies and generate the static site:
 
 ```bash
-pip install -r docs/requirements.txt
-mkdocs build
+poetry run pip install -r docs/requirements.txt
+poetry run mkdocs build
 ```
 
 The combined PDF will be available at `site/pdf/combined.pdf`.

@@ -17,15 +17,17 @@ For instructions on launching the GUI see the [usage guide](docs/usage.md#launch
 
 ## Quick Start
 
-GeneCoder requires **Python 3.10+**. Install the base dependencies and any
-optional extras you want to use:
+GeneCoder requires **Python 3.10+**. Install the dependencies using
+[Poetry](https://python-poetry.org/):
 
 ```bash
-pip install -r requirements.txt
-# Flet-based GUI support
-pip install .[gui]
-# FastAPI web interface
-pip install .[web]
+poetry install --no-interaction
+```
+
+Install optional extras for the GUI or web API with:
+
+```bash
+poetry install --with gui,web --no-interaction
 ```
 
 Desktop packages are available on the [releases page](https://github.com/d0tTino/GeneCoder/releases).
@@ -36,18 +38,18 @@ To run the web build locally install the optional `web` extras and start the
 FastAPI server:
 
 ```bash
-pip install .[web]
-uvicorn web.main:app --reload
+poetry install --with web --no-interaction
+poetry run uvicorn web.main:app --reload
 ```
 
 See [docs/installation.md](docs/installation.md) for detailed setup and testing instructions, including the [mamba-based setup](docs/installation.md#mamba-based-setup) and the [Windows Quick Start](docs/installation.md#windows-quick-start).
 
 ## Development Setup
 
-Install the project in editable mode with any extras you need:
+Install the project in editable mode with development tools:
 
 ```bash
-pip install -e .[gui,web]
+poetry install --with gui,web,dev --no-interaction
 ```
 
 ## OpenAI Testing Environment

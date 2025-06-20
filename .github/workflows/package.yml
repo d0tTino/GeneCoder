@@ -24,17 +24,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Cache pip
+      - name: Cache Poetry
         uses: actions/cache@v3
         with:
           path: |
-            ~/.cache/pip
-            ~\AppData\Local\pip\Cache
-          key: pip-${{ runner.os }}-${{ hashFiles('requirements.lock') }}
+            ~/.cache/pypoetry
+            ~\AppData\Local\pypoetry
+          key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
+          pip install poetry pyinstaller
+          poetry install --with gui,web --no-interaction --no-root
       - name: Build package
         run: ./scripts/package_desktop.sh ${{ github.ref_name }}
         shell: bash

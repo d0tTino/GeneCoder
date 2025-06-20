@@ -6,63 +6,59 @@ line-length = 88
   extend-select = []
   extend-ignore = ["E402"]
 
-[project]
+
+[tool.poetry]
 name = "GeneCoder"
 version = "0.1.0"
 description = "Simulated DNA data encoding & decoding toolkit"
-authors = [{ name = "GeneCoder Team" }]
+authors = ["GeneCoder Team"]
 readme = "README.md"
-license = { text = "MIT" }
-requires-python = ">=3.10"
+license = "MIT"
+homepage = "https://github.com/d0tTino/GeneCoder"
+repository = "https://github.com/d0tTino/GeneCoder"
 keywords = ["DNA", "storage", "encoding", "simulation"]
-dependencies = [
-    "flet>=0.28,<0.29",
-    "matplotlib",
-    "reedsolo",
+packages = [
+    { include = "genecoder", from = "src" },
+    { include = "plugins", from = "src" },
 ]
 
-[project.optional-dependencies]
-gui = [
-    "flet>=0.28,<0.29",
-    "matplotlib",
-]
-web = [
-    "fastapi",
-    "uvicorn[standard]",
-    "httpx",
-]
+[tool.poetry.dependencies]
+python = "^3.10"
+reedsolo = "*"
 
-[project.scripts]
+[tool.poetry.group.gui.dependencies]
+flet = ">=0.28,<0.29"
+matplotlib = "*"
+
+[tool.poetry.group.web.dependencies]
+fastapi = "*"
+uvicorn = { version = "*", extras = ["standard"] }
+httpx = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-cov = "*"
+pre-commit = "*"
+ruff = "*"
+mypy = "*"
+
+[tool.poetry.scripts]
 genecoder = "genecoder.cli.cli:main"
 
-[project.entry-points."genecoder.plugins"]
+[tool.poetry.plugins."genecoder.plugins"]
 reverse = "plugins.reverse_codec"
 
-[project.entry-points."genecoder.fec"]
+[tool.poetry.plugins."genecoder.fec"]
 reed_solomon = "genecoder.reed_solomon_codec"
 ldpc = "genecoder.ldpc_codec"
 fountain = "genecoder.fountain_codec"
 
-[project.entry-points."genecoder.simulators"]
+[tool.poetry.plugins."genecoder.simulators"]
 nanopore = "genecoder.nanopore_sim"
 
-[project.urls]
-Homepage = "https://github.com/d0tTino/GeneCoder"
-Changelog = "https://github.com/d0tTino/GeneCoder/blob/main/CHANGELOG.md"
-
-[tool.setuptools.package-dir]
-"" = "src"
-
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["genecoder*", "plugins*"]
-
-[tool.setuptools.package-data]
-"genecoder" = ["py.typed", "static/*"]
-
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.flet]
 product = "GeneCoder"
