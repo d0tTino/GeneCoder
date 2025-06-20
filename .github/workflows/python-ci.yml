@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       src: ${{ steps.filter.outputs.src }}
     steps:
@@ -50,7 +50,7 @@ jobs:
               - 'openai_testing/**'
 
   check-comments:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       only_comments: ${{ steps.comment_check.outputs.only_comments }}
     steps:
