@@ -1,6 +1,6 @@
 # Contributing to GeneCoder
 
-Thank you for your interest in improving GeneCoder! This project uses a few GitHub features and development tools that help keep the code base healthy. The most important pieces are summarized below.
+Thank you for your interest in improving GeneCoder! Contributions are accepted under the terms of the MIT License. By submitting a pull request you agree to license your work under the MIT License. This project uses a few GitHub features and development tools that help keep the code base healthy. The most important pieces are summarized below.
 
 ## Merge Queue
 
