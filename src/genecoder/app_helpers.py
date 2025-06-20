@@ -122,10 +122,11 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
     elif options.fec_method == "Reed-Solomon":
         info_msgs.append("Reed-Solomon FEC applied.")
 
-    header_parts = [
-        f"method={method.lower().replace(' ', '_').replace('-', '_')}",
-        "input_file=gui_input",
-    ]
+    method_id = method.lower().replace(" ", "_").replace("-", "_")
+    # Historically this method used "base_4_direct"; map to "base4_direct" now
+    if method == "Base-4 Direct":
+        method_id = "base4_direct"
+    header_parts = [f"method={method_id}", "input_file=gui_input"]
     if should_add_parity and method != "GC-Balanced":
         header_parts.extend(
             [f"parity_k={options.k_value}", f"parity_rule={PARITY_RULE_GC_EVEN_A_ODD_T}"]
