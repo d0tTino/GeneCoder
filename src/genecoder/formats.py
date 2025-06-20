@@ -5,7 +5,13 @@ sequences, where nucleotides or amino acids are represented using single-letter
 codes. A sequence in FASTA format consists of a single-line description (header),
 followed by lines of sequence data.
 """
-from typing import List, Tuple # For type hints
+from typing import List, Tuple  # For type hints
+
+# The set of valid characters for FASTA sequence lines.
+# Valid characters are the uppercase ASCII letters ``A``-``Z``, the digits
+# ``0``-``9``, the gap characters ``-`` and ``*``, and the slash ``/``.
+# Lowercase characters are considered invalid and will trigger a ``ValueError``.
+FASTA_ALLOWED_CHARS: set[str] = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-*/")
 
 def to_fasta(dna_sequence: str, header: str, line_width: int = 60) -> str:
     """Formats a DNA sequence into a FASTA formatted string.
@@ -76,7 +82,7 @@ def from_fasta(fasta_content: str) -> List[Tuple[str, str]]:
 
     lines = fasta_content.splitlines()
 
-    for line_text in lines: # Renamed 'line' to 'line_text' for clarity
+    for line_number, line_text in enumerate(lines, start=1):
         stripped_line = line_text.strip()
         if not stripped_line: # Skip empty or whitespace-only lines
             continue
@@ -88,10 +94,12 @@ def from_fasta(fasta_content: str) -> List[Tuple[str, str]]:
             
             current_header = stripped_line[1:].strip() # Store header without ">"
             current_sequence_parts = [] # Reset for the new sequence
-        elif current_header is not None: 
+        elif current_header is not None:
             # This is a sequence line for the current active header.
             # Remove all whitespace (leading, trailing, and internal) from the sequence line.
             processed_sequence_line = "".join(stripped_line.split())
+            if not set(processed_sequence_line).issubset(FASTA_ALLOWED_CHARS):
+                raise ValueError(f"Invalid characters on line {line_number}.")
             current_sequence_parts.append(processed_sequence_line)
         # else: If line_text does not start with ">" and no current_header is active,
         #       it's considered content outside a valid FASTA record (e.g., text
