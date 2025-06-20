@@ -89,9 +89,7 @@ def test_encode_decode_buttons(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert enc_vars["sequence_analysis_plot_image"].src_base64
 
     fasta_out = tmp_path / "encoded.fasta"
-    fasta_out.write_text(
-        enc_vars["encode_hidden_fasta_content"].value.replace("method=base_4_direct", "method=base4_direct")
-    )
+    fasta_out.write_text(enc_vars["encode_hidden_fasta_content"].value)
 
     dec_vars["selected_decode_input_file_path"].current = str(fasta_out)
     asyncio.run(decode_cb(None))

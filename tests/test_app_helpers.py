@@ -15,12 +15,12 @@ def test_roundtrip_base4_direct_hamming():
     )
     enc = perform_encoding(data, opts)
     header_line = enc.fasta.splitlines()[0]
+    assert "method=base4_direct" in header_line
     assert "fec=hamming_7_4" in header_line
     assert any("Hamming(7,4) FEC applied." in m for m in enc.info_messages)
     assert any("Add Parity" in m for m in enc.info_messages)
 
-    corrected = enc.fasta.replace("method=base_4_direct", "method=base4_direct")
-    dec = perform_decoding(corrected)
+    dec = perform_decoding(enc.fasta)
     assert dec.decoded_bytes == data
     assert re.search(r"Hamming\(7,4\) FEC: \d+ corrected", dec.status_message)
 
@@ -32,11 +32,11 @@ def test_reed_solomon_roundtrip():
     opts = EncodeOptions(method="Base-4 Direct", fec_method="Reed-Solomon")
     enc = perform_encoding(data, opts)
     header = enc.fasta.splitlines()[0]
+    assert "method=base4_direct" in header
     assert "fec=reed_solomon" in header
     assert any("Reed-Solomon FEC applied." in m for m in enc.info_messages)
 
-    corrected = enc.fasta.replace("method=base_4_direct", "method=base4_direct")
-    dec = perform_decoding(corrected)
+    dec = perform_decoding(enc.fasta)
     assert dec.decoded_bytes == data
     assert "Reed-Solomon FEC" in dec.status_message
 
@@ -48,9 +48,8 @@ def test_triple_repeat_length_warning():
     header = enc.fasta.splitlines()[0]
     seq = enc.fasta.splitlines()[1][:-1]  # break length multiple of 3
     modified = f">{header}\n{seq}\n"
-    corrected = modified.replace("method=base_4_direct", "method=base4_direct")
     with pytest.raises(ValueError):
-        perform_decoding(corrected)
+        perform_decoding(modified)
 
 
 def test_decoding_invalid_huffman_json():
@@ -67,7 +66,6 @@ def test_decoding_missing_rs_nsym():
     enc = perform_encoding(data, opts)
     header = enc.fasta.splitlines()[0]
     header = re.sub(r"fec_nsym=\d+", "", header)
-    header = header.replace("method=base_4_direct", "method=base4_direct")
     fasta = f">{header}\n{enc.fasta.splitlines()[1]}\n"
     result = perform_decoding(fasta)
     assert result.decoded_bytes != data
@@ -114,7 +112,7 @@ def test_parity_error_detection():
     opts = EncodeOptions(method="Base-4 Direct", add_parity=True, k_value=4)
     enc = perform_encoding(data, opts)
     lines = enc.fasta.splitlines()
-    header = lines[0].replace("method=base_4_direct", "method=base4_direct")
+    header = lines[0]
     seq = list(lines[1])
     # flip first parity nucleotide (position k_value)
     parity_idx = 4
@@ -132,7 +130,6 @@ def test_hamming_missing_padding_bits():
     enc = perform_encoding(data, opts)
     header = enc.fasta.splitlines()[0]
     header = re.sub(r"fec_padding_bits=\d+", "", header)
-    header = header.replace("method=base_4_direct", "method=base4_direct")
     fasta = f">{header}\n{enc.fasta.splitlines()[1]}\n"
     result = perform_decoding(fasta)
     assert "fec_padding_bits' missing" in result.status_message
