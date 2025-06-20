@@ -38,7 +38,7 @@ def introduce_errors(
     ------
     ValueError
         If any of ``substitution_prob``, ``insertion_prob`` or ``deletion_prob``
-        is outside the range [0.0, 1.0].
+        is outside the range [0.0, 1.0] or if their sum exceeds 1.0.
 
     Returns
     -------
@@ -51,6 +51,8 @@ def introduce_errors(
         raise ValueError("insertion_prob must be between 0 and 1")
     if not 0.0 <= deletion_prob <= 1.0:
         raise ValueError("deletion_prob must be between 0 and 1")
+    if substitution_prob + insertion_prob + deletion_prob > 1.0:
+        raise ValueError("sum of error probabilities must not exceed 1")
 
     if rng is None:
         rng = random.Random()
