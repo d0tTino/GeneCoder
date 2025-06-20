@@ -19,7 +19,7 @@ from genecoder.encoders import (
 )
 from genecoder.hamming_codec import encode_data_with_hamming
 from genecoder.plugins import FEC_REGISTRY
-from genecoder.formats import to_fasta
+from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
@@ -212,7 +212,14 @@ def process_single_encode(
             logger.info(
                 f"Successfully encoded '{input_file_path}' to '{output_file_path}' using streaming."
             )
-            return os.path.basename(input_file_path), ""
+
+            with open(output_file_path, "r", encoding="utf-8") as f_out:
+                fasta_content = f_out.read()
+
+            parsed_records = from_fasta(fasta_content)
+            dna_sequence = parsed_records[0][1] if parsed_records else ""
+
+            return os.path.basename(input_file_path), dna_sequence
 
         with open(input_file_path, "rb") as f_in:
             original_input_data = f_in.read()

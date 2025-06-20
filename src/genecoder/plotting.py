@@ -6,10 +6,13 @@ rendered to in-memory buffers for display in Flet or other GUI frameworks.
 """
 import io
 import collections
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import base64
 
+matplotlib: Any
+plt: Any
+MaxNLocator: Any
 try:  # pragma: no cover - optional dependency
     import matplotlib
     matplotlib.use("Agg")
