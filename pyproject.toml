@@ -45,6 +45,7 @@ fountain = "genecoder.fountain_codec"
 
 [project.entry-points."genecoder.simulators"]
 nanopore = "genecoder.nanopore_sim"
+d2sim = "genecoder.d2sim_adapter"
 
 [project.urls]
 Homepage = "https://github.com/d0tTino/GeneCoder"
