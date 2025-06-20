@@ -57,16 +57,25 @@ def test_introduce_errors_combined_operations():
     rng = random.Random(1)
     result = introduce_errors(
         "AT",
-        substitution_prob=0.5,
-        insertion_prob=0.5,
-        deletion_prob=0.5,
+        substitution_prob=0.3,
+        insertion_prob=0.3,
+        deletion_prob=0.3,
         rng=rng,
     )
     assert result == "TG"
 
 
 def test_introduce_errors_empty_sequence():
-    assert introduce_errors("", substitution_prob=1.0, insertion_prob=1.0, deletion_prob=1.0, rng=random.Random(0)) == ""
+    assert (
+        introduce_errors(
+            "",
+            substitution_prob=1.0,
+            insertion_prob=0.0,
+            deletion_prob=0.0,
+            rng=random.Random(0),
+        )
+        == ""
+    )
 
 
 @pytest.mark.parametrize(
@@ -84,3 +93,14 @@ def test_introduce_errors_invalid_probabilities(kw: str, value: float) -> None:
     kwargs = {kw: value, "rng": random.Random(0)}
     with pytest.raises(ValueError):
         introduce_errors("A", **kwargs)
+
+
+def test_introduce_errors_probability_sum_exceeds_one() -> None:
+    with pytest.raises(ValueError):
+        introduce_errors(
+            "A",
+            substitution_prob=0.6,
+            insertion_prob=0.3,
+            deletion_prob=0.2,
+            rng=random.Random(0),
+        )
