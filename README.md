@@ -30,6 +30,13 @@ Install optional extras for the GUI or web API with:
 poetry install --with gui,web --no-interaction
 ```
 
+Alternatively, use `pip` with **Python 3.10+** to install the project in
+editable mode:
+
+```bash
+python -m pip install -e .[gui,web]
+```
+
 Desktop packages are available on the [releases page](https://github.com/d0tTino/GeneCoder/releases).
 Download the `.msix` file for Windows or the `.dmg` for macOS and follow your
 platform's standard installation prompts.
