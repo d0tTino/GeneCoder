@@ -4,7 +4,19 @@ from __future__ import annotations
 import random
 from typing import Callable, Any
 
-from .nanopore_sim import _simulate_adapter
+from .nanopore_sim import _simulate_adapter, _run_external
+
+
+class _D2SIM:
+    """Internal helper to invoke the :mod:`d2sim` binary."""
+
+    command = "d2sim"
+
+    @staticmethod
+    def run(sequence: str) -> str:
+        """Run ``d2sim`` on ``sequence`` via :func:`_run_external`."""
+
+        return _run_external(_D2SIM.command, sequence)
 
 
 def simulate_d2sim(

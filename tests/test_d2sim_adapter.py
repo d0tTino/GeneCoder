@@ -100,3 +100,17 @@ def test_command_not_found_warning(monkeypatch, caplog):
         rec.levelno == logging.WARNING and "not found" in rec.message
         for rec in caplog.records
     )
+
+
+def test_d2sim_class_run(monkeypatch):
+    called = []
+
+    def fake_run_external(cmd, seq):
+        called.append((cmd, seq))
+        return "ok"
+
+    monkeypatch.setattr(d2sim_adapter, "_run_external", fake_run_external)
+
+    result = d2sim_adapter._D2SIM.run("ACGT")
+    assert result == "ok"
+    assert called == [("d2sim", "ACGT")]
