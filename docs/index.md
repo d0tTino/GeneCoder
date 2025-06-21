@@ -15,3 +15,4 @@ GeneCoder has been enhanced with new encoding strategies, error correction, batc
 For more details, explore the sections below.
 
 * [Plugin System](plugins.md) – Extend GeneCoder with custom codecs and viewers.
+* [Vertical Slice Guide](vertical_slice.md) – Quick setup and interface demo.
