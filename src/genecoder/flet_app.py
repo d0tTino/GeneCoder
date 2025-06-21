@@ -16,6 +16,7 @@ import flet as ft
 import os
 import asyncio  # For asynchronous operations
 import json
+from typing import Optional
 
 # Project module imports
 from genecoder import (
@@ -29,7 +30,7 @@ from genecoder.helix_view import show_helix
 from genecoder.formats import from_fasta
 
 
-encode_fasta_data_to_save_ref: ft.Ref[str] = ft.Ref[str]()
+encode_fasta_data_to_save_ref: ft.Ref[Optional[str]] = ft.Ref[Optional[str]]()
 decoded_bytes_to_save: bytes = b""
 
 
@@ -39,10 +40,10 @@ def main(page: ft.Page) -> None:
     page.vertical_alignment = ft.MainAxisAlignment.START
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    selected_encode_input_file_path: ft.Ref[str] = ft.Ref[str]()
+    selected_encode_input_file_path: ft.Ref[Optional[str]] = ft.Ref[Optional[str]]()
     selected_encode_input_file_path.current = ""
 
-    selected_decode_input_file_path: ft.Ref[str] = ft.Ref[str]()
+    selected_decode_input_file_path: ft.Ref[Optional[str]] = ft.Ref[Optional[str]]()
     selected_decode_input_file_path.current = ""
 
     # --- Analysis Tab UI Controls (defined early for access in encode_data) ---
@@ -80,7 +81,7 @@ def main(page: ft.Page) -> None:
     helix_color_c: ft.TextField = ft.TextField(label="C", value="#5555ff", width=100)
     helix_color_g: ft.TextField = ft.TextField(label="G", value="#55ff55", width=100)
     helix_color_t: ft.TextField = ft.TextField(label="T", value="#ffff55", width=100)
-    helix_controls = ft.Row(
+    helix_controls: ft.Row = ft.Row(
         [
             helix_length_input,
             helix_color_a,
@@ -92,19 +93,19 @@ def main(page: ft.Page) -> None:
     )
 
 
-    window_size_input = ft.TextField(
+    window_size_input: ft.TextField = ft.TextField(
         label="GC Window Size",
         value="50",
         width=120,
         keyboard_type=ft.KeyboardType.NUMBER,
     )
-    step_size_input = ft.TextField(
+    step_size_input: ft.TextField = ft.TextField(
         label="Step",
         value="10",
         width=100,
         keyboard_type=ft.KeyboardType.NUMBER,
     )
-    min_homopolymer_input = ft.TextField(
+    min_homopolymer_input: ft.TextField = ft.TextField(
         label="Min Homopolymer Length",
         value="4",
         width=180,
@@ -128,7 +129,9 @@ def main(page: ft.Page) -> None:
             )
         page.update()
 
-    encode_file_picker = ft.FilePicker(on_result=on_encode_file_picker_result)
+    encode_file_picker: ft.FilePicker = ft.FilePicker(
+        on_result=on_encode_file_picker_result
+    )
     page.overlay.append(encode_file_picker)
 
     encode_browse_button = ft.ElevatedButton(
@@ -234,7 +237,7 @@ def main(page: ft.Page) -> None:
     encode_hidden_fasta_content: ft.Text = ft.Text(
         ref=encode_fasta_data_to_save_ref, visible=False, value=""
     )
-    encode_manifest_to_save_ref: ft.Ref[str] = ft.Ref[str]()
+    encode_manifest_to_save_ref: ft.Ref[Optional[str]] = ft.Ref[Optional[str]]()
     encode_hidden_manifest_content: ft.Text = ft.Text(
         ref=encode_manifest_to_save_ref,
         visible=False,
@@ -424,7 +427,9 @@ def main(page: ft.Page) -> None:
             encode_status_text.color = ft.colors.AMBER_ACCENT_700
         page.update()
 
-    encode_save_file_picker = ft.FilePicker(on_result=on_encode_save_file_result)
+    encode_save_file_picker: ft.FilePicker = ft.FilePicker(
+        on_result=on_encode_save_file_result
+    )
     page.overlay.append(encode_save_file_picker)
 
     encode_save_button.on_click = lambda _: encode_save_file_picker.save_file(
@@ -448,7 +453,9 @@ def main(page: ft.Page) -> None:
             encode_status_text.color = ft.colors.AMBER_ACCENT_700
         page.update()
 
-    manifest_file_picker = ft.FilePicker(on_result=on_manifest_save_file_result)
+    manifest_file_picker: ft.FilePicker = ft.FilePicker(
+        on_result=on_manifest_save_file_result
+    )
     page.overlay.append(manifest_file_picker)
 
     encode_manifest_save_button.on_click = lambda _: manifest_file_picker.save_file(
@@ -502,7 +509,9 @@ def main(page: ft.Page) -> None:
         decode_save_button.visible = False
         page.update()
 
-    decode_file_picker = ft.FilePicker(on_result=on_decode_file_picker_result)
+    decode_file_picker: ft.FilePicker = ft.FilePicker(
+        on_result=on_decode_file_picker_result
+    )
     page.overlay.append(decode_file_picker)
 
     decode_browse_button = ft.ElevatedButton(
@@ -588,7 +597,9 @@ def main(page: ft.Page) -> None:
             decode_status_text.value = "Save decoded file cancelled."
         page.update()
 
-    save_decoded_file_picker = ft.FilePicker(on_result=on_save_decoded_file_result)
+    save_decoded_file_picker: ft.FilePicker = ft.FilePicker(
+        on_result=on_save_decoded_file_result
+    )
     page.overlay.append(save_decoded_file_picker)
 
     decode_save_button.on_click = lambda _: save_decoded_file_picker.save_file(
