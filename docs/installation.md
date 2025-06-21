@@ -17,6 +17,15 @@ Install optional extras with the `--with` flag:
 poetry install --with gui,web --no-interaction
 ```
 
+## Editable install with pip
+
+If you prefer `pip`, ensure you are using **Python 3.10+** and install the
+repository in editable mode so changes take effect immediately:
+
+```bash
+python -m pip install -e .[gui,web]
+```
+
 ## Development Setup
 
 Install the project in editable mode so local changes are picked up immediately:
