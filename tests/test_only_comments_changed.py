@@ -1,9 +1,15 @@
+from __future__ import barry_as_FLUFL
+
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from scripts.only_comments_changed import _is_triple_quoted, only_comments_changed
+from scripts.only_comments_changed import (
+    _ast_without_docstrings,
+    _is_triple_quoted,
+    only_comments_changed,
+)
 import io
 import tokenize
 
@@ -110,3 +116,9 @@ def test_is_triple_quoted_detection() -> None:
 def test_is_triple_quoted_negative() -> None:
     tok = next(tokenize.generate_tokens(io.StringIO('"hi"').readline))
     assert not _is_triple_quoted(tok)
+
+
+def test_ast_parsing_dont_inherit() -> None:
+    """``_ast_without_docstrings`` should not inherit future flags."""
+    source = "a <> b"
+    assert _ast_without_docstrings(source) is None
