@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 import logging
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ from .channel_sim import simulate_errors
 from .formats import from_fasta, to_fasta
 
 
-def _run_external(command: str, sequence: str) -> str:
+def _run_external(command: Sequence[str] | str, sequence: str) -> str:
     """Run an external simulator command on ``sequence``.
 
     The command must accept an input FASTA file and output FASTA to a
@@ -26,7 +26,8 @@ def _run_external(command: str, sequence: str) -> str:
         input_path = Path(tmpdir) / "input.fasta"
         output_path = Path(tmpdir) / "output.fasta"
         input_path.write_text(to_fasta(sequence, "seq"))
-        subprocess.run([command, str(input_path), str(output_path)], check=True)
+        cmd_list = [command] if isinstance(command, str) else list(command)
+        subprocess.run(cmd_list + [str(input_path), str(output_path)], check=True)
         records = from_fasta(output_path.read_text())
         if not records:
             raise RuntimeError(f"{command} produced no FASTA output")
@@ -40,7 +41,10 @@ def _simulate_adapter(
     """Return ``sequence`` processed by an external ``command`` if available."""
     if shutil.which(command):
         try:
-            return _run_external(command, sequence)
+            cmd_list = [command]
+            if command == "d2sim":
+                cmd_list += ["-e", str(error_rate)]
+            return _run_external(cmd_list, sequence)
         except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
             logger.warning(
                 "%s failed with return code %s; falling back to simple error model",

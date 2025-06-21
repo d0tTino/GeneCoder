@@ -24,7 +24,7 @@ def test_run_external(monkeypatch):
     result = d2sim_adapter.simulate_d2sim("ACGT")
     assert result == "external"
     assert which_called == ["d2sim"]
-    assert run_called == [("d2sim", "ACGT")]
+    assert run_called == [(["d2sim", "-e", "0.05"], "ACGT")]
 
 
 def test_fall_back(monkeypatch):
@@ -72,7 +72,7 @@ def test_external_error(monkeypatch, caplog):
 
     assert result == "fallback"
     assert which_called == ["d2sim"]
-    assert run_called == [("d2sim", "ACGT")]
+    assert run_called == [(["d2sim", "-e", "0.2"], "ACGT")]
     assert errors_called and isinstance(errors_called[0][2], random.Random)
     assert any("falling back" in rec.message for rec in caplog.records)
 
