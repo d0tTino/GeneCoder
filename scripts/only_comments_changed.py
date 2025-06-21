@@ -31,7 +31,13 @@ def _ast_without_docstrings(source: str) -> str | None:
     """Return AST dump without docstrings."""
 
     try:
-        tree = ast.parse(source)
+        tree = compile(
+            source,
+            "<string>",
+            "exec",
+            flags=ast.PyCF_ONLY_AST,
+            dont_inherit=True,
+        )
     except SyntaxError:
         return None
 
