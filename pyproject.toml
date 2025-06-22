@@ -34,7 +34,7 @@ flet-webview = "*"
 [tool.poetry.group.web.dependencies]
 fastapi = "*"
 uvicorn = { version = "*", extras = ["standard"] }
-httpx = "*"
+httpx = "<0.28"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

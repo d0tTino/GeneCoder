@@ -3,10 +3,11 @@ import pytest
 fastapi = pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
 from fastapi.testclient import TestClient
+from httpx import WSGITransport
 
 from web.main import app, index_path
 
-client = TestClient(app)
+client = TestClient(app, transport=WSGITransport(app))
 
 
 def test_root_route_serves_index_html() -> None:
