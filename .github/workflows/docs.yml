@@ -6,11 +6,15 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'src/**'
+      - 'web/**'
   pull_request:
     branches: [ main ]
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'src/**'
+      - 'web/**'
   workflow_dispatch: {}
 
 concurrency:

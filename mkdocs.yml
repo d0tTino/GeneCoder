@@ -4,6 +4,9 @@ theme:
   name: material
   palette:
     primary: indigo
+plugins:
+  - search
+  - mkdocstrings
 nav:
   - Home: index.md
   - Getting Started:
@@ -19,6 +22,10 @@ nav:
       - Development Vision: DEVELOPMENT_VISION.md
   - Integrations:
       - n8n Overview: n8n_overview.md
+  - Tutorials:
+      - CLI Tutorial: cli_tutorial.md
+      - GUI Tutorial: gui_tutorial.md
+      - Web API Tutorial: web_api_tutorial.md
   - Archived:
       - Full Development Vision: archived/DEVELOPMENT_VISION.md
   - Technology Stack: technology_stack.md
@@ -26,4 +33,6 @@ nav:
   - Development Vision: DEVELOPMENT_VISION.md
 
   - Plugin System: plugins.md
+
+  - API Reference: api_reference.md
 
