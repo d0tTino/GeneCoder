@@ -11,6 +11,7 @@ import re
 from dataclasses import dataclass
 
 from genecoder.encoders import decode_base4_direct, decode_gc_balanced, decode_triple_repeat
+from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import decode_data_with_hamming
 from genecoder.plugins import FEC_REGISTRY, SIMULATOR_REGISTRY
 from genecoder.formats import from_fasta
@@ -94,6 +95,13 @@ def run_decoding_pipeline(
             expected_gc_max=gc_max,
             expected_max_homopolymer=max_hp,
         )
+    elif options.method == "gc_balanced_advanced":
+        if should_check_parity:
+            logger.warning(
+                f"Warning for {input_file_name}: --check-parity is not applicable to 'gc_balanced_advanced'."
+            )
+        balancer = AdvancedGCBalancer(0.0, 1.0, 0)
+        binary_data = balancer.decode(dna_for_primary)
     else:
         raise ValueError(f"Unknown decoding method '{options.method}'.")
 
@@ -241,7 +249,7 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--method",
         type=str,
         default="base4_direct",
-        choices=["base4_direct", "huffman", "gc_balanced"],
+        choices=["base4_direct", "huffman", "gc_balanced", "gc_balanced_advanced"],
         help="Decoding method to use (default: base4_direct).",
     )
     parser.add_argument(

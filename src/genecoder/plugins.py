@@ -103,6 +103,10 @@ def load_plugins() -> None:
     _ldpc.register(register_fec)
     from . import fountain_codec as _fountain
     _fountain.register(register_fec)
+    from . import bch_codec as _bch
+    _bch.register(register_fec)
+    from . import raptorq_codec as _raptorq
+    _raptorq.register(register_fec)
     from . import nanopore_sim as _nano
     if hasattr(_nano, "register"):
         _nano.register(register_simulator)
