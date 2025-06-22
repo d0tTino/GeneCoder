@@ -29,6 +29,7 @@ reedsolo = "*"
 [tool.poetry.group.gui.dependencies]
 flet = ">=0.28,<0.29"
 matplotlib = "*"
+flet-webview = "*"
 
 [tool.poetry.group.web.dependencies]
 fastapi = "*"
