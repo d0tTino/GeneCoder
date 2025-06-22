@@ -157,6 +157,8 @@ Example snippet:
 }
 ```
 
+See [Manifest Format](manifest.md) for the full structure and required keys.
+
 
 
 ### Capsule output
