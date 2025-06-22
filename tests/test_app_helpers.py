@@ -58,6 +58,16 @@ def test_decoding_invalid_huffman_json():
         perform_decoding(fasta)
 
 
+def test_decoding_huffman_extra_text_after_json():
+    fasta = (
+        ">method=huffman input_file=x "
+        "huffman_params={\"table\":{\"65\":\"0\"},\"padding\":0} extratext\n"
+        "AAAA\n"
+    )
+    with pytest.raises(ValueError):
+        perform_decoding(fasta)
+
+
 def test_decoding_missing_rs_nsym():
     if not _HAS_REEDSOLO:
         pytest.skip("reedsolo not installed")
