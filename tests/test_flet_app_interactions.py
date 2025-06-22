@@ -94,3 +94,91 @@ def test_encode_decode_buttons(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     dec_vars["selected_decode_input_file_path"].current = str(fasta_out)
     asyncio.run(decode_cb(None))
     assert "successful" in dec_vars["decode_status_text"].value.lower()
+
+
+def test_encode_unexpected_error_propagates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured, _ = _setup_flet(monkeypatch)
+    from genecoder import flet_app
+
+    def boom(*_a, **_k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(flet_app, "perform_encoding", boom)
+
+    ft.app(target=flet_app.main, view=ft.AppView.FLET_APP_HIDDEN, port=0)
+
+    encode_cb = captured["encode"].on_click
+    enc_vars = {n: c.cell_contents for n, c in zip(encode_cb.__code__.co_freevars, encode_cb.__closure__)}
+
+    input_path = tmp_path / "data.bin"
+    input_path.write_bytes(b"abc")
+    enc_vars["selected_encode_input_file_path"].current = str(input_path)
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(encode_cb(None))
+
+
+def test_decode_unexpected_error_propagates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured, _ = _setup_flet(monkeypatch)
+    from genecoder import flet_app
+
+    def boom(*_a, **_k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(flet_app, "perform_decoding", boom)
+
+    ft.app(target=flet_app.main, view=ft.AppView.FLET_APP_HIDDEN, port=0)
+
+    decode_cb = captured["decode"].on_click
+    dec_vars = {n: c.cell_contents for n, c in zip(decode_cb.__code__.co_freevars, decode_cb.__closure__)}
+
+    fasta_in = tmp_path / "data.fasta"
+    fasta_in.write_text(">seq1\nATGC")
+    dec_vars["selected_decode_input_file_path"].current = str(fasta_in)
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(decode_cb(None))
+
+
+def test_encode_value_error_handled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured, _ = _setup_flet(monkeypatch)
+    from genecoder import flet_app
+
+    def bad(*_a, **_k):
+        raise ValueError("bad input")
+
+    monkeypatch.setattr(flet_app, "perform_encoding", bad)
+
+    ft.app(target=flet_app.main, view=ft.AppView.FLET_APP_HIDDEN, port=0)
+
+    encode_cb = captured["encode"].on_click
+    enc_vars = {n: c.cell_contents for n, c in zip(encode_cb.__code__.co_freevars, encode_cb.__closure__)}
+
+    input_path = tmp_path / "data.bin"
+    input_path.write_bytes(b"abc")
+    enc_vars["selected_encode_input_file_path"].current = str(input_path)
+
+    asyncio.run(encode_cb(None))
+    assert "bad input" in enc_vars["encode_status_text"].value
+
+
+def test_decode_value_error_handled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured, _ = _setup_flet(monkeypatch)
+    from genecoder import flet_app
+
+    def bad(*_a, **_k):
+        raise ValueError("bad fasta")
+
+    monkeypatch.setattr(flet_app, "perform_decoding", bad)
+
+    ft.app(target=flet_app.main, view=ft.AppView.FLET_APP_HIDDEN, port=0)
+
+    decode_cb = captured["decode"].on_click
+    dec_vars = {n: c.cell_contents for n, c in zip(decode_cb.__code__.co_freevars, decode_cb.__closure__)}
+
+    fasta_in = tmp_path / "data.fasta"
+    fasta_in.write_text(">seq1\nATGC")
+    dec_vars["selected_decode_input_file_path"].current = str(fasta_in)
+
+    asyncio.run(decode_cb(None))
+    assert "bad fasta" in dec_vars["decode_status_text"].value
