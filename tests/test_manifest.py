@@ -1,3 +1,4 @@
+
 import pytest
 
 from genecoder.manifest import generate_manifest
@@ -48,3 +49,4 @@ def test_generate_manifest_invalid_type() -> None:
 def test_generate_manifest_dataclass_type() -> None:
     with pytest.raises(ValueError, match="encoding_params must be a dataclass or mapping"):
         generate_manifest("bad.txt", EncodingOptions, {"dna_length": 1})
+

@@ -9,6 +9,7 @@ nav:
   - Getting Started:
       - Installation: installation.md
       - Usage Guide: usage.md
+      - Manifest Format: manifest.md
   - Project Overview:
       - Vision & Core Concept: vision.md
       - Implemented Features: features.md

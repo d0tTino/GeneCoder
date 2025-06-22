@@ -62,4 +62,11 @@ def read_capsule(path: str) -> Capsule:
         raise OSError(f"Could not read capsule file: {path}") from exc
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid capsule file: {path}") from exc
-    return Capsule(**data)
+
+    if not isinstance(data, dict):
+        raise ValueError("Invalid capsule file structure")
+
+    try:
+        return Capsule(**data)
+    except TypeError as exc:
+        raise ValueError("Invalid capsule file structure") from exc

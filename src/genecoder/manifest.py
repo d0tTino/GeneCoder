@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import asdict, is_dataclass
 from typing import Any, Mapping
 
+REQUIRED_ENCODING_KEYS: set[str] = {"method"}
+
 
 def generate_manifest(
     file_name: str,
@@ -22,6 +24,7 @@ def generate_manifest(
         params = dict(encoding_params)
     else:
         raise ValueError("encoding_params must be a dataclass or mapping")
+
     return {
         "file": file_name,
         "encoding_parameters": params,
