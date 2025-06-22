@@ -16,6 +16,7 @@ import flet as ft
 import os
 import asyncio  # For asynchronous operations
 import json
+import logging
 from typing import Optional
 
 # Project module imports
@@ -28,6 +29,9 @@ from genecoder.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
 from genecoder.helix_view import show_helix
 from genecoder.formats import from_fasta
+
+
+logger = logging.getLogger(__name__)
 
 
 encode_fasta_data_to_save_ref: ft.Ref[Optional[str]] = ft.Ref[Optional[str]]()
@@ -326,7 +330,13 @@ def main(page: ft.Page) -> None:
                 page.update()
                 return
 
-            result = await asyncio.to_thread(perform_encoding, input_data, options)
+            try:
+                result = await asyncio.to_thread(perform_encoding, input_data, options)
+            except ValueError as ex:
+                encode_status_text.value = f"Error: {ex}"
+                encode_status_text.color = ft.colors.RED_ACCENT_700
+                page.update()
+                return
 
             encode_hidden_fasta_content.value = result.fasta
             encode_hidden_sequence.value = result.encoded_dna
@@ -397,9 +407,14 @@ def main(page: ft.Page) -> None:
         except FileNotFoundError:
             encode_status_text.value = f"Error: Input file '{input_path}' not found."
             encode_status_text.color = ft.colors.RED_ACCENT_700
-        except Exception as ex:
-            encode_status_text.value = f"An error occurred during encoding: {ex}"
+        except OSError as ex:
+            encode_status_text.value = f"I/O error during encoding: {ex}"
             encode_status_text.color = ft.colors.RED_ACCENT_700
+        except Exception as ex:
+            logger.exception("Unexpected error during encoding")
+            encode_status_text.value = f"An unexpected error occurred: {ex}"
+            encode_status_text.color = ft.colors.RED_ACCENT_700
+            raise
         finally:
             # Re-enable buttons and hide progress
             encode_button.disabled = False
@@ -419,9 +434,14 @@ def main(page: ft.Page) -> None:
                     f"Encoded file saved successfully to: {e.path}"
                 )
                 encode_status_text.color = ft.colors.GREEN_700
-            except Exception as ex:
+            except OSError as ex:
                 encode_status_text.value = f"Error saving file: {ex}"
                 encode_status_text.color = ft.colors.RED_ACCENT_700
+            except Exception as ex:
+                logger.exception("Unexpected error while saving encoded FASTA")
+                encode_status_text.value = f"Unexpected error saving file: {ex}"
+                encode_status_text.color = ft.colors.RED_ACCENT_700
+                raise
         else:
             encode_status_text.value = "Save operation cancelled by user."
             encode_status_text.color = ft.colors.AMBER_ACCENT_700
@@ -445,9 +465,14 @@ def main(page: ft.Page) -> None:
                     f_out.write(encode_hidden_manifest_content.value)
                 encode_status_text.value = f"Manifest saved successfully to: {e.path}"
                 encode_status_text.color = ft.colors.GREEN_700
-            except Exception as ex:
+            except OSError as ex:
                 encode_status_text.value = f"Error saving manifest: {ex}"
                 encode_status_text.color = ft.colors.RED_ACCENT_700
+            except Exception as ex:
+                logger.exception("Unexpected error while saving manifest")
+                encode_status_text.value = f"Unexpected error saving manifest: {ex}"
+                encode_status_text.color = ft.colors.RED_ACCENT_700
+                raise
         else:
             encode_status_text.value = "Save operation cancelled by user."
             encode_status_text.color = ft.colors.AMBER_ACCENT_700
@@ -553,11 +578,16 @@ def main(page: ft.Page) -> None:
                 result = await asyncio.to_thread(
                     perform_decoding, file_content_str, decode_alphabet_dropdown.value
                 )
-            except Exception as ex:
+            except ValueError as ex:
                 decode_status_text.value = f"Error: {ex}"
                 decode_status_text.color = ft.colors.RED_ACCENT_700
                 page.update()
                 return
+            except Exception as ex:
+                logger.exception("Unexpected error during decoding")
+                decode_status_text.value = f"Unexpected error: {ex}"
+                decode_status_text.color = ft.colors.RED_ACCENT_700
+                raise
 
             decoded_bytes_to_save = result.decoded_bytes
             decode_status_text.value = result.status_message
@@ -572,9 +602,14 @@ def main(page: ft.Page) -> None:
         except FileNotFoundError:
             decode_status_text.value = f"Error: Input file '{input_path}' not found."
             decode_status_text.color = ft.colors.RED_ACCENT_700
-        except Exception as ex:
-            decode_status_text.value = f"An critical error occurred: {ex}"
+        except OSError as ex:
+            decode_status_text.value = f"I/O error: {ex}"
             decode_status_text.color = ft.colors.RED_ACCENT_700
+        except Exception as ex:
+            logger.exception("Unexpected error during decode_file_data")
+            decode_status_text.value = f"Critical error: {ex}"
+            decode_status_text.color = ft.colors.RED_ACCENT_700
+            raise
         finally:
             decode_progress_ring.visible = False
             decode_button.disabled = False
@@ -591,8 +626,13 @@ def main(page: ft.Page) -> None:
                 decode_status_text.value = (
                     f"Decoded file saved successfully to {e.path}"
                 )
-            except Exception as ex:
+            except OSError as ex:
                 decode_status_text.value = f"Error saving decoded file: {ex}"
+            except Exception as ex:
+                logger.exception("Unexpected error while saving decoded file")
+                decode_status_text.value = f"Unexpected error saving decoded file: {ex}"
+                decode_status_text.color = ft.colors.RED_ACCENT_700
+                raise
         else:
             decode_status_text.value = "Save decoded file cancelled."
         page.update()
