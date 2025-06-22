@@ -114,3 +114,14 @@ def test_d2sim_class_run(monkeypatch):
     result = d2sim_adapter._D2SIM.run("ACGT")
     assert result == "ok"
     assert called == [("d2sim", "ACGT")]
+
+
+def test_channel_object(monkeypatch):
+    from genecoder.channels.base import BaseChannel
+
+    registry: dict[str, BaseChannel] = {}
+
+    d2sim_adapter.register(lambda name, ch: registry.setdefault(name, ch))
+
+    assert "d2sim" in registry
+    assert isinstance(registry["d2sim"], BaseChannel)

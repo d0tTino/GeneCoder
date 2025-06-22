@@ -149,3 +149,14 @@ def test_simulate_reads_preserves_global_rng(monkeypatch):
 def test_simulate_reads_unknown_simulator():
     with pytest.raises(ValueError, match="Unknown simulator"):
         nanopore_sim.simulate_reads("ACGT", "bogus")
+
+
+def test_register_returns_channels():
+    from genecoder.channels.base import BaseChannel
+
+    registry: dict[str, BaseChannel] = {}
+
+    nanopore_sim.register(lambda name, chan: registry.setdefault(name, chan))
+
+    assert registry
+    assert all(isinstance(chan, BaseChannel) for chan in registry.values())

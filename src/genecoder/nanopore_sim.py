@@ -8,7 +8,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 import logging
-from typing import Any, Callable, Sequence
+from typing import Callable, Sequence
+
+from .channels.base import BaseChannel
 
 logger = logging.getLogger(__name__)
 
@@ -159,20 +161,22 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     return adapter(sequence, error_rate, rng)
 
 
-def _wrap(name: str) -> Callable[[str, float], str]:
-    """Return a simulator function bound to ``name``."""
+class _Channel(BaseChannel):
+    """Adapter implementing :class:`BaseChannel` for built-in simulators."""
 
-    def simulate(seq: str, error_rate: float = 0.05) -> str:
-        return simulate_reads(seq, name, error_rate)
+    def __init__(self, name: str, error_rate: float = 0.05) -> None:
+        self.name = name
+        self.error_rate = error_rate
 
-    return simulate
+    def simulate(self, sequence: str) -> str:
+        return simulate_reads(sequence, self.name, self.error_rate)
 
 
 
-def register(register_simulator: Callable[[str, Callable[..., Any]], None]) -> None:
+def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
     """Register the builtin simulators."""
 
     for name in SIMULATOR_ADAPTERS:
-        register_simulator(name, _wrap(name))
+        register_simulator(name, _Channel(name))
 
 

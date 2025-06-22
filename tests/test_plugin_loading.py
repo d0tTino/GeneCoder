@@ -25,5 +25,8 @@ def test_fec_plugins_registered() -> None:
 
 
 def test_simulator_plugins_registered() -> None:
+    from genecoder.channels.base import BaseChannel
+
     assert isinstance(SIMULATOR_REGISTRY, dict)
+    assert all(isinstance(ch, BaseChannel) for ch in SIMULATOR_REGISTRY.values())
 
