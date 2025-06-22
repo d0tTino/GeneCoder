@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import random
-from typing import Callable, Any
+from typing import Callable
+
+from .channels.base import BaseChannel
 
 from .nanopore_sim import _simulate_adapter, _run_external
 
@@ -29,7 +31,17 @@ def simulate_d2sim(
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
 
-def register(register_simulator: Callable[[str, Callable[..., Any]], None]) -> None:
+class D2SimChannel(BaseChannel):
+    """Channel wrapper for the optional ``d2sim`` simulator."""
+
+    def __init__(self, error_rate: float = 0.05) -> None:
+        self.error_rate = error_rate
+
+    def simulate(self, sequence: str) -> str:
+        return simulate_d2sim(sequence, error_rate=self.error_rate)
+
+
+def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
     """Register the ``d2sim`` simulator."""
 
-    register_simulator("d2sim", simulate_d2sim)
+    register_simulator("d2sim", D2SimChannel())

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import Callable, Dict, Any
+
+from .channels.base import BaseChannel
 from importlib.metadata import entry_points
 import importlib
 import logging
@@ -10,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
-SIMULATOR_REGISTRY: Dict[str, Callable[..., Any]] = {}
+SIMULATOR_REGISTRY: Dict[str, BaseChannel] = {}
 
 
 def register_codec(name: str, encode: Callable[..., Any], decode: Callable[..., Any]) -> None:
@@ -23,9 +25,9 @@ def register_fec(name: str, encode: Callable[..., Any], decode: Callable[..., An
     FEC_REGISTRY[name] = {"encode": encode, "decode": decode}
 
 
-def register_simulator(name: str, simulate: Callable[..., Any]) -> None:
+def register_simulator(name: str, channel: BaseChannel) -> None:
     """Register a read simulator under ``name``."""
-    SIMULATOR_REGISTRY[name] = simulate
+    SIMULATOR_REGISTRY[name] = channel
 
 
 def load_plugins() -> None:
@@ -111,6 +113,5 @@ def load_plugins() -> None:
     if hasattr(_nano, "register"):
         _nano.register(register_simulator)
     else:
-        for name, func in _nano.SIMULATOR_ADAPTERS.items():
-            register_simulator(name, func)
-        register_simulator("none", lambda seq, error_rate=0.05: seq)
+        for name in _nano.SIMULATOR_ADAPTERS:
+            register_simulator(name, _nano._Channel(name))
