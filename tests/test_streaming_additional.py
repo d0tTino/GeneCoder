@@ -26,3 +26,15 @@ def test_stream_decode_invalid_header(tmp_path):
     with pytest.raises(ValueError):
         stream_decode_file(str(bad_file), str(out_file))
 
+
+def test_stream_roundtrip_large(tmp_path):
+    data = os.urandom(5_000_000)
+    input_file = tmp_path / "input.bin"
+    encoded_file = tmp_path / "encoded.fasta"
+    decoded_file = tmp_path / "decoded.bin"
+    input_file.write_bytes(data)
+    header = "method=base4_direct input_file=input.bin"
+    stream_encode_file(str(input_file), str(encoded_file), header=header)
+    stream_decode_file(str(encoded_file), str(decoded_file))
+    assert decoded_file.read_bytes() == data
+
