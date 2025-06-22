@@ -375,7 +375,7 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         choices=[PARITY_RULE_GC_EVEN_A_ODD_T],
         help="Parity rule to use (default: GC_even_A_odd_T).",
     )
-    fec_choices = [None, "triple_repeat", "hamming_7_4", *sorted(FEC_REGISTRY.keys())]
+    fec_choices = sorted({"triple_repeat", "hamming_7_4", *FEC_REGISTRY.keys()})
     parser.add_argument(
         "--fec",
         type=str,
