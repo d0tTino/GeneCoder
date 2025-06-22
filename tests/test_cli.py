@@ -351,3 +351,24 @@ def test_simulate_errors_command(temp_dir: Path, small_fasta_file: Path):
     new_seq = from_fasta(out_file.read_text())[0][1]
     assert new_seq != original_seq
 
+
+def test_invalid_fec_none_choice(temp_dir: Path):
+    """Passing '--fec None' should result in an argparse error."""
+    input_file = temp_dir / "invalid.txt"
+    input_file.write_text("invalid fec")
+
+    cmd_args = [
+        "encode",
+        "--input-files",
+        str(input_file),
+        "--output-dir",
+        str(temp_dir),
+        "--method",
+        "base4_direct",
+        "--fec",
+        "None",
+    ]
+    result = run_cli_command(cmd_args)
+    assert result.returncode != 0
+    assert "invalid choice" in result.stderr
+
