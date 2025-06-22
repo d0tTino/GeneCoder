@@ -13,17 +13,17 @@ def generate_manifest(
     encoding_params: Any,
     metrics: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Return a manifest dictionary for an encoded file."""
+    """Return a manifest dictionary for an encoded file.
+
+    ``encoding_params`` may be either a dataclass instance or a mapping. Passing
+    anything else will raise :class:`ValueError`.
+    """
     if is_dataclass(encoding_params) and not isinstance(encoding_params, type):
         params = asdict(encoding_params)
-    else:
+    elif isinstance(encoding_params, Mapping):
         params = dict(encoding_params)
-
-    missing = REQUIRED_ENCODING_KEYS - params.keys()
-    if missing:
-        raise ValueError(
-            f"Missing required encoding parameters: {', '.join(sorted(missing))}"
-        )
+    else:
+        raise ValueError("encoding_params must be a dataclass or mapping")
 
     return {
         "file": file_name,

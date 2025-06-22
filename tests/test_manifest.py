@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 
 import pytest
 
@@ -42,16 +41,12 @@ def test_generate_manifest_from_mapping() -> None:
     assert manifest["metrics"]["num_records"] == 1
 
 
-def test_generate_manifest_missing_method_mapping() -> None:
-    opts = {"add_parity": False}
-    with pytest.raises(ValueError):
-        generate_manifest("file.txt", opts, {})
+def test_generate_manifest_invalid_type() -> None:
+    with pytest.raises(ValueError, match="encoding_params must be a dataclass or mapping"):
+        generate_manifest("bad.txt", ["not", "mapping"], {"dna_length": 1})
 
 
-def test_generate_manifest_missing_method_dataclass() -> None:
-    @dataclass
-    class BadOpts:
-        add_parity: bool
+def test_generate_manifest_dataclass_type() -> None:
+    with pytest.raises(ValueError, match="encoding_params must be a dataclass or mapping"):
+        generate_manifest("bad.txt", EncodingOptions, {"dna_length": 1})
 
-    with pytest.raises(ValueError):
-        generate_manifest("file.txt", BadOpts(False), {})
