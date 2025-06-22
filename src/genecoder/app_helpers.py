@@ -131,10 +131,10 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
         header_parts.extend(
             [f"parity_k={options.k_value}", f"parity_rule={PARITY_RULE_GC_EVEN_A_ODD_T}"]
         )
+    params = None
     if method == "Huffman" and huffman_table:
         serializable = {str(k): v for k, v in huffman_table.items()}
         params = {"table": serializable, "padding": num_padding_bits}
-        header_parts.append(f"huffman_params={json.dumps(params)}")
     elif method == "GC-Balanced":
         header_parts.extend([
             f"gc_min={options.gc_min}",
@@ -149,6 +149,9 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
     elif options.fec_method == "Reed-Solomon":
         header_parts.append("fec=reed_solomon")
         header_parts.append(f"fec_nsym={rs_nsym}")
+
+    if params is not None:
+        header_parts.append(f"huffman_params={json.dumps(params)}")
 
     fasta_header = " ".join(header_parts)
     fasta_str = to_fasta(final_dna, fasta_header, 80)
@@ -234,9 +237,12 @@ def perform_decoding(fasta_data: str, alphabet: str = "base4") -> DecodeResult:
         json_field = header.split("huffman_params=", 1)[1]
         decoder = json.JSONDecoder()
         try:
-            params, _ = decoder.raw_decode(json_field)
+            params, idx = decoder.raw_decode(json_field)
         except json.JSONDecodeError as exc:
             raise ValueError("Invalid Huffman parameters") from exc
+
+        if json_field[idx:].strip():
+            raise ValueError("Invalid Huffman parameters")
 
         table_str = params.get("table")
         num_padding_bits = params.get("padding")
