@@ -1,6 +1,7 @@
 import argparse
 import os
 from pathlib import Path
+import pytest
 
 from genecoder.cli.encode import process_single_encode
 from genecoder.cli.decode import process_single_decode
@@ -65,4 +66,18 @@ def test_process_single_decode_no_directory(tmp_path: Path) -> None:
     finally:
         os.chdir(cwd)
     assert (tmp_path / "decoded.bin").read_text() == "world"
+
+
+def test_process_single_decode_unknown_simulator(tmp_path: Path) -> None:
+    infile = tmp_path / "data.bin"
+    infile.write_text("abc")
+    enc_args = _encode_args()
+    fasta = tmp_path / "enc.fasta"
+    process_single_encode(str(infile), str(fasta), enc_args)
+
+    dec_args = _decode_args()
+    dec_args.simulator = "bogus"
+    with pytest.raises(SystemExit) as exc:
+        process_single_decode(str(fasta), str(tmp_path / "out.bin"), dec_args)
+    assert exc.value.code != 0
 

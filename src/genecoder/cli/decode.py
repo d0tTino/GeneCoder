@@ -174,7 +174,13 @@ def process_single_decode(
                 )
                 raise SystemExit(1)
 
-        if args.simulator in SIMULATOR_REGISTRY:
+        if args.simulator not in SIMULATOR_REGISTRY:
+            logger.error(
+                f"Error for {input_file_path}: Unknown simulator '{args.simulator}'."
+            )
+            raise SystemExit(1)
+
+        if args.simulator != "none":
             simulate_func = SIMULATOR_REGISTRY[args.simulator]
             sequence_from_fasta = simulate_func(sequence_from_fasta)
             logger.info(
