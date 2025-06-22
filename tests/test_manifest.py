@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+
+import pytest
+
 from genecoder.manifest import generate_manifest
 from genecoder.cli import EncodingOptions
 
@@ -36,3 +40,18 @@ def test_generate_manifest_from_mapping() -> None:
     assert manifest["file"] == "data.bin"
     assert manifest["encoding_parameters"]["method"] == "huffman"
     assert manifest["metrics"]["num_records"] == 1
+
+
+def test_generate_manifest_missing_method_mapping() -> None:
+    opts = {"add_parity": False}
+    with pytest.raises(ValueError):
+        generate_manifest("file.txt", opts, {})
+
+
+def test_generate_manifest_missing_method_dataclass() -> None:
+    @dataclass
+    class BadOpts:
+        add_parity: bool
+
+    with pytest.raises(ValueError):
+        generate_manifest("file.txt", BadOpts(False), {})
