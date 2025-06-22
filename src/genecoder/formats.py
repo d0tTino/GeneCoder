@@ -75,6 +75,10 @@ def from_fasta(fasta_content: str) -> List[Tuple[str, str]]:
         >>> fasta_data = ">seq1 description1\\nAT GC\\nCGTA\\n>seq2\\nTT TT\\nAAAA"
         >>> from_fasta(fasta_data)
         [('seq1 description1', 'ATGCCGTA'), ('seq2', 'TTTTAAAA')]
+
+    Raises:
+        ValueError: If any sequence line contains lowercase letters or
+            characters not present in :data:`FASTA_ALLOWED_CHARS`.
     """
     records: List[Tuple[str, str]] = []
     current_header: str | None = None
@@ -98,7 +102,10 @@ def from_fasta(fasta_content: str) -> List[Tuple[str, str]]:
             # This is a sequence line for the current active header.
             # Remove all whitespace (leading, trailing, and internal) from the sequence line.
             processed_sequence_line = "".join(stripped_line.split())
-            if not set(processed_sequence_line).issubset(FASTA_ALLOWED_CHARS):
+            if (
+                any(ch.islower() for ch in processed_sequence_line)
+                or not set(processed_sequence_line).issubset(FASTA_ALLOWED_CHARS)
+            ):
                 raise ValueError(f"Invalid characters on line {line_number}.")
             current_sequence_parts.append(processed_sequence_line)
         # else: If line_text does not start with ">" and no current_header is active,
