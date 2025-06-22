@@ -52,6 +52,8 @@ reverse = "plugins.reverse_codec"
 reed_solomon = "genecoder.reed_solomon_codec"
 ldpc = "genecoder.ldpc_codec"
 fountain = "genecoder.fountain_codec"
+bch = "genecoder.bch_codec"
+raptorq = "genecoder.raptorq_codec"
 
 [tool.poetry.plugins."genecoder.simulators"]
 nanopore = "genecoder.nanopore_sim"

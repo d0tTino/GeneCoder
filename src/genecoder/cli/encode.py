@@ -17,6 +17,7 @@ from genecoder.encoders import (
     calculate_gc_content,
     encode_triple_repeat,
 )
+from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import encode_data_with_hamming
 from genecoder.plugins import FEC_REGISTRY
 from genecoder.formats import to_fasta, from_fasta
@@ -138,6 +139,24 @@ def run_encoding_pipeline(
             options.gc_max,
             options.max_homopolymer,
         )
+        header_parts.extend(
+            [
+                f"gc_min={options.gc_min}",
+                f"gc_max={options.gc_max}",
+                f"max_homopolymer={options.max_homopolymer}",
+            ]
+        )
+    elif options.method == "gc_balanced_advanced":
+        if should_add_parity:
+            logger.warning(
+                f"Warning for {input_file_name}: --add-parity not used by 'gc_balanced_advanced'."
+            )
+        balancer = AdvancedGCBalancer(
+            options.gc_min,
+            options.gc_max,
+            options.max_homopolymer,
+        )
+        raw_dna = balancer.encode(current_input)
         header_parts.extend(
             [
                 f"gc_min={options.gc_min}",
@@ -354,7 +373,7 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--method",
         type=str,
         default="base4_direct",
-        choices=["base4_direct", "huffman", "gc_balanced"],
+        choices=["base4_direct", "huffman", "gc_balanced", "gc_balanced_advanced"],
         help="Encoding method to use (default: base4_direct).",
     )
     parser.add_argument(
