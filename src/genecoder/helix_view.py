@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import flet as ft
+import flet_webview
 from urllib.parse import quote
 import base64
 import pkgutil
@@ -211,7 +212,7 @@ def show_helix(
     colors: dict[str, int] | None = None,
     animate: bool = True,
     zoom: float = 1.0,
-) -> ft.WebView:
+) -> flet_webview.WebView:
     """Return a ``WebView`` displaying a DNA helix scene with controls.
 
     Parameters
@@ -234,4 +235,4 @@ def show_helix(
 
     data_url = "data:text/html," + quote(helix_html)
 
-    return ft.WebView(url=data_url, width=600, height=400)
+    return flet_webview.WebView(url=data_url, width=600, height=400)
