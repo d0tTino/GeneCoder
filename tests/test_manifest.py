@@ -1,3 +1,5 @@
+import pytest
+
 from genecoder.manifest import generate_manifest
 from genecoder.cli import EncodingOptions
 
@@ -36,3 +38,13 @@ def test_generate_manifest_from_mapping() -> None:
     assert manifest["file"] == "data.bin"
     assert manifest["encoding_parameters"]["method"] == "huffman"
     assert manifest["metrics"]["num_records"] == 1
+
+
+def test_generate_manifest_invalid_type() -> None:
+    with pytest.raises(ValueError, match="encoding_params must be a dataclass or mapping"):
+        generate_manifest("bad.txt", ["not", "mapping"], {"dna_length": 1})
+
+
+def test_generate_manifest_dataclass_type() -> None:
+    with pytest.raises(ValueError, match="encoding_params must be a dataclass or mapping"):
+        generate_manifest("bad.txt", EncodingOptions, {"dna_length": 1})
