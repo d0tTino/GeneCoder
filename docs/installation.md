@@ -42,6 +42,18 @@ Run the tests inside the Poetry environment:
 poetry run pytest -q
 ```
 
+## Docker Dev Container
+
+Build the Docker image and run the tests inside it:
+
+```bash
+docker build -t genecoder .
+docker run --rm -e SKIP_PACKAGING_TESTS=1 genecoder poetry run pytest -q
+```
+
+Open the repository in Visual Studio Code using the `.devcontainer` folder to
+work in the same environment with all optional GUI and web extras installed.
+
 ## Mamba-Based Setup
 
 The progress report outlines a conda workflow using `mamba` to create a dedicated development environment:

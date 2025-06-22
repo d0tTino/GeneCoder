@@ -1,0 +1,8 @@
+{
+    "name": "GeneCoder",
+    "build": {
+        "dockerfile": "../Dockerfile",
+        "context": ".."
+    },
+    "postCreateCommand": "pre-commit install"
+}
