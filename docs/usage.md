@@ -37,6 +37,7 @@ poetry install --no-interaction
 * `--output-file` – output path for a single input file.
 * `--output-dir` – directory for batch operations.
 * `--fec` – optional FEC method (`triple_repeat`, `hamming_7_4`, `reed_solomon`, `ldpc`, `fountain`).
+* `--encryption-key` – hex encoded key for AES-256 encryption/decryption.
 
 See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
@@ -140,6 +141,20 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    genecoder decode --input-files encoded.fasta \
        --output-file decoded.bin --simulator squigulator
    ```
+
+12. **Encode and decode with AES-256 encryption**
+
+   ```bash
+   KEY=$(openssl rand -hex 32)
+   genecoder encode --input-files secrets.txt \
+       --output-dir secure/ --method base4_direct \
+       --encryption-key "$KEY"
+   genecoder decode --input-files secure/secrets.txt.fasta \
+       --output-dir secure/ --method base4_direct \
+       --encryption-key "$KEY"
+   ```
+   Decoding validates the SHA-256 checksum stored in the FASTA header and
+   warns if the decrypted data does not match.
 
 ### Manifest files
 

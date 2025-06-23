@@ -8,3 +8,4 @@ reedsolo
 pyfinite
 pyldpc
 httpx
+cryptography

@@ -25,6 +25,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.10"
 reedsolo = "*"
+cryptography = "*"
 
 [tool.poetry.group.gui.dependencies]
 flet = ">=0.28,<0.29"

@@ -15,7 +15,11 @@ from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import decode_data_with_hamming
 from genecoder.plugins import FEC_REGISTRY, SIMULATOR_REGISTRY
 from genecoder.formats import from_fasta
-from genecoder.utils import get_alphabet_maps
+from genecoder.utils import (
+    get_alphabet_maps,
+    decrypt_bytes,
+    sha256_checksum,
+)
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 
 logger = logging.getLogger(__name__)
@@ -141,6 +145,9 @@ def process_single_decode(
         f"\nProcessing decode for input: {input_file_path} -> output: {output_file_path}"
     )
     try:
+        if getattr(args, "encryption_key", None) and args.stream:
+            logger.error("Error: --encryption-key cannot be used with --stream.")
+            raise SystemExit(1)
         if args.stream and args.method == "base4_direct":
             from genecoder.streaming import stream_decode_file
 
@@ -212,6 +219,30 @@ def process_single_decode(
             sequence_from_fasta, header, options, os.path.basename(input_file_path)
         )
 
+        if "encrypted=aes256" in header:
+            if not getattr(args, "encryption_key", None):
+                logger.error("Error: --encryption-key is required for encrypted input.")
+                raise SystemExit(1)
+            try:
+                key_bytes = bytes.fromhex(args.encryption_key)
+            except ValueError:
+                logger.error("Error: --encryption-key must be hex-encoded.")
+                raise SystemExit(1)
+            if len(key_bytes) != 32:
+                logger.error("Error: --encryption-key must be 32 bytes (64 hex characters).")
+                raise SystemExit(1)
+            final_decoded_data = decrypt_bytes(final_decoded_data, key_bytes)
+            checksum_match = re.search(r"sha256=([0-9a-fA-F]{64})", header)
+            if checksum_match:
+                expected = checksum_match.group(1).lower()
+                actual = sha256_checksum(final_decoded_data)
+                if expected != actual:
+                    logger.warning(
+                        f"SHA-256 checksum mismatch for {input_file_path}: expected {expected} got {actual}"
+                    )
+        elif getattr(args, "encryption_key", None):
+            logger.warning("--encryption-key provided but input not encrypted")
+
         os.makedirs(os.path.dirname(output_file_path) or ".", exist_ok=True)
         with open(output_file_path, "wb") as f_out:
             f_out.write(final_decoded_data)
@@ -281,6 +312,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--stream",
         action="store_true",
         help="Stream decode large files (base4_direct only).",
+    )
+    parser.add_argument(
+        "--encryption-key",
+        type=str,
+        help="Hex encoded 32-byte key used to decrypt the payload if needed.",
     )
     parser.add_argument(
         "--simulate-errors",
