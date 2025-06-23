@@ -222,6 +222,9 @@ def process_single_decode(
         logger.error(f"Error for {input_file_path}: Input file not found.")
     except IOError as e:
         logger.error(f"Error for {input_file_path}: I/O error: {e}")
+    except ImportError as exc:
+        logger.error("Error for %s: %s", input_file_path, exc)
+        raise SystemExit(1)
     except ValueError as exc:
         logger.error("Error for %s: %s", input_file_path, exc)
 
