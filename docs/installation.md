@@ -83,6 +83,19 @@ genecoder --version
 poetry run pytest -q
 ```
 
+## DNAformer Plugin
+
+Install the optional DNAformer model separately. The plugin requires
+`dnaformer` and `torch` which are not installed with the base
+dependencies:
+
+```bash
+pip install dnaformer torch
+```
+
+Once installed, GeneCoder will automatically register the codec when
+imported.
+
 ## Configuring the OpenAI API Key
 
 The OpenAI testing agent requires an API key. Set the `OPENAI_API_KEY`
