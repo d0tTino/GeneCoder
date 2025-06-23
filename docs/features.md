@@ -19,8 +19,8 @@ showing the original byte information.  Orbit controls allow zooming and
 rotating the helix.  The scene is loaded on demand so it works in both desktop
 and web deployments.
 
-All required JavaScript libraries are bundled with the package so the helix
-visualization functions entirely offline.
+React and Three.js are loaded from public CDNs at runtime, so the helix
+visualization does not include them in the bundle.
 
 <!-- screenshot omitted in this repository because binary files are not supported -->
 
