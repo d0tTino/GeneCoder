@@ -20,3 +20,26 @@ GET /static/index.html
 ```
 
 You can add your own endpoints to expose encoding and decoding features.
+
+## Example Encode/Decode Requests
+
+The server exposes `/encode` and `/decode` POST endpoints. Payloads are JSON:
+
+```json
+POST /encode
+{
+  "data": "SGVsbG8=",
+  "options": {"method": "Base-4 Direct"}
+}
+```
+
+The response contains a FASTA string that can be fed back to `/decode`:
+
+```json
+POST /decode
+{
+  "fasta_data": "<FASTA from /encode>"
+}
+```
+
+Decoded bytes are returned as a base64 string.
