@@ -2,7 +2,7 @@ from pathlib import Path
 from tests.test_cli import run_cli_command
 
 
-def test_cli_encryption_roundtrip(tmp_path: Path):
+def test_cli_encryption_roundtrip(tmp_path: Path) -> None:
     key = '00' * 32
     input_file = tmp_path / 'secret.txt'
     input_file.write_text('top secret')

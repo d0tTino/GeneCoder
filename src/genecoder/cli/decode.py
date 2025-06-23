@@ -16,8 +16,9 @@ from genecoder.hamming_codec import decode_data_with_hamming
 from genecoder.plugins import FEC_REGISTRY, SIMULATOR_REGISTRY
 from genecoder.formats import from_fasta
 from genecoder.utils import (
-    get_alphabet_maps,
     decrypt_bytes,
+    get_alphabet_maps,
+    parse_encryption_key,
     sha256_checksum,
 )
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
@@ -224,12 +225,9 @@ def process_single_decode(
                 logger.error("Error: --encryption-key is required for encrypted input.")
                 raise SystemExit(1)
             try:
-                key_bytes = bytes.fromhex(args.encryption_key)
-            except ValueError:
-                logger.error("Error: --encryption-key must be hex-encoded.")
-                raise SystemExit(1)
-            if len(key_bytes) != 32:
-                logger.error("Error: --encryption-key must be 32 bytes (64 hex characters).")
+                key_bytes = parse_encryption_key(args.encryption_key)
+            except ValueError as exc:
+                logger.error("Error: %s", exc)
                 raise SystemExit(1)
             final_decoded_data = decrypt_bytes(final_decoded_data, key_bytes)
             checksum_match = re.search(r"sha256=([0-9a-fA-F]{64})", header)

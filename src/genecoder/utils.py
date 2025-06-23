@@ -112,3 +112,29 @@ def sha256_checksum(data: bytes) -> str:
     """Return the SHA-256 checksum of ``data`` as a hex string."""
     return hashlib.sha256(data).hexdigest()
 
+
+def parse_encryption_key(key_str: str) -> bytes:
+    """Return the binary key from a hex string.
+
+    Raises ``ValueError`` if the key is not hex encoded or not 32 bytes.
+    """
+    try:
+        key_bytes = bytes.fromhex(key_str)
+    except ValueError as exc:  # pragma: no cover - defensive
+        raise ValueError("--encryption-key must be hex-encoded") from exc
+    if len(key_bytes) != 32:
+        raise ValueError("--encryption-key must be 32 bytes (64 hex characters).")
+    return key_bytes
+
+
+__all__ = [
+    "ALPHABETS",
+    "check_homopolymer_length",
+    "decrypt_bytes",
+    "encrypt_bytes",
+    "get_alphabet_maps",
+    "get_max_homopolymer_length",
+    "parse_encryption_key",
+    "sha256_checksum",
+]
+

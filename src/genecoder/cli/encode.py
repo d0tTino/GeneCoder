@@ -24,9 +24,10 @@ from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import (
-    get_max_homopolymer_length,
-    get_alphabet_maps,
     encrypt_bytes,
+    get_alphabet_maps,
+    get_max_homopolymer_length,
+    parse_encryption_key,
     sha256_checksum,
 )
 
@@ -258,12 +259,9 @@ def process_single_encode(
                 logger.error("Error: --encryption-key cannot be used with --stream.")
                 raise SystemExit(1)
             try:
-                key_bytes = bytes.fromhex(args.encryption_key)
-            except ValueError:
-                logger.error("Error: --encryption-key must be hex-encoded.")
-                raise SystemExit(1)
-            if len(key_bytes) != 32:
-                logger.error("Error: --encryption-key must be 32 bytes (64 hex characters).")
+                key_bytes = parse_encryption_key(args.encryption_key)
+            except ValueError as exc:
+                logger.error("Error: %s", exc)
                 raise SystemExit(1)
             extra_header = (
                 f" encrypted=aes256 sha256={sha256_checksum(original_input_data)}"
