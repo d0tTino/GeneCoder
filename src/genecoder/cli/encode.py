@@ -23,7 +23,12 @@ from genecoder.plugins import FEC_REGISTRY
 from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
-from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
+from genecoder.utils import (
+    get_max_homopolymer_length,
+    get_alphabet_maps,
+    encrypt_bytes,
+    sha256_checksum,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +194,9 @@ def process_single_encode(
         f"\nProcessing encode for input: {input_file_path} -> output: {output_file_path}"
     )
     try:
+        if getattr(args, "encryption_key", None) and args.stream:
+            logger.error("Error: --encryption-key cannot be used with --stream.")
+            raise SystemExit(1)
         if args.stream and args.method == "base4_direct" and args.fec is None:
             header = f"method=base4_direct input_file={os.path.basename(input_file_path)}"
             if args.add_parity:
@@ -243,6 +251,25 @@ def process_single_encode(
         with open(input_file_path, "rb") as f_in:
             original_input_data = f_in.read()
 
+        data_to_encode = original_input_data
+        extra_header = ""
+        if getattr(args, "encryption_key", None):
+            if args.stream:
+                logger.error("Error: --encryption-key cannot be used with --stream.")
+                raise SystemExit(1)
+            try:
+                key_bytes = bytes.fromhex(args.encryption_key)
+            except ValueError:
+                logger.error("Error: --encryption-key must be hex-encoded.")
+                raise SystemExit(1)
+            if len(key_bytes) != 32:
+                logger.error("Error: --encryption-key must be 32 bytes (64 hex characters).")
+                raise SystemExit(1)
+            extra_header = (
+                f" encrypted=aes256 sha256={sha256_checksum(original_input_data)}"
+            )
+            data_to_encode = encrypt_bytes(original_input_data, key_bytes)
+
         options = build_encoding_options(args)
         (
             final_encoded_dna_sequence,
@@ -251,8 +278,11 @@ def process_single_encode(
             current_input_data,
             fec_padding_bits,
         ) = run_encoding_pipeline(
-            original_input_data, options, os.path.basename(input_file_path)
+            data_to_encode, options, os.path.basename(input_file_path)
         )
+
+        if extra_header:
+            fasta_header += extra_header
 
         fasta_output = to_fasta(final_encoded_dna_sequence, fasta_header, line_width=80)
 
@@ -431,6 +461,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--stream",
         action="store_true",
         help="Stream encode large files (base4_direct only).",
+    )
+    parser.add_argument(
+        "--encryption-key",
+        type=str,
+        help="Hex encoded 32-byte key to encrypt the input before encoding.",
     )
     parser.add_argument(
         "--export-csv",
