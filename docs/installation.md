@@ -10,6 +10,8 @@ Clone the repository and install the base requirements using
 ```bash
 poetry install --no-interaction
 ```
+Poetry manages all dependencies. `pyproject.toml` and `poetry.lock` are the single source of truth. Use `scripts/export_requirements.sh` if you need `requirements.txt` files.
+
 
 Install optional extras with the `--with` flag:
 
