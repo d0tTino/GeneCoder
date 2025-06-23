@@ -43,3 +43,15 @@ def test_show_helix_options() -> None:
     assert "ACACA" in html  # sequence repeated to length
     assert "0x123456" in html
 
+
+@pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
+def test_show_helix_cdn_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    ft, show_helix = _get_ft_and_show_helix()
+    monkeypatch.setattr("genecoder.helix_view.THREE_JS_URL", "")
+    monkeypatch.setattr("genecoder.helix_view.ORBIT_JS_URL", "")
+
+    elem = show_helix("ACGT")
+    html = unquote(elem.url.split(",", 1)[1])
+    assert "cdn.jsdelivr" in html
+    assert "data:application/javascript;base64" not in html
+

@@ -7,6 +7,7 @@ import flet_webview
 from urllib.parse import quote
 import base64
 import pkgutil
+import logging
 
 # Flet <0.29 removed ``HtmlElement``. Provide a minimal fallback for tests.
 if not hasattr(ft, "HtmlElement"):
@@ -20,6 +21,8 @@ if not hasattr(ft, "HtmlElement"):
             self.height = height
 
     ft.HtmlElement = _HtmlElement
+
+logger = logging.getLogger(__name__)
 
 THREE_JS_URL: str = ""
 ORBIT_JS_URL: str = ""
@@ -38,6 +41,13 @@ try:
         )
 except FileNotFoundError:
     pass
+
+CDN_THREE_JS_URL = (
+    "https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.module.min.js"
+)
+CDN_ORBIT_JS_URL = (
+    "https://cdn.jsdelivr.net/npm/three@0.150.1/examples/jsm/controls/OrbitControls.js"
+)
 
 # Default colors used for nucleotide spheres in the helix view.
 DEFAULT_COLORS: dict[str, int] = {
@@ -168,6 +178,8 @@ def _make_helix_html(
     colors: dict[str, int] | None = None,
     animate: bool = True,
     zoom: float = 1.0,
+    three_js_url: str = THREE_JS_URL,
+    orbit_js_url: str = ORBIT_JS_URL,
 ) -> str:
     """Return HTML for the helix viewer.
 
@@ -194,10 +206,9 @@ def _make_helix_html(
 
     colors_js = "{ " + ", ".join(f"{b}: 0x{v:06x}" for b, v in color_map.items()) + " }"
 
-
     return HELIX_TEMPLATE % {
-        "THREE_JS_URL": THREE_JS_URL,
-        "ORBIT_JS_URL": ORBIT_JS_URL,
+        "THREE_JS_URL": three_js_url,
+        "ORBIT_JS_URL": orbit_js_url,
         "DNA_SEQ": dna_sequence,
         "COLOR_MAP": colors_js,
         "ANIMATE": "true" if animate else "false",
@@ -225,12 +236,23 @@ def show_helix(
     colors:
         Mapping of nucleotide to hex color value or string.
     """
+    three_url = THREE_JS_URL
+    orbit_url = ORBIT_JS_URL
+    if not three_url:
+        logger.error("THREE_JS_URL missing; falling back to CDN")
+        three_url = CDN_THREE_JS_URL
+    if not orbit_url:
+        logger.error("ORBIT_JS_URL missing; falling back to CDN")
+        orbit_url = CDN_ORBIT_JS_URL
+
     helix_html = _make_helix_html(
         dna_sequence,
         length=length,
         colors=colors,
         animate=animate,
         zoom=zoom,
+        three_js_url=three_url,
+        orbit_js_url=orbit_url,
     )
 
     data_url = "data:text/html," + quote(helix_html)
