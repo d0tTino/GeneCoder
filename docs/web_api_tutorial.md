@@ -10,6 +10,9 @@ uvicorn web.main:app --reload
 
 Open <http://127.0.0.1:8000> to view the landing page.
 
+Set the `GENECODER_SIM_SEED` environment variable to an integer to get
+reproducible results when API endpoints invoke error simulations.
+
 ## Calling the API
 
 ```
