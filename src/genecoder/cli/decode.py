@@ -286,7 +286,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--simulate-errors",
         type=float,
         default=0.0,
-        help="Probability of random substitution errors applied before decoding.",
+        help=(
+            "Probability of random substitution errors applied before decoding. "
+            "Set the GENECODER_SIM_SEED environment variable to an integer to "
+            "seed the random generator."
+        ),
     )
     sim_choices = list(sorted(SIMULATOR_REGISTRY.keys())) or ["none"]
     parser.add_argument(

@@ -116,6 +116,9 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --output-file decoded.bin --simulate-errors 0.02
    ```
 
+   Set the environment variable `GENECODER_SIM_SEED` to an integer to make the
+   simulated substitutions deterministic across runs.
+
 11. **Decode using an external simulator**
 
    The ``--simulator`` option accepts ``d2sim``, ``dnarsim`` or ``squigulator``.
