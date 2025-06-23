@@ -55,6 +55,7 @@ ldpc = "genecoder.ldpc_codec"
 fountain = "genecoder.fountain_codec"
 bch = "genecoder.bch_codec"
 raptorq = "genecoder.raptorq_codec"
+dnaformer = "genecoder.dnaformer_codec"
 
 [tool.poetry.plugins."genecoder.simulators"]
 nanopore = "genecoder.nanopore_sim"
