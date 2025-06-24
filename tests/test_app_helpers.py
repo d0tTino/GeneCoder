@@ -54,7 +54,7 @@ def test_triple_repeat_length_warning():
 
 def test_decoding_invalid_huffman_json():
     fasta = ">method=huffman input_file=x huffman_params={\"table\":{\"65\":\"0\"},\"padding\":0\nAAAA\n"
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="malformed JSON"):
         perform_decoding(fasta)
 
 
@@ -64,7 +64,19 @@ def test_decoding_huffman_extra_text_after_json():
         "huffman_params={\"table\":{\"65\":\"0\"},\"padding\":0} extratext\n"
         "AAAA\n"
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="extra text after JSON"):
+        perform_decoding(fasta)
+
+
+def test_decoding_huffman_missing_table():
+    fasta = ">method=huffman input_file=x huffman_params={\"padding\":0}\nAAAA\n"
+    with pytest.raises(ValueError, match="missing table"):
+        perform_decoding(fasta)
+
+
+def test_decoding_huffman_missing_padding():
+    fasta = ">method=huffman input_file=x huffman_params={\"table\":{\"65\":\"0\"}}\nAAAA\n"
+    with pytest.raises(ValueError, match="missing padding"):
         perform_decoding(fasta)
 
 
