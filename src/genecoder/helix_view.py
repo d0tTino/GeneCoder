@@ -16,9 +16,9 @@ if not hasattr(ft, "HtmlElement"):
         """Lightweight stand-in for :class:`flet.HtmlElement`."""
 
         def __init__(self, *, content: str, width: int = 0, height: int = 0) -> None:
-            self.content = content
-            self.width = width
-            self.height = height
+            self.content: str = content
+            self.width: int = width
+            self.height: int = height
 
     ft.HtmlElement = _HtmlElement
 
@@ -236,8 +236,8 @@ def show_helix(
     colors:
         Mapping of nucleotide to hex color value or string.
     """
-    three_url = THREE_JS_URL
-    orbit_url = ORBIT_JS_URL
+    three_url: str = THREE_JS_URL
+    orbit_url: str = ORBIT_JS_URL
     if not three_url:
         logger.error("THREE_JS_URL missing; falling back to CDN")
         three_url = CDN_THREE_JS_URL
@@ -245,7 +245,7 @@ def show_helix(
         logger.error("ORBIT_JS_URL missing; falling back to CDN")
         orbit_url = CDN_ORBIT_JS_URL
 
-    helix_html = _make_helix_html(
+    helix_html: str = _make_helix_html(
         dna_sequence,
         length=length,
         colors=colors,
@@ -255,6 +255,6 @@ def show_helix(
         orbit_js_url=orbit_url,
     )
 
-    data_url = "data:text/html," + quote(helix_html)
+    data_url: str = "data:text/html," + quote(helix_html)
 
     return flet_webview.WebView(url=data_url, width=600, height=400)
