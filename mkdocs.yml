@@ -6,7 +6,10 @@ theme:
     primary: indigo
 plugins:
   - search
-  - mkdocstrings
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
 nav:
   - Home: index.md
   - Getting Started:
