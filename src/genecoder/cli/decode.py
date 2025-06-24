@@ -128,9 +128,9 @@ def run_decoding_pipeline(
                 info = None
                 if info_match:
                     import base64
-                    import pickle
+                    import json
 
-                    info = pickle.loads(base64.b64decode(info_match.group(1)))
+                    info = json.loads(base64.b64decode(info_match.group(1)).decode())
                 final_data, _ = FEC_REGISTRY[fec_name]["decode"](final_data, info)
     return final_data
 
