@@ -4,13 +4,39 @@ The 3D helix viewer lives in `web/helix-ui`. It is a single-page React
 application that uses Three.js for rendering and displays simple overlays for
 GC content and homopolymer runs.
 
-To explore the viewer without running the whole backend simply open
-`web/helix-ui/index.html` in a browser or start a local HTTP server:
+The frontend now uses [Vite](https://vitejs.dev/) for development and builds.
+To explore the viewer without running the whole backend simply open the built
+`dist/index.html` in a browser or start a local HTTP server:
 
 ```bash
-python -m http.server --directory web/helix-ui 8001
+python -m http.server --directory web/helix-ui/dist 8001
 ```
 
-During development you can edit `index.html` and reload the page. The Flet GUI
-and FastAPI web app load the same file via a WebView/IFrame, so changes are
-reflected automatically.
+## Building the React App
+
+Install the Node dependencies once and run the build:
+
+```bash
+cd web/helix-ui
+npm install
+npm run build
+```
+
+The build output appears in `web/helix-ui/dist`. The Flet GUI and FastAPI web
+app load this directory via a WebView/IFrame so changes are reflected after
+rebuilding.
+
+### Query Parameters
+
+The viewer accepts several query parameters which are also exposed by
+`show_helix_ui`:
+
+- `seq` – DNA sequence to visualize.
+- `animate` – `true` or `false` to spin the helix.
+- `zoom` – numeric zoom factor.
+- `gc` – `true`/`false` to show the GC-content overlay.
+- `runs` – `true`/`false` to highlight homopolymers.
+- `colors` – comma-separated `base:#hex` pairs, for example
+  `A:#ff0000,G:#00ff00`.
+
+Combine these parameters in the page URL or when calling `show_helix_ui`.

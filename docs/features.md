@@ -29,3 +29,7 @@ Import `show_helix` and pass a DNA sequence. Optional `length` and `colors` argu
 from genecoder.helix_view import show_helix
 webview = show_helix("ACGT", length=50, colors={"A": "#ff0000", "T": "#00ffff"})
 ```
+
+The newer `show_helix_ui` helper launches the React frontend. It accepts the
+same base sequence along with options such as `animate`, `zoom`, `gc`, `runs`
+and custom base colors.
