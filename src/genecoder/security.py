@@ -7,7 +7,6 @@ import hashlib
 import os
 from typing import Optional, cast
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 _AES_HEADER = b"AESGCM1"
 
@@ -21,6 +20,8 @@ def _xor_cipher(data: bytes, key: bytes) -> bytes:
 
 def encrypt_data(data: bytes, key: Optional[bytes] = None) -> bytes:
     """Encrypt ``data`` using AES-GCM with a random nonce."""
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
     key = key or _DEFAULT_KEY
     aes_key = hashlib.sha256(key).digest()
     nonce = os.urandom(12)
@@ -28,14 +29,18 @@ def encrypt_data(data: bytes, key: Optional[bytes] = None) -> bytes:
     return _AES_HEADER + nonce + cast(bytes, enc)
 
 
+
 def decrypt_data(data: bytes, key: Optional[bytes] = None) -> bytes:
     """Decrypt data produced by :func:`encrypt_data` or legacy XOR."""
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
     key = key or _DEFAULT_KEY
     if data.startswith(_AES_HEADER):
         aes_key = hashlib.sha256(key).digest()
         nonce = data[len(_AES_HEADER) : len(_AES_HEADER) + 12]
         ciphertext = data[len(_AES_HEADER) + 12 :]
         return cast(bytes, AESGCM(aes_key).decrypt(nonce, ciphertext, None))
+
     return _xor_cipher(data, key)
 
 

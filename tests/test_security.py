@@ -130,3 +130,46 @@ def test_cli_encrypt_checksum_key_file(tmp_path: Path, monkeypatch) -> None:
     out_file = tmp_path / "msg2.txt_decoded.bin"
     assert out_file.exists()
     assert out_file.read_text() == "secure keyfile"
+def test_cli_encrypt_key_file_roundtrip(tmp_path: Path) -> None:
+    src = tmp_path / "secret.txt"
+    src.write_text("top secret")
+    key_file = tmp_path / "key.bin"
+    key_file.write_bytes(b"mykey")
+
+    enc_res = run_cli_command(
+        [
+            "encode",
+            "--input-files",
+            str(src),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--encrypt",
+            "--key",
+            str(key_file),
+        ]
+    )
+    assert enc_res.returncode == 0, enc_res.stderr
+
+    fasta = tmp_path / "secret.txt.fasta"
+    assert fasta.exists()
+
+    dec_res = run_cli_command(
+        [
+            "decode",
+            "--input-files",
+            str(fasta),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--encrypt",
+            "--key",
+            str(key_file),
+        ]
+    )
+    assert dec_res.returncode == 0, dec_res.stderr
+    out_file = tmp_path / "secret.txt_decoded.bin"
+    assert out_file.exists()
+    assert out_file.read_text() == "top secret"
