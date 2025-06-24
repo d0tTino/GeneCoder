@@ -1,0 +1,11 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "genecoder-example-simulator"
+version = "0.1.0"
+dependencies = ["genecoder"]
+
+[project.entry-points."genecoder.simulators"]
+example = "example_simulator"

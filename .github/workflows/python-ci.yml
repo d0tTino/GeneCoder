@@ -90,6 +90,23 @@ jobs:
         pip install poetry
         poetry install --with gui,web,dev --no-interaction --no-root
 
+    - name: Install example plugins
+      run: |
+        pip install ./plugins-examples/example_codec ./plugins-examples/example_fec ./plugins-examples/example_simulator
+
+    - name: Verify example plugin registration
+      run: |
+        python - <<'PY'
+        from genecoder import plugins
+        plugins.CODEC_REGISTRY.clear()
+        plugins.FEC_REGISTRY.clear()
+        plugins.SIMULATOR_REGISTRY.clear()
+        plugins.load_plugins()
+        assert "example" in plugins.CODEC_REGISTRY, "codec not registered"
+        assert "example" in plugins.FEC_REGISTRY, "fec not registered"
+        assert "example" in plugins.SIMULATOR_REGISTRY, "simulator not registered"
+        PY
+
     - name: Restore pre-commit cache
       id: precommit-cache
       uses: actions/cache/restore@v3
