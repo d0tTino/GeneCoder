@@ -203,6 +203,7 @@ python -m genecoder.flet_app
 
 The GUI exposes encoding options, error correction choices and displays metrics and analysis plots.
 
-The **Helix View** tab now features an animated 3D helix complete with nucleotide
-tooltips and simple overlays illustrating GC content and homopolymer regions.
-Toggle the *Animate* checkbox or adjust the *Zoom* slider to explore the visualization.
+The **Helix View** tab embeds a dedicated React/Three.js frontend. It renders the
+sequence in 3D with orbit controls, overlays for GC content and homopolymers and
+an *Animate* toggle. The frontend lives under `web/helix-ui` and is loaded via a
+WebView in the GUI.

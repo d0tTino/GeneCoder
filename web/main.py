@@ -14,11 +14,22 @@ app = FastAPI(title="GeneCoder Web")
 static_dir = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+# Mount the React-based helix viewer as a static directory
+helix_ui_dir = Path(__file__).parent / "helix-ui"
+app.mount("/helix-ui", StaticFiles(directory=helix_ui_dir), name="helix-ui")
+
 index_path = static_dir / "index.html"
+helix_index_path = helix_ui_dir / "index.html"
 
 @app.get("/", response_class=HTMLResponse)  # type: ignore[misc]
 async def index() -> str:
     return index_path.read_text(encoding="utf-8")
+
+
+@app.get("/helix", response_class=HTMLResponse)  # type: ignore[misc]
+async def helix() -> str:
+    """Return the React-based helix viewer."""
+    return helix_index_path.read_text(encoding="utf-8")
 
 
 class EncodeOptionsModel(BaseModel):
