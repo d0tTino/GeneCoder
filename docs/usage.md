@@ -204,6 +204,7 @@ genecoder encode --input-files secret.txt \
     --output-dir out/ --method base4_direct --encrypt --key key.bin --checksum
 genecoder decode --input-files out/secret.txt.fasta \
     --output-dir decoded/ --method base4_direct --encrypt --key key.bin --checksum
+
 ```
 ## Graphical User Interface (GUI)
 

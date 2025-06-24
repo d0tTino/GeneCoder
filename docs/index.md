@@ -17,3 +17,4 @@ For more details, explore the sections below.
 * [Plugin System](plugins.md) – Extend GeneCoder with custom codecs and viewers.
 * [Vertical Slice Guide](vertical_slice.md) – Quick setup and interface demo.
 * [n8n Overview](n8n_overview.md) – Automate workflows with n8n.
+* [Simulators](simulators.md) – Available read simulators and how to install external tools.
