@@ -9,6 +9,7 @@ from typing import Any
 encode: Any | None = None
 decode: Any | None = None
 analyze: Any | None = None
+report: Any | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +45,13 @@ def setup_logging(level: int) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    from . import encode as _encode, decode as _decode, analyze as _analyze
+    from . import encode as _encode, decode as _decode, analyze as _analyze, report as _report
 
-    global encode, decode, analyze
+    global encode, decode, analyze, report
     encode = _encode
     decode = _decode
     analyze = _analyze
+    report = _report
 
     parser = argparse.ArgumentParser(
         description="GeneCoder: Encode and decode data into simulated DNA sequences."
@@ -62,6 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     encode.register_subcommand(subparsers)
     decode.register_subcommand(subparsers)
     analyze.register_subcommand(subparsers)
+    report.register_subcommand(subparsers)
 
     sim_parser = subparsers.add_parser(
         "simulate-errors", help="Introduce random errors into a FASTA sequence."

@@ -64,6 +64,8 @@ nanopore = "genecoder.nanopore_sim"
 d2sim = "genecoder.d2sim_adapter"
 simple = "genecoder.channel_sim"
 indel = "genecoder.error_simulation"
+illumina = "genecoder.simulators.illumina"
+adv_nanopore = "genecoder.simulators.adv_nanopore"
 
 [build-system]
 requires = ["poetry-core"]

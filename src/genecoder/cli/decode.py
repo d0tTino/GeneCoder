@@ -227,10 +227,10 @@ def process_single_decode(
             sequence_from_fasta, header, options, os.path.basename(input_file_path)
         )
 
-        key_bytes = None
+        _key_bytes = None
         if getattr(args, "key", None):
             with open(args.key, "rb") as kf:
-                key_bytes = kf.read()
+                _key_bytes = kf.read()
         if getattr(args, "encrypt", False):
             _ensure_security_loaded()
             assert decrypt_data is not None

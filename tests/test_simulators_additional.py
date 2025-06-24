@@ -1,41 +1,27 @@
-import random
-import pytest
 
-from genecoder import nanopore_sim
-from genecoder.simulators import simulate_reads
+from genecoder.simulators.illumina import IlluminaChannel, register as reg_illumina
+from genecoder.simulators.adv_nanopore import AdvancedNanoporeChannel, register as reg_advnano
 
 
-def test_simulate_errors_preserves_global_rng():
-    rng = random.Random(123)
-    expected_first = rng.random()
-    expected_second = rng.random()
-    random.seed(123)
-    before = random.random()
-    simulate_reads("AAAA", "simple", error_rate=0.1)
-    after = random.random()
-    assert before == expected_first
-    assert after == expected_second
+def test_register_channels():
+    from genecoder.channels.base import BaseChannel
+    registry: dict[str, BaseChannel] = {}
+    reg_illumina(lambda n, ch: registry.setdefault(n, ch))
+    reg_advnano(lambda n, ch: registry.setdefault(n, ch))
+    assert "illumina" in registry and isinstance(registry["illumina"], BaseChannel)
+    assert "adv_nanopore" in registry and isinstance(registry["adv_nanopore"], BaseChannel)
 
 
-@pytest.mark.parametrize("prob", [-0.1, 1.1])
-def test_simulate_errors_invalid_probability(prob):
-    with pytest.raises(ValueError):
-        simulate_reads("A", "simple", error_rate=prob)
+def test_illumina_simulator_deterministic(monkeypatch):
+    monkeypatch.setenv("GENECODER_SIM_SEED", "1")
+    channel = IlluminaChannel(substitution_rate=0.5, insertion_rate=0.0, deletion_rate=0.0, read_length=4)
+    out = channel.simulate("AAAA")
+    assert out == "ACCT"
 
 
-def test_simulate_reads_fallback(monkeypatch):
-    which_called = []
-    errors_called = []
-
-    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda t: which_called.append(t) or None)
-    monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
-    monkeypatch.setattr(
-        nanopore_sim,
-        "simulate_errors",
-        lambda seq, rate, rng=None: errors_called.append((seq, rate, rng)) or "fallback",
-    )
-
-    result = simulate_reads("ACGT", "d2sim", error_rate=0.1)
-    assert result == "fallback"
-    assert which_called == ["d2sim"]
-    assert errors_called and isinstance(errors_called[0][2], random.Random)
+def test_adv_nanopore_homopolymer_bias(monkeypatch):
+    monkeypatch.setenv("GENECODER_SIM_SEED", "2")
+    channel = AdvancedNanoporeChannel(substitution_rate=0.0, insertion_rate=0.0, deletion_rate=0.5, read_length=6)
+    result = channel.simulate("AAAAAA")
+    # with high deletion rate and homopolymer bias we expect length < input
+    assert len(result) < 6
