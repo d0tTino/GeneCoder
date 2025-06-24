@@ -245,8 +245,12 @@ def process_single_encode(
             plaintext_data = f_in.read()
 
         data_for_encoding = plaintext_data
+        key_bytes = None
+        if getattr(args, "key", None):
+            with open(args.key, "rb") as kf:
+                key_bytes = kf.read()
         if getattr(args, "encrypt", False):
-            data_for_encoding = encrypt_data(plaintext_data)
+            data_for_encoding = encrypt_data(plaintext_data, key=key_bytes)
 
         checksum: str | None = None
         if getattr(args, "checksum", False):
@@ -449,6 +453,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--encrypt",
         action="store_true",
         help="Encrypt input bytes before encoding.",
+    )
+    parser.add_argument(
+        "--key",
+        type=str,
+        help="Path to file containing encryption key bytes.",
     )
     parser.add_argument(
         "--checksum",

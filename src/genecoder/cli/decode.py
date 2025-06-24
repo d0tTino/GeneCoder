@@ -216,8 +216,12 @@ def process_single_decode(
             sequence_from_fasta, header, options, os.path.basename(input_file_path)
         )
 
+        key_bytes = None
+        if getattr(args, "key", None):
+            with open(args.key, "rb") as kf:
+                key_bytes = kf.read()
         if getattr(args, "encrypt", False):
-            final_decoded_data = decrypt_data(final_decoded_data)
+            final_decoded_data = decrypt_data(final_decoded_data, key=key_bytes)
 
         if getattr(args, "checksum", False):
             m = re.search(r"checksum=([0-9a-f]+)", header)
@@ -307,6 +311,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--encrypt",
         action="store_true",
         help="Decrypt output assuming the encoded data was encrypted.",
+    )
+    parser.add_argument(
+        "--key",
+        type=str,
+        help="Path to file containing encryption key bytes.",
     )
     parser.add_argument(
         "--checksum",

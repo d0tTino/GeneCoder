@@ -5,7 +5,7 @@ This guide demonstrates a minimal end-to-end run of GeneCoder.
 ## Prerequisites
 
 - **Python 3.10+**
-- **Poetry** for dependency management
+- GeneCoder uses **Poetry** for dependency management
 
 ## Environment Setup
 
