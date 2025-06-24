@@ -1,5 +1,19 @@
 # Development Roadmap
 
-1. **Foundation & Enhancements** – implemented CLI, multiple encoders, error handling and a GUI with asynchronous operations.
-2. **Phase 2** – explore additional error correction codes, advanced GC balancing and large file streaming.
-3. **Phase 3 & Beyond** – deeper simulation of sequencing errors and integration with bioinformatics tools.
+1. **Foundation (Complete)** – command line interface, multiple encoders, error handling and a basic GUI with asynchronous operations.
+2. **Phase 2: Robust Encoding Pipeline**
+   - Introduce additional error correction codes such as Reed–Solomon and LDPC.
+   - Implement streaming support for handling large files efficiently.
+   - Refine GC-content balancing algorithms for more stable synthesis results.
+3. **Phase 3: Simulation & Analysis**
+   - Model sequencing errors in greater detail to mimic real-world conditions.
+   - Integrate with common bioinformatics tools for downstream analysis.
+   - Provide automated reports summarizing encoding accuracy and efficiency.
+4. **Phase 4: Ecosystem & Automation**
+   - Publish a plugin repository enabling community codecs and FEC modules.
+   - Offer workflow templates powered by n8n for routine processing tasks.
+   - Package the toolkit for easy container deployment in research pipelines.
+5. **Long-Term Vision**
+   - Interactive dashboards to visualize storage simulations over time.
+   - Cloud-friendly architecture for scaling large simulation batches.
+   - Continued collaboration with the research community to expand features.
