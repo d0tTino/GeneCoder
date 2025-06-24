@@ -278,7 +278,10 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         type=str,
         default="base4",
         choices=["base4", "base5", "base6"],
-        help="Alphabet mapping used during encoding (default: base4).",
+        help=(
+            "Alphabet mapping used during encoding. base5 and base6 remap"
+            " letters only and do not increase capacity (default: base4)."
+        ),
     )
     parser.add_argument(
         "--stream",

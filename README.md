@@ -15,6 +15,8 @@ For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md)
 - Optional error correction with Triple-Repeat, Hamming(7,4), Reed-Solomon, LDPC and Fountain codes.
 - Batch processing, parity checks and streaming support.
 - Flet-based GUI with analysis plots.
+- Base5 and base6 alphabet options for alternative nucleotide letters. These
+  modes remap the standard ACGT symbols but **do not increase capacity**.
 
 ## Quick Start
 

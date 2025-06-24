@@ -71,6 +71,10 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --output-file encoded_base6.fasta --alphabet base6
    ```
 
+   Base5 and base6 are convenience alphabets that map the 2-bit output of
+   `base4_direct` to different nucleotide symbols. They do **not** store more
+   information per base.
+
 5. **Encode with Base-4 Direct and Hamming(7,4) FEC**
 
    ```bash
