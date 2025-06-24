@@ -129,3 +129,9 @@ def load_plugins() -> None:
         _err.register(register_simulator)
     else:
         register_simulator("indel", _err.Channel())
+
+    from .simulators import illumina as _illumina
+    _illumina.register(register_simulator)
+
+    from .simulators import adv_nanopore as _advnano
+    _advnano.register(register_simulator)

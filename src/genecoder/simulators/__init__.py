@@ -1,5 +1,13 @@
-from .plugins import SIMULATOR_REGISTRY
-__all__ = ["simulate_reads"]
+"""Sequencing simulator implementations."""
+from __future__ import annotations
+
+from ..plugins import SIMULATOR_REGISTRY
+
+from .illumina import IlluminaChannel
+from .adv_nanopore import AdvancedNanoporeChannel
+
+__all__ = ["IlluminaChannel", "AdvancedNanoporeChannel", "simulate_reads"]
+
 
 def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> str:
     """Return ``sequence`` processed by the named simulator."""

@@ -258,10 +258,10 @@ def process_single_encode(
             plaintext_data = f_in.read()
 
         data_for_encoding = plaintext_data
-        key_bytes = None
+        _key_bytes = None
         if getattr(args, "key", None):
             with open(args.key, "rb") as kf:
-                key_bytes = kf.read()
+                _key_bytes = kf.read()
         if getattr(args, "encrypt", False):
             _ensure_security_loaded()
             assert encrypt_data is not None
