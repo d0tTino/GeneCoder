@@ -51,6 +51,14 @@ CASES = [
         {"m": 5, "t": 2},
         "bchlib is required",
     ),
+    (
+        "genecoder.fec.framed",
+        "cffi",
+        "encode_data_framed",
+        (b"data",),
+        {},
+        "FrameD is required",
+    ),
 ]
 
 

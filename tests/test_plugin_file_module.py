@@ -22,3 +22,4 @@ def test_plugins_py_module(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> N
     assert "fountain" in plugins.FEC_REGISTRY
     assert "bch" in plugins.FEC_REGISTRY
     assert "raptorq" in plugins.FEC_REGISTRY
+    assert "framed" in plugins.FEC_REGISTRY

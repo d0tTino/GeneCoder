@@ -22,6 +22,7 @@ def test_fec_plugins_registered() -> None:
     assert "fountain" in FEC_REGISTRY
     assert "bch" in FEC_REGISTRY
     assert "raptorq" in FEC_REGISTRY
+    assert "framed" in FEC_REGISTRY
 
 
 def test_simulator_plugins_registered() -> None:
