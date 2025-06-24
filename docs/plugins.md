@@ -51,3 +51,10 @@ the :class:`genecoder.channels.base.BaseChannel` protocol.
 
 Registered codecs are available via `genecoder.CODEC_REGISTRY` after importing
 GeneCoder.
+
+## Plugin Examples
+
+See the [plugins-examples](../plugins-examples/) directory in the source tree for
+minimal sample packages implementing a codec, a FEC backend and a read
+simulator. Install any of these packages with `pip install` to experiment with
+custom extensions locally.
