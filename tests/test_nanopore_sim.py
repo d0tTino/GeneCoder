@@ -4,6 +4,8 @@ import subprocess
 import pytest
 
 from genecoder import nanopore_sim
+from genecoder.plugins import SIMULATOR_REGISTRY
+from genecoder.simulators import simulate_reads
 
 ADAPTERS = {
     "d2sim": (nanopore_sim.simulate_d2sim, "d2sim"),
@@ -119,28 +121,35 @@ def test_adapters_command_not_found_warning(monkeypatch, caplog, name):
 
 def test_simulate_reads_dispatch(monkeypatch):
     called = []
-    def fake_adapter(seq: str, rate: float = 0.05, rng=None) -> str:
-        called.append((seq, rate, isinstance(rng, random.Random)))
+    class DummyChannel(nanopore_sim.Channel):
+        def __init__(self):
+            super().__init__("dummy", 0.05)
 
-        return "ok"
+        def simulate(self, sequence: str) -> str:
+            called.append((sequence, self.error_rate))
+            return "ok"
 
-    monkeypatch.setitem(nanopore_sim.SIMULATOR_ADAPTERS, "dummy", fake_adapter)
-    assert nanopore_sim.simulate_reads("AAAA", "dummy") == "ok"
-    assert called == [("AAAA", 0.05, True)]
+    monkeypatch.setitem(SIMULATOR_REGISTRY, "dummy", DummyChannel())
+    assert simulate_reads("AAAA", "dummy") == "ok"
+    assert called == [("AAAA", 0.05)]
 
 
 def test_simulate_reads_preserves_global_rng(monkeypatch):
-    def fake_adapter(seq: str, rate: float = 0.05, rng=None) -> str:
-        return seq
+    class DummyChannel(nanopore_sim.Channel):
+        def __init__(self):
+            super().__init__("dummy")
 
-    monkeypatch.setitem(nanopore_sim.SIMULATOR_ADAPTERS, "dummy", fake_adapter)
+        def simulate(self, sequence: str) -> str:
+            return sequence
+
+    monkeypatch.setitem(SIMULATOR_REGISTRY, "dummy", DummyChannel())
 
     rng = random.Random(123)
     expected_first = rng.random()
     expected_second = rng.random()
     random.seed(123)
     before = random.random()
-    nanopore_sim.simulate_reads("ACGT", "dummy")
+    simulate_reads("ACGT", "dummy")
     after = random.random()
     assert before == expected_first
     assert after == expected_second
@@ -148,7 +157,7 @@ def test_simulate_reads_preserves_global_rng(monkeypatch):
 
 def test_simulate_reads_unknown_simulator():
     with pytest.raises(ValueError, match="Unknown simulator"):
-        nanopore_sim.simulate_reads("ACGT", "bogus")
+        simulate_reads("ACGT", "bogus")
 
 
 def test_register_returns_channels():

@@ -2,6 +2,7 @@ import random
 import pytest
 
 from genecoder import nanopore_sim
+from genecoder.simulators import simulate_reads
 from genecoder.channel_sim import simulate_errors
 
 
@@ -35,7 +36,7 @@ def test_simulate_reads_fallback(monkeypatch):
         lambda seq, rate, rng=None: errors_called.append((seq, rate, rng)) or "fallback",
     )
 
-    result = nanopore_sim.simulate_reads("ACGT", "d2sim", error_rate=0.1)
+    result = simulate_reads("ACGT", "d2sim", error_rate=0.1)
     assert result == "fallback"
     assert which_called == ["d2sim"]
     assert errors_called and isinstance(errors_called[0][2], random.Random)

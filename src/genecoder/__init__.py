@@ -16,6 +16,7 @@ from .plugins import (
     SIMULATOR_REGISTRY,
     load_plugins,
 )
+from .simulators import simulate_reads
 
 load_plugins()
 
@@ -25,6 +26,7 @@ __all__ = [
     "CODEC_REGISTRY",
     "FEC_REGISTRY",
     "SIMULATOR_REGISTRY",
+    "simulate_reads",
     "load_plugins",
 ]
 

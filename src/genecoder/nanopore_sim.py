@@ -10,12 +10,27 @@ from pathlib import Path
 import logging
 from typing import Callable, Sequence
 
+__all__ = [
+    "simulate_d2sim",
+    "simulate_dnarsim",
+    "simulate_squigulator",
+    "simulate_reads",
+    "Channel",
+]
+
 from .channels.base import BaseChannel
 
 logger = logging.getLogger(__name__)
 
 from .channel_sim import simulate_errors
 from .formats import from_fasta, to_fasta
+
+
+def _make_rng() -> random.Random:
+    """Return a :class:`~random.Random` seeded from ``GENECODER_SIM_SEED``."""
+
+    seed_env = os.getenv("GENECODER_SIM_SEED")
+    return random.Random(int(seed_env)) if seed_env is not None else random.Random()
 
 
 def _run_external(command: Sequence[str] | str, sequence: str) -> str:
@@ -58,7 +73,7 @@ def _simulate_adapter(
     # use a deterministic local RNG for external simulators and forward it when
     # falling back to :func:`simulate_errors` so calls remain reproducible
     if rng is None:
-        rng = random.Random()
+        rng = _make_rng()
     return simulate_errors(sequence, error_rate, rng=rng)
 
 
@@ -73,7 +88,7 @@ def simulate_d2sim(
 
 
     if rng is None:
-        rng = random.Random()
+        rng = _make_rng()
 
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
@@ -93,7 +108,7 @@ def simulate_dnarsim(
 
 
     if rng is None:
-        rng = random.Random()
+        rng = _make_rng()
 
     return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
@@ -109,7 +124,7 @@ def simulate_squigulator(
 
 
     if rng is None:
-        rng = random.Random()
+        rng = _make_rng()
 
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
@@ -140,28 +155,26 @@ SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random | None], str]]
 
 
 def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> str:
-    """Return ``sequence`` corrupted using the chosen simulator.
+    """Return ``sequence`` corrupted using the chosen simulator."""
 
-    A per-call :class:`~random.Random` instance is used so calls do not affect
-    the global RNG.  If the ``GENECODER_SIM_SEED`` environment variable is set,
-    it will be used to seed this local RNG.  If the requested simulator command
-    isn't available, fall back to a simple substitution error model implemented
-    in :func:`simulate_errors`.
-    """
-
-    seed_env = os.getenv("GENECODER_SIM_SEED")
-    rng = random.Random(int(seed_env)) if seed_env is not None else random.Random()
-
+    from .plugins import SIMULATOR_REGISTRY
 
     try:
-        adapter = SIMULATOR_ADAPTERS[simulator]
+        channel = SIMULATOR_REGISTRY[simulator]
     except KeyError as exc:
         raise ValueError(f"Unknown simulator: {simulator}") from exc
 
-    return adapter(sequence, error_rate, rng)
+    if hasattr(channel, "error_rate"):
+        old_rate = channel.error_rate
+        channel.error_rate = error_rate
+        try:
+            return channel.simulate(sequence)
+        finally:
+            channel.error_rate = old_rate
+    return channel.simulate(sequence)
 
 
-class _Channel(BaseChannel):
+class Channel(BaseChannel):
     """Adapter implementing :class:`BaseChannel` for built-in simulators."""
 
     def __init__(self, name: str, error_rate: float = 0.05) -> None:
@@ -169,7 +182,8 @@ class _Channel(BaseChannel):
         self.error_rate = error_rate
 
     def simulate(self, sequence: str) -> str:
-        return simulate_reads(sequence, self.name, self.error_rate)
+        adapter = SIMULATOR_ADAPTERS[self.name]
+        return adapter(sequence, self.error_rate, _make_rng())
 
 
 
@@ -177,6 +191,6 @@ def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
     """Register the builtin simulators."""
 
     for name in SIMULATOR_ADAPTERS:
-        register_simulator(name, _Channel(name))
+        register_simulator(name, Channel(name))
 
 

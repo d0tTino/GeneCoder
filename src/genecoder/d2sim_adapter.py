@@ -6,7 +6,7 @@ from typing import Callable
 
 from .channels.base import BaseChannel
 
-from .nanopore_sim import _simulate_adapter, _run_external
+from .nanopore_sim import _simulate_adapter, _run_external, _make_rng
 
 
 class _D2SIM:
@@ -28,6 +28,9 @@ def simulate_d2sim(
 ) -> str:
     """Use ``d2sim`` if available, else fall back to :func:`simulate_errors`."""
 
+    if rng is None:
+        rng = _make_rng()
+
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
 
@@ -38,7 +41,7 @@ class D2SimChannel(BaseChannel):
         self.error_rate = error_rate
 
     def simulate(self, sequence: str) -> str:
-        return simulate_d2sim(sequence, error_rate=self.error_rate)
+        return simulate_d2sim(sequence, error_rate=self.error_rate, rng=_make_rng())
 
 
 def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
