@@ -96,6 +96,12 @@ def test_reed_solomon_pipeline(tmp_path: Path):
     dna, header, *_ = run_encoding_pipeline(data, enc_opts, input_file.name)
     assert "fec=reed_solomon" in header
     assert "fec_info=" in header
+    fec_info_b64 = header.split("fec_info=")[1].split()[0]
+    import base64
+    import json
+
+    rs_info = json.loads(base64.b64decode(fec_info_b64).decode())
+    assert rs_info == 10
     assert "parity_k" not in header
 
     dec_args = argparse.Namespace(

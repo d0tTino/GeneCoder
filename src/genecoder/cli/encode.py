@@ -85,9 +85,9 @@ def run_encoding_pipeline(
         header_parts.append(f"fec={options.fec}")
         if info is not None:
             import base64
-            import pickle
+            import json
 
-            encoded_info = base64.b64encode(pickle.dumps(info)).decode()
+            encoded_info = base64.b64encode(json.dumps(info).encode()).decode()
             header_parts.append(f"fec_info={encoded_info}")
         logger.info(
             f"Applied {options.fec} FEC to {input_file_name}. Original binary size: {len(data)}, encoded size: {len(current_input)}."
