@@ -1,8 +1,12 @@
 {
     "name": "GeneCoder",
     "build": {
-        "dockerfile": "../Dockerfile",
+        "dockerfile": "Dockerfile",
         "context": ".."
     },
-    "postCreateCommand": "pre-commit install"
+    "postCreateCommand": "pre-commit install",
+    "extensions": [
+        "ms-python.python",
+        "ms-azuretools.vscode-docker"
+    ]
 }
