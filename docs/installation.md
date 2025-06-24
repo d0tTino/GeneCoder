@@ -98,6 +98,18 @@ pip install dnaformer torch
 Once installed, GeneCoder will automatically register the codec when
 imported.
 
+## FrameD FEC Backend
+
+The optional FrameD plugin wraps optimized C++ kernels using CFFI.
+Install the package from PyPI before using the backend:
+
+```bash
+pip install FrameD
+```
+
+The `framed` FEC method becomes available automatically after
+installation.
+
 ## Configuring the OpenAI API Key
 
 The OpenAI testing agent requires an API key. Set the `OPENAI_API_KEY`
