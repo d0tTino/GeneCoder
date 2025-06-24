@@ -17,6 +17,7 @@ from genecoder.plugins import FEC_REGISTRY, SIMULATOR_REGISTRY
 from genecoder.formats import from_fasta
 from genecoder.utils import get_alphabet_maps
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
+from genecoder.security import decrypt_data, compute_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +216,22 @@ def process_single_decode(
             sequence_from_fasta, header, options, os.path.basename(input_file_path)
         )
 
+        if getattr(args, "encrypt", False):
+            final_decoded_data = decrypt_data(final_decoded_data)
+
+        if getattr(args, "checksum", False):
+            m = re.search(r"checksum=([0-9a-f]+)", header)
+            if not m:
+                logger.error(
+                    f"Checksum requested but missing in header for {input_file_path}."
+                )
+                raise SystemExit(1)
+            expected = m.group(1)
+            actual = compute_checksum(final_decoded_data)
+            if expected != actual:
+                logger.error(f"Checksum mismatch for {input_file_path}.")
+                raise SystemExit(1)
+
         os.makedirs(os.path.dirname(output_file_path) or ".", exist_ok=True)
         with open(output_file_path, "wb") as f_out:
             f_out.write(final_decoded_data)
@@ -285,6 +302,16 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
             "Alphabet mapping used during encoding. base5 and base6 remap"
             " letters only and do not increase capacity (default: base4)."
         ),
+    )
+    parser.add_argument(
+        "--encrypt",
+        action="store_true",
+        help="Decrypt output assuming the encoded data was encrypted.",
+    )
+    parser.add_argument(
+        "--checksum",
+        action="store_true",
+        help="Validate checksum stored in the FASTA header.",
     )
     parser.add_argument(
         "--stream",
