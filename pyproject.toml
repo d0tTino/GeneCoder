@@ -25,6 +25,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.10"
 reedsolo = "*"
+cryptography = "^45.0.4"
 
 [tool.poetry.group.gui.dependencies]
 flet = ">=0.28,<0.29"
@@ -42,7 +43,6 @@ pytest-cov = "*"
 pre-commit = "*"
 ruff = "*"
 mypy = "*"
-cryptography = "^45.0.4"
 
 [tool.poetry.scripts]
 genecoder = "genecoder.cli.cli:main"
