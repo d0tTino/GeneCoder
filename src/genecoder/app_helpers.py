@@ -239,15 +239,21 @@ def perform_decoding(fasta_data: str, alphabet: str = "base4") -> DecodeResult:
         try:
             params, idx = decoder.raw_decode(json_field)
         except json.JSONDecodeError as exc:
-            raise ValueError("Invalid Huffman parameters") from exc
+            raise ValueError(
+                "Invalid Huffman parameters: malformed JSON"
+            ) from exc
 
         if json_field[idx:].strip():
-            raise ValueError("Invalid Huffman parameters")
+            raise ValueError(
+                "Invalid Huffman parameters: extra text after JSON"
+            )
 
         table_str = params.get("table")
         num_padding_bits = params.get("padding")
-        if table_str is None or num_padding_bits is None:
-            raise ValueError("Invalid Huffman parameters")
+        if table_str is None:
+            raise ValueError("Invalid Huffman parameters: missing table")
+        if num_padding_bits is None:
+            raise ValueError("Invalid Huffman parameters: missing padding")
 
         huffman_table = {int(k): v for k, v in table_str.items()}
     elif "method=base4_direct" in header:
