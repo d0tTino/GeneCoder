@@ -13,14 +13,11 @@ GeneCoder provides a CLI and GUI for encoding and decoding data into simulated D
 
 ## Helix View
 
-The GUI now includes a **Helix View** tab powered by a Three.js scene. The
-visualization renders each nucleotide as a colored sphere with hover tooltips
-showing the original byte information.  Orbit controls allow zooming and
-rotating the helix.  The scene is loaded on demand so it works in both desktop
-and web deployments.
-
-React and Three.js are loaded from public CDNs at runtime, so the helix
-visualization does not include them in the bundle.
+The GUI now includes a **Helix View** tab powered by a dedicated React
+application under `web/helix-ui`. The visualization renders each nucleotide as a
+colored sphere with tooltips. Orbit controls allow zooming and rotating, and the
+overlay canvas illustrates GC content and homopolymer runs. The frontend is
+loaded on demand so it works in both desktop and web deployments.
 
 <!-- screenshot omitted in this repository because binary files are not supported -->
 

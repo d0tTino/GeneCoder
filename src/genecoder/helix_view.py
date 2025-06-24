@@ -8,6 +8,7 @@ from urllib.parse import quote
 import base64
 import pkgutil
 import logging
+from pathlib import Path
 
 # Flet <0.29 removed ``HtmlElement``. Provide a minimal fallback for tests.
 if not hasattr(ft, "HtmlElement"):
@@ -258,3 +259,17 @@ def show_helix(
     data_url: str = "data:text/html," + quote(helix_html)
 
     return flet_webview.WebView(url=data_url, width=600, height=400)
+
+
+def show_helix_ui(
+    dna_sequence: str = "ACGT",
+    *,
+    animate: bool = True,
+    zoom: float = 1.0,
+) -> flet_webview.WebView:
+    """Return a ``WebView`` pointing at the React helix frontend."""
+    helix_path = Path(__file__).resolve().parent.parent / "web" / "helix-ui" / "index.html"
+    params = (
+        f"?seq={quote(dna_sequence)}&animate={'true' if animate else 'false'}&zoom={zoom}"
+    )
+    return flet_webview.WebView(url=helix_path.as_uri() + params, width=600, height=400)
