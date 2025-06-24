@@ -51,40 +51,52 @@ def main(page: ft.Page) -> None:
     selected_decode_input_file_path.current = ""
 
     # --- Analysis Tab UI Controls (defined early for access in encode_data) ---
-    codeword_hist_image = ft.Image(
+    codeword_hist_image: ft.Image = ft.Image(
         width=500,
         height=350,
         fit=ft.ImageFit.CONTAIN,
         tooltip="Huffman Codeword Length Histogram",
     )
-    nucleotide_freq_image = ft.Image(
+    nucleotide_freq_image: ft.Image = ft.Image(
         width=500,
         height=350,
         fit=ft.ImageFit.CONTAIN,
         tooltip="Nucleotide Frequency Distribution",
     )
-    sequence_analysis_plot_image = ft.Image(  # New image control
+    sequence_analysis_plot_image: ft.Image = ft.Image(  # New image control
         width=600,
         height=400,
         fit=ft.ImageFit.CONTAIN,
         tooltip="Sequence GC & Homopolymer Analysis",
     )
-    analysis_status_text = ft.Text("Encode data to view analysis plots.", italic=True)
+    analysis_status_text: ft.Text = ft.Text(
+        "Encode data to view analysis plots.", italic=True
+    )
 
     # Container used for the Helix View tab. Filled when the tab is selected.
     helix_container: ft.Column = ft.Column()
     animate_checkbox: ft.Checkbox = ft.Checkbox(label="Animate", value=True)
-    zoom_slider: ft.Slider = ft.Slider(min=0.5, max=2.0, value=1.0, divisions=15, width=200)
+    zoom_slider: ft.Slider = ft.Slider(
+        min=0.5, max=2.0, value=1.0, divisions=15, width=200
+    )
     helix_length_input: ft.TextField = ft.TextField(
         label="Sequence Length",
         value="50",
         width=150,
         keyboard_type=ft.KeyboardType.NUMBER,
     )
-    helix_color_a: ft.TextField = ft.TextField(label="A", value="#ff5555", width=100)
-    helix_color_c: ft.TextField = ft.TextField(label="C", value="#5555ff", width=100)
-    helix_color_g: ft.TextField = ft.TextField(label="G", value="#55ff55", width=100)
-    helix_color_t: ft.TextField = ft.TextField(label="T", value="#ffff55", width=100)
+    helix_color_a: ft.TextField = ft.TextField(
+        label="A", value="#ff5555", width=100
+    )
+    helix_color_c: ft.TextField = ft.TextField(
+        label="C", value="#5555ff", width=100
+    )
+    helix_color_g: ft.TextField = ft.TextField(
+        label="G", value="#55ff55", width=100
+    )
+    helix_color_t: ft.TextField = ft.TextField(
+        label="T", value="#ffff55", width=100
+    )
     helix_controls: ft.Row = ft.Row(
         [
             helix_length_input,
@@ -117,7 +129,9 @@ def main(page: ft.Page) -> None:
     )
 
     # --- Encode Tab UI Controls ---
-    encode_selected_input_file_text = ft.Text("No file selected.", italic=True)
+    encode_selected_input_file_text: ft.Text = ft.Text(
+        "No file selected.", italic=True
+    )
     
     def on_encode_file_picker_result(e: ft.FilePickerResultEvent) -> None:
 
@@ -138,7 +152,7 @@ def main(page: ft.Page) -> None:
     )
     page.overlay.append(encode_file_picker)
 
-    encode_browse_button = ft.ElevatedButton(
+    encode_browse_button: ft.ElevatedButton = ft.ElevatedButton(
         "Browse File",
         icon=ft.icons.FOLDER_OPEN,
         on_click=lambda _: encode_file_picker.pick_files(
@@ -146,7 +160,7 @@ def main(page: ft.Page) -> None:
         ),
     )
 
-    method_dropdown = ft.Dropdown(
+    method_dropdown: ft.Dropdown = ft.Dropdown(
         label="Encoding Method",
         options=[
             ft.dropdown.Option("Base-4 Direct"),
@@ -156,7 +170,7 @@ def main(page: ft.Page) -> None:
         value="Base-4 Direct",
     )
 
-    alphabet_dropdown = ft.Dropdown(
+    alphabet_dropdown: ft.Dropdown = ft.Dropdown(
         label="Alphabet",
         options=[
             ft.dropdown.Option("base4"),
@@ -166,7 +180,7 @@ def main(page: ft.Page) -> None:
         value="base4",
     )
 
-    k_value_input = ft.TextField(
+    k_value_input: ft.TextField = ft.TextField(
         label="k-value (for parity)",
         value="7",
         width=150,
@@ -178,7 +192,7 @@ def main(page: ft.Page) -> None:
         k_value_input.disabled = not e.control.value
         page.update()
 
-    parity_checkbox = ft.Checkbox(
+    parity_checkbox: ft.Checkbox = ft.Checkbox(
         label="Add Parity", value=False, on_change=_toggle_k_value
     )
 
@@ -194,7 +208,7 @@ def main(page: ft.Page) -> None:
             k_value_input.disabled = not parity_checkbox.value
         page.update()
 
-    fec_dropdown = ft.Dropdown(
+    fec_dropdown: ft.Dropdown = ft.Dropdown(
         label="FEC Method",
         options=[
             ft.dropdown.Option("None"),
@@ -206,20 +220,22 @@ def main(page: ft.Page) -> None:
         on_change=on_fec_change,
     )
 
-    encode_button = ft.ElevatedButton("Encode")
+    encode_button: ft.ElevatedButton = ft.ElevatedButton("Encode")
 
-    encode_status_text = ft.Text("", selectable=True)
-    encode_orig_size_text = ft.Text("Original size: - bytes")
-    encode_dna_len_text = ft.Text("Encoded DNA length: - nucleotides")
-    encode_comp_ratio_text = ft.Text("Compression ratio: -")
-    encode_bits_per_nt_text = ft.Text("Bits per nucleotide: - bits/nt")
-    encode_actual_gc_text = ft.Text("Actual GC content (payload): -")
-    encode_actual_homopolymer_text = ft.Text("Actual max homopolymer (payload): -")
-    encode_progress_ring = ft.ProgressRing(
+    encode_status_text: ft.Text = ft.Text("", selectable=True)
+    encode_orig_size_text: ft.Text = ft.Text("Original size: - bytes")
+    encode_dna_len_text: ft.Text = ft.Text("Encoded DNA length: - nucleotides")
+    encode_comp_ratio_text: ft.Text = ft.Text("Compression ratio: -")
+    encode_bits_per_nt_text: ft.Text = ft.Text("Bits per nucleotide: - bits/nt")
+    encode_actual_gc_text: ft.Text = ft.Text("Actual GC content (payload): -")
+    encode_actual_homopolymer_text: ft.Text = ft.Text(
+        "Actual max homopolymer (payload): -"
+    )
+    encode_progress_ring: ft.ProgressRing = ft.ProgressRing(
         visible=False, width=20, height=20
     )  # Progress indicator
 
-    encode_dna_snippet_text = ft.TextField(
+    encode_dna_snippet_text: ft.TextField = ft.TextField(
         label="DNA Snippet (first 200 chars)",
         read_only=True,
         multiline=True,
@@ -228,11 +244,11 @@ def main(page: ft.Page) -> None:
         width=500,
     )
 
-    encode_save_button = ft.ElevatedButton(
+    encode_save_button: ft.ElevatedButton = ft.ElevatedButton(
         "Save Encoded FASTA...", icon=ft.icons.SAVE, visible=False
     )
 
-    encode_manifest_save_button = ft.ElevatedButton(
+    encode_manifest_save_button: ft.ElevatedButton = ft.ElevatedButton(
         "Save Manifest...",
         icon=ft.icons.SAVE,
         visible=False,
@@ -490,25 +506,29 @@ def main(page: ft.Page) -> None:
     )
 
     # --- Decode Tab UI Controls & Logic ---
-    decode_selected_input_file_text = ft.Text("No FASTA file selected.", italic=True)
-    decode_status_text = ft.Text(
+    decode_selected_input_file_text: ft.Text = ft.Text(
+        "No FASTA file selected.", italic=True
+    )
+    decode_status_text: ft.Text = ft.Text(
         "", selectable=True
     )  # Main status for decoding results
-    decode_fec_info_text = ft.Text(
+    decode_fec_info_text: ft.Text = ft.Text(
         "", selectable=True, color=ft.colors.BLUE_GREY_500
     )  # Displays FEC correction/error counts
-    decode_progress_ring = ft.ProgressRing(
+    decode_progress_ring: ft.ProgressRing = ft.ProgressRing(
         visible=False, width=20, height=20
     )  # Progress indicator
 
-    decode_save_button = ft.ElevatedButton(
+    decode_save_button: ft.ElevatedButton = ft.ElevatedButton(
         "Save Decoded File...", icon=ft.icons.SAVE, visible=False
     )
 
-    decode_button = ft.ElevatedButton("Decode")
+    decode_button: ft.ElevatedButton = ft.ElevatedButton("Decode")
 
-    decode_stream_checkbox = ft.Checkbox(label="Stream large files", value=False)
-    decode_alphabet_dropdown = ft.Dropdown(
+    decode_stream_checkbox: ft.Checkbox = ft.Checkbox(
+        label="Stream large files", value=False
+    )
+    decode_alphabet_dropdown: ft.Dropdown = ft.Dropdown(
         label="Alphabet",
         options=[
             ft.dropdown.Option("base4"),
@@ -539,7 +559,7 @@ def main(page: ft.Page) -> None:
     )
     page.overlay.append(decode_file_picker)
 
-    decode_browse_button = ft.ElevatedButton(
+    decode_browse_button: ft.ElevatedButton = ft.ElevatedButton(
         "Browse FASTA File",
         icon=ft.icons.FOLDER_OPEN,
         on_click=lambda _: decode_file_picker.pick_files(
@@ -646,7 +666,7 @@ def main(page: ft.Page) -> None:
         dialog_title="Save Decoded File", file_name="decoded_output.bin"
     )
 
-    decode_tab_content_column = ft.Column(
+    decode_tab_content_column: ft.Column = ft.Column(
         controls=[
             ft.Row(
                 [decode_browse_button, decode_selected_input_file_text],
@@ -666,7 +686,7 @@ def main(page: ft.Page) -> None:
     )
 
     # --- Layout for Analysis Tab ---
-    analysis_tab_content_column = ft.Column(
+    analysis_tab_content_column: ft.Column = ft.Column(
         controls=[
             analysis_status_text,
             ft.Divider(),
