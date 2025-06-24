@@ -24,7 +24,19 @@ from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
-from genecoder.security import encrypt_data, compute_checksum
+from typing import Callable
+
+# Delay importing heavy security module until needed
+encrypt_data: Callable[[bytes], bytes] | None = None
+compute_checksum: Callable[[bytes], str] | None = None
+
+
+def _ensure_security_loaded() -> None:
+    global encrypt_data, compute_checksum
+    if encrypt_data is None or compute_checksum is None:
+        from genecoder.security import encrypt_data as _enc, compute_checksum as _chk
+        encrypt_data = _enc
+        compute_checksum = _chk
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +71,7 @@ def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
 def run_encoding_pipeline(
     data: bytes, options: EncodingOptions, input_file_name: str
 ) -> tuple[str, str, str, bytes, int]:
+    _ensure_security_loaded()
     current_input = data
     fec_padding_bits = -1
     encode_map, _ = get_alphabet_maps(options.alphabet)
@@ -246,10 +259,14 @@ def process_single_encode(
 
         data_for_encoding = plaintext_data
         if getattr(args, "encrypt", False):
+            _ensure_security_loaded()
+            assert encrypt_data is not None
             data_for_encoding = encrypt_data(plaintext_data)
 
         checksum: str | None = None
         if getattr(args, "checksum", False):
+            _ensure_security_loaded()
+            assert compute_checksum is not None
             checksum = compute_checksum(plaintext_data)
 
         options = build_encoding_options(args)

@@ -8,6 +8,9 @@ _LAZY_ATTRS = {
     "DecodeResult",
     "perform_encoding",
     "perform_decoding",
+    "encrypt_data",
+    "decrypt_data",
+    "compute_checksum",
 }
 
 from .plugins import (
@@ -17,7 +20,6 @@ from .plugins import (
     load_plugins,
 )
 from .simulators import simulate_reads
-from .security import decrypt_data, encrypt_data, compute_checksum
 
 load_plugins()
 
@@ -47,12 +49,16 @@ def __getattr__(name: str) -> Any:
             perform_encoding,
             perform_decoding,
         )
+        from .security import decrypt_data, encrypt_data, compute_checksum
         globals().update({
             "EncodeOptions": EncodeOptions,
             "EncodeResult": EncodeResult,
             "DecodeResult": DecodeResult,
             "perform_encoding": perform_encoding,
             "perform_decoding": perform_decoding,
+            "encrypt_data": encrypt_data,
+            "decrypt_data": decrypt_data,
+            "compute_checksum": compute_checksum,
         })
         return globals()[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
