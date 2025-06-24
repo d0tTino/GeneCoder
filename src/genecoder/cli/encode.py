@@ -24,6 +24,7 @@ from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
+from genecoder.security import encrypt_data, compute_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +242,15 @@ def process_single_encode(
             return os.path.basename(input_file_path), dna_sequence
 
         with open(input_file_path, "rb") as f_in:
-            original_input_data = f_in.read()
+            plaintext_data = f_in.read()
+
+        data_for_encoding = plaintext_data
+        if getattr(args, "encrypt", False):
+            data_for_encoding = encrypt_data(plaintext_data)
+
+        checksum: str | None = None
+        if getattr(args, "checksum", False):
+            checksum = compute_checksum(plaintext_data)
 
         options = build_encoding_options(args)
         (
@@ -251,8 +260,11 @@ def process_single_encode(
             current_input_data,
             fec_padding_bits,
         ) = run_encoding_pipeline(
-            original_input_data, options, os.path.basename(input_file_path)
+            data_for_encoding, options, os.path.basename(input_file_path)
         )
+
+        if checksum:
+            fasta_header = f"{fasta_header} checksum={checksum}"
 
         fasta_output = to_fasta(final_encoded_dna_sequence, fasta_header, line_width=80)
 
@@ -276,7 +288,7 @@ def process_single_encode(
             )
             logger.info(f"Capsule written to {args.capsule}")
 
-        original_size_bytes = len(original_input_data)
+        original_size_bytes = len(plaintext_data)
         final_encoded_length_nucleotides = len(final_encoded_dna_sequence)
         dna_equivalent_bytes = final_encoded_length_nucleotides * 0.25
 
@@ -432,6 +444,16 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
             "Alphabet mapping to use. base5 and base6 simply remap the ACGT"
             " symbols and do not increase capacity (default: base4)."
         ),
+    )
+    parser.add_argument(
+        "--encrypt",
+        action="store_true",
+        help="Encrypt input bytes before encoding.",
+    )
+    parser.add_argument(
+        "--checksum",
+        action="store_true",
+        help="Store checksum of plaintext in the FASTA header.",
     )
     parser.add_argument(
         "--stream",

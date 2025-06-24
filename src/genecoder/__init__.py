@@ -17,6 +17,7 @@ from .plugins import (
     load_plugins,
 )
 from .simulators import simulate_reads
+from .security import decrypt_data, encrypt_data, compute_checksum
 
 load_plugins()
 
@@ -28,6 +29,9 @@ __all__ = [
     "SIMULATOR_REGISTRY",
     "simulate_reads",
     "load_plugins",
+    "encrypt_data",
+    "decrypt_data",
+    "compute_checksum",
 ]
 
 

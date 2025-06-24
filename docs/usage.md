@@ -192,6 +192,18 @@ genecoder encode --input-files msg.txt \
     --output-dir out/ --method base4_direct \
     --capsule seq.capsule
 ```
+### Security Options
+
+Use `--encrypt` to XOR-encrypt the input bytes with a built-in key before
+encoding. The `--checksum` flag stores a SHA256 checksum of the plaintext in the
+FASTA header which is validated during decoding.
+
+```bash
+genecoder encode --input-files secret.txt \
+    --output-dir out/ --method base4_direct --encrypt --checksum
+genecoder decode --input-files out/secret.txt.fasta \
+    --output-dir decoded/ --method base4_direct --encrypt --checksum
+```
 ## Graphical User Interface (GUI)
 
 ### Launching the Flet App
