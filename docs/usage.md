@@ -195,14 +195,15 @@ genecoder encode --input-files msg.txt \
 ### Security Options
 
 Use `--encrypt` to XOR-encrypt the input bytes with a built-in key before
-encoding. The `--checksum` flag stores a SHA256 checksum of the plaintext in the
-FASTA header which is validated during decoding.
+encoding. Provide `--key <file>` to read custom key bytes from a file. The
+`--checksum` flag stores a SHA256 checksum of the plaintext in the FASTA header
+which is validated during decoding.
 
 ```bash
 genecoder encode --input-files secret.txt \
-    --output-dir out/ --method base4_direct --encrypt --checksum
+    --output-dir out/ --method base4_direct --encrypt --key key.bin --checksum
 genecoder decode --input-files out/secret.txt.fasta \
-    --output-dir decoded/ --method base4_direct --encrypt --checksum
+    --output-dir decoded/ --method base4_direct --encrypt --key key.bin --checksum
 ```
 ## Graphical User Interface (GUI)
 
