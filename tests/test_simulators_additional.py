@@ -3,7 +3,6 @@ import pytest
 
 from genecoder import nanopore_sim
 from genecoder.simulators import simulate_reads
-from genecoder.channel_sim import simulate_errors
 
 
 def test_simulate_errors_preserves_global_rng():
@@ -12,7 +11,7 @@ def test_simulate_errors_preserves_global_rng():
     expected_second = rng.random()
     random.seed(123)
     before = random.random()
-    simulate_errors("AAAA", 0.1)
+    simulate_reads("AAAA", "simple", error_rate=0.1)
     after = random.random()
     assert before == expected_first
     assert after == expected_second
@@ -21,7 +20,7 @@ def test_simulate_errors_preserves_global_rng():
 @pytest.mark.parametrize("prob", [-0.1, 1.1])
 def test_simulate_errors_invalid_probability(prob):
     with pytest.raises(ValueError):
-        simulate_errors("A", prob)
+        simulate_reads("A", "simple", error_rate=prob)
 
 
 def test_simulate_reads_fallback(monkeypatch):

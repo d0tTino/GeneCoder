@@ -117,3 +117,15 @@ def load_plugins() -> None:
     else:
         for name in _nano.SIMULATOR_ADAPTERS:
             register_simulator(name, _nano.Channel(name))
+
+    from . import channel_sim as _chan
+    if hasattr(_chan, "register"):
+        _chan.register(register_simulator)
+    else:
+        register_simulator("simple", _chan.Channel())
+
+    from . import error_simulation as _err
+    if hasattr(_err, "register"):
+        _err.register(register_simulator)
+    else:
+        register_simulator("indel", _err.Channel())

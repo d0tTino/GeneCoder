@@ -1,11 +1,14 @@
 """Simple channel error simulator for DNA sequences."""
 from __future__ import annotations
 
+import os
 import random
-from typing import Protocol
+from typing import Protocol, Callable
+
+from .channels.base import BaseChannel
 
 
-__all__ = ["simulate_errors", "RandomLike"]
+__all__ = ["simulate_errors", "RandomLike", "Channel", "register"]
 
 
 class RandomLike(Protocol):
@@ -42,3 +45,26 @@ def simulate_errors(seq: str, p_error: float, rng: Optional[random.Random] = Non
         else:
             result.append(nt)
     return "".join(result)
+
+
+def _make_rng() -> random.Random:
+    """Return a :class:`~random.Random` seeded from ``GENECODER_SIM_SEED``."""
+
+    seed_env = os.getenv("GENECODER_SIM_SEED")
+    return random.Random(int(seed_env)) if seed_env is not None else random.Random()
+
+
+class Channel(BaseChannel):
+    """Simple substitution error channel."""
+
+    def __init__(self, error_rate: float = 0.05) -> None:
+        self.error_rate = error_rate
+
+    def simulate(self, sequence: str) -> str:
+        return simulate_errors(sequence, self.error_rate, rng=_make_rng())
+
+
+def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
+    """Register the simple substitution error simulator."""
+
+    register_simulator("simple", Channel())
