@@ -1,4 +1,7 @@
 from pathlib import Path
+import pytest
+
+pytest.importorskip("cryptography")
 
 from genecoder.security import (
     encrypt_data,
@@ -78,6 +81,55 @@ def test_cli_encrypt_checksum_roundtrip(tmp_path: Path) -> None:
     assert out_file.read_text() == "secure message"
 
 
+def test_encrypt_roundtrip_key_file(tmp_path: Path) -> None:
+    pytest.importorskip("cryptography")
+    key_path = tmp_path / "key.bin"
+    key_bytes = b"custom-key"
+    key_path.write_bytes(key_bytes)
+    data = b"via-keyfile"
+    key = key_path.read_bytes()
+    enc = encrypt_data(data, key=key)
+    assert decrypt_data(enc, key=key) == data
+
+
+def test_cli_encrypt_checksum_key_file(tmp_path: Path, monkeypatch) -> None:
+    pytest.importorskip("cryptography")
+    key_path = tmp_path / "cli.key"
+    key_path.write_bytes(b"cli-key")
+    monkeypatch.setattr("genecoder.security._DEFAULT_KEY", key_path.read_bytes())
+
+    src = tmp_path / "msg2.txt"
+    src.write_text("secure keyfile")
+
+    enc_res = run_cli_command([
+        "encode",
+        "--input-files",
+        str(src),
+        "--output-dir",
+        str(tmp_path),
+        "--method",
+        "base4_direct",
+        "--encrypt",
+        "--checksum",
+    ])
+    assert enc_res.returncode == 0, enc_res.stderr
+    fasta = tmp_path / "msg2.txt.fasta"
+    assert fasta.exists()
+    dec_res = run_cli_command([
+        "decode",
+        "--input-files",
+        str(fasta),
+        "--output-dir",
+        str(tmp_path),
+        "--method",
+        "base4_direct",
+        "--encrypt",
+        "--checksum",
+    ])
+    assert dec_res.returncode == 0, dec_res.stderr
+    out_file = tmp_path / "msg2.txt_decoded.bin"
+    assert out_file.exists()
+    assert out_file.read_text() == "secure keyfile"
 def test_cli_encrypt_key_file_roundtrip(tmp_path: Path) -> None:
     src = tmp_path / "secret.txt"
     src.write_text("top secret")
