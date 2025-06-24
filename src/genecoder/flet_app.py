@@ -717,6 +717,18 @@ def main(page: ft.Page) -> None:
     )
 
     # --- Main App Structure (Tabs) ---
+    # Analysis tab needs to be referenced later to enable/disable
+    analysis_tab = ft.Tab(
+        text="Analysis",
+        icon=ft.icons.ANALYTICS_OUTLINED,
+        content=ft.Container(
+            analysis_tab_content_column,
+            padding=10,
+            alignment=ft.alignment.top_left,
+        ),
+    )
+    analysis_tab.disabled = True  # Initially disabled until data is encoded
+
     # Ensure app_tabs is defined before encode_data tries to access it
     app_tabs = ft.Tabs(
         selected_index=0,
@@ -771,16 +783,8 @@ def main(page: ft.Page) -> None:
                     alignment=ft.alignment.top_left,
                 ),
             ),
-            ft.Tab(
-                text="Analysis",
-                icon=ft.icons.ANALYTICS_OUTLINED,
-                content=ft.Container(
-                    analysis_tab_content_column,
-                    padding=10,
-                    alignment=ft.alignment.top_left,
-                ),
-                disabled=True,  # Initially disabled until data is encoded
-            ),
+            #(analysis tab defined above to allow setting disabled after init)
+            analysis_tab,
             ft.Tab(
                 text="Helix View",
                 icon=ft.icons.DNA,

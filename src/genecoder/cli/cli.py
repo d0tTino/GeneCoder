@@ -3,7 +3,12 @@ import logging
 import sys
 
 from genecoder import __version__
-from . import encode, decode, analyze
+from typing import Any
+
+# Delay heavy imports until building the parser to keep --version lightweight
+encode: Any | None = None
+decode: Any | None = None
+analyze: Any | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +44,13 @@ def setup_logging(level: int) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from . import encode as _encode, decode as _decode, analyze as _analyze
+
+    global encode, decode, analyze
+    encode = _encode
+    decode = _decode
+    analyze = _analyze
+
     parser = argparse.ArgumentParser(
         description="GeneCoder: Encode and decode data into simulated DNA sequences."
     )

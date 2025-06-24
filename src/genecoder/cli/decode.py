@@ -17,7 +17,18 @@ from genecoder.plugins import FEC_REGISTRY, SIMULATOR_REGISTRY
 from genecoder.formats import from_fasta
 from genecoder.utils import get_alphabet_maps
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
-from genecoder.security import decrypt_data, compute_checksum
+from typing import Callable
+
+# Delay importing heavy security module until needed
+decrypt_data: Callable[[bytes], bytes] | None = None
+compute_checksum: Callable[[bytes], str] | None = None
+
+def _ensure_security_loaded() -> None:
+    global decrypt_data, compute_checksum
+    if decrypt_data is None or compute_checksum is None:
+        from genecoder.security import decrypt_data as _dec, compute_checksum as _chk
+        decrypt_data = _dec
+        compute_checksum = _chk
 
 logger = logging.getLogger(__name__)
 
@@ -221,9 +232,13 @@ def process_single_decode(
             with open(args.key, "rb") as kf:
                 key_bytes = kf.read()
         if getattr(args, "encrypt", False):
-            final_decoded_data = decrypt_data(final_decoded_data, key=key_bytes)
+            _ensure_security_loaded()
+            assert decrypt_data is not None
+            final_decoded_data = decrypt_data(final_decoded_data)
+
 
         if getattr(args, "checksum", False):
+            _ensure_security_loaded()
             m = re.search(r"checksum=([0-9a-f]+)", header)
             if not m:
                 logger.error(
@@ -231,6 +246,7 @@ def process_single_decode(
                 )
                 raise SystemExit(1)
             expected = m.group(1)
+            assert compute_checksum is not None
             actual = compute_checksum(final_decoded_data)
             if expected != actual:
                 logger.error(f"Checksum mismatch for {input_file_path}.")
