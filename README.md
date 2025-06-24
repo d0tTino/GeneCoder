@@ -20,8 +20,9 @@ For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md)
 
 ## Quick Start
 
-GeneCoder requires **Python 3.10+**. Install the dependencies using
-[Poetry](https://python-poetry.org/):
+GeneCoder requires **Python 3.10+** and uses
+[Poetry](https://python-poetry.org/) for dependency management. Install the
+dependencies with:
 
 ```bash
 poetry install --no-interaction
@@ -33,12 +34,6 @@ Install optional extras for the GUI or web API with:
 poetry install --with gui,web --no-interaction
 ```
 
-Alternatively, use `pip` with **Python 3.10+** to install the project in
-editable mode:
-
-```bash
-python -m pip install -e .[gui,web]
-```
 
 Desktop packages are available on the [releases page](https://github.com/d0tTino/GeneCoder/releases).
 Download the `.msix` file for Windows or the `.dmg` for macOS and follow your
@@ -54,6 +49,7 @@ poetry run uvicorn web.main:app --reload
 
 See [docs/installation.md](docs/installation.md) for detailed setup and testing instructions, including the [mamba-based setup](docs/installation.md#mamba-based-setup) and the [Windows Quick Start](docs/installation.md#windows-quick-start).
 - For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md).
+- For working inside the VS Code Dev Container see [docs/installation.md#using-the-dev-container](docs/installation.md#using-the-dev-container).
 
 ## Development Setup
 

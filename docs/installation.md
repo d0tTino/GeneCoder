@@ -53,11 +53,11 @@ can still build the image and run the tests manually:
 docker build -t genecoder .
 docker run --rm -e SKIP_PACKAGING_TESTS=1 genecoder poetry run pytest -q
 ```
+## Using the Dev Container
 
-To hack on GeneCoder in the same environment, install the **Dev Containers**
-extension in VS Code and select **Reopen in Container** when prompted. The
-container extends the project `Dockerfile` and includes Node and other helpful
-development tools.
+Run `devcontainer open` from the repository root to build and launch the configured environment. Alternatively, install the **Dev Containers** extension in VS Code and select **Reopen in Container** when prompted. The container extends the project `Dockerfile` and includes Node and other helpful development tools.
+
+
 
 ## Mamba-Based Setup
 

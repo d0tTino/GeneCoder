@@ -41,6 +41,14 @@ from typing import Any
 
 
 def __getattr__(name: str) -> Any:
+    if name in {"encrypt_data", "decrypt_data", "compute_checksum"}:
+        from .security import decrypt_data, encrypt_data, compute_checksum
+        globals().update({
+            "encrypt_data": encrypt_data,
+            "decrypt_data": decrypt_data,
+            "compute_checksum": compute_checksum,
+        })
+        return globals()[name]
     if name in _LAZY_ATTRS:
         from .app_helpers import (
             EncodeOptions,
