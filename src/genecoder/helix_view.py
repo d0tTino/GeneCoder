@@ -266,10 +266,26 @@ def show_helix_ui(
     *,
     animate: bool = True,
     zoom: float = 1.0,
+    colors: dict[str, int] | None = None,
+    show_gc: bool = True,
+    show_runs: bool = True,
 ) -> flet_webview.WebView:
     """Return a ``WebView`` pointing at the React helix frontend."""
-    helix_path = Path(__file__).resolve().parent.parent / "web" / "helix-ui" / "index.html"
-    params = (
-        f"?seq={quote(dna_sequence)}&animate={'true' if animate else 'false'}&zoom={zoom}"
-    )
-    return flet_webview.WebView(url=helix_path.as_uri() + params, width=600, height=400)
+    base_dir = Path(__file__).resolve().parent.parent / "web" / "helix-ui"
+    helix_path = base_dir / "dist" / "index.html"
+    if not helix_path.is_file():
+        helix_path = base_dir / "index.html"
+
+    params = [
+        f"seq={quote(dna_sequence)}",
+        f"animate={'true' if animate else 'false'}",
+        f"zoom={zoom}",
+        f"gc={'true' if show_gc else 'false'}",
+        f"runs={'true' if show_runs else 'false'}",
+    ]
+    if colors:
+        color_str = ",".join(f"{b}:#{v:06x}" for b, v in colors.items())
+        params.append(f"colors={quote(color_str)}")
+
+    query = "?" + "&".join(params)
+    return flet_webview.WebView(url=helix_path.as_uri() + query, width=600, height=400)

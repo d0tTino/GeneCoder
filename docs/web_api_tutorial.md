@@ -10,9 +10,10 @@ uvicorn web.main:app --reload
 
 Open <http://127.0.0.1:8000> to view the landing page.
 
-The React helix viewer is available at `/helix`. It accepts optional `seq`,
-`zoom` and `animate` query parameters. The landing page includes an IFrame that
-loads this viewer.
+The React helix viewer is available at `/helix`. It accepts optional query
+parameters used by `show_helix_ui` such as `seq`, `animate`, `zoom`, `gc`,
+`runs` and `colors`. The landing page includes an IFrame that loads this
+viewer.
 
 Set the `GENECODER_SIM_SEED` environment variable to an integer to get
 reproducible results when API endpoints invoke error simulations.

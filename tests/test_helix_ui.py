@@ -8,12 +8,22 @@ from genecoder.helix_view import show_helix_ui
 
 
 def test_show_helix_ui_url(tmp_path: Path) -> None:
-    webview = show_helix_ui("ACGT", animate=False, zoom=1.5)
+    webview = show_helix_ui(
+        "ACGT",
+        animate=False,
+        zoom=1.5,
+        colors={"A": 0x123456},
+        show_gc=False,
+        show_runs=False,
+    )
     assert webview.__class__.__name__ == "WebView"
     assert webview.url.startswith("file:")
     parsed = urlparse(webview.url)
     assert "animate=false" in parsed.query
     assert "zoom=1.5" in parsed.query
+    assert "gc=false" in parsed.query
+    assert "runs=false" in parsed.query
+    assert "colors=A%3A%23123456" in parsed.query
 
 
 def test_helix_ui_screenshot(tmp_path: Path) -> None:

@@ -19,7 +19,9 @@ helix_ui_dir = Path(__file__).parent / "helix-ui"
 app.mount("/helix-ui", StaticFiles(directory=helix_ui_dir), name="helix-ui")
 
 index_path = static_dir / "index.html"
-helix_index_path = helix_ui_dir / "index.html"
+helix_index_path = helix_ui_dir / "dist" / "index.html"
+if not helix_index_path.is_file():
+    helix_index_path = helix_ui_dir / "index.html"
 
 @app.get("/", response_class=HTMLResponse)  # type: ignore[misc]
 async def index() -> str:
@@ -32,7 +34,7 @@ async def helix() -> str:
     return helix_index_path.read_text(encoding="utf-8")
 
 
-class EncodeOptionsModel(BaseModel):
+class EncodeOptionsModel(BaseModel):  # type: ignore[misc]
     method: str
     add_parity: bool = False
     k_value: int = 7
@@ -46,26 +48,26 @@ class EncodeOptionsModel(BaseModel):
     alphabet: str = "base4"
 
 
-class EncodeRequest(BaseModel):
+class EncodeRequest(BaseModel):  # type: ignore[misc]
     data: str
     options: EncodeOptionsModel
 
 
-class DecodeRequest(BaseModel):
+class DecodeRequest(BaseModel):  # type: ignore[misc]
     fasta_data: str
     alphabet: str = "base4"
 
 
-@app.post("/encode")
-async def encode(req: EncodeRequest) -> dict:
+@app.post("/encode")  # type: ignore[misc]
+async def encode(req: EncodeRequest) -> dict[str, object]:
     data_bytes = base64.b64decode(req.data.encode("utf-8"), validate=True)
     opts = EncodeOptions(**req.options.model_dump())
     result = await asyncio.to_thread(perform_encoding, data_bytes, opts)
     return asdict(result)
 
 
-@app.post("/decode")
-async def decode(req: DecodeRequest) -> dict:
+@app.post("/decode")  # type: ignore[misc]
+async def decode(req: DecodeRequest) -> dict[str, object]:
     result = await asyncio.to_thread(
         perform_decoding, req.fasta_data, req.alphabet
     )

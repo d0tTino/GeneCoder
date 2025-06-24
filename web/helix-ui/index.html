@@ -1,102 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Helix Viewer</title>
-  <style>
-    html, body, #root { margin:0; width:100%; height:100%; overflow:hidden; }
-    #metrics { position:absolute; top:0; left:0; pointer-events:none; opacity:0.6; }
-    #controls { position:absolute; top:10px; left:10px; z-index:1; background:#fff; padding:4px; border-radius:4px; }
-  </style>
-</head>
-<body>
-  <div id="root"></div>
-  <script crossorigin src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
-  <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.module.min.js';
-    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.150.1/examples/jsm/controls/OrbitControls.js';
-
-    const {useRef,useEffect,useState} = React;
-
-    function HelixViewer() {
-      const mount = useRef(null);
-      const metricsRef = useRef(null);
-      const params = new URLSearchParams(location.search);
-      const [animate, setAnimate] = useState(params.get('animate') !== 'false');
-      const seq = params.get('seq') || 'ACGT';
-      const zoom = parseFloat(params.get('zoom') || '1');
-
-      useEffect(() => {
-        const width = mount.current.clientWidth;
-        const height = mount.current.clientHeight;
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75,width/height,0.1,1000);
-        camera.position.set(2*zoom,2*zoom,5*zoom);
-        const renderer = new THREE.WebGLRenderer({antialias:true});
-        renderer.setSize(width,height);
-        mount.current.appendChild(renderer.domElement);
-        metricsRef.current.width = width;
-        metricsRef.current.height = 30;
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-
-        const group = new THREE.Group();
-        const bases = seq.split('');
-        const colors = {A:0xff5555,C:0x5555ff,G:0x55ff55,T:0xffff55};
-        const radius=0.1;
-        const h=0.4;
-        bases.forEach((b,i)=>{
-          const geom=new THREE.SphereGeometry(radius,16,16);
-          const mat=new THREE.MeshPhongMaterial({color:colors[b]||0xffffff});
-          const mesh=new THREE.Mesh(geom,mat);
-          const angle=i*0.3;
-          mesh.position.set(Math.cos(angle),Math.sin(angle),i*h);
-          group.add(mesh);
-        });
-        scene.add(group);
-        const light=new THREE.DirectionalLight(0xffffff,1);
-        light.position.set(5,5,5);
-        scene.add(light);
-
-        const ctx=metricsRef.current.getContext('2d');
-        const bw=metricsRef.current.width/bases.length;
-        const runs=new Array(bases.length).fill(1);
-        for(let i=0;i<bases.length;i++){
-          if(i>0 && bases[i]===bases[i-1]) runs[i]=runs[i-1]+1;
-          ctx.fillStyle=bases[i]==='G'||bases[i]==='C'?'#88f':'#ddd';
-          ctx.fillRect(i*bw,0,bw,14);
-        }
-        for(let i=0;i<bases.length;i++){
-          const intensity=Math.min(runs[i]/6,1);
-          ctx.fillStyle=`rgba(255,0,0,${intensity})`;
-          ctx.fillRect(i*bw,16,bw,14);
-        }
-
-        let frameId;
-        function loop(){
-          controls.update();
-          if(animate) group.rotation.z += 0.01;
-          renderer.render(scene,camera);
-          frameId=requestAnimationFrame(loop);
-        }
-        loop();
-        return () => cancelAnimationFrame(frameId);
-      },[seq,animate,zoom]);
-
-      return React.createElement('div',{style:{width:'100%',height:'100%',position:'relative'}},
-        React.createElement('canvas',{ref:metricsRef,id:'metrics'}),
-        React.createElement('div',{id:'controls'},
-          React.createElement('label',null,
-            React.createElement('input',{type:'checkbox',checked:animate,onChange:e=>setAnimate(e.target.checked)}),
-            ' Animate'
-          )
-        ),
-        React.createElement('div',{ref:mount,style:{width:'100%',height:'100%'}})
-      );
-    }
-
-    ReactDOM.render(React.createElement(HelixViewer), document.getElementById('root'));
-  </script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Helix Viewer</title>
+    <style>
+      html, body, #root { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
