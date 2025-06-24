@@ -355,6 +355,21 @@ desktop = ["flet-desktop (==0.28.3) ; platform_system == \"Darwin\" or platform_
 web = ["flet-web (==0.28.3)"]
 
 [[package]]
+name = "flet-webview"
+version = "0.1.0"
+description = "WebView control for Flet"
+optional = false
+python-versions = ">=3.8"
+groups = ["gui"]
+files = [
+    {file = "flet_webview-0.1.0-py3-none-any.whl", hash = "sha256:f523de312ee1c7af4f432b393541dd3ba1b6f85d59a3e4216103a56848e091fb"},
+    {file = "flet_webview-0.1.0.tar.gz", hash = "sha256:a581fae93623372ffcbf30c81c48ad4c619760f38df022576fd83adddad54d4c"},
+]
+
+[package.dependencies]
+flet = ">=0.25.2"
+
+[[package]]
 name = "fonttools"
 version = "4.58.4"
 description = "Tools to manipulate font files"
@@ -512,14 +527,14 @@ test = ["Cython (>=0.29.24)"]
 
 [[package]]
 name = "httpx"
-version = "0.28.1"
+version = "0.27.2"
 description = "The next generation HTTP client."
 optional = false
 python-versions = ">=3.8"
 groups = ["gui", "web"]
 files = [
-    {file = "httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad"},
-    {file = "httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc"},
+    {file = "httpx-0.27.2-py3-none-any.whl", hash = "sha256:7bb2708e112d8fdd7829cd4243970f0c223274051cb35ee80c03301ee29a3df0"},
+    {file = "httpx-0.27.2.tar.gz", hash = "sha256:f7c2be1d2f3c3c3160d441802406b206c2b76f5947b11115e6df10c6c65e66c2"},
 ]
 
 [package.dependencies]
@@ -527,6 +542,7 @@ anyio = "*"
 certifi = "*"
 httpcore = "==1.*"
 idna = "*"
+sniffio = "*"
 
 [package.extras]
 brotli = ["brotli ; platform_python_implementation == \"CPython\"", "brotlicffi ; platform_python_implementation != \"CPython\""]
@@ -1834,4 +1850,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "7541d8c5ae904dd016600941975896b31c1a65c0658b415a68b55fed393a82f7"
+content-hash = "2a0e77f26ef2fcdf02492d0359bb3260c3dfadcd122fb0a5b7be746f57f8f506"
