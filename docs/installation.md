@@ -46,15 +46,18 @@ poetry run pytest -q
 
 ## Docker Dev Container
 
-Build the Docker image and run the tests inside it:
+The repository ships with a Visual Studio Code Dev Container configuration. You
+can still build the image and run the tests manually:
 
 ```bash
 docker build -t genecoder .
 docker run --rm -e SKIP_PACKAGING_TESTS=1 genecoder poetry run pytest -q
 ```
 
-Open the repository in Visual Studio Code using the `.devcontainer` folder to
-work in the same environment with all optional GUI and web extras installed.
+To hack on GeneCoder in the same environment, install the **Dev Containers**
+extension in VS Code and select **Reopen in Container** when prompted. The
+container extends the project `Dockerfile` and includes Node and other helpful
+development tools.
 
 ## Mamba-Based Setup
 
