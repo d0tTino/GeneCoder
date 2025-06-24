@@ -142,6 +142,9 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    When a command is missing GeneCoder automatically falls back to an internal
    error model.
 
+   The same simulators can be accessed programmatically via
+   ``genecoder.simulators.simulate_reads``.
+
 
    ```bash
    genecoder decode --input-files encoded.fasta \

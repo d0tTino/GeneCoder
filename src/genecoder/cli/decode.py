@@ -189,8 +189,11 @@ def process_single_decode(
             raise SystemExit(1)
 
         if args.simulator != "none":
-            channel = SIMULATOR_REGISTRY[args.simulator]
-            sequence_from_fasta = channel.simulate(sequence_from_fasta)
+            from genecoder.simulators import simulate_reads
+
+            sequence_from_fasta = simulate_reads(
+                sequence_from_fasta, args.simulator
+            )
             logger.info(
                 f"Applied {args.simulator} simulator before decoding."
             )

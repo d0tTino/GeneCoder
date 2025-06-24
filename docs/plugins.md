@@ -46,8 +46,8 @@ register_fec("myfec", encode, decode)
 ```
 
 Simulator plugins follow the same pattern using the `genecoder.simulators`
-group with a `register_simulator` callback that receives a function taking a
-DNA sequence and returning a mutated version.
+group with a `register_simulator` callback that receives an object implementing
+the :class:`genecoder.channels.base.BaseChannel` protocol.
 
 Registered codecs are available via `genecoder.CODEC_REGISTRY` after importing
 GeneCoder.

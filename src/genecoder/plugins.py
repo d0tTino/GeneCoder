@@ -116,4 +116,4 @@ def load_plugins() -> None:
         _nano.register(register_simulator)
     else:
         for name in _nano.SIMULATOR_ADAPTERS:
-            register_simulator(name, _nano._Channel(name))
+            register_simulator(name, _nano.Channel(name))

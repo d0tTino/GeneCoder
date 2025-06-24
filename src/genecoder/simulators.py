@@ -1,0 +1,19 @@
+from .plugins import SIMULATOR_REGISTRY
+__all__ = ["simulate_reads"]
+
+def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> str:
+    """Return ``sequence`` processed by the named simulator."""
+
+    try:
+        channel = SIMULATOR_REGISTRY[simulator]
+    except KeyError as exc:
+        raise ValueError(f"Unknown simulator: {simulator}") from exc
+
+    if hasattr(channel, "error_rate"):
+        old_rate = getattr(channel, "error_rate")
+        setattr(channel, "error_rate", error_rate)
+        try:
+            return channel.simulate(sequence)
+        finally:
+            setattr(channel, "error_rate", old_rate)
+    return channel.simulate(sequence)
