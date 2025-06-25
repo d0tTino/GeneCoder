@@ -23,7 +23,7 @@ For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md)
 
 ## Quick Start
 
-GeneCoder requires **Python 3.10+** and uses
+GeneCoder requires **Python 3.11+** and uses
 [Poetry](https://python-poetry.org/) for dependency management. Install the
 dependencies with:
 
