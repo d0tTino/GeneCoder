@@ -1,8 +1,8 @@
 # Helix Frontend
 
 The 3D helix viewer lives in `web/helix-ui`. It is a single-page React
-application that uses Three.js for rendering and displays simple overlays for
-GC content and homopolymer runs.
+application that uses Three.js for rendering. Overlays indicate GC content and
+homopolymer runs while the helix itself can be colourised and animated.
 
 The frontend now uses [Vite](https://vitejs.dev/) for development and builds.
 To explore the viewer without running the whole backend simply open the built
@@ -38,5 +38,7 @@ The viewer accepts several query parameters which are also exposed by
 - `runs` – `true`/`false` to highlight homopolymers.
 - `colors` – comma-separated `base:#hex` pairs, for example
   `A:#ff0000,G:#00ff00`.
+- `pulse` – `true`/`false` to enable progress pulses.
+- `pulse_speed` – numeric speed multiplier for the pulses.
 
 Combine these parameters in the page URL or when calling `show_helix_ui`.

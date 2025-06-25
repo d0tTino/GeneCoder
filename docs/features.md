@@ -15,9 +15,11 @@ GeneCoder provides a CLI and GUI for encoding and decoding data into simulated D
 
 The GUI now includes a **Helix View** tab powered by a dedicated React
 application under `web/helix-ui`. The visualization renders each nucleotide as a
-colored sphere with tooltips. Orbit controls allow zooming and rotating, and the
-overlay canvas illustrates GC content and homopolymer runs. The frontend is
-loaded on demand so it works in both desktop and web deployments.
+colored sphere with tooltips. Orbit controls allow zooming and rotating. GC
+content colouring and homopolymer highlighting are shown both on the helix and
+via an overlay canvas. Animated pulses can move along the helix to illustrate
+progress. The frontend is loaded on demand so it works in both desktop and web
+deployments.
 
 ![Helix View GUI](https://flet.dev/docs/images/screenshot.png)
 
@@ -31,5 +33,5 @@ webview = show_helix("ACGT", length=50, colors={"A": "#ff0000", "T": "#00ffff"})
 ```
 
 The newer `show_helix_ui` helper launches the React frontend. It accepts the
-same base sequence along with options such as `animate`, `zoom`, `gc`, `runs`
-and custom base colors.
+same base sequence along with options such as `animate`, `zoom`, `gc`, `runs`,
+animated progress pulses and custom base colors.
