@@ -234,10 +234,8 @@ def process_single_decode(
         if getattr(args, "encrypt", False):
             _ensure_security_loaded()
             assert decrypt_data is not None
-            if _key_bytes is not None:
-                final_decoded_data = decrypt_data(final_decoded_data, _key_bytes)
-            else:
-                final_decoded_data = decrypt_data(final_decoded_data)
+            final_decoded_data = decrypt_data(final_decoded_data, key=_key_bytes)
+
 
 
         if getattr(args, "checksum", False):

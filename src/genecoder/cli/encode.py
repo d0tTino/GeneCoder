@@ -265,11 +265,7 @@ def process_single_encode(
         if getattr(args, "encrypt", False):
             _ensure_security_loaded()
             assert encrypt_data is not None
-            if _key_bytes is not None:
-                data_for_encoding = encrypt_data(plaintext_data, _key_bytes)
-            else:
-                data_for_encoding = encrypt_data(plaintext_data)
-
+            data_for_encoding = encrypt_data(plaintext_data, key=_key_bytes)
 
         checksum: str | None = None
         if getattr(args, "checksum", False):
