@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Any
+from typing import Callable, Dict, Any, Iterable
+from types import ModuleType
 
 from .channels.base import BaseChannel
 from importlib.metadata import entry_points
@@ -30,37 +31,35 @@ def register_simulator(name: str, channel: BaseChannel) -> None:
     SIMULATOR_REGISTRY[name] = channel
 
 
+def _load_and_register(items: Iterable[Any], registrar: Callable[..., Any], kind: str) -> None:
+    """Load ``items`` and call ``register`` on each."""
+
+    for item in items:
+        name = getattr(item, "value", getattr(item, "__name__", str(item)))
+        try:
+            module = (
+                item
+                if isinstance(item, ModuleType)
+                else item.load()
+                if hasattr(item, "load")
+                else importlib.import_module(name)
+            )
+        except Exception as exc:  # pragma: no cover - error path
+            logger.warning("Failed to import %s plugin %s: %s", kind, name, exc)
+            continue
+        register = getattr(module, "register", None)
+        if callable(register):
+            register(registrar)
+
+
 def load_plugins() -> None:
     """Load plugins defined via GeneCoder entry points."""
-    for ep in entry_points(group="genecoder.plugins"):
-        try:
-            plugin = ep.load()
-        except Exception as exc:  # pragma: no cover - error path
-            logger.warning("Failed to import plugin %s: %s", ep.value, exc)
-            continue
-        register = getattr(plugin, "register", None)
-        if callable(register):
-            register(register_codec)
 
-    for ep in entry_points(group="genecoder.fec"):
-        try:
-            plugin = ep.load()
-        except Exception as exc:  # pragma: no cover - error path
-            logger.warning("Failed to import FEC plugin %s: %s", ep.value, exc)
-            continue
-        register = getattr(plugin, "register", None)
-        if callable(register):
-            register(register_fec)
-
-    for ep in entry_points(group="genecoder.simulators"):
-        try:
-            plugin = ep.load()
-        except Exception as exc:  # pragma: no cover - error path
-            logger.warning("Failed to import simulator plugin %s: %s", ep.value, exc)
-            continue
-        register = getattr(plugin, "register", None)
-        if callable(register):
-            register(register_simulator)
+    _load_and_register(entry_points(group="genecoder.plugins"), register_codec, "codec")
+    _load_and_register(entry_points(group="genecoder.fec"), register_fec, "FEC")
+    _load_and_register(
+        entry_points(group="genecoder.simulators"), register_simulator, "simulator"
+    )
 
     # Also load plugins from a local ``plugins`` package if present
     try:
@@ -97,41 +96,27 @@ def load_plugins() -> None:
             register_s(register_simulator)
 
     # Load built-in back-ends directly when running from source
-    from plugins import reverse_codec as _reverse
-    _reverse.register(register_codec)
-    from . import reed_solomon_codec as _rs
-    _rs.register(register_fec)
-    from . import ldpc_codec as _ldpc
-    _ldpc.register(register_fec)
-    from . import fountain_codec as _fountain
-    _fountain.register(register_fec)
-    from . import bch_codec as _bch
-    _bch.register(register_fec)
-    from . import raptorq_codec as _raptorq
-    _raptorq.register(register_fec)
-    from .fec import framed as _framed
-    _framed.register(register_fec)
-    from . import nanopore_sim as _nano
-    if hasattr(_nano, "register"):
-        _nano.register(register_simulator)
-    else:
-        for name in _nano.SIMULATOR_ADAPTERS:
-            register_simulator(name, _nano.Channel(name))
-
-    from . import channel_sim as _chan
-    if hasattr(_chan, "register"):
-        _chan.register(register_simulator)
-    else:
-        register_simulator("simple", _chan.Channel())
-
-    from . import error_simulation as _err
-    if hasattr(_err, "register"):
-        _err.register(register_simulator)
-    else:
-        register_simulator("indel", _err.Channel())
-
-    from .simulators import illumina as _illumina
-    _illumina.register(register_simulator)
-
-    from .simulators import adv_nanopore as _advnano
-    _advnano.register(register_simulator)
+    _load_and_register(["plugins.reverse_codec"], register_codec, "builtin")
+    _load_and_register(
+        [
+            "genecoder.reed_solomon_codec",
+            "genecoder.ldpc_codec",
+            "genecoder.fountain_codec",
+            "genecoder.bch_codec",
+            "genecoder.raptorq_codec",
+            "genecoder.fec.framed",
+        ],
+        register_fec,
+        "builtin",
+    )
+    _load_and_register(
+        [
+            "genecoder.nanopore_sim",
+            "genecoder.channel_sim",
+            "genecoder.error_simulation",
+            "genecoder.simulators.illumina",
+            "genecoder.simulators.adv_nanopore",
+        ],
+        register_simulator,
+        "builtin",
+    )
