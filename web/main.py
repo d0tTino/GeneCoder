@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi import HTTPException
 from pathlib import Path
 from pydantic import BaseModel
 from dataclasses import asdict
@@ -8,6 +9,17 @@ import asyncio
 import base64
 
 from genecoder import EncodeOptions, perform_encoding, perform_decoding
+from genecoder.formats import from_fasta
+from genecoder.encoders import calculate_gc_content
+from genecoder.utils import get_max_homopolymer_length
+from genecoder.plotting import calculate_windowed_gc_content
+from genecoder.app_helpers import EncodeResult, DecodeResult
+from genecoder.report import (
+    encode_to_markdown,
+    decode_to_markdown,
+    encode_to_html,
+    decode_to_html,
+)
 
 app = FastAPI(title="GeneCoder Web")
 
@@ -58,6 +70,18 @@ class DecodeRequest(BaseModel):  # type: ignore[misc]
     alphabet: str = "base4"
 
 
+class AnalyzeRequest(BaseModel):  # type: ignore[misc]
+    fasta_data: str
+    window_size: int = 50
+    step_size: int = 10
+
+
+class ReportRequest(BaseModel):  # type: ignore[misc]
+    data: dict[str, object]
+    type: str  # "encode" or "decode"
+    format: str = "markdown"
+
+
 @app.post("/encode")  # type: ignore[misc]
 async def encode(req: EncodeRequest) -> dict[str, object]:
     data_bytes = base64.b64decode(req.data.encode("utf-8"), validate=True)
@@ -76,3 +100,49 @@ async def decode(req: DecodeRequest) -> dict[str, object]:
         "status_message": result.status_message,
         "fec_info": result.fec_info,
     }
+
+
+@app.post("/analyze")  # type: ignore[misc]
+async def analyze(req: AnalyzeRequest) -> dict[str, object]:
+    parsed = from_fasta(req.fasta_data)
+    if not parsed:
+        raise HTTPException(status_code=400, detail="No valid FASTA records found")
+    _, sequence = parsed[0]
+    gc = calculate_gc_content(sequence)
+    length = len(sequence)
+    max_hp = get_max_homopolymer_length(sequence)
+    _, gc_values = calculate_windowed_gc_content(
+        sequence, req.window_size, req.step_size
+    )
+    avg_gc = sum(gc_values) / len(gc_values) if gc_values else 0.0
+    metrics = {
+        "length": length,
+        "gc_content": gc,
+        "max_homopolymer": max_hp,
+        "windowed_gc": {
+            "min": min(gc_values) if gc_values else 0.0,
+            "max": max(gc_values) if gc_values else 0.0,
+            "avg": avg_gc,
+        },
+    }
+    return metrics
+
+
+@app.post("/report")  # type: ignore[misc]
+async def report(req: ReportRequest) -> dict[str, str]:
+    if req.type == "encode":
+        result = EncodeResult(**req.data)
+        if req.format == "markdown":
+            text = encode_to_markdown(result)
+        else:
+            text = encode_to_html(result)
+    else:
+        data = req.data.copy()
+        if isinstance(data.get("decoded_bytes"), str):
+            data["decoded_bytes"] = base64.b64decode(data["decoded_bytes"])
+        result = DecodeResult(**data)
+        if req.format == "markdown":
+            text = decode_to_markdown(result)
+        else:
+            text = decode_to_html(result)
+    return {"report": text}

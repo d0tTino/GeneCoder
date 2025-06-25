@@ -48,3 +48,34 @@ POST /decode
 ```
 
 Decoded bytes are returned as a base64 string.
+
+## Sequence Analysis
+
+The `/analyze` endpoint returns GC content and homopolymer statistics for a
+FASTA sequence.
+
+```json
+POST /analyze
+{
+  "fasta_data": ">seq\nACGTACGT\n"
+}
+```
+
+The JSON response includes the sequence length, GC content and the longest
+homopolymer run.
+
+## Generating Reports
+
+Use `/report` to convert an encoding or decoding result into Markdown or HTML
+with helpers from `genecoder.report`.
+
+```json
+POST /report
+{
+  "type": "encode",
+  "format": "html",
+  "data": {"fasta": ">seq\nACGT\n", "encoded_dna": "ACGT", "metrics": {"gc": 0.5}, "info_messages": []}
+}
+```
+
+The response contains the rendered report as a string.
