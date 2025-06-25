@@ -50,6 +50,33 @@ d2sim --help
 Once the binary is accessible, GeneCoder can invoke it via the `--simulator`
 option or `simulate_reads()` API.
 
+### Installing `d2sim`
+
+```bash
+git clone https://github.com/kurimsw/d2sim.git
+cd d2sim
+make
+sudo make install  # or copy the binary to a directory on your PATH
+```
+
+### Installing `DNArSim`
+
+```bash
+git clone https://github.com/Purdue-ScottLab/DNArSim.git
+cd DNArSim
+make
+sudo make install
+```
+
+### Installing `squigulator`
+
+```bash
+git clone https://github.com/hasindu2008/squigulator.git
+cd squigulator
+make
+sudo make install
+```
+
 ## Command-line usage
 
 Apply simple substitutions with a chosen probability:
@@ -71,5 +98,7 @@ genecoder decode --simulator d2sim --d2sim-options "--seed 42" <other options>
 ```
 
 Use `GENECODER_SIM_SEED=<seed>` to make runs reproducible.
-Set `GENECODER_D2SIM_OPTIONS` to forward additional flags to ``d2sim``
-automatically when the simulator is invoked.
+Set `GENECODER_D2SIM_OPTIONS`, `GENECODER_DNARSIM_OPTIONS` or
+`GENECODER_SQUIGULATOR_OPTIONS` to forward extra flags to the respective
+simulator automatically. The same options can be specified on the command line
+with ``--d2sim-options``, ``--dnarsim-options`` and ``--squigulator-options``.

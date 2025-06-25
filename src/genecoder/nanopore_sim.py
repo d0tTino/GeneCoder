@@ -55,12 +55,13 @@ def _simulate_adapter(
     if shutil.which(command):
         try:
             cmd_list = [command]
-            if command == "d2sim":
+            env_var = f"GENECODER_{command.upper()}_OPTIONS"
+            if command in {"d2sim", "dnarsim", "squigulator"}:
                 cmd_list += ["-e", str(error_rate)]
-                extra = os.getenv("GENECODER_D2SIM_OPTIONS")
-                if extra:
-                    import shlex
-                    cmd_list += shlex.split(extra)
+            extra = os.getenv(env_var)
+            if extra:
+                import shlex
+                cmd_list += shlex.split(extra)
             return _run_external(cmd_list, sequence)
         except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
             logger.warning(
