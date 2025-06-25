@@ -9,6 +9,11 @@ For full usage instructions and additional documentation see the [docs/](docs/) 
 For instructions on launching the GUI see the [usage guide](docs/usage.md#launching-the-flet-app).
 For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md).
 
+GeneCoder's long-term goal is to provide an integrated research platform that
+bridges encoding algorithms with sequencing and synthesis simulations while
+remaining easy to extend. The guiding ideas are summarized in
+[docs/DEVELOPMENT_VISION.md](docs/DEVELOPMENT_VISION.md).
+
 ## Features
 
 - Multiple encoding strategies including Base-4 Direct, Huffman-4 and GC-Balanced.
@@ -18,8 +23,10 @@ For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md)
 - Base5 and base6 alphabet options for alternative nucleotide letters. These
   modes remap the standard ACGT symbols but **do not increase capacity**.
 - External read simulators can be invoked with ``--simulator``.
-  Extra ``d2sim`` parameters may be supplied via ``--d2sim-options`` or
-  the ``GENECODER_D2SIM_OPTIONS`` environment variable.
+   Extra parameters may be supplied via ``--d2sim-options``,
+   ``--dnarsim-options`` or ``--squigulator-options``. The same values can be
+   provided using the environment variables ``GENECODER_D2SIM_OPTIONS``,
+   ``GENECODER_DNARSIM_OPTIONS`` and ``GENECODER_SQUIGULATOR_OPTIONS``.
 
 ## Quick Start
 

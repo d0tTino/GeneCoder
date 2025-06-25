@@ -367,12 +367,26 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         type=str,
         help="Extra command line options forwarded to d2sim.",
     )
+    parser.add_argument(
+        "--dnarsim-options",
+        type=str,
+        help="Extra command line options forwarded to dnarsim.",
+    )
+    parser.add_argument(
+        "--squigulator-options",
+        type=str,
+        help="Extra command line options forwarded to squigulator.",
+    )
     parser.set_defaults(func=_handle_command)
 
 
 def _handle_command(args: argparse.Namespace) -> None:
     if getattr(args, "d2sim_options", None):
         os.environ["GENECODER_D2SIM_OPTIONS"] = args.d2sim_options
+    if getattr(args, "dnarsim_options", None):
+        os.environ["GENECODER_DNARSIM_OPTIONS"] = args.dnarsim_options
+    if getattr(args, "squigulator_options", None):
+        os.environ["GENECODER_SQUIGULATOR_OPTIONS"] = args.squigulator_options
 
     num_input_files = len(args.input_files)
     if num_input_files > 1 and not args.output_dir:
