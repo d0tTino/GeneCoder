@@ -67,6 +67,12 @@ indel = "genecoder.error_simulation"
 illumina = "genecoder.simulators.illumina"
 adv_nanopore = "genecoder.simulators.adv_nanopore"
 
+[tool.poetry.extras]
+dnaformer = ["dnaformer", "torch"]
+framed = ["FrameD"]
+ldpc = ["pyldpc"]
+fountain = ["pyfinite"]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

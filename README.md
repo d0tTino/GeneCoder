@@ -34,6 +34,13 @@ Install optional extras for the GUI or web API with:
 poetry install --with gui,web --no-interaction
 ```
 
+Additional plugins such as DNAformer or FrameD can be installed via
+Poetry's ``--extras`` flag:
+
+```bash
+poetry install --extras dnaformer --extras framed --no-interaction
+```
+
 
 Desktop packages are available on the [releases page](https://github.com/d0tTino/GeneCoder/releases).
 Download the `.msix` file for Windows or the `.dmg` for macOS and follow your

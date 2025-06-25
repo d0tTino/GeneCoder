@@ -32,6 +32,8 @@ export default function App() {
   const seq = params.get('seq') || 'ACGT';
   const [showGC, setShowGC] = useState(params.get('gc') !== 'false');
   const [showRuns, setShowRuns] = useState(params.get('runs') !== 'false');
+  const [showPulses, setShowPulses] = useState(params.get('pulse') === 'true');
+  const [pulseSpeed] = useState(parseFloat(params.get('pulse_speed') || '2'));
 
   const colorParam = params.get('colors');
   const colors = { ...DEFAULT_COLORS, ...(parseColors(colorParam) || {}) };
@@ -54,14 +56,26 @@ export default function App() {
 
     const group = new THREE.Group();
     const bases = seq.split('');
+    const runs = new Array(bases.length).fill(1);
+    for (let i = 1; i < bases.length; i++) {
+      runs[i] = bases[i] === bases[i - 1] ? runs[i - 1] + 1 : 1;
+    }
     const radius = 0.1;
     const h = 0.4;
     bases.forEach((b, i) => {
       const geom = new THREE.SphereGeometry(radius, 16, 16);
-      const mat = new THREE.MeshPhongMaterial({ color: colors[b] || 0xffffff });
+      let color = colors[b] || 0xffffff;
+      if (showGC) {
+        color = b === 'G' || b === 'C' ? 0x8888ff : 0xffffaa;
+      }
+      const mat = new THREE.MeshPhongMaterial({ color });
       const mesh = new THREE.Mesh(geom, mat);
       const angle = i * 0.3;
       mesh.position.set(Math.cos(angle), Math.sin(angle), i * h);
+      if (showRuns && runs[i] >= 3) {
+        mesh.material.emissive = new THREE.Color(0xff0000);
+        mesh.material.emissiveIntensity = Math.min((runs[i] - 2) / 4, 1);
+      }
       group.add(mesh);
     });
     scene.add(group);
@@ -72,15 +86,11 @@ export default function App() {
 
     const ctx = metricsRef.current.getContext('2d');
     const bw = metricsRef.current.width / bases.length;
-    const runs = new Array(bases.length).fill(1);
     for (let i = 0; i < bases.length; i++) {
-      if (i > 0 && bases[i] === bases[i - 1]) runs[i] = runs[i - 1] + 1;
       if (showGC) {
         ctx.fillStyle = bases[i] === 'G' || bases[i] === 'C' ? '#88f' : '#ddd';
         ctx.fillRect(i * bw, 0, bw, 14);
       }
-    }
-    for (let i = 0; i < bases.length; i++) {
       if (showRuns) {
         const intensity = Math.min(runs[i] / 6, 1);
         ctx.fillStyle = `rgba(255,0,0,${intensity})`;
@@ -89,9 +99,19 @@ export default function App() {
     }
 
     let frameId;
+    let pulsePhase = 0;
     const loop = () => {
       controls.update();
       if (animate) group.rotation.z += 0.01;
+      if (showPulses) {
+        pulsePhase += 0.05 * pulseSpeed;
+        group.children.forEach((mesh, i) => {
+          const scale = 1 + 0.3 * Math.sin(pulsePhase - i * 0.5);
+          mesh.scale.set(scale, scale, scale);
+        });
+      } else {
+        group.children.forEach((mesh) => mesh.scale.set(1, 1, 1));
+      }
       renderer.render(scene, camera);
       frameId = requestAnimationFrame(loop);
     };
@@ -100,7 +120,7 @@ export default function App() {
       cancelAnimationFrame(frameId);
       renderer.dispose();
     };
-  }, [seq, animate, zoom, colors, showGC, showRuns]);
+  }, [seq, animate, zoom, colors, showGC, showRuns, showPulses, pulseSpeed]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -119,6 +139,9 @@ export default function App() {
         </label>
         <label style={{ marginLeft: 8 }}>
           <input type="checkbox" checked={showRuns} onChange={(e) => setShowRuns(e.target.checked)} /> Runs
+        </label>
+        <label style={{ marginLeft: 8 }}>
+          <input type="checkbox" checked={showPulses} onChange={(e) => setShowPulses(e.target.checked)} /> Pulse
         </label>
       </div>
       <div ref={mount} style={{ width: '100%', height: '100%' }} />
