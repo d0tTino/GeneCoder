@@ -83,6 +83,9 @@ def main(page: ft.Page) -> None:
     zoom_slider: ft.Slider = ft.Slider(
         min=0.5, max=2.0, value=1.0, divisions=15, width=200
     )
+    fps_slider: ft.Slider = ft.Slider(
+        min=10, max=60, value=60, divisions=10, width=200, label="FPS"
+    )
     helix_length_input: ft.TextField = ft.TextField(
         label="Sequence Length",
         value="50",
@@ -832,17 +835,23 @@ def main(page: ft.Page) -> None:
                 animate_checkbox,
                 ft.Text("Zoom:"),
                 zoom_slider,
+                ft.Text("FPS:"),
+                fps_slider,
             ])
         )
         helix_container.controls.append(
             show_helix_ui(
-                dna_seq, animate=animate_checkbox.value, zoom=zoom_slider.value
+                dna_seq,
+                animate=animate_checkbox.value,
+                zoom=zoom_slider.value,
+                fps=fps_slider.value,
             )
         )
         page.update()
 
     animate_checkbox.on_change = refresh_helix_view
     zoom_slider.on_change = refresh_helix_view
+    fps_slider.on_change = refresh_helix_view
 
     def on_tab_change(e: ft.ControlEvent) -> None:
         if app_tabs.selected_index == 3:
