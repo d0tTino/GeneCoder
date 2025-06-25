@@ -13,10 +13,14 @@ poetry install --no-interaction
 Poetry manages all dependencies. `pyproject.toml` and `poetry.lock` are the single source of truth. Use `scripts/export_requirements.sh` if you need `requirements.txt` files.
 
 
-Install optional extras with the `--with` flag:
+
+## Optional Extras
+
+Install the optional GUI, web API and DNAformer components with Poetry's
+`--with` flag:
 
 ```bash
-poetry install --with gui,web --no-interaction
+poetry install --with gui,web,dnaformer --no-interaction
 ```
 
 ## Editable install with pip
@@ -35,6 +39,9 @@ Install the project in editable mode so local changes are picked up immediately:
 ```bash
 poetry install --with gui,web,dev --no-interaction
 ```
+
+Contributors can alternatively open the repository in the provided
+**devcontainer** for a fully preconfigured environment.
 
 ## Running Tests
 

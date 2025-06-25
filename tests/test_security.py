@@ -193,6 +193,7 @@ def test_cli_encrypt_key_file_wrong_key(tmp_path: Path) -> None:
     key_file.write_bytes(b"mykey")
     wrong_file.write_bytes(b"other")
 
+
     enc_res = run_cli_command(
         [
             "encode",
@@ -205,6 +206,7 @@ def test_cli_encrypt_key_file_wrong_key(tmp_path: Path) -> None:
             "--encrypt",
             "--key",
             str(key_file),
+
         ]
     )
     assert enc_res.returncode == 0, enc_res.stderr
@@ -213,6 +215,7 @@ def test_cli_encrypt_key_file_wrong_key(tmp_path: Path) -> None:
     assert fasta.exists()
 
     dec_res = run_cli_command(
+
         [
             "decode",
             "--input-files",
@@ -227,3 +230,4 @@ def test_cli_encrypt_key_file_wrong_key(tmp_path: Path) -> None:
         ]
     )
     assert dec_res.returncode != 0
+

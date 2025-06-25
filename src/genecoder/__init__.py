@@ -21,7 +21,7 @@ from .plugins import (
 )
 from .simulators import simulate_reads
 
-load_plugins()
+
 
 __all__ = [
     *sorted(_LAZY_ATTRS),

@@ -237,6 +237,7 @@ def process_single_decode(
             final_decoded_data = decrypt_data(final_decoded_data, key=_key_bytes)
 
 
+
         if getattr(args, "checksum", False):
             _ensure_security_loaded()
             m = re.search(r"checksum=([0-9a-f]+)", header)
@@ -361,10 +362,18 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         choices=sim_choices,
         help="Apply an external simulator before decoding (default: none).",
     )
+    parser.add_argument(
+        "--d2sim-options",
+        type=str,
+        help="Extra command line options forwarded to d2sim.",
+    )
     parser.set_defaults(func=_handle_command)
 
 
 def _handle_command(args: argparse.Namespace) -> None:
+    if getattr(args, "d2sim_options", None):
+        os.environ["GENECODER_D2SIM_OPTIONS"] = args.d2sim_options
+
     num_input_files = len(args.input_files)
     if num_input_files > 1 and not args.output_dir:
         logger.error(
