@@ -41,6 +41,14 @@ from genecoder.raptorq_codec import (
         ("bch", encode_data_bch, decode_data_bch, _HAS_BCHLIB),
         ("raptorq", encode_data_raptorq, decode_data_raptorq, _HAS_RAPTORQ),
     ],
+    ids=[
+        "hamming_7_4",
+        "reed_solomon",
+        "ldpc",
+        "fountain",
+        "bch",
+        "raptorq",
+    ],
 )
 def test_stream_pipeline_roundtrip(fec_name, encode_fn, decode_fn, available):
     if not available:
