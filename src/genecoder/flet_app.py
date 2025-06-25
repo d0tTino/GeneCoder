@@ -24,6 +24,7 @@ from genecoder import (
     EncodeOptions,
     perform_encoding,
 )
+from genecoder.plugins import load_plugins
 from genecoder.manifest import generate_manifest
 from genecoder.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
@@ -40,6 +41,7 @@ decoded_bytes_to_save: bytes = b""
 
 def main(page: ft.Page) -> None:
     """Create the UI and register callbacks for Flet's event loop."""
+    load_plugins()
     page.title = "GeneCoder"
     page.vertical_alignment = ft.MainAxisAlignment.START
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
