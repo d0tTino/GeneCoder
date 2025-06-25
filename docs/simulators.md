@@ -71,3 +71,5 @@ genecoder decode --simulator d2sim --d2sim-options "--seed 42" <other options>
 ```
 
 Use `GENECODER_SIM_SEED=<seed>` to make runs reproducible.
+Set `GENECODER_D2SIM_OPTIONS` to forward additional flags to ``d2sim``
+automatically when the simulator is invoked.
