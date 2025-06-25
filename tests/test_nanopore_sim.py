@@ -34,7 +34,7 @@ def test_adapters_run_external(monkeypatch, name):
     result = func("ACGT")
     assert result == "external"
     assert which_called == [cmd]
-    expected = ([cmd, "-e", "0.05"], "ACGT") if cmd == "d2sim" else ([cmd], "ACGT")
+    expected = ([cmd, "-e", "0.05"], "ACGT")
     assert run_called == [expected]
 
 
@@ -101,7 +101,7 @@ def test_adapters_external_error(monkeypatch, caplog, name):
 
     assert result == "fallback"
     assert which_called == [cmd]
-    expected = ([cmd, "-e", "0.2"], "ACGT") if cmd == "d2sim" else ([cmd], "ACGT")
+    expected = ([cmd, "-e", "0.2"], "ACGT")
     assert run_called == [expected]
     assert errors_called and isinstance(errors_called[0][2], random.Random)
     assert any("falling back" in rec.message for rec in caplog.records)
