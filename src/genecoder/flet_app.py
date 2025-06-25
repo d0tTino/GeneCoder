@@ -152,12 +152,15 @@ def main(page: ft.Page) -> None:
     )
     page.overlay.append(encode_file_picker)
 
+    def _open_encode_file_picker(_: ft.ControlEvent) -> None:
+        encode_file_picker.pick_files(
+            allow_multiple=False, dialog_title="Select Input File for Encoding"
+        )
+
     encode_browse_button: ft.ElevatedButton = ft.ElevatedButton(
         "Browse File",
         icon=ft.icons.FOLDER_OPEN,
-        on_click=lambda _: encode_file_picker.pick_files(
-            allow_multiple=False, dialog_title="Select Input File for Encoding"
-        ),
+        on_click=_open_encode_file_picker,
     )
 
     method_dropdown: ft.Dropdown = ft.Dropdown(
@@ -468,11 +471,14 @@ def main(page: ft.Page) -> None:
     )
     page.overlay.append(encode_save_file_picker)
 
-    encode_save_button.on_click = lambda _: encode_save_file_picker.save_file(
-        dialog_title="Save Encoded FASTA File",
-        file_name="encoded_output.fasta",
-        allowed_extensions=["fasta", "fa"],
-    )
+    def _open_encode_save_picker(_: ft.ControlEvent) -> None:
+        encode_save_file_picker.save_file(
+            dialog_title="Save Encoded FASTA File",
+            file_name="encoded_output.fasta",
+            allowed_extensions=["fasta", "fa"],
+        )
+
+    encode_save_button.on_click = _open_encode_save_picker
 
     async def on_manifest_save_file_result(e: ft.FilePickerResultEvent) -> None:
         if e.path:
@@ -499,11 +505,14 @@ def main(page: ft.Page) -> None:
     )
     page.overlay.append(manifest_file_picker)
 
-    encode_manifest_save_button.on_click = lambda _: manifest_file_picker.save_file(
-        dialog_title="Save Manifest File",
-        file_name="encoded_output.manifest.json",
-        allowed_extensions=["json"],
-    )
+    def _open_manifest_save_picker(_: ft.ControlEvent) -> None:
+        manifest_file_picker.save_file(
+            dialog_title="Save Manifest File",
+            file_name="encoded_output.manifest.json",
+            allowed_extensions=["json"],
+        )
+
+    encode_manifest_save_button.on_click = _open_manifest_save_picker
 
     # --- Decode Tab UI Controls & Logic ---
     decode_selected_input_file_text: ft.Text = ft.Text(
@@ -559,14 +568,17 @@ def main(page: ft.Page) -> None:
     )
     page.overlay.append(decode_file_picker)
 
-    decode_browse_button: ft.ElevatedButton = ft.ElevatedButton(
-        "Browse FASTA File",
-        icon=ft.icons.FOLDER_OPEN,
-        on_click=lambda _: decode_file_picker.pick_files(
+    def _open_decode_file_picker(_: ft.ControlEvent) -> None:
+        decode_file_picker.pick_files(
             allow_multiple=False,
             dialog_title="Select FASTA File for Decoding",
             allowed_extensions=["fasta", "fa", "txt"],
-        ),
+        )
+
+    decode_browse_button: ft.ElevatedButton = ft.ElevatedButton(
+        "Browse FASTA File",
+        icon=ft.icons.FOLDER_OPEN,
+        on_click=_open_decode_file_picker,
     )
 
     async def decode_file_data(e: ft.ControlEvent) -> None:
@@ -662,9 +674,12 @@ def main(page: ft.Page) -> None:
     )
     page.overlay.append(save_decoded_file_picker)
 
-    decode_save_button.on_click = lambda _: save_decoded_file_picker.save_file(
-        dialog_title="Save Decoded File", file_name="decoded_output.bin"
-    )
+    def _open_save_decoded_picker(_: ft.ControlEvent) -> None:
+        save_decoded_file_picker.save_file(
+            dialog_title="Save Decoded File", file_name="decoded_output.bin"
+        )
+
+    decode_save_button.on_click = _open_save_decoded_picker
 
     decode_tab_content_column: ft.Column = ft.Column(
         controls=[
@@ -718,7 +733,7 @@ def main(page: ft.Page) -> None:
 
     # --- Main App Structure (Tabs) ---
     # Analysis tab needs to be referenced later to enable/disable
-    analysis_tab = ft.Tab(
+    analysis_tab: ft.Tab = ft.Tab(
         text="Analysis",
         icon=ft.icons.ANALYTICS_OUTLINED,
         content=ft.Container(
