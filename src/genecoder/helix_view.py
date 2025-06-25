@@ -269,8 +269,14 @@ def show_helix_ui(
     colors: dict[str, int] | None = None,
     show_gc: bool = True,
     show_runs: bool = True,
+    pulse: bool = False,
+    pulse_speed: float = 2.0,
 ) -> flet_webview.WebView:
-    """Return a ``WebView`` pointing at the React helix frontend."""
+    """Return a ``WebView`` pointing at the React helix frontend.
+
+    Parameters enable GC colouring, homopolymer highlighting and animated
+    pulses via the corresponding query arguments.
+    """
     base_dir = Path(__file__).resolve().parent.parent / "web" / "helix-ui"
     helix_path = base_dir / "dist" / "index.html"
     if not helix_path.is_file():
@@ -282,6 +288,8 @@ def show_helix_ui(
         f"zoom={zoom}",
         f"gc={'true' if show_gc else 'false'}",
         f"runs={'true' if show_runs else 'false'}",
+        f"pulse={'true' if pulse else 'false'}",
+        f"pulse_speed={pulse_speed}",
     ]
     if colors:
         color_str = ",".join(f"{b}:#{v:06x}" for b, v in colors.items())
