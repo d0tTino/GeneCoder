@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 import logging
+import os
 from typing import Callable, Sequence
 
 __all__ = [
