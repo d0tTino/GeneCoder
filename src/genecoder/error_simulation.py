@@ -1,9 +1,10 @@
 """Utilities for simulating random sequencing errors in DNA sequences."""
 from __future__ import annotations
 
-import os
 import random
 from typing import Callable
+
+from .random_utils import make_rng
 
 from .channels.base import BaseChannel
 
@@ -97,11 +98,6 @@ def apply_deletions(sequence: str, prob: float, rng: random.Random | None = None
     return introduce_errors(sequence, deletion_prob=prob, rng=rng)
 
 
-def _make_rng() -> random.Random:
-    """Return a :class:`~random.Random` seeded from ``GENECODER_SIM_SEED``."""
-
-    seed_env = os.getenv("GENECODER_SIM_SEED")
-    return random.Random(int(seed_env)) if seed_env is not None else random.Random()
 
 
 class Channel(BaseChannel):
@@ -123,7 +119,7 @@ class Channel(BaseChannel):
             substitution_prob=self.substitution_prob,
             insertion_prob=self.insertion_prob,
             deletion_prob=self.deletion_prob,
-            rng=_make_rng(),
+            rng=make_rng(),
         )
 
 

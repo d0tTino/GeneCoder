@@ -1,7 +1,6 @@
 """Wrapper for optional nanopore read simulators."""
 from __future__ import annotations
 
-import os
 import random
 import shutil
 import subprocess
@@ -22,15 +21,11 @@ from .channels.base import BaseChannel
 
 logger = logging.getLogger(__name__)
 
+from .random_utils import make_rng
 from .channel_sim import simulate_errors
 from .formats import from_fasta, to_fasta
 
 
-def _make_rng() -> random.Random:
-    """Return a :class:`~random.Random` seeded from ``GENECODER_SIM_SEED``."""
-
-    seed_env = os.getenv("GENECODER_SIM_SEED")
-    return random.Random(int(seed_env)) if seed_env is not None else random.Random()
 
 
 def _run_external(command: Sequence[str] | str, sequence: str) -> str:
@@ -77,7 +72,7 @@ def _simulate_adapter(
     # use a deterministic local RNG for external simulators and forward it when
     # falling back to :func:`simulate_errors` so calls remain reproducible
     if rng is None:
-        rng = _make_rng()
+        rng = make_rng()
     return simulate_errors(sequence, error_rate, rng=rng)
 
 
@@ -92,7 +87,7 @@ def simulate_d2sim(
 
 
     if rng is None:
-        rng = _make_rng()
+        rng = make_rng()
 
     return _simulate_adapter("d2sim", sequence, error_rate, rng)
 
@@ -112,7 +107,7 @@ def simulate_dnarsim(
 
 
     if rng is None:
-        rng = _make_rng()
+        rng = make_rng()
 
     return _simulate_adapter("dnarsim", sequence, error_rate, rng)
 
@@ -128,7 +123,7 @@ def simulate_squigulator(
 
 
     if rng is None:
-        rng = _make_rng()
+        rng = make_rng()
 
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
@@ -187,7 +182,7 @@ class Channel(BaseChannel):
 
     def simulate(self, sequence: str) -> str:
         adapter = SIMULATOR_ADAPTERS[self.name]
-        return adapter(sequence, self.error_rate, _make_rng())
+        return adapter(sequence, self.error_rate, make_rng())
 
 
 
