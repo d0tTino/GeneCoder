@@ -45,6 +45,15 @@ def test_show_helix_options() -> None:
 
 
 @pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
+def test_show_helix_pulse_params() -> None:
+    ft, show_helix = _get_ft_and_show_helix()
+    elem = show_helix("AC", pulse=True, pulse_speed=3.5)
+    html = unquote(elem.url.split(",", 1)[1])
+    assert "const showPulses = true" in html
+    assert "const pulseSpeed = 3.5" in html
+
+
+@pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
 def test_show_helix_cdn_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     ft, show_helix = _get_ft_and_show_helix()
     monkeypatch.setattr("genecoder.helix_view.THREE_JS_URL", "")
