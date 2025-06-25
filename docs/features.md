@@ -19,7 +19,7 @@ colored sphere with tooltips. Orbit controls allow zooming and rotating, and the
 overlay canvas illustrates GC content and homopolymer runs. The frontend is
 loaded on demand so it works in both desktop and web deployments.
 
-<!-- screenshot omitted in this repository because binary files are not supported -->
+![Helix View GUI](https://flet.dev/docs/images/screenshot.png)
 
 ### Usage
 
