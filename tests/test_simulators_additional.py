@@ -1,6 +1,7 @@
 
 from genecoder.simulators.illumina import IlluminaChannel, register as reg_illumina
 from genecoder.simulators.adv_nanopore import AdvancedNanoporeChannel, register as reg_advnano
+from genecoder.simulators import BaseSimulator
 
 
 def test_register_channels():
@@ -8,8 +9,9 @@ def test_register_channels():
     registry: dict[str, BaseChannel] = {}
     reg_illumina(lambda n, ch: registry.setdefault(n, ch))
     reg_advnano(lambda n, ch: registry.setdefault(n, ch))
-    assert "illumina" in registry and isinstance(registry["illumina"], BaseChannel)
-    assert "adv_nanopore" in registry and isinstance(registry["adv_nanopore"], BaseChannel)
+    assert "illumina" in registry and isinstance(registry["illumina"], BaseSimulator)
+    assert "adv_nanopore" in registry and isinstance(registry["adv_nanopore"], BaseSimulator)
+    assert all(isinstance(ch, BaseChannel) for ch in registry.values())
 
 
 def test_illumina_simulator_deterministic(monkeypatch):

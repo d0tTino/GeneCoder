@@ -3,10 +3,16 @@ from __future__ import annotations
 
 from ..plugins import SIMULATOR_REGISTRY
 
+from .base import BaseSimulator
 from .illumina import IlluminaChannel
 from .adv_nanopore import AdvancedNanoporeChannel
 
-__all__ = ["IlluminaChannel", "AdvancedNanoporeChannel", "simulate_reads"]
+__all__ = [
+    "BaseSimulator",
+    "IlluminaChannel",
+    "AdvancedNanoporeChannel",
+    "simulate_reads",
+]
 
 
 def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> str:
