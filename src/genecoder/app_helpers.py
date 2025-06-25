@@ -1,3 +1,9 @@
+"""Utility functions shared by the GUI and CLI.
+
+The helpers here form part of the integrated pipeline described in
+`docs/DEVELOPMENT_VISION.md`.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

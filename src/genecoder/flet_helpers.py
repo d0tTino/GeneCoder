@@ -1,4 +1,8 @@
-"""Helper utilities for the Flet GUI that do not depend on Flet itself."""
+"""Helper utilities for the Flet GUI that do not depend on Flet itself.
+
+These functions support the extensibility goals described in
+`docs/DEVELOPMENT_VISION.md`.
+"""
 
 from __future__ import annotations
 

@@ -9,6 +9,11 @@ For full usage instructions and additional documentation see the [docs/](docs/) 
 For instructions on launching the GUI see the [usage guide](docs/usage.md#launching-the-flet-app).
 For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md).
 
+GeneCoder's long-term goal is to provide an integrated research platform that
+bridges encoding algorithms with sequencing and synthesis simulations while
+remaining easy to extend. The guiding ideas are summarized in
+[docs/DEVELOPMENT_VISION.md](docs/DEVELOPMENT_VISION.md).
+
 ## Features
 
 - Multiple encoding strategies including Base-4 Direct, Huffman-4 and GC-Balanced.
