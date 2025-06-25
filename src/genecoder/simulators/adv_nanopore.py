@@ -1,18 +1,16 @@
 """Advanced Nanopore sequencing simulator with homopolymer bias."""
 from __future__ import annotations
 
-import os
 import random
 from typing import Callable, Sequence
+
+from ..random_utils import make_rng
 
 from ..channels.base import BaseChannel
 
 __all__ = ["AdvancedNanoporeChannel", "register"]
 
 
-def _make_rng() -> random.Random:
-    seed_env = os.getenv("GENECODER_SIM_SEED")
-    return random.Random(int(seed_env)) if seed_env is not None else random.Random()
 
 
 def _simulate_homopolymer_errors(
@@ -67,7 +65,7 @@ class AdvancedNanoporeChannel(BaseChannel):
         self.quality_profile = tuple(quality_profile) if quality_profile is not None else None
 
     def simulate(self, sequence: str) -> str:
-        rng = _make_rng()
+        rng = make_rng()
         read = sequence[: self.read_length]
         return _simulate_homopolymer_errors(
             read,

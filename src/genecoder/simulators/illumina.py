@@ -1,9 +1,10 @@
 """Simple Illumina sequencing simulator."""
 from __future__ import annotations
 
-import os
 import random
 from typing import Callable, Sequence
+
+from ..random_utils import make_rng
 
 from ..channels.base import BaseChannel
 from ..error_simulation import introduce_errors
@@ -11,9 +12,6 @@ from ..error_simulation import introduce_errors
 __all__ = ["IlluminaChannel", "register"]
 
 
-def _make_rng() -> random.Random:
-    seed_env = os.getenv("GENECODER_SIM_SEED")
-    return random.Random(int(seed_env)) if seed_env is not None else random.Random()
 
 
 class IlluminaChannel(BaseChannel):
@@ -36,7 +34,7 @@ class IlluminaChannel(BaseChannel):
         self.quality_profile = tuple(quality_profile) if quality_profile is not None else None
 
     def simulate(self, sequence: str) -> str:
-        rng = _make_rng()
+        rng = make_rng()
         read = sequence[: self.read_length]
         return introduce_errors(
             read,

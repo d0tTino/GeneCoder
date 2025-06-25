@@ -1,9 +1,10 @@
 """Simple channel error simulator for DNA sequences."""
 from __future__ import annotations
 
-import os
 import random
 from typing import Protocol, Callable
+
+from .random_utils import make_rng
 
 from .channels.base import BaseChannel
 
@@ -47,11 +48,6 @@ def simulate_errors(seq: str, p_error: float, rng: Optional[random.Random] = Non
     return "".join(result)
 
 
-def _make_rng() -> random.Random:
-    """Return a :class:`~random.Random` seeded from ``GENECODER_SIM_SEED``."""
-
-    seed_env = os.getenv("GENECODER_SIM_SEED")
-    return random.Random(int(seed_env)) if seed_env is not None else random.Random()
 
 
 class Channel(BaseChannel):
@@ -61,7 +57,7 @@ class Channel(BaseChannel):
         self.error_rate = error_rate
 
     def simulate(self, sequence: str) -> str:
-        return simulate_errors(sequence, self.error_rate, rng=_make_rng())
+        return simulate_errors(sequence, self.error_rate, rng=make_rng())
 
 
 def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
