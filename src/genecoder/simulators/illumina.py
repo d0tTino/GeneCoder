@@ -7,6 +7,7 @@ from ..random_utils import make_rng
 from ..channels.base import BaseChannel
 from .base import BaseSimulator
 from ..error_simulation import introduce_errors
+from .base import BaseSimulator
 
 __all__ = ["IlluminaChannel", "register"]
 
