@@ -42,3 +42,10 @@ The viewer accepts several query parameters which are also exposed by
 - `pulse_speed` – numeric speed multiplier for the pulses.
 
 Combine these parameters in the page URL or when calling `show_helix_ui`.
+
+Example enabling pulses:
+
+```python
+from genecoder.helix_view import show_helix_ui
+webview = show_helix_ui("ACGT", pulse=True, pulse_speed=3.0)
+```

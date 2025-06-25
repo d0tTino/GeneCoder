@@ -85,6 +85,8 @@ controls.update();
 
 const seq = '%(DNA_SEQ)s';
 const animateHelix = %(ANIMATE)s;
+const showPulses = %(PULSE)s;
+const pulseSpeed = %(PULSE_SPEED)s;
 const bases = [];
 for (let i = 0; i < seq.length; i++) {
     bases.push(seq[i]);
@@ -163,7 +165,18 @@ window.addEventListener('resize', () => {
 let offset = 0;
 function animate() {
     requestAnimationFrame(animate);
-    group.rotation.z += 0.01;
+    if (animateHelix) {
+        group.rotation.z += 0.01;
+    }
+    if (showPulses) {
+        offset += 0.05 * pulseSpeed;
+        group.children.forEach((m, i) => {
+            const s = 1 + 0.3 * Math.sin(offset - i * 0.5);
+            m.scale.set(s, s, s);
+        });
+    } else {
+        group.children.forEach((m) => m.scale.set(1, 1, 1));
+    }
 
     controls.update();
     renderer.render(scene, camera);
@@ -179,6 +192,8 @@ def _make_helix_html(
     colors: dict[str, int] | None = None,
     animate: bool = True,
     zoom: float = 1.0,
+    pulse: bool = False,
+    pulse_speed: float = 2.0,
     three_js_url: str = THREE_JS_URL,
     orbit_js_url: str = ORBIT_JS_URL,
 ) -> str:
@@ -193,6 +208,10 @@ def _make_helix_html(
         needed.
     colors:
         Optional mapping of nucleotide to hex color value or string.
+    pulse:
+        Enable pulsing animation of the helix segments.
+    pulse_speed:
+        Speed multiplier for the pulse animation.
     """
     if length is not None:
         repeats = (length + len(dna_sequence) - 1) // len(dna_sequence)
@@ -214,6 +233,8 @@ def _make_helix_html(
         "COLOR_MAP": colors_js,
         "ANIMATE": "true" if animate else "false",
         "ZOOM": zoom,
+        "PULSE": "true" if pulse else "false",
+        "PULSE_SPEED": pulse_speed,
     }
 
 
@@ -224,6 +245,8 @@ def show_helix(
     colors: dict[str, int] | None = None,
     animate: bool = True,
     zoom: float = 1.0,
+    pulse: bool = False,
+    pulse_speed: float = 2.0,
 ) -> flet_webview.WebView:
     """Return a ``WebView`` displaying a DNA helix scene with controls.
 
@@ -236,6 +259,10 @@ def show_helix(
         needed.
     colors:
         Mapping of nucleotide to hex color value or string.
+    pulse:
+        Enable pulsing animation of the helix segments.
+    pulse_speed:
+        Speed multiplier for the pulse animation.
     """
     three_url: str = THREE_JS_URL
     orbit_url: str = ORBIT_JS_URL
@@ -252,6 +279,8 @@ def show_helix(
         colors=colors,
         animate=animate,
         zoom=zoom,
+        pulse=pulse,
+        pulse_speed=pulse_speed,
         three_js_url=three_url,
         orbit_js_url=orbit_url,
     )
@@ -274,8 +303,8 @@ def show_helix_ui(
 ) -> flet_webview.WebView:
     """Return a ``WebView`` pointing at the React helix frontend.
 
-    Parameters enable GC colouring, homopolymer highlighting and animated
-    pulses via the corresponding query arguments.
+    Parameters enable GC colouring, homopolymer highlighting and optional
+    pulse animations via the corresponding query arguments.
     """
     base_dir = Path(__file__).resolve().parent.parent / "web" / "helix-ui"
     helix_path = base_dir / "dist" / "index.html"
