@@ -92,6 +92,16 @@ def test_encrypt_roundtrip_key_file(tmp_path: Path) -> None:
     assert decrypt_data(enc, key=key) == data
 
 
+def test_encrypt_roundtrip_key_mismatch(tmp_path: Path) -> None:
+    pytest.importorskip("cryptography")
+    key_path = tmp_path / "key.bin"
+    key_path.write_bytes(b"correct")
+    data = b"hello mismatch"
+    enc = encrypt_data(data, key=key_path.read_bytes())
+    with pytest.raises(Exception):
+        decrypt_data(enc, key=b"wrong")
+
+
 def test_cli_encrypt_checksum_key_file(tmp_path: Path, monkeypatch) -> None:
     pytest.importorskip("cryptography")
     key_path = tmp_path / "cli.key"
@@ -173,3 +183,47 @@ def test_cli_encrypt_key_file_roundtrip(tmp_path: Path) -> None:
     out_file = tmp_path / "secret.txt_decoded.bin"
     assert out_file.exists()
     assert out_file.read_text() == "top secret"
+
+
+def test_cli_encrypt_key_file_wrong_key(tmp_path: Path) -> None:
+    src = tmp_path / "secret2.txt"
+    src.write_text("bad secret")
+    key_file = tmp_path / "key_good.bin"
+    wrong_file = tmp_path / "key_bad.bin"
+    key_file.write_bytes(b"mykey")
+    wrong_file.write_bytes(b"other")
+
+    enc_res = run_cli_command(
+        [
+            "encode",
+            "--input-files",
+            str(src),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--encrypt",
+            "--key",
+            str(key_file),
+        ]
+    )
+    assert enc_res.returncode == 0, enc_res.stderr
+
+    fasta = tmp_path / "secret2.txt.fasta"
+    assert fasta.exists()
+
+    dec_res = run_cli_command(
+        [
+            "decode",
+            "--input-files",
+            str(fasta),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--encrypt",
+            "--key",
+            str(wrong_file),
+        ]
+    )
+    assert dec_res.returncode != 0
