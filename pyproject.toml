@@ -33,7 +33,7 @@ matplotlib = "*"
 flet-webview = "*"
 
 [tool.poetry.group.web.dependencies]
-fastapi = "*"
+fastapi = ">=0.110"
 uvicorn = { version = "*", extras = ["standard"] }
 httpx = "<0.28"
 
