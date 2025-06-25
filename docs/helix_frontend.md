@@ -40,6 +40,7 @@ The viewer accepts several query parameters which are also exposed by
   `A:#ff0000,G:#00ff00`.
 - `pulse` – `true`/`false` to enable progress pulses.
 - `pulse_speed` – numeric speed multiplier for the pulses.
+- `fps` – numeric frames-per-second limit for animation.
 
 Combine these parameters in the page URL or when calling `show_helix_ui`.
 
@@ -48,4 +49,10 @@ Example enabling pulses:
 ```python
 from genecoder.helix_view import show_helix_ui
 webview = show_helix_ui("ACGT", pulse=True, pulse_speed=3.0)
+```
+
+Set `fps` to cap the frame rate if the animation uses too much CPU:
+
+```python
+webview = show_helix_ui("ACGT", fps=30)
 ```

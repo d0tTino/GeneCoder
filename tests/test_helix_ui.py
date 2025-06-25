@@ -17,6 +17,7 @@ def test_show_helix_ui_url(tmp_path: Path) -> None:
         show_runs=False,
         pulse=True,
         pulse_speed=3.0,
+        fps=30.0,
     )
     assert webview.__class__.__name__ == "WebView"
     assert webview.url.startswith("file:")
@@ -27,6 +28,7 @@ def test_show_helix_ui_url(tmp_path: Path) -> None:
     assert "runs=false" in parsed.query
     assert "pulse=true" in parsed.query
     assert "pulse_speed=3.0" in parsed.query
+    assert "fps=30.0" in parsed.query
     assert "colors=A%3A%23123456" in parsed.query
 
 
