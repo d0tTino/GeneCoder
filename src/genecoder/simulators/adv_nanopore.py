@@ -7,6 +7,7 @@ from typing import Callable, Sequence
 from ..random_utils import make_rng
 
 from ..channels.base import BaseChannel
+from .base import BaseSimulator
 
 __all__ = ["AdvancedNanoporeChannel", "register"]
 
