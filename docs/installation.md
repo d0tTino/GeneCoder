@@ -90,12 +90,10 @@ poetry run pytest -q
 
 ## DNAformer Plugin
 
-Install the optional DNAformer model separately. The plugin requires
-`dnaformer` and `torch` which are not installed with the base
-dependencies:
+Install the optional DNAformer model with Poetry's extras support:
 
 ```bash
-pip install dnaformer torch
+poetry install --extras dnaformer --no-interaction
 ```
 
 Once installed, GeneCoder will automatically register the codec when
@@ -104,10 +102,10 @@ imported.
 ## FrameD FEC Backend
 
 The optional FrameD plugin wraps optimized C++ kernels using CFFI.
-Install the package from PyPI before using the backend:
+Install it using the ``framed`` extras:
 
 ```bash
-pip install FrameD
+poetry install --extras framed --no-interaction
 ```
 
 The `framed` FEC method becomes available automatically after
