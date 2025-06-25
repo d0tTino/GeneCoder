@@ -1,6 +1,6 @@
 # Installation
 
-GeneCoder requires **Python 3.10+**.
+GeneCoder requires **Python 3.11+**.
 
 ## Quick Start
 
@@ -25,7 +25,7 @@ poetry install --with gui,web,dnaformer --no-interaction
 
 ## Editable install with pip
 
-If you prefer `pip`, ensure you are using **Python 3.10+** and install the
+If you prefer `pip`, ensure you are using **Python 3.11+** and install the
 repository in editable mode so changes take effect immediately:
 
 ```bash

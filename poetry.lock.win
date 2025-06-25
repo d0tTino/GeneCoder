@@ -2291,6 +2291,6 @@ raptorq = ["numpy", "raptorq"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = "^3.10"
-content-hash = "ca9da3258e855e74d8dee4e4bf75a59a4fe30337e1da149c751e2145c1ce33bc"
+python-versions = "^3.11"
+content-hash = "fe5c508b384697986fec7ff3b2e0a3be1fe4cb5710dcebf1f07a794f894f2bf0"
 

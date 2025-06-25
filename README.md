@@ -30,7 +30,7 @@ remaining easy to extend. The guiding ideas are summarized in
 
 ## Quick Start
 
-GeneCoder requires **Python 3.10+** and uses
+GeneCoder requires **Python 3.11+** and uses
 [Poetry](https://python-poetry.org/) for dependency management. Install the
 dependencies with:
 
