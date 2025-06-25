@@ -24,11 +24,31 @@ your `PATH`:
 - **dnarsim** — [DNArSim](https://github.com/Purdue-ScottLab/DNArSim). Follow the
   project instructions to compile the tool and add `dnarsim` to your `PATH`.
 - **squigulator** — [Squigulator](https://github.com/hasindu2008/squigulator).
-  Download a release or build from source so that the `squigulator` command is
-  available.
+    Download a release or build from source so that the `squigulator` command is
+    available.
 
 GeneCoder automatically falls back to the internal error model when an external
 simulator is missing or fails.
+
+### Installation tips
+
+Most simulators require compilation. A typical workflow is:
+
+```bash
+git clone <repo-url>
+cd <project>
+make
+sudo make install  # or copy the binary to a directory on your PATH
+```
+
+Verify the installation by running the command directly:
+
+```bash
+d2sim --help
+```
+
+Once the binary is accessible, GeneCoder can invoke it via the `--simulator`
+option or `simulate_reads()` API.
 
 ## Command-line usage
 

@@ -58,3 +58,30 @@ See the [plugins-examples](../plugins-examples/) directory in the source tree fo
 minimal sample packages implementing a codec, a FEC backend and a read
 simulator. Install any of these packages with `pip install` to experiment with
 custom extensions locally.
+
+## Installing Third-Party Plugins
+
+Plugins are discovered via Python entry points, so any installed package that
+defines the appropriate entry point will be loaded automatically. Install a
+plugin from PyPI:
+
+```bash
+pip install genecoder-myplugin
+```
+
+Or from a local directory:
+
+```bash
+pip install ./path/to/my_plugin
+```
+
+After installation, import GeneCoder or invoke the CLI to load the new plugin.
+Registered codecs and simulators appear in the respective registries:
+
+```python
+import genecoder
+from genecoder.plugins import CODEC_REGISTRY
+
+genecoder.plugins.load_plugins()
+print(CODEC_REGISTRY.keys())
+```
