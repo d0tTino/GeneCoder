@@ -25,8 +25,9 @@ def encrypt_data(data: bytes, key: Optional[bytes] = None) -> bytes:
     key = key or _DEFAULT_KEY
     aes_key = hashlib.sha256(key).digest()
     nonce = os.urandom(12)
-    enc = AESGCM(aes_key).encrypt(nonce, data, None)
-    return _AES_HEADER + nonce + cast(bytes, enc)
+    enc = cast(bytes, AESGCM(aes_key).encrypt(nonce, data, None))
+    return _AES_HEADER + nonce + enc
+
 
 
 
