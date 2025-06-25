@@ -20,7 +20,7 @@ from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from typing import Callable
 
 # Delay importing heavy security module until needed
-decrypt_data: Callable[[bytes], bytes] | None = None
+decrypt_data: Callable[..., bytes] | None = None
 compute_checksum: Callable[[bytes], str] | None = None
 
 def _ensure_security_loaded() -> None:
@@ -234,7 +234,10 @@ def process_single_decode(
         if getattr(args, "encrypt", False):
             _ensure_security_loaded()
             assert decrypt_data is not None
-            final_decoded_data = decrypt_data(final_decoded_data)
+            if _key_bytes is not None:
+                final_decoded_data = decrypt_data(final_decoded_data, _key_bytes)
+            else:
+                final_decoded_data = decrypt_data(final_decoded_data)
 
 
         if getattr(args, "checksum", False):
