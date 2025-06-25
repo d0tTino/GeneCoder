@@ -30,6 +30,7 @@ def encrypt_data(data: bytes, key: Optional[bytes] = None) -> bytes:
 
 
 
+
 def decrypt_data(data: bytes, key: Optional[bytes] = None) -> bytes:
     """Decrypt data produced by :func:`encrypt_data` or legacy XOR."""
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM

@@ -17,6 +17,9 @@ For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md)
 - Flet-based GUI with analysis plots.
 - Base5 and base6 alphabet options for alternative nucleotide letters. These
   modes remap the standard ACGT symbols but **do not increase capacity**.
+- External read simulators can be invoked with ``--simulator``.
+  Extra ``d2sim`` parameters may be supplied via ``--d2sim-options`` or
+  the ``GENECODER_D2SIM_OPTIONS`` environment variable.
 
 ## Quick Start
 
