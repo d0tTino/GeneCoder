@@ -119,6 +119,15 @@ Code style checks are handled in a dedicated **`lint`** job that runs
 `pre-commit` with Python 3.11. The `build` matrix depends on this job so
 linting only executes once per change.
 
+The workflow also includes a **`secret-scan`** job that runs
+`gitleaks` to detect accidentally committed secrets. Similar to the lint
+step, it only runs when source files change and the pull request isn't
+limited to documentation or comment updates.
+
+After the test matrix completes, a **`sbom`** job generates a
+CycloneDX software bill of materials using `cyclonedx-py`. The resulting
+`sbom.xml` file is uploaded as a build artifact for auditing purposes.
+
 
 ## Automatic Merging for Comment-Only Changes
 

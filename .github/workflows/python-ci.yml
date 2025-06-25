@@ -64,6 +64,20 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: python scripts/only_comments_changed.py
 
+  secret-scan:
+    needs: [changes, check-comments]
+    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for secrets
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          fail: true
+
   lint:
     needs: [changes, check-comments]
     if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
@@ -251,3 +265,31 @@ jobs:
 
     - name: Smoke test devcontainer
       run: docker run --rm genecoder-devcontainer genecoder --version
+
+  sbom:
+    needs: [changes, check-comments, build]
+    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install cyclonedx
+        run: |
+          python -m pip install --upgrade pip
+          pip install cyclonedx-bom
+
+      - name: Generate SBOM
+        run: cyclonedx-py -o sbom.xml
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.xml
