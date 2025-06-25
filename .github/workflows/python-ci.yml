@@ -75,13 +75,15 @@ jobs:
 
     - name: Select lock file
       id: lockfile
+      shell: bash
       run: |
-        if [ "${{ runner.os }}" = "Windows" ]; then
-          echo "file=poetry.lock.win" >> "$GITHUB_OUTPUT"
+        if [ "${RUNNER_OS}" = "Windows" ]; then
+          file=poetry.lock.win
         else
-          echo "file=poetry.lock.linux" >> "$GITHUB_OUTPUT"
+          file=poetry.lock.linux
         fi
-        cp "${{ steps.lockfile.outputs.file }}" poetry.lock
+        echo "file=$file" >> "$GITHUB_OUTPUT"
+        cp "$file" poetry.lock
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -91,7 +93,9 @@ jobs:
     - name: Cache Poetry
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pypoetry
+        path: |
+          ~/.cache/pypoetry
+          ~\AppData\Local\pypoetry
         key: poetry-${{ runner.os }}-${{ hashFiles(steps.lockfile.outputs.file) }}
 
     - name: Install dependencies
@@ -105,6 +109,7 @@ jobs:
         pip install ./plugins-examples/example_codec ./plugins-examples/example_fec ./plugins-examples/example_simulator
 
     - name: Verify example plugin registration
+      shell: bash
       run: |
         python - <<'PY'
         from genecoder import plugins
@@ -147,7 +152,7 @@ jobs:
   build:
     needs: [changes, check-comments, lint]
     if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
-    runs-on: self-hosted
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
       fail-fast: true
@@ -163,13 +168,15 @@ jobs:
 
     - name: Select lock file
       id: lockfile_build
+      shell: bash
       run: |
-        if [ "${{ runner.os }}" = "Windows" ]; then
-          echo "file=poetry.lock.win" >> "$GITHUB_OUTPUT"
+        if [ "${RUNNER_OS}" = "Windows" ]; then
+          file=poetry.lock.win
         else
-          echo "file=poetry.lock.linux" >> "$GITHUB_OUTPUT"
+          file=poetry.lock.linux
         fi
-        cp "${{ steps.lockfile_build.outputs.file }}" poetry.lock
+        echo "file=$file" >> "$GITHUB_OUTPUT"
+        cp "$file" poetry.lock
 
     - name: Set up Python
       uses: actions/setup-python@v5
