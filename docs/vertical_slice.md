@@ -12,7 +12,7 @@ This guide demonstrates a minimal end-to-end run of GeneCoder.
 ```bash
 git clone https://github.com/d0tTino/GeneCoder.git
 cd GeneCoder
-poetry install --with gui,web --no-interaction
+poetry install --with gui,web,dnaformer --no-interaction
 ```
 
 ## CLI Smoke Test
@@ -39,3 +39,6 @@ poetry run uvicorn web.main:app --reload
 Open <http://localhost:8000> in your browser to view the landing page.
 
 This document condenses the key steps from the installation and usage guides into a quick demo.
+
+Contributors may prefer to run these commands inside the provided
+**devcontainer** for a ready-to-use environment.
