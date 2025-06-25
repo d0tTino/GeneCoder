@@ -38,6 +38,23 @@ def test_adapters_run_external(monkeypatch, name):
     assert run_called == [expected]
 
 
+def test_d2sim_extra_options(monkeypatch):
+    which_called = []
+    run_called = []
+
+    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda t: which_called.append(t) or "/usr/bin/" + t)
+    monkeypatch.setattr(
+        nanopore_sim,
+        "_run_external",
+        lambda cmd, seq: run_called.append((cmd, seq)) or "ok",
+    )
+    monkeypatch.setenv("GENECODER_D2SIM_OPTIONS", "--foo bar")
+
+    result = nanopore_sim.simulate_d2sim("ACGT", error_rate=0.1)
+    assert result == "ok"
+    assert run_called == [(["d2sim", "-e", "0.1", "--foo", "bar"], "ACGT")]
+
+
 @pytest.mark.parametrize("name", ADAPTERS.keys())
 def test_adapters_fall_back(monkeypatch, name):
     func, cmd = ADAPTERS[name]
