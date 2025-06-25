@@ -4,6 +4,8 @@ from __future__ import annotations
 import random
 from typing import Callable, Sequence
 
+from .base import BaseSimulator
+
 from ..random_utils import make_rng
 
 from ..channels.base import BaseChannel
