@@ -3,6 +3,7 @@ import logging
 import sys
 
 from genecoder import __version__
+from genecoder.plugins import load_plugins
 from typing import Any
 
 # Delay heavy imports until building the parser to keep --version lightweight
@@ -117,6 +118,7 @@ def _handle_sim_errors(args: argparse.Namespace) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
+    load_plugins()
     parser = build_parser()
     args = parser.parse_args(argv)
 

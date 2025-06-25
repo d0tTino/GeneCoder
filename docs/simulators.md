@@ -64,4 +64,10 @@ Invoke an external simulator before decoding:
 genecoder decode --simulator d2sim <other options>
 ```
 
+Provide additional parameters to ``d2sim`` using ``--d2sim-options``:
+
+```bash
+genecoder decode --simulator d2sim --d2sim-options "--seed 42" <other options>
+```
+
 Use `GENECODER_SIM_SEED=<seed>` to make runs reproducible.

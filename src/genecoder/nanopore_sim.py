@@ -56,6 +56,10 @@ def _simulate_adapter(
             cmd_list = [command]
             if command == "d2sim":
                 cmd_list += ["-e", str(error_rate)]
+                extra = os.getenv("GENECODER_D2SIM_OPTIONS")
+                if extra:
+                    import shlex
+                    cmd_list += shlex.split(extra)
             return _run_external(cmd_list, sequence)
         except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
             logger.warning(

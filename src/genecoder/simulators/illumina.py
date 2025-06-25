@@ -5,7 +5,6 @@ import random
 from typing import Callable, Sequence
 
 from ..random_utils import make_rng
-
 from ..channels.base import BaseChannel
 from ..error_simulation import introduce_errors
 
@@ -14,7 +13,7 @@ __all__ = ["IlluminaChannel", "register"]
 
 
 
-class IlluminaChannel(BaseChannel):
+class IlluminaChannel(BaseSimulator):
     """Channel modeling basic Illumina read errors."""
 
     def __init__(
@@ -26,12 +25,14 @@ class IlluminaChannel(BaseChannel):
         read_length: int = 150,
         quality_profile: Sequence[float] | None = None,
     ) -> None:
-        self.substitution_rate = substitution_rate
-        self.insertion_rate = insertion_rate
-        self.deletion_rate = deletion_rate
-        self.coverage = coverage
-        self.read_length = read_length
-        self.quality_profile = tuple(quality_profile) if quality_profile is not None else None
+        super().__init__(
+            substitution_rate=substitution_rate,
+            insertion_rate=insertion_rate,
+            deletion_rate=deletion_rate,
+            coverage=coverage,
+            read_length=read_length,
+            quality_profile=quality_profile,
+        )
 
     def simulate(self, sequence: str) -> str:
         rng = make_rng()
