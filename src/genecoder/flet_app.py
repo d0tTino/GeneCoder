@@ -10,6 +10,8 @@ The application relies heavily on the :mod:`genecoder` package
 `plotting` utilities which themselves use `matplotlib`).  It runs most
 heavy tasks asynchronously with :mod:`asyncio` so the interface remains
 responsive.
+See `docs/DEVELOPMENT_VISION.md` for how the GUI fits into the project's
+integrated pipeline and extensible design.
 """
 
 import flet as ft
