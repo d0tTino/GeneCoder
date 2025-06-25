@@ -173,3 +173,67 @@ def test_cli_encrypt_key_file_roundtrip(tmp_path: Path) -> None:
     out_file = tmp_path / "secret.txt_decoded.bin"
     assert out_file.exists()
     assert out_file.read_text() == "top secret"
+
+
+def test_cli_encrypt_wrong_key_fails(tmp_path: Path) -> None:
+    src = tmp_path / "wrong.txt"
+    src.write_text("secrets")
+    key_ok = tmp_path / "key_ok.bin"
+    key_wrong = tmp_path / "key_wrong.bin"
+    key_ok.write_bytes(b"key-ok")
+    key_wrong.write_bytes(b"key-no")
+
+    enc_res = run_cli_command(
+        [
+            "encode",
+            "--input-files",
+            str(src),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--encrypt",
+            "--key",
+            str(key_ok),
+        ]
+    )
+    assert enc_res.returncode == 0, enc_res.stderr
+
+    fasta = tmp_path / "wrong.txt.fasta"
+    assert fasta.exists()
+
+    fail_res = run_cli_command(
+        [
+            "decode",
+            "--input-files",
+            str(fasta),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--encrypt",
+            "--key",
+            str(key_wrong),
+        ]
+    )
+    assert fail_res.returncode != 0
+    out_file = tmp_path / "wrong.txt_decoded.bin"
+    assert not out_file.exists()
+
+    ok_res = run_cli_command(
+        [
+            "decode",
+            "--input-files",
+            str(fasta),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--encrypt",
+            "--key",
+            str(key_ok),
+        ]
+    )
+    assert ok_res.returncode == 0, ok_res.stderr
+    assert out_file.exists()
+    assert out_file.read_text() == "secrets"

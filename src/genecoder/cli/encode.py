@@ -27,7 +27,7 @@ from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
 from typing import Callable
 
 # Delay importing heavy security module until needed
-encrypt_data: Callable[[bytes], bytes] | None = None
+encrypt_data: Callable[..., bytes] | None = None
 compute_checksum: Callable[[bytes], str] | None = None
 
 
@@ -265,7 +265,10 @@ def process_single_encode(
         if getattr(args, "encrypt", False):
             _ensure_security_loaded()
             assert encrypt_data is not None
-            data_for_encoding = encrypt_data(plaintext_data)
+            if _key_bytes is not None:
+                data_for_encoding = encrypt_data(plaintext_data, _key_bytes)
+            else:
+                data_for_encoding = encrypt_data(plaintext_data)
 
 
         checksum: str | None = None
