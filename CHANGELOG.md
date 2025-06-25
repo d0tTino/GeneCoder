@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
 - Pinned dependencies to stable versions.
 - ``encode_gc_balanced`` now validates the inverted sequence and logs a warning
   if it still violates GC content or homopolymer limits.
+- Added ``--d2sim-options`` and ``GENECODER_D2SIM_OPTIONS`` to customize ``d2sim`` calls.
+- Refactored ``BaseSimulator`` for shared simulator settings.
 
 ## [0.1.0] - 2025-06-12
 ### Added

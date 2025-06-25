@@ -9,6 +9,7 @@ from .base import BaseSimulator
 from ..random_utils import make_rng
 
 from ..channels.base import BaseChannel
+from .base import BaseSimulator
 
 __all__ = ["AdvancedNanoporeChannel", "register"]
 
