@@ -18,3 +18,4 @@ For more details, explore the sections below.
 * [Vertical Slice Guide](vertical_slice.md) – Quick setup and interface demo.
 * [n8n Overview](n8n_overview.md) – Automate workflows with n8n.
 * [Simulators](simulators.md) – Available read simulators and how to install external tools.
+* [GeneCoder's DNA Storage Vision](https://github.com/d0tTino/GeneCoder/releases) – Download the vision document as a PDF.
