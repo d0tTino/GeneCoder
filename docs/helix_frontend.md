@@ -38,6 +38,8 @@ The viewer accepts several query parameters which are also exposed by
 - `zoom` – numeric zoom factor.
 - `gc` – `true`/`false` to show the GC-content overlay.
 - `runs` – `true`/`false` to highlight homopolymers.
+- `gauge` – `true`/`false` to display overall GC percentage gauges.
+- `flash` – `true`/`false` to show error flashes.
 - `colors` – comma-separated `base:#hex` pairs, for example
   `A:#ff0000,G:#00ff00`.
 - `pulse` – `true`/`false` to enable progress pulses.
@@ -57,4 +59,10 @@ Set `fps` to cap the frame rate if the animation uses too much CPU:
 
 ```python
 webview = show_helix_ui("ACGT", fps=30)
+```
+
+Disable the GC gauge and show flashing error hints:
+
+```python
+webview = show_helix_ui("ACGT", show_gauge=False, flash_errors=True)
 ```

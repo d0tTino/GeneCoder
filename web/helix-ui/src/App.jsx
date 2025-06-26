@@ -30,10 +30,13 @@ export default function App() {
   const [animate, setAnimate] = useState(params.get('animate') !== 'false');
   const [zoom] = useState(parseFloat(params.get('zoom') || '1'));
   const seq = params.get('seq') || 'ACGT';
+  const gcRatio = seq.split('').filter((b) => b === 'G' || b === 'C').length / seq.length;
   const [showGC, setShowGC] = useState(params.get('gc') !== 'false');
   const [showRuns, setShowRuns] = useState(params.get('runs') !== 'false');
   const [showPulses, setShowPulses] = useState(params.get('pulse') === 'true');
   const [pulseSpeed] = useState(parseFloat(params.get('pulse_speed') || '2'));
+  const [showGauge, setShowGauge] = useState(params.get('gauge') !== 'false');
+  const [flashErrors, setFlashErrors] = useState(params.get('flash') === 'true');
 
   const colorParam = params.get('colors');
   const colors = { ...DEFAULT_COLORS, ...(parseColors(colorParam) || {}) };
@@ -97,9 +100,16 @@ export default function App() {
         ctx.fillRect(i * bw, 16, bw, 14);
       }
     }
+    if (showGauge) {
+      ctx.fillStyle = '#ddd';
+      ctx.fillRect(0, 28, metricsRef.current.width, 2);
+      ctx.fillStyle = '#88f';
+      ctx.fillRect(0, 28, metricsRef.current.width * gcRatio, 2);
+    }
 
     let frameId;
     let pulsePhase = 0;
+    let flashPhase = 0;
     const loop = () => {
       controls.update();
       if (animate) group.rotation.z += 0.01;
@@ -112,6 +122,14 @@ export default function App() {
       } else {
         group.children.forEach((mesh) => mesh.scale.set(1, 1, 1));
       }
+      if (flashErrors) {
+        flashPhase += 0.1;
+        group.children.forEach((mesh, i) => {
+          const intensity = 0.5 + 0.5 * Math.sin(flashPhase - i * 0.3);
+          mesh.material.emissive = new THREE.Color(0xff00ff);
+          mesh.material.emissiveIntensity = intensity;
+        });
+      }
       renderer.render(scene, camera);
       frameId = requestAnimationFrame(loop);
     };
@@ -120,7 +138,7 @@ export default function App() {
       cancelAnimationFrame(frameId);
       renderer.dispose();
     };
-  }, [seq, animate, zoom, colors, showGC, showRuns, showPulses, pulseSpeed]);
+  }, [seq, animate, zoom, colors, showGC, showRuns, showPulses, pulseSpeed, showGauge, flashErrors]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -143,6 +161,20 @@ export default function App() {
         <label style={{ marginLeft: 8 }}>
           <input type="checkbox" checked={showPulses} onChange={(e) => setShowPulses(e.target.checked)} /> Pulse
         </label>
+        <label style={{ marginLeft: 8 }}>
+          <input type="checkbox" checked={showGauge} onChange={(e) => setShowGauge(e.target.checked)} /> Gauge
+        </label>
+        <label style={{ marginLeft: 8 }}>
+          <input type="checkbox" checked={flashErrors} onChange={(e) => setFlashErrors(e.target.checked)} /> Errors
+        </label>
+        {showGauge && (
+          <div style={{ marginTop: 4 }}>
+            <div style={{ width: 100, height: 6, background: '#eee' }}>
+              <div style={{ width: `${gcRatio * 100}%`, height: '100%', background: '#88f' }} />
+            </div>
+            <div style={{ fontSize: 10 }}>{Math.round(gcRatio * 100)}% GC</div>
+          </div>
+        )}
       </div>
       <div ref={mount} style={{ width: '100%', height: '100%' }} />
     </div>
