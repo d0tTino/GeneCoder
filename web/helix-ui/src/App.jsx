@@ -33,6 +33,8 @@ export default function App() {
   const gcRatio = seq.split('').filter((b) => b === 'G' || b === 'C').length / seq.length;
   const [showGC, setShowGC] = useState(params.get('gc') !== 'false');
   const [showRuns, setShowRuns] = useState(params.get('runs') !== 'false');
+  const [showGCBars, setShowGCBars] = useState(params.get('gc_bars') === 'true');
+  const [showRunBars, setShowRunBars] = useState(params.get('run_bars') === 'true');
   const [showPulses, setShowPulses] = useState(params.get('pulse') === 'true');
   const [pulseSpeed] = useState(parseFloat(params.get('pulse_speed') || '2'));
   const [showGauge, setShowGauge] = useState(params.get('gauge') !== 'false');
@@ -90,11 +92,11 @@ export default function App() {
     const ctx = metricsRef.current.getContext('2d');
     const bw = metricsRef.current.width / bases.length;
     for (let i = 0; i < bases.length; i++) {
-      if (showGC) {
+      if (showGCBars) {
         ctx.fillStyle = bases[i] === 'G' || bases[i] === 'C' ? '#88f' : '#ddd';
         ctx.fillRect(i * bw, 0, bw, 14);
       }
-      if (showRuns) {
+      if (showRunBars) {
         const intensity = Math.min(runs[i] / 6, 1);
         ctx.fillStyle = `rgba(255,0,0,${intensity})`;
         ctx.fillRect(i * bw, 16, bw, 14);
@@ -138,7 +140,7 @@ export default function App() {
       cancelAnimationFrame(frameId);
       renderer.dispose();
     };
-  }, [seq, animate, zoom, colors, showGC, showRuns, showPulses, pulseSpeed, showGauge, flashErrors]);
+  }, [seq, animate, zoom, colors, showGC, showRuns, showGCBars, showRunBars, showPulses, pulseSpeed, showGauge, flashErrors]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -157,6 +159,12 @@ export default function App() {
         </label>
         <label style={{ marginLeft: 8 }}>
           <input type="checkbox" checked={showRuns} onChange={(e) => setShowRuns(e.target.checked)} /> Runs
+        </label>
+        <label style={{ marginLeft: 8 }}>
+          <input type="checkbox" checked={showGCBars} onChange={(e) => setShowGCBars(e.target.checked)} /> GC Bars
+        </label>
+        <label style={{ marginLeft: 8 }}>
+          <input type="checkbox" checked={showRunBars} onChange={(e) => setShowRunBars(e.target.checked)} /> Run Bars
         </label>
         <label style={{ marginLeft: 8 }}>
           <input type="checkbox" checked={showPulses} onChange={(e) => setShowPulses(e.target.checked)} /> Pulse
