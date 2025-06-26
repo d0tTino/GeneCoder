@@ -51,7 +51,8 @@ Decoded bytes are returned as a base64 string.
 
 ## Sequence Analysis
 
-The `/analyze` endpoint returns GC content and homopolymer statistics for a
+The `/analyze` endpoint returns [GC content](glossary.md#gc-content) and
+[homopolymer](glossary.md#homopolymer) statistics for a
 FASTA sequence.
 
 ```json
@@ -61,8 +62,9 @@ POST /analyze
 }
 ```
 
-The JSON response includes the sequence length, GC content and the longest
-homopolymer run.
+The JSON response includes the sequence length,
+[GC content](glossary.md#gc-content) and the longest
+[homopolymer](glossary.md#homopolymer) run.
 
 ## Generating Reports
 

@@ -44,3 +44,12 @@ def test_main_registers_event_handlers(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert callable(captured["encode"].on_click)
     assert callable(captured["decode"].on_click)
+
+
+def test_show_helix_ui_returns_webview() -> None:
+    from genecoder.helix_view import show_helix_ui
+
+    elem = show_helix_ui("AC")
+    assert elem.__class__.__name__ == "WebView"
+    assert elem.width == 600
+    assert elem.height == 400

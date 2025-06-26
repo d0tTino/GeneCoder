@@ -30,6 +30,7 @@ def test_simulate_reads_calls_adapter(monkeypatch, name):
     assert run_called == [expected]
 
 
+
 @pytest.mark.parametrize("name", ["d2sim", "dnarsim", "squigulator"])
 def test_simulate_reads_adapter_fallback(monkeypatch, name):
     which_called = []

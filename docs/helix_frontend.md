@@ -1,8 +1,10 @@
 # Helix Frontend
 
 The 3D helix viewer lives in `web/helix-ui`. It is a single-page React
-application that uses Three.js for rendering. Overlays indicate GC content and
-homopolymer runs while the helix itself can be colourised and animated.
+application that uses Three.js for rendering. Overlays indicate
+[GC content](glossary.md#gc-content) and
+[homopolymer](glossary.md#homopolymer) runs while the helix itself can be
+colourised and animated.
 
 The frontend now uses [Vite](https://vitejs.dev/) for development and builds.
 To explore the viewer without running the whole backend simply open the built

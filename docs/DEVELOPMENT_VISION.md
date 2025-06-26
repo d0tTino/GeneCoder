@@ -8,3 +8,4 @@ GeneCoder aims to provide an end-to-end simulation and research platform for DNA
 - **Extensible design** allowing new algorithms and analysis tools to plug into the framework.
 
 The full original document is preserved in `archived/DEVELOPMENT_VISION.md`.
+You can also download the PDF version from the [project's releases page](https://github.com/d0tTino/GeneCoder/releases).

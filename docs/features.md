@@ -3,12 +3,12 @@
 GeneCoder provides a CLI and GUI for encoding and decoding data into simulated DNA sequences. Key features include:
 
 * **CLI for encoding and decoding** using multiple methods.
-* **GC-Balanced encoding** with tunable constraints.
-* **Forward Error Correction** options such as Triple-Repeat, Hamming(7,4), Reed-Solomon and the optional FrameD C++ backend.
+* **GC-Balanced encoding** with tunable constraints on [GC content](glossary.md#gc-content).
+* **[Forward Error Correction](glossary.md#forward-error-correction-fec)** options such as Triple-Repeat, Hamming(7,4), Reed-Solomon and the optional FrameD C++ backend.
 * **Parity checks** for additional error detection.
 * **Batch processing** and streaming support for large files.
 * **Flet-based GUI** with analysis plots and asynchronous operations.
-* **CSV export for synthesis** with length and homopolymer validation. The analysis command warns when sequences violate these constraints.
+* **CSV export for synthesis** with length and [homopolymer](glossary.md#homopolymer) validation. The analysis command warns when sequences violate these constraints.
 
 
 ## Helix View
