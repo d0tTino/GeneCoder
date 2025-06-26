@@ -14,6 +14,11 @@ bridges encoding algorithms with sequencing and synthesis simulations while
 remaining easy to extend. The guiding ideas are summarized in
 [docs/DEVELOPMENT_VISION.md](docs/DEVELOPMENT_VISION.md).
 
+### Disclaimer
+
+GeneCoder is intended for educational simulations only. It should not be used to
+handle personal or medical DNA data.
+
 ## Features
 
 - Multiple encoding strategies including Base-4 Direct, Huffman-4 and GC-Balanced.
