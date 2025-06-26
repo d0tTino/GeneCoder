@@ -19,3 +19,4 @@ For more details, explore the sections below.
 * [n8n Overview](n8n_overview.md) – Automate workflows with n8n.
 * [Simulators](simulators.md) – Available read simulators and how to install external tools.
 * [Technology Stack](technology_stack.md) – Overview of dependencies and tooling.
+* [Glossary](glossary.md) – Key terms used throughout the docs.

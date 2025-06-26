@@ -108,7 +108,8 @@ imported.
 
 ## FrameD FEC Backend
 
-The optional FrameD plugin wraps optimized C++ kernels using CFFI.
+The optional FrameD plugin wraps optimized C++ kernels using CFFI to provide additional
+[FEC](glossary.md#forward-error-correction-fec) methods.
 Install it using the ``framed`` extras:
 
 ```bash
