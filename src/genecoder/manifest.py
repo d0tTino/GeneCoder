@@ -25,6 +25,11 @@ def generate_manifest(
     else:
         raise ValueError("encoding_params must be a dataclass or mapping")
 
+    missing_keys = REQUIRED_ENCODING_KEYS - params.keys()
+    if missing_keys:
+        missing = ", ".join(sorted(missing_keys))
+        raise ValueError(f"Missing required encoding parameter(s): {missing}")
+
     return {
         "file": file_name,
         "encoding_parameters": params,
