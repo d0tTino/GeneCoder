@@ -10,6 +10,8 @@ from pathlib import Path
 import logging
 from typing import Callable, Sequence
 
+from .utils import get_temp_dir
+
 __all__ = [
     "simulate_d2sim",
     "simulate_dnarsim",
@@ -35,7 +37,7 @@ def _run_external(command: Sequence[str] | str, sequence: str) -> str:
     The command must accept an input FASTA file and output FASTA to a
     second file: ``command <in> <out>``.
     """
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(dir=get_temp_dir()) as tmpdir:
         input_path = Path(tmpdir) / "input.fasta"
         output_path = Path(tmpdir) / "output.fasta"
         input_path.write_text(to_fasta(sequence, "seq"))

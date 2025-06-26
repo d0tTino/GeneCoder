@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from genecoder.utils import get_temp_dir
 from src.genecoder.formats import to_fasta, from_fasta
 
 # Helper to get the root of the project
@@ -12,7 +13,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for test files."""
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(dir=get_temp_dir()) as tmpdir:
         yield Path(tmpdir)
 
 

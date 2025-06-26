@@ -1,5 +1,11 @@
 """Utility helpers shared across modules."""
 
+from __future__ import annotations
+
+import os
+import tempfile
+from pathlib import Path
+
 DNA_ENCODE_MAP = {"00": "A", "01": "C", "10": "G", "11": "T"}
 """Mapping from two-bit binary strings to DNA bases (Base-4 alphabet)."""
 
@@ -12,6 +18,12 @@ ALPHABETS: dict[str, str] = {
     "base6": "ACGTRY",
 }
 """Supported nucleotide alphabets for encoding."""
+
+
+def get_temp_dir() -> Path:
+    """Return the directory used for temporary files."""
+
+    return Path(os.getenv("GENECODER_TMP", tempfile.gettempdir()))
 
 
 def get_alphabet_maps(alphabet: str) -> tuple[dict[str, str], dict[str, str]]:
