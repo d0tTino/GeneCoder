@@ -13,6 +13,7 @@ responsive.
 See `docs/DEVELOPMENT_VISION.md` for how the GUI fits into the project's
 integrated pipeline and extensible design.
 """
+# Refer to Section IV of the Development Vision PDF for the UI architecture overview.
 
 import flet as ft
 import os

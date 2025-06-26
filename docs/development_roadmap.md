@@ -17,3 +17,5 @@
    - Interactive dashboards to visualize storage simulations over time.
    - Cloud-friendly architecture for scaling large simulation batches.
    - Continued collaboration with the research community to expand features.
+6. **Documentation Updates**
+   - Inline comments in `encoders.py` and `flet_app.py` now point to sections of the Development Vision PDF (Sections III and IV) for added context.
