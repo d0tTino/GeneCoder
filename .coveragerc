@@ -1,4 +1,9 @@
 [run]
+source =
+    src
+    plugins-examples/example_codec
+    plugins-examples/example_fec
+    plugins-examples/example_simulator
 omit =
     src/genecoder/flet_app.py
     src/genecoder/cli/*.py
