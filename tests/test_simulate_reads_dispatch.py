@@ -26,8 +26,7 @@ def test_simulate_reads_calls_adapter(monkeypatch, name):
     result = simulate_reads("ACGT", name)
     assert result == "external"
     assert which_called == [name]
-    expected = ([name, "-e", "0.05"], "ACGT") if name == "d2sim" else ([name], "ACGT")
-    assert run_called == [expected]
+    assert run_called == [([name, "-e", "0.05"], "ACGT")]
 
 
 @pytest.mark.parametrize("name", ["d2sim", "dnarsim", "squigulator"])
