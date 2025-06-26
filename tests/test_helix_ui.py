@@ -15,6 +15,8 @@ def test_show_helix_ui_url(tmp_path: Path) -> None:
         colors={"A": 0x123456},
         show_gc=False,
         show_runs=False,
+        show_gauge=False,
+        flash_errors=True,
         pulse=True,
         pulse_speed=3.0,
         fps=30.0,
@@ -26,6 +28,8 @@ def test_show_helix_ui_url(tmp_path: Path) -> None:
     assert "zoom=1.5" in parsed.query
     assert "gc=false" in parsed.query
     assert "runs=false" in parsed.query
+    assert "gauge=false" in parsed.query
+    assert "flash=true" in parsed.query
     assert "pulse=true" in parsed.query
     assert "pulse_speed=3.0" in parsed.query
     assert "fps=30.0" in parsed.query
