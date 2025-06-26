@@ -55,6 +55,19 @@ def test_d2sim_extra_options(monkeypatch):
     assert run_called == [(["d2sim", "-e", "0.1", "--foo", "bar"], "ACGT")]
 
 
+def test_parse_options_env(monkeypatch):
+    monkeypatch.setenv("GENECODER_D2SIM_OPTIONS", "--alpha beta")
+    assert nanopore_sim._parse_env_options("d2sim") == ["--alpha", "beta"]
+
+
+def test_parse_options_invalid(monkeypatch, caplog):
+    monkeypatch.setenv("GENECODER_D2SIM_OPTIONS", '"unclosed')
+    with caplog.at_level(logging.WARNING):
+        opts = nanopore_sim._parse_env_options("d2sim")
+    assert opts == []
+    assert any("Invalid" in r.message for r in caplog.records)
+
+
 @pytest.mark.parametrize("name", ADAPTERS.keys())
 def test_adapters_fall_back(monkeypatch, name):
     func, cmd = ADAPTERS[name]
@@ -103,6 +116,33 @@ def test_adapters_external_error(monkeypatch, caplog, name):
     assert which_called == [cmd]
     expected = ([cmd, "-e", "0.2"], "ACGT")
     assert run_called == [expected]
+    assert errors_called and isinstance(errors_called[0][2], random.Random)
+    assert any("falling back" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.parametrize("name", ADAPTERS.keys())
+def test_adapters_invalid_output(monkeypatch, caplog, name):
+    func, cmd = ADAPTERS[name]
+    which_called = []
+    errors_called = []
+
+    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda t: which_called.append(t) or "/usr/bin/" + t)
+    monkeypatch.setattr(
+        nanopore_sim,
+        "_run_external",
+        lambda *_: (_ for _ in ()).throw(RuntimeError("bad output")),
+    )
+    monkeypatch.setattr(
+        nanopore_sim,
+        "simulate_errors",
+        lambda s, r, rng=None: errors_called.append((s, r, rng)) or "fallback",
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = func("ACGT")
+
+    assert result == "fallback"
+    assert which_called == [cmd]
     assert errors_called and isinstance(errors_called[0][2], random.Random)
     assert any("falling back" in rec.message for rec in caplog.records)
 

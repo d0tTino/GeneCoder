@@ -1,11 +1,11 @@
 """Wrapper for optional nanopore read simulators."""
 from __future__ import annotations
 
+import os
 import random
 import shutil
 import subprocess
 import tempfile
-import os
 from pathlib import Path
 import logging
 from typing import Callable, Sequence
@@ -29,6 +29,24 @@ from .channel_sim import simulate_errors
 from .formats import from_fasta, to_fasta
 
 
+def _parse_env_options(command: str) -> list[str]:
+    """Return additional options for ``command`` parsed from the environment."""
+
+    env_var = f"GENECODER_{command.upper()}_OPTIONS"
+    raw = os.getenv(env_var)
+    if not raw:
+        return []
+    import shlex
+
+    try:
+        options = shlex.split(raw)
+    except ValueError as exc:  # pragma: no cover - error path
+        logger.warning("Invalid %s value: %s", env_var, exc)
+        return []
+    logger.debug("Using %s=%r", env_var, options)
+    return options
+
+
 
 
 def _run_external(command: Sequence[str] | str, sequence: str) -> str:
@@ -42,10 +60,17 @@ def _run_external(command: Sequence[str] | str, sequence: str) -> str:
         output_path = Path(tmpdir) / "output.fasta"
         input_path.write_text(to_fasta(sequence, "seq"))
         cmd_list = [command] if isinstance(command, str) else list(command)
-        subprocess.run(cmd_list + [str(input_path), str(output_path)], check=True)
+        full_cmd = cmd_list + [str(input_path), str(output_path)]
+        logger.debug("Running external command: %s", " ".join(full_cmd))
+        try:
+            subprocess.run(full_cmd, check=True)
+        except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
+            raise RuntimeError(
+                f"{cmd_list[0]} failed with exit code {exc.returncode}"
+            ) from exc
         records = from_fasta(output_path.read_text())
         if not records:
-            raise RuntimeError(f"{command} produced no FASTA output")
+            raise RuntimeError(f"{cmd_list[0]} produced no FASTA output")
         return records[0][1]
 
 
@@ -57,19 +82,15 @@ def _simulate_adapter(
     if shutil.which(command):
         try:
             cmd_list = [command]
-            env_var = f"GENECODER_{command.upper()}_OPTIONS"
             if command in {"d2sim", "dnarsim", "squigulator"}:
                 cmd_list += ["-e", str(error_rate)]
-            extra = os.getenv(env_var)
-            if extra:
-                import shlex
-                cmd_list += shlex.split(extra)
+            cmd_list += _parse_env_options(command)
             return _run_external(cmd_list, sequence)
-        except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
+        except (RuntimeError, subprocess.CalledProcessError) as exc:  # pragma: no cover - error path
             logger.warning(
-                "%s failed with return code %s; falling back to simple error model",
+                "%s failed: %s; falling back to simple error model",
                 command,
-                exc.returncode,
+                exc,
             )
     else:
         logger.warning("%s not found; falling back to simple error model", command)
