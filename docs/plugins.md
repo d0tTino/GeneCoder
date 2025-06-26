@@ -52,6 +52,13 @@ the :class:`genecoder.channels.base.BaseChannel` protocol.
 Registered codecs are available via `genecoder.CODEC_REGISTRY` after importing
 GeneCoder.
 
+## Built-in Plugins
+
+GeneCoder includes a set of codec, FEC and simulator plugins that ship with the
+project. These are registered when :func:`genecoder.plugins.load_plugins` imports
+the :mod:`genecoder.builtin_plugins` module before discovering any third-party
+extensions.
+
 ## Plugin Examples
 
 See the [plugins-examples](../plugins-examples/) directory in the source tree for

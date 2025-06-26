@@ -55,6 +55,11 @@ def _load_and_register(items: Iterable[Any], registrar: Callable[..., Any], kind
 def load_plugins() -> None:
     """Load plugins defined via GeneCoder entry points."""
 
+    # First load built-in plugin modules
+    builtin = importlib.import_module("genecoder.builtin_plugins")
+    if hasattr(builtin, "register_builtin_plugins"):
+        builtin.register_builtin_plugins()
+
     _load_and_register(entry_points(group="genecoder.plugins"), register_codec, "codec")
     _load_and_register(entry_points(group="genecoder.fec"), register_fec, "FEC")
     _load_and_register(
@@ -95,28 +100,3 @@ def load_plugins() -> None:
         if callable(register_s):
             register_s(register_simulator)
 
-    # Load built-in back-ends directly when running from source
-    _load_and_register(["plugins.reverse_codec"], register_codec, "builtin")
-    _load_and_register(
-        [
-            "genecoder.reed_solomon_codec",
-            "genecoder.ldpc_codec",
-            "genecoder.fountain_codec",
-            "genecoder.bch_codec",
-            "genecoder.raptorq_codec",
-            "genecoder.fec.framed",
-        ],
-        register_fec,
-        "builtin",
-    )
-    _load_and_register(
-        [
-            "genecoder.nanopore_sim",
-            "genecoder.channel_sim",
-            "genecoder.error_simulation",
-            "genecoder.simulators.illumina",
-            "genecoder.simulators.adv_nanopore",
-        ],
-        register_simulator,
-        "builtin",
-    )
