@@ -156,23 +156,23 @@ SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random | None], str]]
 
 
 def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> str:
-    """Return ``sequence`` corrupted using the chosen simulator."""
+    """Return ``sequence`` processed by the named simulator.
 
-    from .plugins import SIMULATOR_REGISTRY
+    .. deprecated:: 0.2
+       Use :func:`genecoder.simulators.simulate_reads` instead.
+    """
 
-    try:
-        channel = SIMULATOR_REGISTRY[simulator]
-    except KeyError as exc:
-        raise ValueError(f"Unknown simulator: {simulator}") from exc
+    import warnings
 
-    if hasattr(channel, "error_rate"):
-        old_rate = channel.error_rate
-        channel.error_rate = error_rate
-        try:
-            return channel.simulate(sequence)
-        finally:
-            channel.error_rate = old_rate
-    return channel.simulate(sequence)
+    warnings.warn(
+        "genecoder.nanopore_sim.simulate_reads is deprecated; use genecoder.simulators.simulate_reads",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    from .simulators import simulate_reads as _simulate_reads
+
+    return _simulate_reads(sequence, simulator, error_rate=error_rate)
 
 
 class Channel(BaseChannel):
