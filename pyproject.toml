@@ -48,6 +48,7 @@ pytest-cov = "*"
 pre-commit = "*"
 ruff = "*"
 mypy = "*"
+hypothesis = "*"
 
 [tool.poetry.scripts]
 genecoder = "genecoder.cli.cli:main"
