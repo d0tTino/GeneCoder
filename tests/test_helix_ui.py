@@ -15,6 +15,8 @@ def test_show_helix_ui_url(tmp_path: Path) -> None:
         colors={"A": 0x123456},
         show_gc=False,
         show_runs=False,
+        show_gc_bars=True,
+        show_run_bars=True,
         show_gauge=False,
         flash_errors=True,
         pulse=True,
@@ -28,6 +30,8 @@ def test_show_helix_ui_url(tmp_path: Path) -> None:
     assert "zoom=1.5" in parsed.query
     assert "gc=false" in parsed.query
     assert "runs=false" in parsed.query
+    assert "gc_bars=true" in parsed.query
+    assert "run_bars=true" in parsed.query
     assert "gauge=false" in parsed.query
     assert "flash=true" in parsed.query
     assert "pulse=true" in parsed.query
@@ -51,3 +55,26 @@ def test_helix_ui_screenshot(tmp_path: Path) -> None:
         browser.close()
 
     assert screenshot.is_file()
+
+
+def test_helix_ui_overlays(tmp_path: Path) -> None:
+    pytest.importorskip("playwright.sync_api")
+    from playwright.sync_api import sync_playwright
+
+    webview = show_helix_ui(
+        "ACGTACGT",
+        show_gc_bars=True,
+        show_run_bars=True,
+        show_gc=False,
+        show_runs=False,
+    )
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(webview.url)
+        data = page.evaluate(
+            "() => Array.from(document.querySelector('canvas').getContext('2d').getImageData(0,0,1,1).data)"
+        )
+        browser.close()
+
+    assert any(channel != 0 for channel in data[:3])

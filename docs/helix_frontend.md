@@ -38,6 +38,8 @@ The viewer accepts several query parameters which are also exposed by
 - `zoom` – numeric zoom factor.
 - `gc` – `true`/`false` to show the GC-content overlay.
 - `runs` – `true`/`false` to highlight homopolymers.
+- `gc_bars` – `true`/`false` to draw GC-content bars.
+- `run_bars` – `true`/`false` to draw homopolymer bars.
 - `gauge` – `true`/`false` to display overall GC percentage gauges.
 - `flash` – `true`/`false` to show error flashes.
 - `colors` – comma-separated `base:#hex` pairs, for example
@@ -65,4 +67,16 @@ Disable the GC gauge and show flashing error hints:
 
 ```python
 webview = show_helix_ui("ACGT", show_gauge=False, flash_errors=True)
+```
+
+Enable GC-content and homopolymer bars only:
+
+```python
+webview = show_helix_ui(
+    "ACGT",
+    show_gc_bars=True,
+    show_run_bars=True,
+    show_gc=False,
+    show_runs=False,
+)
 ```
