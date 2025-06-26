@@ -186,3 +186,22 @@ def test_register_returns_channels():
 
     assert registry
     assert all(isinstance(chan, BaseChannel) for chan in registry.values())
+
+
+def test_simulate_reads_wrapper_deprecated(monkeypatch):
+    called = []
+
+    def fake_sim(seq: str, sim: str, error_rate: float = 0.05) -> str:
+        called.append((seq, sim, error_rate))
+        return "wrapped"
+
+    monkeypatch.setattr(
+        "genecoder.simulators.simulate_reads",
+        fake_sim,
+    )
+
+    with pytest.deprecated_call():
+        result = nanopore_sim.simulate_reads("ACGT", "none", error_rate=0.2)
+
+    assert result == "wrapped"
+    assert called == [("ACGT", "none", 0.2)]
