@@ -89,15 +89,7 @@ jobs:
 
     - name: Select lock file
       id: lockfile
-      shell: bash
-      run: |
-        if [ "${RUNNER_OS}" = "Windows" ]; then
-          file=poetry.lock.win
-        else
-          file=poetry.lock.linux
-        fi
-        echo "file=$file" >> "$GITHUB_OUTPUT"
-        cp "$file" poetry.lock
+      run: echo "file=poetry.lock" >> "$GITHUB_OUTPUT"
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -110,7 +102,7 @@ jobs:
         path: |
           ~/.cache/pypoetry
           ~\AppData\Local\pypoetry
-        key: poetry-${{ runner.os }}-${{ hashFiles(steps.lockfile.outputs.file) }}
+        key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
 
     - name: Install dependencies
       run: |
@@ -182,15 +174,7 @@ jobs:
 
     - name: Select lock file
       id: lockfile_build
-      shell: bash
-      run: |
-        if [ "${RUNNER_OS}" = "Windows" ]; then
-          file=poetry.lock.win
-        else
-          file=poetry.lock.linux
-        fi
-        echo "file=$file" >> "$GITHUB_OUTPUT"
-        cp "$file" poetry.lock
+      run: echo "file=poetry.lock" >> "$GITHUB_OUTPUT"
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -203,7 +187,7 @@ jobs:
         path: |
           ~/.cache/pypoetry
           ~\AppData\Local\pypoetry
-        key: poetry-${{ runner.os }}-${{ hashFiles(steps.lockfile_build.outputs.file) }}
+        key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
 
     - name: Install dependencies
       run: |

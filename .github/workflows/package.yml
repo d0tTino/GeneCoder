@@ -26,20 +26,14 @@ jobs:
           python-version: '3.11'
       - name: Select lock file
         id: lockfile_pkg
-        run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            echo "file=poetry.lock.win" >> "$GITHUB_OUTPUT"
-          else
-            echo "file=poetry.lock.linux" >> "$GITHUB_OUTPUT"
-          fi
-          cp "${{ steps.lockfile_pkg.outputs.file }}" poetry.lock
+        run: echo "file=poetry.lock" >> "$GITHUB_OUTPUT"
       - name: Cache Poetry
         uses: actions/cache@v3
         with:
           path: |
             ~/.cache/pypoetry
             ~\AppData\Local\pypoetry
-          key: poetry-${{ runner.os }}-${{ hashFiles(steps.lockfile_pkg.outputs.file) }}
+          key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
