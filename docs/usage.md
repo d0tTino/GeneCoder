@@ -125,7 +125,22 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    Set the environment variable `GENECODER_SIM_SEED` to an integer to make the
    simulated substitutions deterministic across runs.
 
-11. **Decode using an external simulator**
+11. **Encode, corrupt and decode a file**
+
+   ```bash
+   genecoder encode --input-files hello.jpg --method base4_direct --output-file hello.dna
+   genecoder simulate-errors hello.dna --sub-rate 0.01 --output-file corrupted.dna
+   genecoder decode corrupted.dna --output-file hello_out.jpg
+   ```
+
+   Verify the round-trip checksum:
+
+   ```bash
+   sha256sum hello.jpg hello_out.jpg
+   ```
+
+   Add `--checksum` to the encode and decode commands for automatic validation.
+12. **Decode using an external simulator**
 
    The ``--simulator`` option accepts ``d2sim``, ``dnarsim`` or ``squigulator``.
    Install the desired simulator separately and ensure the command is on your
