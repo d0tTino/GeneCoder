@@ -97,6 +97,13 @@ Provide additional parameters to ``d2sim`` using ``--d2sim-options``:
 genecoder decode --simulator d2sim --d2sim-options "--seed 42" <other options>
 ```
 
+Provide extra flags to ``dnarsim`` or ``squigulator`` in the same way:
+
+```bash
+genecoder decode --simulator dnarsim --dnarsim-options "<opts>" <other options>
+genecoder decode --simulator squigulator --squigulator-options "<opts>" <other options>
+```
+
 Use `GENECODER_SIM_SEED=<seed>` to make runs reproducible.
 Set `GENECODER_D2SIM_OPTIONS`, `GENECODER_DNARSIM_OPTIONS` or
 `GENECODER_SQUIGULATOR_OPTIONS` to forward extra flags to the respective
