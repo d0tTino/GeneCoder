@@ -37,3 +37,9 @@ def test_fountain_parity(monkeypatch):
     decoded, _ = decode_data_fountain(encoded, info)
     assert decoded == data
     assert any(parity) and len(parity) == 4
+
+
+def test_fountain_missing_dependency(monkeypatch):
+    monkeypatch.setattr('genecoder.fountain_codec._HAS_PYFINITE', False)
+    with pytest.raises(ImportError):
+        encode_data_fountain(b"data")

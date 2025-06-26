@@ -4,6 +4,9 @@ source =
     plugins-examples/example_codec
     plugins-examples/example_fec
     plugins-examples/example_simulator
+    src/genecoder/ldpc_codec.py
+    src/genecoder/fountain_codec.py
+    src/genecoder/d2sim_adapter.py
 omit =
     src/genecoder/flet_app.py
     src/genecoder/cli/*.py

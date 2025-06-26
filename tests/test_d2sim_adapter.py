@@ -125,3 +125,25 @@ def test_channel_object(monkeypatch):
 
     assert "d2sim" in registry
     assert isinstance(registry["d2sim"], BaseChannel)
+
+
+def test_d2sim_channel_simulate(monkeypatch):
+    which_called = []
+    errors_called = []
+
+    monkeypatch.setattr(
+        nanopore_sim.shutil, "which", lambda t: which_called.append(t) or None
+    )
+    monkeypatch.setattr(
+        nanopore_sim,
+        "simulate_errors",
+        lambda seq, rate, rng=None: errors_called.append((seq, rate)) or "fallback",
+    )
+    monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
+
+    channel = d2sim_adapter.D2SimChannel(error_rate=0.1)
+    result = channel.simulate("ACGT")
+
+    assert result == "fallback"
+    assert which_called == ["d2sim"]
+    assert errors_called == [("ACGT", 0.1)]
