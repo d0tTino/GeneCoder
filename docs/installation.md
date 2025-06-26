@@ -115,8 +115,16 @@ Install it using the ``framed`` extras:
 poetry install --extras framed --no-interaction
 ```
 
+
 The `framed` FEC method becomes available automatically after
 installation.
+
+## Custom Temporary Directory
+
+GeneCoder writes short-lived files during testing and simulation. Set the
+`GENECODER_TMP` environment variable to change where these temporary files
+are created. By default the system's standard location is used. The
+resolved directory can be obtained with ``genecoder.utils.get_temp_dir()``.
 
 ## Configuring the OpenAI API Key
 
