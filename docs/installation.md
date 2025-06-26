@@ -22,6 +22,8 @@ Install the optional GUI, web API and DNAformer components with Poetry's
 ```bash
 poetry install --with gui,web,dnaformer --no-interaction
 ```
+The `gui` extras install Flet, Matplotlib and `flet-webview` while the `web`
+extras pull in FastAPI, Uvicorn (with the `standard` extras) and HTTPX.
 
 ## Editable install with pip
 
@@ -31,6 +33,7 @@ repository in editable mode so changes take effect immediately:
 ```bash
 python -m pip install -e .[gui,web]
 ```
+This command installs the optional GUI and web dependencies in editable mode.
 
 ## Development Setup
 
