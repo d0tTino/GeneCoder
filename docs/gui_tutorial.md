@@ -7,6 +7,8 @@ This tutorial shows how to launch the Flet-based graphical interface.
 ```bash
 pip install genecoder[gui]
 ```
+This installs the optional `gui` extras which pull in Flet, Matplotlib and
+`flet-webview`.
 
 ## Running the application
 
