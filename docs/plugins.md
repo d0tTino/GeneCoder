@@ -26,7 +26,7 @@ def register(register_codec):
     register_codec("mycodec", encode, decode)
 ```
 
-To add a custom FEC implementation you would use the `genecoder.fec` group and
+To add a custom [FEC](glossary.md#forward-error-correction-fec) implementation you would use the `genecoder.fec` group and
 call the provided `register_fec` callback:
 
 ```toml
@@ -55,7 +55,8 @@ GeneCoder.
 ## Plugin Examples
 
 See the [plugins-examples](../plugins-examples/) directory in the source tree for
-minimal sample packages implementing a codec, a FEC backend and a read
+minimal sample packages implementing a codec, a
+[FEC](glossary.md#forward-error-correction-fec) backend and a read
 simulator. Install any of these packages with `pip install` to experiment with
 custom extensions locally.
 

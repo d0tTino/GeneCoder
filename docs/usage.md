@@ -36,7 +36,7 @@ poetry install --no-interaction
 * `--input-files` – one or more input files.
 * `--output-file` – output path for a single input file.
 * `--output-dir` – directory for batch operations.
-* `--fec` – optional FEC method (`triple_repeat`, `hamming_7_4`, `reed_solomon`, `ldpc`, `fountain`).
+* `--fec` – optional [FEC](glossary.md#forward-error-correction-fec) method (`triple_repeat`, `hamming_7_4`, `reed_solomon`, `ldpc`, `fountain`).
 
 See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
@@ -225,6 +225,8 @@ python -m genecoder.flet_app
 The GUI exposes encoding options, error correction choices and displays metrics and analysis plots.
 
 The **Helix View** tab embeds a dedicated React/Three.js frontend. It renders the
-sequence in 3D with orbit controls, overlays for GC content and homopolymers and
+sequence in 3D with orbit controls, overlays for
+[GC content](glossary.md#gc-content) and
+[homopolymers](glossary.md#homopolymer) and
 an *Animate* toggle. The frontend lives under `web/helix-ui` and is loaded via a
 WebView in the GUI.
