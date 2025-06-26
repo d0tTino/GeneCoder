@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import os
-from typing import Optional, cast
+from typing import Optional
 
 
 _AES_HEADER = b"AESGCM1"
@@ -25,7 +25,7 @@ def encrypt_data(data: bytes, key: Optional[bytes] = None) -> bytes:
     key = key or _DEFAULT_KEY
     aes_key = hashlib.sha256(key).digest()
     nonce = os.urandom(12)
-    enc = cast(bytes, AESGCM(aes_key).encrypt(nonce, data, None))
+    enc = AESGCM(aes_key).encrypt(nonce, data, None)
 
     return _AES_HEADER + nonce + enc
 
@@ -41,7 +41,7 @@ def decrypt_data(data: bytes, key: Optional[bytes] = None) -> bytes:
         aes_key = hashlib.sha256(key).digest()
         nonce = data[len(_AES_HEADER) : len(_AES_HEADER) + 12]
         ciphertext = data[len(_AES_HEADER) + 12 :]
-        return cast(bytes, AESGCM(aes_key).decrypt(nonce, ciphertext, None))
+        return AESGCM(aes_key).decrypt(nonce, ciphertext, None)
 
 
     return _xor_cipher(data, key)

@@ -1,0 +1,11 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "genecoder-advanced-fec"
+version = "0.1.0"
+dependencies = ["genecoder"]
+
+[project.entry-points."genecoder.fec"]
+advanced_ldpc = "advanced_fec"
