@@ -243,6 +243,7 @@ jobs:
       with:
         files: coverage.xml
 
+
   docker:
     needs: [changes, check-comments, lint]
     if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
@@ -287,16 +288,21 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install cyclonedx
+      - name: Install SBOM and license tools
         run: |
           python -m pip install --upgrade pip
-          pip install cyclonedx-bom
+          pip install cyclonedx-bom pip-licenses
 
       - name: Generate SBOM
         run: cyclonedx-py -o sbom.xml
 
-      - name: Upload SBOM artifact
+      - name: Check dependency licenses
+        run: pip-licenses --format=csv --fail-on "UNKNOWN" > licenses.csv
+
+      - name: Upload SBOM and license artifacts
         uses: actions/upload-artifact@v4
         with:
           name: sbom
-          path: sbom.xml
+          path: |
+            sbom.xml
+            licenses.csv
