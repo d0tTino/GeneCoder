@@ -310,14 +310,16 @@ def show_helix_ui(
     colors: dict[str, int] | None = None,
     show_gc: bool = True,
     show_runs: bool = True,
+    show_gauge: bool = True,
+    flash_errors: bool = False,
     pulse: bool = False,
     pulse_speed: float = 2.0,
     fps: float = 60.0,
 ) -> flet_webview.WebView:
     """Return a ``WebView`` pointing at the React helix frontend.
 
-    Parameters enable GC colouring, homopolymer highlighting and optional
-    pulse animations via the corresponding query arguments. The ``fps``
+    Parameters enable GC colouring, homopolymer highlighting, GC ratio gauges
+    and error flashes via the corresponding query arguments. The ``fps``
     argument controls the maximum frames per second.
     """
     base_dir = Path(__file__).resolve().parent.parent / "web" / "helix-ui"
@@ -331,6 +333,8 @@ def show_helix_ui(
         f"zoom={zoom}",
         f"gc={'true' if show_gc else 'false'}",
         f"runs={'true' if show_runs else 'false'}",
+        f"gauge={'true' if show_gauge else 'false'}",
+        f"flash={'true' if flash_errors else 'false'}",
         f"pulse={'true' if pulse else 'false'}",
         f"pulse_speed={pulse_speed}",
         f"fps={fps}",
