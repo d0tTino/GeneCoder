@@ -2,6 +2,8 @@
 
 ## Command-Line Interface (CLI)
 
+See the [Disclaimer](../README.md#disclaimer) before using the toolkit.
+
 GeneCoder operations are performed with the `genecoder` CLI:
 
 ```bash
