@@ -11,7 +11,13 @@ if TYPE_CHECKING:
 else:  # pragma: no cover - optional dependency
     try:
         import bchlib  # type: ignore
-        _HAS_BCHLIB = True
+        try:
+            # Verify library is functional; some wheels may load but fail
+            bchlib.BCH(5, 2)
+        except Exception:
+            _HAS_BCHLIB = False
+        else:
+            _HAS_BCHLIB = True
     except Exception:  # pragma: no cover - missing optional dependency
         bchlib = None  # type: ignore
         _HAS_BCHLIB = False
