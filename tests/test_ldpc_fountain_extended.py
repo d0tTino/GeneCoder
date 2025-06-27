@@ -1,5 +1,6 @@
-import numpy as np
 import pytest
+pytest.importorskip("numpy")
+import numpy as np
 
 from genecoder.ldpc_codec import (
     _require_pyldpc,

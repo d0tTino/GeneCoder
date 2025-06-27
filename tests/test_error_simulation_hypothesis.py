@@ -1,4 +1,6 @@
 import random
+import pytest
+pytest.importorskip("hypothesis")
 from hypothesis import given, strategies as st, assume
 from genecoder.error_simulation import introduce_errors
 from genecoder.channel_sim import simulate_errors, NUCLEOTIDES
