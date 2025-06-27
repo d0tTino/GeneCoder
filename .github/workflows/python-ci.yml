@@ -1,16 +1,6 @@
 name: Python CI
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'src/**'
-      - 'tests/**'
-      - 'pyproject.toml'
-      - 'poetry.lock'
-      - '.github/workflows/**'
-      - 'scripts/**'
-      - 'openai_testing/**'
   pull_request:
     branches: [ main ]
     paths:
