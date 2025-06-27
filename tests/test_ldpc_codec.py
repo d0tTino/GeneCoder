@@ -1,8 +1,8 @@
 import pytest
 
-pytest.importorskip("pyldpc")
+from genecoder.ldpc_codec import _HAS_PYLDPC, encode_data_ldpc, decode_data_ldpc
 
-from genecoder.ldpc_codec import encode_data_ldpc, decode_data_ldpc
+pytestmark = pytest.mark.skipif(not _HAS_PYLDPC, reason="pyldpc not installed")
 
 def test_ldpc_roundtrip():
     data = b"LDPC test"

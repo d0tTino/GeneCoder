@@ -136,6 +136,9 @@ def test_cli_decode_with_squigulator(tmp_path: Path):
 
 def test_cli_roundtrip_ldpc(tmp_path: Path):
     pytest.importorskip("pyldpc")
+    from genecoder.ldpc_codec import _HAS_PYLDPC
+    if not _HAS_PYLDPC:
+        pytest.skip("pyldpc not functional")
 
     input_file = tmp_path / "ldpc.txt"
     input_file.write_text("ldpc test")
@@ -176,6 +179,9 @@ def test_cli_roundtrip_ldpc(tmp_path: Path):
 
 def test_cli_ldpc_check_parity(tmp_path: Path):
     pytest.importorskip("pyldpc")
+    from genecoder.ldpc_codec import _HAS_PYLDPC
+    if not _HAS_PYLDPC:
+        pytest.skip("pyldpc not functional")
 
     input_file = tmp_path / "ldpc_parity.txt"
     input_file.write_text("ldpc parity")

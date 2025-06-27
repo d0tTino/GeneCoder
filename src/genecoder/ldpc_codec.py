@@ -13,7 +13,16 @@ else:
     try:  # pragma: no cover - optional dependency
         import numpy as np
         from pyldpc import make_ldpc, decode, utils
-        _HAS_PYLDPC = True
+        # verify required functions are present and functional
+        if callable(make_ldpc) and callable(decode):
+            try:
+                make_ldpc(8, d_v=2, d_c=4, systematic=True)
+            except Exception:
+                _HAS_PYLDPC = False
+            else:
+                _HAS_PYLDPC = True
+        else:
+            _HAS_PYLDPC = False
     except Exception:  # pragma: no cover - missing optional dependency
         make_ldpc = decode = utils = None  # type: ignore
         np = None  # type: ignore

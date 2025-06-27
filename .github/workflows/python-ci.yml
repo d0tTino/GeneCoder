@@ -116,7 +116,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install poetry
-        poetry install --with gui,web,dev --no-interaction --no-root
+        poetry install --with gui,web,dev --extras ldpc --no-interaction --no-root
 
     - name: Install example plugins
       run: |
@@ -209,7 +209,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install poetry
-        poetry install --with gui,web,dev --no-interaction --no-root
+        poetry install --with gui,web,dev --extras ldpc --no-interaction --no-root
 
 
     - name: Setup Node
