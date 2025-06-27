@@ -235,7 +235,7 @@ jobs:
       env:
         SKIP_PACKAGING_TESTS: "1"
       run: |
-        poetry run pytest --cov=src --cov-config=.coveragerc -vv
+        poetry run pytest -n auto --cov=src --cov-config=.coveragerc -vv
         coverage xml
 
     - name: Upload coverage to Codecov
@@ -257,7 +257,7 @@ jobs:
       run: docker build -t genecoder .
 
     - name: Run tests inside container
-      run: docker run --rm -e SKIP_PACKAGING_TESTS=1 genecoder poetry run pytest -q
+      run: docker run --rm -e SKIP_PACKAGING_TESTS=1 genecoder poetry run pytest -n auto -q
 
   devcontainer:
     needs: [changes, check-comments, lint]
