@@ -20,6 +20,7 @@ from genecoder.report import (
     encode_to_html,
     decode_to_html,
 )
+from typing import cast
 
 app = FastAPI(title="GeneCoder Web")
 
@@ -82,6 +83,12 @@ class ReportRequest(BaseModel):  # type: ignore[misc]
     format: str = "markdown"
 
 
+class DecodeAIRequest(BaseModel):  # type: ignore[misc]
+    """Request model for the AI-based decode endpoint."""
+
+    encoded: str
+    info: dict[str, object]
+
 @app.post("/encode")  # type: ignore[misc]
 async def encode(req: EncodeRequest) -> dict[str, object]:
     data_bytes = base64.b64decode(req.data.encode("utf-8"), validate=True)
@@ -99,6 +106,25 @@ async def decode(req: DecodeRequest) -> dict[str, object]:
         "decoded_bytes": base64.b64encode(result.decoded_bytes).decode("utf-8"),
         "status_message": result.status_message,
         "fec_info": result.fec_info,
+    }
+
+
+@app.post("/decode/ai")  # type: ignore[misc]
+async def decode_ai(req: DecodeAIRequest) -> dict[str, object]:
+    """Decode data using the optional DNAformer model."""
+
+    try:
+        from genecoder.dnaformer_codec import decode_data_dnaformer
+    except Exception as exc:  # pragma: no cover - optional dependency
+        raise HTTPException(status_code=503, detail="DNAformer not available") from exc
+
+    encoded = base64.b64decode(req.encoded, validate=True)
+    decoded, corrected = await asyncio.to_thread(
+        decode_data_dnaformer, encoded, req.info
+    )
+    return {
+        "decoded_bytes": base64.b64encode(decoded).decode("utf-8"),
+        "corrected": corrected,
     }
 
 
@@ -139,7 +165,9 @@ async def report(req: ReportRequest) -> dict[str, str]:
     else:
         data = req.data.copy()
         if isinstance(data.get("decoded_bytes"), str):
-            data["decoded_bytes"] = base64.b64decode(data["decoded_bytes"])
+            data["decoded_bytes"] = base64.b64decode(
+                cast(str, data["decoded_bytes"])
+            )
         result = DecodeResult(**data)
         if req.format == "markdown":
             text = decode_to_markdown(result)

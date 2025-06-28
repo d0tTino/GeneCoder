@@ -20,3 +20,6 @@
 
 ## CLI
 ::: genecoder.cli
+
+## Web API
+::: web.main
