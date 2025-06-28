@@ -155,10 +155,14 @@ def process_single_decode(
     try:
         if args.stream and args.method == "base4_direct":
             from genecoder.streaming import stream_decode_file
+            manifest_path = os.path.splitext(output_file_path)[0] + ".stream.manifest"
 
             stream_decode_file(
                 input_file_path,
                 output_file_path,
+                chunk_size=args.chunk_size,
+                manifest_path=manifest_path,
+                resume=args.resume,
                 check_parity=args.check_parity,
                 k_value=args.k_value,
                 parity_rule=args.parity_rule,
@@ -343,6 +347,17 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--stream",
         action="store_true",
         help="Stream decode large files (base4_direct only).",
+    )
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=1_000_000,
+        help="Chunk size in bytes for streaming (default: 1000000).",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume a previous interrupted streaming decode.",
     )
     parser.add_argument(
         "--simulate-errors",
