@@ -221,6 +221,16 @@ jobs:
     - name: Smoke test CUA server
       run: node -e "console.log('cua smoke')"
 
+    - name: Smoke test GeneCoder GUI
+      run: timeout 10 python -m genecoder.flet_app || true
+
+    - name: Smoke test GeneCoder web server
+      run: |
+        timeout 10 poetry run uvicorn web.main:app --port 8000 &
+        SERVER_PID=$!
+        sleep 5
+        kill $SERVER_PID
+
     - name: Run unit tests
       env:
         SKIP_PACKAGING_TESTS: "1"
