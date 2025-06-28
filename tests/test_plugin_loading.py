@@ -44,7 +44,7 @@ def test_example_plugins_registered(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.syspath_prepend(str(root / "example_fec"))
     monkeypatch.syspath_prepend(str(root / "example_simulator"))
 
-    def fake_entry_points(*, group: str | None = None):
+    def fake_entry_points(*, group: str | None = None) -> list[EntryPoint]:
         if group == "genecoder.plugins":
             return [EntryPoint(name="example", value="example_codec", group=group)]
         if group == "genecoder.fec":
@@ -65,4 +65,22 @@ def test_example_plugins_registered(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "example" in plugins.CODEC_REGISTRY
     assert "example" in plugins.FEC_REGISTRY
     assert "example" in plugins.SIMULATOR_REGISTRY
+
+
+def test_load_plugins_idempotent() -> None:
+    CODEC_REGISTRY.clear()
+    FEC_REGISTRY.clear()
+    SIMULATOR_REGISTRY.clear()
+
+    load_plugins()
+
+    codec_keys = set(CODEC_REGISTRY)
+    fec_keys = set(FEC_REGISTRY)
+    sim_keys = set(SIMULATOR_REGISTRY)
+
+    load_plugins()
+
+    assert set(CODEC_REGISTRY) == codec_keys
+    assert set(FEC_REGISTRY) == fec_keys
+    assert set(SIMULATOR_REGISTRY) == sim_keys
 

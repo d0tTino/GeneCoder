@@ -55,6 +55,10 @@ def _load_and_register(items: Iterable[Any], registrar: Callable[..., Any], kind
 def load_plugins() -> None:
     """Load plugins defined via GeneCoder entry points."""
 
+    CODEC_REGISTRY.clear()
+    FEC_REGISTRY.clear()
+    SIMULATOR_REGISTRY.clear()
+
     # First load built-in plugin modules
     builtin = importlib.import_module("genecoder.builtin_plugins")
     if hasattr(builtin, "register_builtin_plugins"):
