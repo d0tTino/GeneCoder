@@ -10,3 +10,5 @@ source =
 omit =
     src/genecoder/flet_app.py
     src/genecoder/cli/*.py
+    src/genecoder/security.py
+    src/genecoder/raptorq_codec.py

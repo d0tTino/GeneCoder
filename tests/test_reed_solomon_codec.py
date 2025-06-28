@@ -1,3 +1,4 @@
+import os
 import pytest
 
 from genecoder.reed_solomon_codec import (
@@ -11,8 +12,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_rs_roundtrip_no_errors():
-    data = b"Hello RS"
+@pytest.mark.parametrize("length", [8, 100_000])
+def test_rs_roundtrip_no_errors(length):
+    data = os.urandom(length)
     encoded, nsym = encode_data_rs(data, nsym=10)
     decoded, corrected = decode_data_rs(encoded, nsym)
     assert decoded == data
