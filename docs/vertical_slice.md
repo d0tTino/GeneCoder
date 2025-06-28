@@ -60,6 +60,25 @@ poetry run uvicorn web.main:app --reload
 
 Open <http://localhost:8000> in your browser to view the landing page.
 
+## Streaming Encode and Resume
+
+Large files can be encoded and decoded in streaming mode to reduce memory usage.
+Specify a chunk size in bytes and pass `--resume` to continue a partial run:
+
+```bash
+# initial encode
+genecoder encode --input-files big.bin --output-file big.fasta \
+  --stream --chunk-size 1048576
+
+# resume if interrupted
+genecoder encode --input-files big.bin --output-file big.fasta \
+  --stream --chunk-size 1048576 --resume
+
+# decoding with resume support
+genecoder decode --input-files big.fasta --output-file big.bin \
+  --stream --chunk-size 1048576 --resume
+```
+
 This document condenses the key steps from the installation and usage guides into a quick demo.
 
 Contributors may prefer to run these commands inside the provided
