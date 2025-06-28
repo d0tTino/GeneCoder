@@ -9,6 +9,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 from genecoder.manifest import generate_manifest
 from genecoder.encoders import (
@@ -75,7 +76,8 @@ def run_encoding_pipeline(
     current_input = data
     fec_padding_bits = -1
     encode_map, _ = get_alphabet_maps(options.alphabet)
-    header_parts = [f"method={options.method}", f"input_file={input_file_name}"]
+    sanitized_name = Path(input_file_name).name
+    header_parts = [f"method={options.method}", f"input_file={sanitized_name}"]
 
     if options.fec == "hamming_7_4":
         if options.add_parity:
