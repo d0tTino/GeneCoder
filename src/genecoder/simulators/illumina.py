@@ -35,7 +35,8 @@ class IlluminaChannel(BaseSimulator):
 
     def simulate(self, sequence: str) -> str:
         rng = make_rng()
-        read = sequence[: self.read_length]
+        read_length = self.get_read_length(sequence)
+        read = sequence[:read_length]
         return introduce_errors(
             read,
             substitution_prob=self.substitution_rate,

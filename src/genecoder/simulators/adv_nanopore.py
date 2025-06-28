@@ -68,7 +68,8 @@ class AdvancedNanoporeChannel(BaseSimulator):
 
     def simulate(self, sequence: str) -> str:
         rng = make_rng()
-        read = sequence[: self.read_length]
+        read_length = self.get_read_length(sequence)
+        read = sequence[:read_length]
         return _simulate_homopolymer_errors(
             read,
             substitution_rate=self.substitution_rate,
