@@ -8,6 +8,7 @@ from urllib.parse import quote
 import base64
 import pkgutil
 import logging
+import math
 from pathlib import Path
 
 # Flet <0.29 removed ``HtmlElement``. Provide a minimal fallback for tests.
@@ -58,6 +59,31 @@ DEFAULT_COLORS: dict[str, int] = {
     "T": 0xFFFF55,
 }
 
+_COMPLEMENT_MAP = str.maketrans("ACGTacgt", "TGCAtgca")
+
+
+def complement(seq: str) -> str:
+    """Return the Watson-Crick complement of ``seq``."""
+
+    return seq.translate(_COMPLEMENT_MAP)
+
+
+def base_pair_coordinates(
+    seq: str, *, radius: float = 0.1, height: float = 0.4, angle_step: float = 0.3
+) -> tuple[list[tuple[float, float, float]], list[tuple[float, float, float]]]:
+    """Return coordinates for a simple double helix."""
+
+    strand1: list[tuple[float, float, float]] = []
+    strand2: list[tuple[float, float, float]] = []
+    for i in range(len(seq)):
+        angle = i * angle_step
+        x = radius * math.cos(angle)
+        y = radius * math.sin(angle)
+        z = i * height
+        strand1.append((x, y, z))
+        strand2.append((-x, -y, z))
+    return strand1, strand2
+
 HELIX_TEMPLATE = """
 <div id='helix-container' style='position:relative;width:100%%;height:100%%'></div>
 <div id='tooltip' style='position:absolute;display:none;padding:2px;background:#fff;border:1px solid #333;font-size:12px;pointer-events:none'></div>
@@ -84,6 +110,16 @@ controls.enableDamping = true;
 controls.update();
 
 const seq = '%(DNA_SEQ)s';
+const compSeq = '%(COMP_SEQ)s';
+const coords1 = %(COORDS1)s;
+const coords2 = %(COORDS2)s;
+const wsUrl = '%(WS_URL)s';
+if (wsUrl) {
+    const ws = new WebSocket(wsUrl);
+    ws.addEventListener('message', (e) => {
+        console.log('seq chunk', e.data);
+    });
+}
 const animateHelix = %(ANIMATE)s;
 const showPulses = %(PULSE)s;
 const pulseSpeed = %(PULSE_SPEED)s;
@@ -91,22 +127,33 @@ const fps = %(FPS)s;
 const bases = [];
 for (let i = 0; i < seq.length; i++) {
     bases.push(seq[i]);
-
 }
-
 
 const colors = %(COLOR_MAP)s;
 const group = new THREE.Group();
 const radius = 0.1;
-const height = 0.4;
 for (let i = 0; i < bases.length; i++) {
     const geometry = new THREE.SphereGeometry(radius, 16, 16);
     const material = new THREE.MeshPhongMaterial({ color: colors[bases[i]] || 0xffffff });
     const mesh = new THREE.Mesh(geometry, material);
-    const angle = i * 0.3;
-    mesh.position.set(Math.cos(angle), Math.sin(angle), i * height);
+    mesh.position.set(...coords1[i]);
     mesh.userData = { info: `${bases[i]} (${i})` };
     group.add(mesh);
+
+    const cgeom = new THREE.SphereGeometry(radius, 16, 16);
+    const cmaterial = new THREE.MeshPhongMaterial({ color: colors[compSeq[i]] || 0xffffff });
+    const cmesh = new THREE.Mesh(cgeom, cmaterial);
+    cmesh.position.set(...coords2[i]);
+    cmesh.userData = { info: `${compSeq[i]} (${i})` };
+    group.add(cmesh);
+
+    const pts = [
+        new THREE.Vector3(...coords1[i]),
+        new THREE.Vector3(...coords2[i])
+    ];
+    const lineGeom = new THREE.BufferGeometry().setFromPoints(pts);
+    const line = new THREE.Line(lineGeom, new THREE.LineBasicMaterial({color: 0xaaaaaa}));
+    group.add(line);
 }
 scene.add(group);
 
@@ -201,6 +248,7 @@ def _make_helix_html(
     fps: float = 60.0,
     three_js_url: str = THREE_JS_URL,
     orbit_js_url: str = ORBIT_JS_URL,
+    ws_url: str | None = None,
 ) -> str:
     """Return HTML for the helix viewer.
 
@@ -233,10 +281,20 @@ def _make_helix_html(
 
     colors_js = "{ " + ", ".join(f"{b}: 0x{v:06x}" for b, v in color_map.items()) + " }"
 
+    comp_seq = complement(dna_sequence)
+    strand1, strand2 = base_pair_coordinates(dna_sequence)
+
+    def _coords_js(coords: list[tuple[float, float, float]]) -> str:
+        return "[" + ",".join(f"[{x:.3f},{y:.3f},{z:.3f}]" for x, y, z in coords) + "]"
+
     return HELIX_TEMPLATE % {
         "THREE_JS_URL": three_js_url,
         "ORBIT_JS_URL": orbit_js_url,
         "DNA_SEQ": dna_sequence,
+        "COMP_SEQ": comp_seq,
+        "COORDS1": _coords_js(strand1),
+        "COORDS2": _coords_js(strand2),
+        "WS_URL": ws_url or "",
         "COLOR_MAP": colors_js,
         "ANIMATE": "true" if animate else "false",
         "ZOOM": zoom,
@@ -256,6 +314,7 @@ def show_helix(
     pulse: bool = False,
     pulse_speed: float = 2.0,
     fps: float = 60.0,
+    ws_url: str | None = None,
 ) -> flet_webview.WebView:
     """Return a ``WebView`` displaying a DNA helix scene with controls.
 
@@ -274,6 +333,8 @@ def show_helix(
         Speed multiplier for the pulse animation.
     fps:
         Frames per second for rendering. Lower values reduce CPU usage.
+    ws_url:
+        Optional WebSocket URL for streaming sequence updates.
     """
     three_url: str = THREE_JS_URL
     orbit_url: str = ORBIT_JS_URL
@@ -295,6 +356,7 @@ def show_helix(
         fps=fps,
         three_js_url=three_url,
         orbit_js_url=orbit_url,
+        ws_url=ws_url,
     )
 
     data_url: str = "data:text/html," + quote(helix_html)

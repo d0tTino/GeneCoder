@@ -19,8 +19,13 @@ import flet as ft
 import os
 import asyncio  # For asynchronous operations
 import json
+from pathlib import Path
 import logging
-from typing import Optional
+from typing import Optional, Any
+try:
+    import websockets
+except Exception:  # pragma: no cover - optional dependency
+    websockets = None
 
 # Project module imports
 from genecoder import (
@@ -31,15 +36,36 @@ from genecoder.plugins import load_plugins
 from genecoder.manifest import generate_manifest
 from genecoder.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
-from genecoder.helix_view import show_helix_ui
+from genecoder.helix_view import show_helix
 from genecoder.formats import from_fasta
 
 
 logger = logging.getLogger(__name__)
 
+GLOSSARY: dict[str, str] = {}
+try:
+    gloss_path = Path(__file__).resolve().parent.parent / "docs" / "glossary.json"
+    with open(gloss_path, "r", encoding="utf-8") as f:
+        GLOSSARY = json.load(f)
+except Exception:
+    pass
+
 
 encode_fasta_data_to_save_ref: ft.Ref[Optional[str]] = ft.Ref[Optional[str]]()
 decoded_bytes_to_save: bytes = b""
+
+# --- optional WebSocket streaming setup ---
+ws_clients: set[Any] = set()
+if websockets:
+    async def _ws_handler(websocket: Any) -> None:
+        ws_clients.add(websocket)
+        try:
+            async for _ in websocket:
+                pass
+        finally:
+            ws_clients.discard(websocket)
+
+    asyncio.get_event_loop().create_task(websockets.serve(_ws_handler, "localhost", 8765))
 
 
 def main(page: ft.Page) -> None:
@@ -122,6 +148,7 @@ def main(page: ft.Page) -> None:
         value="50",
         width=120,
         keyboard_type=ft.KeyboardType.NUMBER,
+        tooltip=GLOSSARY.get("GC content"),
     )
     step_size_input: ft.TextField = ft.TextField(
         label="Step",
@@ -134,6 +161,7 @@ def main(page: ft.Page) -> None:
         value="4",
         width=180,
         keyboard_type=ft.KeyboardType.NUMBER,
+        tooltip=GLOSSARY.get("Homopolymer"),
     )
 
     # --- Encode Tab UI Controls ---
@@ -229,6 +257,7 @@ def main(page: ft.Page) -> None:
         ],
         value="None",
         on_change=on_fec_change,
+        tooltip=GLOSSARY.get("Forward Error Correction (FEC)"),
     )
 
     encode_button: ft.ElevatedButton = ft.ElevatedButton("Encode")
@@ -368,6 +397,11 @@ def main(page: ft.Page) -> None:
             encode_hidden_fasta_content.value = result.fasta
             encode_hidden_sequence.value = result.encoded_dna
             encode_dna_snippet_text.value = result.encoded_dna[:200]
+            if ws_clients:
+                async def _broadcast(msg: str) -> None:
+                    await asyncio.gather(*(c.send(msg) for c in ws_clients))
+
+                asyncio.create_task(_broadcast(result.encoded_dna))
             encode_save_button.visible = True
             manifest = generate_manifest(
                 os.path.basename(input_path), options, result.metrics
@@ -841,11 +875,12 @@ def main(page: ft.Page) -> None:
             ])
         )
         helix_container.controls.append(
-            show_helix_ui(
+            show_helix(
                 dna_seq,
                 animate=animate_checkbox.value,
                 zoom=zoom_slider.value,
                 fps=fps_slider.value,
+                ws_url="ws://localhost:8765" if ws_clients else None,
             )
         )
         page.update()
