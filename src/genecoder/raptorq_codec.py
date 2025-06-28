@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Tuple, TYPE_CHECKING
 
+_rq: Any | None = None
 _HAS_RAPTORQ = False
 
 if TYPE_CHECKING:
@@ -38,6 +39,10 @@ else:  # pragma: no cover - optional dependency
 
 def _require_raptorq() -> None:  # pragma: no cover - helper
     """Ensure :mod:`raptorq` is installed."""
+    if _rq is None:
+        raise ImportError(
+            "raptorq is required for RaptorQ encoding. Install it via 'pip install raptorq'."
+        )
     if not _HAS_RAPTORQ:
         raise ImportError(
             "raptorq is required for RaptorQ encoding. Install it via 'pip install raptorq'."
