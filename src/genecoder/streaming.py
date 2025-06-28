@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Iterator
 import os
+import json
+import hashlib
 
 from .encoders import encode_base4_direct, decode_base4_direct
 from .error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
@@ -16,6 +18,8 @@ def stream_encode_file(
     *,
     header: str,
     chunk_size: int = 1_000_000,
+    manifest_path: str | None = None,
+    resume: bool = False,
     add_parity: bool = False,
     k_value: int = 7,
     parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
@@ -27,9 +31,21 @@ def stream_encode_file(
     """
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    manifest_file = None
+    processed_chunks = 0
+    if manifest_path:
+        mode = "a" if resume else "w"
+        if resume and os.path.exists(manifest_path):
+            with open(manifest_path, "r", encoding="utf-8") as mf:
+                processed_chunks = sum(1 for _ in mf)
+        manifest_file = open(manifest_path, mode, encoding="utf-8")
+
+    start_offset = processed_chunks * chunk_size
 
     def data_iter() -> Iterator[bytes]:
         with open(input_path, "rb") as f_in:
+            if start_offset:
+                f_in.seek(start_offset)
             while True:
                 chunk = f_in.read(chunk_size)
                 if not chunk:
@@ -41,8 +57,11 @@ def stream_encode_file(
     total_len = 0
     line_width = 80
     buffer = ""
-    with open(output_path, "w", encoding="utf-8") as f_out:
-        f_out.write(f">{header}\n")
+    mode = "a" if resume and os.path.exists(output_path) else "w"
+    with open(output_path, mode, encoding="utf-8") as f_out:
+        if mode == "w":
+            f_out.write(f">{header}\n")
+        offset = processed_chunks * chunk_size
         for dna_chunk in encode_base4_direct(
             data_iter(),
             add_parity=add_parity,
@@ -51,6 +70,10 @@ def stream_encode_file(
             encode_map=encode_map,
             stream=True,
         ):
+            if manifest_file:
+                chunk_hash = hashlib.sha256(dna_chunk.encode()).hexdigest()
+                manifest_file.write(json.dumps({"offset": offset, "hash": chunk_hash}) + "\n")
+                offset += chunk_size
             total_len += len(dna_chunk)
             buffer += dna_chunk
             while len(buffer) >= line_width:
@@ -58,6 +81,8 @@ def stream_encode_file(
                 buffer = buffer[line_width:]
         if buffer:
             f_out.write(buffer + "\n")
+        if manifest_file:
+            manifest_file.close()
     return total_len
 
 
@@ -66,6 +91,8 @@ def stream_decode_file(
     output_path: str,
     *,
     chunk_size: int = 1_000_000,
+    manifest_path: str | None = None,
+    resume: bool = False,
     check_parity: bool = False,
     k_value: int = 7,
     parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
@@ -74,6 +101,14 @@ def stream_decode_file(
     """Decode ``input_path`` FASTA file to ``output_path`` streaming chunks."""
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    manifest_file = None
+    processed_chunks = 0
+    if manifest_path:
+        mode = "a" if resume else "w"
+        if resume and os.path.exists(manifest_path):
+            with open(manifest_path, "r", encoding="utf-8") as mf:
+                processed_chunks = sum(1 for _ in mf)
+        manifest_file = open(manifest_path, mode, encoding="utf-8")
 
     _, decode_map = get_alphabet_maps(alphabet)
 
@@ -94,14 +129,28 @@ def stream_decode_file(
                     buffer = buffer[chunk_size * 4 :]
             if buffer:
                 yield buffer
-
-        with open(output_path, "wb") as f_out:
-            for decoded_chunk, _ in decode_base4_direct(
-                dna_iter(),
-                check_parity=check_parity,
-                k_value=k_value,
-                parity_rule=parity_rule,
-                decode_map=decode_map,
-                stream=True,
+        mode = "ab" if resume and os.path.exists(output_path) else "wb"
+        with open(output_path, mode) as f_out:
+            offset = processed_chunks * chunk_size
+            for idx, (decoded_chunk, _) in enumerate(
+                decode_base4_direct(
+                    dna_iter(),
+                    check_parity=check_parity,
+                    k_value=k_value,
+                    parity_rule=parity_rule,
+                    decode_map=decode_map,
+                    stream=True,
+                )
             ):
-                f_out.write(bytes(decoded_chunk))
+                if idx < processed_chunks:
+                    continue
+                chunk_bytes = bytes(decoded_chunk)
+                f_out.write(chunk_bytes)
+                if manifest_file:
+                    chunk_hash = hashlib.sha256(chunk_bytes).hexdigest()
+                    manifest_file.write(
+                        json.dumps({"offset": offset, "hash": chunk_hash}) + "\n"
+                    )
+                    offset += chunk_size
+        if manifest_file:
+            manifest_file.close()
