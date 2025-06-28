@@ -11,6 +11,7 @@ _rq: Any | None = None
 
 if TYPE_CHECKING:
     import raptorq
+    from raptorq import raptorq as _rq
 else:  # pragma: no cover - optional dependency
     try:
         import raptorq  # type: ignore
