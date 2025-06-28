@@ -435,3 +435,17 @@ def test_encode_gc_balanced_boundary_gc(mock_encode_base4):
     assert result == "0" + seq
     mock_encode_base4.assert_called_once_with(data, add_parity=False)
 
+
+@patch("genecoder.encoders.encode_base4_direct")
+def test_encode_gc_balanced_invalid_gc_range(mock_encode_base4):
+    with pytest.raises(ValueError, match="target_gc_min cannot be greater than target_gc_max"):
+        encode_gc_balanced(b"data", target_gc_min=0.7, target_gc_max=0.6, max_homopolymer=2)
+    mock_encode_base4.assert_not_called()
+
+
+@patch("genecoder.encoders.encode_base4_direct")
+def test_encode_gc_balanced_invalid_homopolymer(mock_encode_base4):
+    with pytest.raises(ValueError, match="max_homopolymer must be at least 1"):
+        encode_gc_balanced(b"data", target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=0)
+    mock_encode_base4.assert_not_called()
+

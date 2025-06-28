@@ -62,6 +62,11 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
     """
     from .encoders import encode_base4_direct  # Local import to avoid circular dependency
 
+    if target_gc_min > target_gc_max:
+        raise ValueError("target_gc_min cannot be greater than target_gc_max")
+    if max_homopolymer < 1:
+        raise ValueError("max_homopolymer must be at least 1")
+
     if not data:
         return "0"
 
