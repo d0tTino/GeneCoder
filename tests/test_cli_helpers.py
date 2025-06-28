@@ -14,7 +14,9 @@ from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 
 def test_run_encoding_and_decoding_pipeline(tmp_path: Path):
     data = b"CLI helper test"
-    input_file = tmp_path / "input.bin"
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    input_file = nested / "input.bin"
     input_file.write_bytes(data)
 
     enc_args = argparse.Namespace(
@@ -28,7 +30,8 @@ def test_run_encoding_and_decoding_pipeline(tmp_path: Path):
         max_homopolymer=3,
     )
     enc_opts = build_encoding_options(enc_args)
-    dna, header, *_ = run_encoding_pipeline(data, enc_opts, input_file.name)
+    dna, header, *_ = run_encoding_pipeline(data, enc_opts, str(input_file))
+    assert f"input_file={input_file.name}" in header
     fasta = to_fasta(dna, header)
     fasta_file = tmp_path / "encoded.fasta"
     fasta_file.write_text(fasta)
