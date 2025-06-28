@@ -10,6 +10,7 @@ _HAS_RAPTORQ = False
 
 if TYPE_CHECKING:
     import raptorq
+
 else:  # pragma: no cover - optional dependency
     try:
         import raptorq  # type: ignore
