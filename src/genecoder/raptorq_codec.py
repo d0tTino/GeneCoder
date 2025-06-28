@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Tuple, TYPE_CHECKING
 
 _rq: Any | None = None
+
 _HAS_RAPTORQ = False
 _rq: Any | None = None
 

@@ -62,6 +62,23 @@ def test_show_helix_fps_param() -> None:
 
 
 @pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
+def test_show_helix_complement_and_coords() -> None:
+    ft, show_helix = _get_ft_and_show_helix()
+    elem = show_helix("AT")
+    html = unquote(elem.url.split(",", 1)[1])
+    assert "const compSeq" in html
+    assert "coords1" in html
+
+
+@pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
+def test_show_helix_ws_url() -> None:
+    ft, show_helix = _get_ft_and_show_helix()
+    elem = show_helix("AC", ws_url="ws://test")
+    html = unquote(elem.url.split(",", 1)[1])
+    assert "ws://test" in html
+
+
+@pytest.mark.skipif(not hasattr(ft, "HtmlElement"), reason="HtmlElement missing")
 def test_show_helix_cdn_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     ft, show_helix = _get_ft_and_show_helix()
     monkeypatch.setattr("genecoder.helix_view.THREE_JS_URL", "")
