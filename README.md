@@ -24,7 +24,9 @@ handle personal or medical DNA data.
 - Multiple encoding strategies including Base-4 Direct, Huffman-4 and GC-Balanced.
 - Optional error correction with Triple-Repeat, Hamming(7,4), Reed-Solomon, LDPC and Fountain codes.
 - Batch processing, parity checks and streaming support.
-- Flet-based GUI with analysis plots.
+- Resumable streaming for interrupted runs.
+- Optional AI-driven decoding via the DNAformer plugin.
+- Flet-based GUI with analysis plots and an enhanced 3D helix viewer.
 - Base5 and base6 alphabet options for alternative nucleotide letters. These
   modes remap the standard ACGT symbols but **do not increase capacity**.
 - External read simulators can be invoked with ``--simulator``.

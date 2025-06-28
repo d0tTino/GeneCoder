@@ -26,6 +26,16 @@ extras on Windows:
 powershell -ExecutionPolicy Bypass -File scripts/windows_vertical_slice.ps1
 ```
 
+If PowerShell blocks the script, run the following once from an elevated
+prompt to allow local scripts:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+Ensure you have the **Terminal** or PowerShell 7 installed so that `poetry`
+and `python` are available on your `PATH`.
+
 The script prints the GeneCoder version, runs the test suite, launches the Flet
 GUI and finally starts the FastAPI server. The last lines of output should
 include:

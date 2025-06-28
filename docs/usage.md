@@ -115,6 +115,9 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --stream --method base4_direct
    ```
 
+   Streaming operations are **resumable**. Pass `--resume state.json` to
+   continue an interrupted encode or decode run.
+
 10. **Decode with simulated channel errors**
 
    ```bash
@@ -166,6 +169,17 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    ```bash
    genecoder decode --input-files encoded.fasta \
        --output-file decoded.bin --simulator squigulator
+   ```
+
+13. **AI-assisted decoding**
+
+   Install the optional `dnaformer` extras to enable a machine learning model
+   that can recover sequences with high error rates:
+
+   ```bash
+   poetry install --extras dnaformer --no-interaction
+   genecoder decode --input-files noisy.fasta --output-file out.bin \
+       --method ai
    ```
 
 ### Manifest files
@@ -244,6 +258,7 @@ The GUI exposes encoding options, error correction choices and displays metrics 
 The **Helix View** tab embeds a dedicated React/Three.js frontend. It renders the
 sequence in 3D with orbit controls, overlays for
 [GC content](glossary.md#gc-content) and
-[homopolymers](glossary.md#homopolymer) and
-an *Animate* toggle. The frontend lives under `web/helix-ui` and is loaded via a
-WebView in the GUI.
+[homopolymers](glossary.md#homopolymer). The viewer now includes progress
+**pulses**, GC gauges and homopolymer bars along the helix. An *Animate* toggle
+and fullscreen button make the visualization interactive. The frontend lives
+under `web/helix-ui` and is loaded via a WebView in the GUI.
