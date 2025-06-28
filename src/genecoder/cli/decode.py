@@ -140,8 +140,16 @@ def run_decoding_pipeline(
                 if info_match:
                     import base64
                     import json
+                    import binascii
 
-                    info = json.loads(base64.b64decode(info_match.group(1)).decode())
+                    try:
+                        info_b64 = info_match.group(1)
+                        decoded = base64.b64decode(info_b64)
+                        info = json.loads(decoded.decode())
+                    except (binascii.Error, json.JSONDecodeError) as exc:
+                        raise ValueError(
+                            "Invalid 'fec_info' in header: failed to decode"
+                        ) from exc
                 final_data, _ = FEC_REGISTRY[fec_name]["decode"](final_data, info)
     return final_data
 
