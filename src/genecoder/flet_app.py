@@ -65,7 +65,12 @@ if websockets:
         finally:
             ws_clients.discard(websocket)
 
-    asyncio.get_event_loop().create_task(websockets.serve(_ws_handler, "localhost", 8765))
+    try:
+        asyncio.get_event_loop().create_task(
+            websockets.serve(_ws_handler, "localhost", 8765)
+        )
+    except OSError as exc:  # pragma: no cover - depends on environment
+        logger.error("Failed to start WebSocket server: %s", exc)
 
 
 def main(page: ft.Page) -> None:

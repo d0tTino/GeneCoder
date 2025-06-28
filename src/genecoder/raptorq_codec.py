@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Tuple, TYPE_CHECKING
 
-_rq: Any | None = None
-
 _HAS_RAPTORQ = False
 _rq: Any | None = None
 
 if TYPE_CHECKING:
     import raptorq
-    from raptorq import raptorq as _rq
+    from raptorq import raptorq as _rq  # type: ignore[no-redef]
 else:  # pragma: no cover - optional dependency
     try:
         import raptorq  # type: ignore
