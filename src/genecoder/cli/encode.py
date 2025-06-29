@@ -56,6 +56,11 @@ class EncodingOptions:
 
 
 def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
+    if not 0 <= args.gc_min <= 1 or not 0 <= args.gc_max <= 1:
+        raise ValueError("gc_min and gc_max must be between 0 and 1")
+    if args.gc_min > args.gc_max:
+        raise ValueError("gc_min cannot be greater than gc_max")
+
     return EncodingOptions(
         method=args.method,
         add_parity=args.add_parity,

@@ -134,6 +134,36 @@ def test_run_encoding_invalid_k_value():
         run_encoding_pipeline(b"abc", enc_opts, "f.bin")
 
 
+def test_build_encoding_options_invalid_gc_bounds():
+    enc_args = argparse.Namespace(
+        method="base4_direct",
+        add_parity=False,
+        k_value=7,
+        parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T,
+        fec=None,
+        gc_min=-0.1,
+        gc_max=1.1,
+        max_homopolymer=3,
+    )
+    with pytest.raises(ValueError):
+        build_encoding_options(enc_args)
+
+
+def test_build_encoding_options_gc_min_greater_than_max():
+    enc_args = argparse.Namespace(
+        method="base4_direct",
+        add_parity=False,
+        k_value=7,
+        parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T,
+        fec=None,
+        gc_min=0.6,
+        gc_max=0.4,
+        max_homopolymer=3,
+    )
+    with pytest.raises(ValueError):
+        build_encoding_options(enc_args)
+
+
 def test_run_decoding_unknown_method(tmp_path: Path):
     input_file = tmp_path / "x.bin"
     data = b"hello"
