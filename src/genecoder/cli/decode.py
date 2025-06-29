@@ -404,6 +404,9 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
 
 
 def _handle_command(args: argparse.Namespace) -> None:
+    if args.chunk_size <= 0:
+        logger.error("Error: --chunk-size must be a positive integer.")
+        raise SystemExit(1)
     if getattr(args, "d2sim_options", None):
         os.environ["GENECODER_D2SIM_OPTIONS"] = args.d2sim_options
     if getattr(args, "dnarsim_options", None):

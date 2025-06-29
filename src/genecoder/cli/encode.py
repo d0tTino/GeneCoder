@@ -522,6 +522,9 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
 
 
 def _handle_command(args: argparse.Namespace) -> None:
+    if args.chunk_size <= 0:
+        logger.error("Error: --chunk-size must be a positive integer.")
+        raise SystemExit(1)
     num_input_files = len(args.input_files)
     if num_input_files > 1 and not args.output_dir:
         logger.error("Error: --output-dir is required when providing multiple input files for encoding.")
