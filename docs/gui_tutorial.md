@@ -20,7 +20,8 @@ The application window contains three main tabs:
 
 1. **Encode** – choose an input file, encoding method and optional FEC.
 2. **Decode** – select a FASTA file to decode and configure error simulation.
-3. **Helix View** – render the resulting DNA sequence in 3D.
+3. **Helix View** – render the resulting DNA sequence in 3D. See the
+   [Helix Frontend guide](helix_frontend.md) for viewer options.
 
 ![GUI screenshot](https://flet.dev/docs/images/screenshot.png)
 

@@ -31,7 +31,12 @@ def register_simulator(name: str, channel: BaseChannel) -> None:
     SIMULATOR_REGISTRY[name] = channel
 
 
-def _load_and_register(items: Iterable[Any], registrar: Callable[..., Any], kind: str) -> None:
+def _load_and_register(
+    items: Iterable[Any],
+    registrar: Callable[..., Any],
+    kind: str,
+    failures: list[str] | None = None,
+) -> None:
     """Load ``items`` and call ``register`` on each."""
 
     for item in items:
@@ -44,8 +49,11 @@ def _load_and_register(items: Iterable[Any], registrar: Callable[..., Any], kind
                 if hasattr(item, "load")
                 else importlib.import_module(name)
             )
-        except Exception as exc:  # pragma: no cover - error path
-            logger.warning("Failed to import %s plugin %s: %s", kind, name, exc)
+        except Exception:  # pragma: no cover - error path
+            if failures is not None:
+                failures.append(f"{kind}:{name}")
+            else:
+                logger.warning("Failed to import %s plugin %s", kind, name)
             continue
         register = getattr(module, "register", None)
         if callable(register):
@@ -64,10 +72,16 @@ def load_plugins() -> None:
     if hasattr(builtin, "register_builtin_plugins"):
         builtin.register_builtin_plugins()
 
-    _load_and_register(entry_points(group="genecoder.plugins"), register_codec, "codec")
-    _load_and_register(entry_points(group="genecoder.fec"), register_fec, "FEC")
+    failures: list[str] = []
+
     _load_and_register(
-        entry_points(group="genecoder.simulators"), register_simulator, "simulator"
+        entry_points(group="genecoder.plugins"), register_codec, "codec", failures
+    )
+    _load_and_register(
+        entry_points(group="genecoder.fec"), register_fec, "FEC", failures
+    )
+    _load_and_register(
+        entry_points(group="genecoder.simulators"), register_simulator, "simulator", failures
     )
 
     # Also load plugins from a local ``plugins`` package if present
@@ -80,10 +94,8 @@ def load_plugins() -> None:
             for _, module_name, _ in pkgutil.iter_modules(plugins.__path__):
                 try:
                     module = importlib.import_module(f"plugins.{module_name}")
-                except Exception as exc:  # pragma: no cover - error path
-                    logger.warning(
-                        "Failed to import local plugin %s: %s", module_name, exc
-                    )
+                except Exception:  # pragma: no cover - error path
+                    failures.append(f"local:{module_name}")
                     continue
                 register = getattr(module, "register", None)
                 if callable(register):
@@ -103,4 +115,7 @@ def load_plugins() -> None:
         register_s = getattr(plugins, "register_simulator", None)
         if callable(register_s):
             register_s(register_simulator)
+
+    if failures:
+        logger.warning("Failed to import plugins: %s", ", ".join(failures))
 

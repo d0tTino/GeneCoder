@@ -67,6 +67,14 @@ minimal sample packages implementing a codec, a
 simulator. Install any of these packages with `pip install` to experiment with
 custom extensions locally.
 
+## Developing a Plugin Step by Step
+
+1. Copy `src/plugins/reverse_codec.py` as a starting point.
+2. Implement `encode` and `decode` functions for your algorithm.
+3. In the module's `register()` function call `register_codec` with a unique name.
+4. Add an entry under `genecoder.plugins` in your `pyproject.toml` pointing to the module.
+5. Install the package and run `python -m genecoder.plugins` or invoke the CLI to load it.
+
 ## Installing Third-Party Plugins
 
 Plugins are discovered via Python entry points, so any installed package that

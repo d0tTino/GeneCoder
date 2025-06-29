@@ -6,6 +6,8 @@ application that uses Three.js for rendering. Overlays indicate
 [homopolymer](glossary.md#homopolymer) runs while the helix itself can be
 colourised and animated.
 
+It is embedded in the GUI described in the [GUI Tutorial](gui_tutorial.md).
+
 The frontend now uses [Vite](https://vitejs.dev/) for development and builds.
 To explore the viewer without running the whole backend simply open the built
 `dist/index.html` in a browser or start a local HTTP server:
