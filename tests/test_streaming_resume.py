@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from typing import Iterator
+import json
 
 import pytest
 
@@ -53,6 +54,10 @@ def test_stream_encode_resume(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         resume=True,
     )
 
+    lines = [json.loads(line) for line in manifest.open()]
+    assert len(lines) == 3
+    assert lines[0]["offset"] == 0 and lines[-1]["offset"] == 100_000
+
     decoded = tmp_path / "decoded.bin"
     stream_decode_file(
         str(encoded_file),
@@ -103,3 +108,5 @@ def test_stream_decode_resume(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         resume=True,
     )
     assert decoded.read_bytes() == data
+    lines = [json.loads(line) for line in open(manifest)]
+    assert len(lines) == 3
