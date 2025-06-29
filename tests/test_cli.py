@@ -373,3 +373,51 @@ def test_invalid_fec_none_choice(temp_dir: Path):
     assert result.returncode != 0
     assert "invalid choice" in result.stderr
 
+
+@pytest.mark.parametrize("chunk_size", [0, -1])
+def test_encode_invalid_chunk_size(temp_dir: Path, chunk_size: int) -> None:
+    """Streaming encode should fail for non-positive chunk sizes."""
+    input_file = temp_dir / "in.txt"
+    input_file.write_text("data")
+    output_file = temp_dir / "out.fasta"
+
+    cmd_args = [
+        "encode",
+        "--input-files",
+        str(input_file),
+        "--output-file",
+        str(output_file),
+        "--method",
+        "base4_direct",
+        "--stream",
+        "--chunk-size",
+        str(chunk_size),
+    ]
+    result = run_cli_command(cmd_args)
+    assert result.returncode != 0
+    assert "chunk-size" in result.stderr.lower()
+
+
+@pytest.mark.parametrize("chunk_size", [0, -1])
+def test_decode_invalid_chunk_size(temp_dir: Path, chunk_size: int) -> None:
+    """Streaming decode should fail for non-positive chunk sizes."""
+    fasta_file = temp_dir / "seq.fasta"
+    create_dummy_fasta_file(fasta_file, "hello")
+    output_file = temp_dir / "out.bin"
+
+    cmd_args = [
+        "decode",
+        "--input-files",
+        str(fasta_file),
+        "--output-file",
+        str(output_file),
+        "--method",
+        "base4_direct",
+        "--stream",
+        "--chunk-size",
+        str(chunk_size),
+    ]
+    result = run_cli_command(cmd_args)
+    assert result.returncode != 0
+    assert "chunk-size" in result.stderr.lower()
+
