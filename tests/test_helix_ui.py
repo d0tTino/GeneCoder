@@ -26,6 +26,8 @@ def test_show_helix_ui_url(tmp_path: Path) -> None:
     assert webview.__class__.__name__ == "WebView"
     assert webview.url.startswith("file:")
     parsed = urlparse(webview.url)
+    assert "seq=ACGT" in parsed.query
+    assert "seq2=TGCA" in parsed.query
     assert "animate=false" in parsed.query
     assert "zoom=1.5" in parsed.query
     assert "gc=false" in parsed.query

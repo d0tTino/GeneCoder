@@ -27,6 +27,14 @@ from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
 from typing import Callable
 
+_COMPLEMENT_MAP = str.maketrans("ACGTacgt", "TGCAtgca")
+
+
+def reverse_complement(seq: str) -> str:
+    """Return the Watson-Crick reverse complement of ``seq``."""
+
+    return seq.translate(_COMPLEMENT_MAP)[::-1]
+
 # Delay importing heavy security module until needed
 encrypt_data: Callable[..., bytes] | None = None
 compute_checksum: Callable[[bytes], str] | None = None
@@ -263,6 +271,13 @@ def process_single_encode(
             parsed_records = from_fasta(fasta_content)
             dna_sequence = parsed_records[0][1] if parsed_records else ""
 
+            if getattr(args, "mirror", False) and dna_sequence:
+                rc_seq = reverse_complement(dna_sequence)
+                rc_header = f"{header} mirror=rc"
+                with open(output_file_path, "a", encoding="utf-8") as f_out:
+                    f_out.write(to_fasta(rc_seq, rc_header, line_width=80))
+                parsed_records.append((rc_header, rc_seq))
+
             return os.path.basename(input_file_path), dna_sequence
 
         with open(input_file_path, "rb") as f_in:
@@ -299,6 +314,10 @@ def process_single_encode(
             fasta_header = f"{fasta_header} checksum={checksum}"
 
         fasta_output = to_fasta(final_encoded_dna_sequence, fasta_header, line_width=80)
+        if getattr(args, "mirror", False):
+            rc_seq = reverse_complement(final_encoded_dna_sequence)
+            rc_header = f"{fasta_header} mirror=rc"
+            fasta_output += to_fasta(rc_seq, rc_header, line_width=80)
 
         os.makedirs(os.path.dirname(output_file_path) or ".", exist_ok=True)
         with open(output_file_path, "w", encoding="utf-8") as f_out:
@@ -517,6 +536,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--capsule",
         type=str,
         help="Write capsule JSON with header, sequence and metadata.",
+    )
+    parser.add_argument(
+        "--mirror",
+        action="store_true",
+        help="Also output the reverse-complement sequence.",
     )
     parser.set_defaults(func=_handle_command)
 

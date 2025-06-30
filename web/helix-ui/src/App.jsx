@@ -9,6 +9,14 @@ const DEFAULT_COLORS = {
   T: 0xffff55,
 };
 
+function complementSeq(s) {
+  const map = { A: 'T', T: 'A', C: 'G', G: 'C' };
+  return s
+    .split('')
+    .map((b) => map[b.toUpperCase()] || b)
+    .join('');
+}
+
 function parseColors(param) {
   if (!param) return null;
   const map = {};
@@ -30,6 +38,7 @@ export default function App() {
   const [animate, setAnimate] = useState(params.get('animate') !== 'false');
   const [zoom] = useState(parseFloat(params.get('zoom') || '1'));
   const seq = params.get('seq') || 'ACGT';
+  const seq2 = params.get('seq2') || complementSeq(seq);
   const gcRatio = seq.split('').filter((b) => b === 'G' || b === 'C').length / seq.length;
   const [showGC, setShowGC] = useState(params.get('gc') !== 'false');
   const [showRuns, setShowRuns] = useState(params.get('runs') !== 'false');
@@ -61,28 +70,47 @@ export default function App() {
 
     const group = new THREE.Group();
     const bases = seq.split('');
+    const compBases = seq2.split('');
+    const len = Math.min(bases.length, compBases.length);
     const runs = new Array(bases.length).fill(1);
     for (let i = 1; i < bases.length; i++) {
       runs[i] = bases[i] === bases[i - 1] ? runs[i - 1] + 1 : 1;
     }
     const radius = 0.1;
     const h = 0.4;
-    bases.forEach((b, i) => {
-      const geom = new THREE.SphereGeometry(radius, 16, 16);
-      let color = colors[b] || 0xffffff;
-      if (showGC) {
-        color = b === 'G' || b === 'C' ? 0x8888ff : 0xffffaa;
-      }
-      const mat = new THREE.MeshPhongMaterial({ color });
-      const mesh = new THREE.Mesh(geom, mat);
+    for (let i = 0; i < len; i++) {
       const angle = i * 0.3;
-      mesh.position.set(Math.cos(angle), Math.sin(angle), i * h);
-      if (showRuns && runs[i] >= 3) {
-        mesh.material.emissive = new THREE.Color(0xff0000);
-        mesh.material.emissiveIntensity = Math.min((runs[i] - 2) / 4, 1);
+
+      const geom1 = new THREE.SphereGeometry(radius, 16, 16);
+      let color1 = colors[bases[i]] || 0xffffff;
+      if (showGC) {
+        color1 = bases[i] === 'G' || bases[i] === 'C' ? 0x8888ff : 0xffffaa;
       }
-      group.add(mesh);
-    });
+      const mesh1 = new THREE.Mesh(geom1, new THREE.MeshPhongMaterial({ color: color1 }));
+      mesh1.position.set(Math.cos(angle), Math.sin(angle), i * h);
+      if (showRuns && runs[i] >= 3) {
+        mesh1.material.emissive = new THREE.Color(0xff0000);
+        mesh1.material.emissiveIntensity = Math.min((runs[i] - 2) / 4, 1);
+      }
+      group.add(mesh1);
+
+      const geom2 = new THREE.SphereGeometry(radius, 16, 16);
+      let color2 = colors[compBases[i]] || 0xffffff;
+      if (showGC) {
+        color2 = compBases[i] === 'G' || compBases[i] === 'C' ? 0x8888ff : 0xffffaa;
+      }
+      const mesh2 = new THREE.Mesh(geom2, new THREE.MeshPhongMaterial({ color: color2 }));
+      mesh2.position.set(-Math.cos(angle), -Math.sin(angle), i * h);
+      group.add(mesh2);
+
+      const pts = [
+        new THREE.Vector3(Math.cos(angle), Math.sin(angle), i * h),
+        new THREE.Vector3(-Math.cos(angle), -Math.sin(angle), i * h)
+      ];
+      const lineGeom = new THREE.BufferGeometry().setFromPoints(pts);
+      const line = new THREE.Line(lineGeom, new THREE.LineBasicMaterial({ color: 0xaaaaaa }));
+      group.add(line);
+    }
     scene.add(group);
 
     const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -140,7 +168,7 @@ export default function App() {
       cancelAnimationFrame(frameId);
       renderer.dispose();
     };
-  }, [seq, animate, zoom, colors, showGC, showRuns, showGCBars, showRunBars, showPulses, pulseSpeed, showGauge, flashErrors]);
+  }, [seq, seq2, animate, zoom, colors, showGC, showRuns, showGCBars, showRunBars, showPulses, pulseSpeed, showGauge, flashErrors]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
