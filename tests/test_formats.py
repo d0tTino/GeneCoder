@@ -1,6 +1,11 @@
 import pytest
 
-from genecoder.formats import to_fasta, from_fasta  # noqa: E402
+from genecoder.formats import (
+    to_fasta,
+    from_fasta,
+    to_fastq,
+    from_fastq,
+)
 
 
 def test_empty_sequence():
@@ -170,3 +175,22 @@ def test_from_fasta_invalid_character_error_line_number():
     content = ">seq_invalid\nACGT\naXYZ\n"
     with pytest.raises(ValueError, match="line 3"):
         from_fasta(content)
+
+
+def test_fastq_roundtrip_string_qualities():
+    seq = "ATGC"
+    qual = "IIII"
+    fq = to_fastq(seq, "seq1", qual)
+    header, parsed_seq, parsed_qual = from_fastq(fq)[0]
+    assert header == "seq1"
+    assert parsed_seq == seq
+    assert parsed_qual == qual
+
+
+def test_fastq_numeric_qualities():
+    seq = "ATGC"
+    quals = [40, 39, 38, 37]
+    fq = to_fastq(seq, "qseq", quals)
+    _, parsed_seq, parsed_qual = from_fastq(fq)[0]
+    assert parsed_seq == seq
+    assert parsed_qual == "IHGF"
