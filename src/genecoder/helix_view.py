@@ -366,6 +366,7 @@ def show_helix(
 
 def show_helix_ui(
     dna_sequence: str = "ACGT",
+    strand2_sequence: str | None = None,
     *,
     animate: bool = True,
     zoom: float = 1.0,
@@ -382,18 +383,24 @@ def show_helix_ui(
 ) -> flet_webview.WebView:
     """Return a ``WebView`` pointing at the React helix frontend.
 
-    Parameters enable GC colouring, homopolymer highlighting, GC ratio gauges,
-    optional GC-content and homopolymer bars and error flashes via the
-    corresponding query arguments. The ``fps``
-    argument controls the maximum frames per second.
+    ``strand2_sequence`` specifies an optional second strand to render. If not
+    provided the Watson-Crick complement of ``dna_sequence`` is used. Parameters
+    enable GC colouring, homopolymer highlighting, GC ratio gauges, optional
+    GC-content and homopolymer bars and error flashes via the corresponding
+    query arguments. The ``fps`` argument controls the maximum frames per
+    second.
     """
     base_dir = Path(__file__).resolve().parent.parent / "web" / "helix-ui"
     helix_path = base_dir / "dist" / "index.html"
     if not helix_path.is_file():
         helix_path = base_dir / "index.html"
 
+    if strand2_sequence is None:
+        strand2_sequence = complement(dna_sequence)
+
     params = [
         f"seq={quote(dna_sequence)}",
+        f"seq2={quote(strand2_sequence)}",
         f"animate={'true' if animate else 'false'}",
         f"zoom={zoom}",
         f"gc={'true' if show_gc else 'false'}",

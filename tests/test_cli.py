@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 from genecoder.utils import get_temp_dir
 from src.genecoder.formats import to_fasta, from_fasta
+from src.genecoder.cli.encode import reverse_complement
 
 # Helper to get the root of the project
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -174,6 +175,30 @@ def test_gc_balanced_params_in_header_default_and_custom(temp_dir: Path):
     assert "gc_min=0.4" in header_custom
     assert "gc_max=0.6" in header_custom
     assert "max_homopolymer=4" in header_custom
+
+
+def test_encode_mirror(tmp_path: Path) -> None:
+    input_file = tmp_path / "msg.txt"
+    input_file.write_text("mirror")
+    output_file = tmp_path / "seq.fasta"
+
+    cmd_args = [
+        "encode",
+        "--input-files",
+        str(input_file),
+        "--output-file",
+        str(output_file),
+        "--method",
+        "base4_direct",
+        "--mirror",
+    ]
+    result = run_cli_command(cmd_args)
+    assert result.returncode == 0, result.stderr
+
+    records = from_fasta(output_file.read_text())
+    assert len(records) == 2
+    assert records[1][1] == reverse_complement(records[0][1])
+    assert "mirror=rc" in records[1][0]
 
 # --- Test Scenarios for Batch Decoding ---
 

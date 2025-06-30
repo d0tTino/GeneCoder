@@ -9,6 +9,7 @@ GeneCoder provides a CLI and GUI for encoding and decoding data into simulated D
 * **Batch processing** and streaming support for large files.
 * **Flet-based GUI** with analysis plots and asynchronous operations.
 * **CSV export for synthesis** with length and [homopolymer](glossary.md#homopolymer) validation. The analysis command warns when sequences violate these constraints.
+* **Mirror encoding** via `--mirror` to output forward and reverse-complement sequences.
 
 
 ## Helix View
@@ -34,4 +35,13 @@ webview = show_helix("ACGT", length=50, colors={"A": "#ff0000", "T": "#00ffff"})
 
 The newer `show_helix_ui` helper launches the React frontend. It accepts the
 same base sequence along with options such as `animate`, `zoom`, `gc`, `runs`,
-animated progress pulses and custom base colors.
+animated progress pulses and custom base colors. Pass a second sequence to
+render two strands side by side:
+
+```python
+from genecoder.helix_view import show_helix_ui
+webview = show_helix_ui(seq1, seq2)
+```
+
+The `--mirror` flag on the CLI writes both forward and reverse-complement
+records which can be viewed together using `show_helix_ui` as above.
