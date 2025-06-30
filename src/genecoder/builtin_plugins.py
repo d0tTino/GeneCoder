@@ -46,6 +46,8 @@ def register_builtin_plugins() -> None:
             "genecoder.error_simulation",
             "genecoder.simulators.illumina",
             "genecoder.simulators.adv_nanopore",
+            "genecoder.simulators.replication",
+            "genecoder.simulators.transcription",
         ],
         register_simulator,
         "builtin",

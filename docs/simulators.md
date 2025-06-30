@@ -9,6 +9,8 @@ GeneCoder supports both built-in error models and adapters to external nanopore 
 - **indel** — introduces insertions and deletions in addition to substitutions.
 - **none** — disable simulation (the default).
 - **nanopore** — alias for `d2sim`.
+- **replication** — basic DNA copying with low error rates.
+- **transcription** — converts DNA to RNA while introducing errors.
 
 `GENECODER_SIM_SEED` can be set to an integer to reproduce the randomness used
 by these simulators.
@@ -83,6 +85,13 @@ Apply simple substitutions with a chosen probability:
 
 ```bash
 genecoder decode --simulate-errors 0.02 <other options>
+```
+
+Invoke the replication or transcription models:
+
+```bash
+genecoder decode --simulator replication <other options>
+genecoder decode --simulator transcription <other options>
 ```
 
 Invoke an external simulator before decoding:
