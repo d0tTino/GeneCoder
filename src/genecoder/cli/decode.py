@@ -9,7 +9,7 @@ import os
 import random
 import re
 from pathlib import Path
-from dataclasses import dataclass
+from ..options import DecodingOptions
 
 
 from genecoder.encoders import decode_base4_direct, decode_gc_balanced, decode_triple_repeat
@@ -470,7 +470,6 @@ def _handle_command(args: argparse.Namespace) -> None:
         )
 
     tasks = []
-    existing_outputs: set[str] = set()
     for input_file_path in args.input_files:
         output_file_path = ""
         if args.output_file and num_input_files == 1:
