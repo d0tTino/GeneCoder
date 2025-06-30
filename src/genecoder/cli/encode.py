@@ -77,7 +77,9 @@ def run_encoding_pipeline(
     current_input = data
     fec_padding_bits = -1
     encode_map, _ = get_alphabet_maps(options.alphabet)
-    sanitized_name = Path(input_file_name).name
+    # Normalize path separators to ensure the FASTA header does not contain
+    # backslashes which can appear on Windows paths.
+    sanitized_name = os.path.basename(input_file_name.replace("\\", "/"))
     header_parts = [f"method={options.method}", f"input_file={sanitized_name}"]
 
     if options.fec == "hamming_7_4":

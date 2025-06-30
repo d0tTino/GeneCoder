@@ -26,6 +26,24 @@ GET /static/index.html
 
 You can add your own endpoints to expose encoding and decoding features.
 
+The server enables [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
+so that browser-based clients on other origins can call the API. Set
+`GENECODER_CORS_ORIGINS` to a comma-separated list of allowed origins (default
+`*`). Write endpoints also use a simple bearer token for authentication.
+
+Set the token before starting the server:
+
+```bash
+export GENECODER_API_TOKEN=secret
+uvicorn web.main:app --reload
+```
+
+Include the token when calling `/encode` or `/decode`:
+
+```http
+Authorization: Bearer secret
+```
+
 ## Example Encode/Decode Requests
 
 The server exposes `/encode` and `/decode` POST endpoints. Payloads are JSON:
