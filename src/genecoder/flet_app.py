@@ -27,10 +27,8 @@ except Exception:  # pragma: no cover - optional dependency
     websockets = None
 
 # Project module imports
-from genecoder import (
-    EncodeOptions,
-    perform_encoding,
-)
+from genecoder.options import EncodeOptions
+from genecoder import perform_encoding
 from genecoder.plugins import load_plugins
 from genecoder.manifest import generate_manifest
 from genecoder.flet_helpers import parse_int_input

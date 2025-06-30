@@ -8,7 +8,7 @@ import logging
 import os
 import random
 import re
-from dataclasses import dataclass
+from ..options import DecodingOptions
 
 from genecoder.encoders import decode_base4_direct, decode_gc_balanced, decode_triple_repeat
 from genecoder.gc_balancer import AdvancedGCBalancer
@@ -47,14 +47,6 @@ def _get_header_filename(file_path: str) -> str | None:
         logger.debug("Could not read header from %s", file_path)
     return None
 
-
-@dataclass
-class DecodingOptions:
-    method: str
-    check_parity: bool
-    k_value: int
-    parity_rule: str
-    alphabet: str
 
 
 def build_decoding_options(args: argparse.Namespace) -> DecodingOptions:

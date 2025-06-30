@@ -8,7 +8,7 @@ import csv
 import json
 import logging
 import os
-from dataclasses import dataclass
+from ..options import EncodingOptions
 from pathlib import Path
 
 from genecoder.manifest import generate_manifest
@@ -49,18 +49,6 @@ def _ensure_security_loaded() -> None:
 
 logger = logging.getLogger(__name__)
 
-
-@dataclass
-class EncodingOptions:
-    method: str
-    add_parity: bool
-    k_value: int
-    parity_rule: str
-    fec: str | None
-    gc_min: float
-    gc_max: float
-    max_homopolymer: int
-    alphabet: str = "base4"
 
 
 def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
