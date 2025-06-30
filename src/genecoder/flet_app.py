@@ -35,15 +35,22 @@ from genecoder.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
 from genecoder.helix_view import show_helix_ui
 from genecoder.formats import from_fasta
-from genecoder.glossary_tooltips import load_glossary, wrap_glossary_terms
+from genecoder.glossary_tooltips import (
+    load_glossary,
+    load_glossary_full,
+    wrap_glossary_terms,
+    glossary_modal_text,
+)
 
 
 logger = logging.getLogger(__name__)
 
 try:
     GLOSSARY: dict[str, str] = load_glossary()
+    GLOSSARY_FULL: dict[str, str] = load_glossary_full()
 except Exception:
     GLOSSARY = {}
+    GLOSSARY_FULL = {}
 
 
 encode_fasta_data_to_save_ref: ft.Ref[Optional[str]] = ft.Ref[Optional[str]]()
@@ -144,7 +151,14 @@ def main(page: ft.Page) -> None:
 
 
     window_size_input: ft.TextField = ft.TextField(
-        label=wrap_glossary_terms("GC Window Size", GLOSSARY),
+        label=ft.Row(
+            [
+                ft.Text("GC Window Size ("),
+                glossary_modal_text("GC content", page, GLOSSARY, GLOSSARY_FULL),
+                ft.Text(")"),
+            ],
+            spacing=0,
+        ),
         value="50",
         width=120,
         keyboard_type=ft.KeyboardType.NUMBER,
@@ -157,7 +171,16 @@ def main(page: ft.Page) -> None:
         keyboard_type=ft.KeyboardType.NUMBER,
     )
     min_homopolymer_input: ft.TextField = ft.TextField(
-        label=wrap_glossary_terms("Min Homopolymer Length", GLOSSARY),
+        label=ft.Row(
+            [
+                ft.Text("Min "),
+                glossary_modal_text(
+                    "Homopolymer", page, GLOSSARY, GLOSSARY_FULL
+                ),
+                ft.Text(" Length"),
+            ],
+            spacing=0,
+        ),
         value="4",
         width=180,
         keyboard_type=ft.KeyboardType.NUMBER,
@@ -268,16 +291,24 @@ def main(page: ft.Page) -> None:
     encode_comp_ratio_text: ft.Text = ft.Text("Compression ratio: -")
     encode_bits_per_nt_text: ft.Text = ft.Text("Bits per nucleotide: - bits/nt")
     encode_actual_gc_value: ft.Text = ft.Text("-")
-    encode_actual_gc_text: ft.Row = wrap_glossary_terms(
-        "Actual GC content (payload): ", GLOSSARY
+    encode_actual_gc_text: ft.Row = ft.Row(
+        [
+            ft.Text("Actual "),
+            glossary_modal_text("GC content", page, GLOSSARY, GLOSSARY_FULL),
+            ft.Text(" (payload): "),
+            encode_actual_gc_value,
+        ],
+        spacing=0,
     )
-    encode_actual_gc_text.controls.append(encode_actual_gc_value)
     encode_actual_homopolymer_value: ft.Text = ft.Text("-")
-    encode_actual_homopolymer_text: ft.Row = wrap_glossary_terms(
-        "Actual max homopolymer (payload): ", GLOSSARY
-    )
-    encode_actual_homopolymer_text.controls.append(
-        encode_actual_homopolymer_value
+    encode_actual_homopolymer_text: ft.Row = ft.Row(
+        [
+            ft.Text("Actual max "),
+            glossary_modal_text("Homopolymer", page, GLOSSARY, GLOSSARY_FULL),
+            ft.Text(" (payload): "),
+            encode_actual_homopolymer_value,
+        ],
+        spacing=0,
     )
     encode_progress_ring: ft.ProgressRing = ft.ProgressRing(
         visible=False, width=20, height=20
@@ -760,8 +791,19 @@ def main(page: ft.Page) -> None:
             ),
             nucleotide_freq_image,
             ft.Divider(),  # New divider
-            wrap_glossary_terms(
-                "Sequence GC & Homopolymer Analysis:", GLOSSARY
+            ft.Row(
+                [
+                    ft.Text("Sequence "),
+                    glossary_modal_text(
+                        "GC content", page, GLOSSARY, GLOSSARY_FULL
+                    ),
+                    ft.Text(" & "),
+                    glossary_modal_text(
+                        "Homopolymer", page, GLOSSARY, GLOSSARY_FULL
+                    ),
+                    ft.Text(" Analysis:"),
+                ],
+                spacing=0,
             ),  # New title
             ft.Row(
                 [
