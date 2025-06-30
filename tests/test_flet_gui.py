@@ -1,11 +1,14 @@
 import pytest
 
 ft = pytest.importorskip("flet")
+ft.icons = getattr(ft, "icons", getattr(ft, "Icons", None)) or ft.Icons
+ft.colors = getattr(ft, "colors", getattr(ft, "Colors", None)) or ft.Colors
 
 
 class _DummyPage:
     def __init__(self) -> None:
         self.overlay = []
+        self.dialog = None
 
     def add(self, *args, **kwargs):
         pass
@@ -53,3 +56,20 @@ def test_show_helix_ui_returns_webview() -> None:
     assert elem.__class__.__name__ == "WebView"
     assert elem.width == 600
     assert elem.height == 400
+
+
+def test_glossary_modal_text_opens_dialog() -> None:
+    from genecoder.glossary_tooltips import glossary_modal_text
+
+    page = _DummyPage()
+    glossary = {"GC content": "short"}
+    full = {"GC content": "long definition"}
+
+    txt = glossary_modal_text("GC content", page, glossary, full)
+
+    txt.on_click(None)
+
+    assert isinstance(page.dialog, ft.AlertDialog)
+    assert page.dialog.open is True
+    assert page.dialog.title.value == "GC content"
+    assert page.dialog.content.value == "long definition"
