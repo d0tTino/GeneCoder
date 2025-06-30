@@ -1,3 +1,4 @@
+import argparse
 import pytest
 import subprocess
 import os
@@ -6,7 +7,8 @@ import tempfile
 from pathlib import Path
 from genecoder.utils import get_temp_dir
 from src.genecoder.formats import to_fasta, from_fasta
-from src.genecoder.cli.encode import reverse_complement
+from src.genecoder.cli.encode import reverse_complement, process_single_encode
+from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 
 # Helper to get the root of the project
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -177,28 +179,42 @@ def test_gc_balanced_params_in_header_default_and_custom(temp_dir: Path):
     assert "max_homopolymer=4" in header_custom
 
 
-def test_encode_mirror(tmp_path: Path) -> None:
+def test_encode_mirror(tmp_path: Path, monkeypatch) -> None:
+    pytest.importorskip("flet")
     input_file = tmp_path / "msg.txt"
     input_file.write_text("mirror")
     output_file = tmp_path / "seq.fasta"
 
-    cmd_args = [
-        "encode",
-        "--input-files",
-        str(input_file),
-        "--output-file",
-        str(output_file),
-        "--method",
-        "base4_direct",
-        "--mirror",
-    ]
-    result = run_cli_command(cmd_args)
-    assert result.returncode == 0, result.stderr
+    calls: list[tuple[str, str | None]] = []
+
+    def fake_show(seq: str, *, seq2: str | None = None, **_: object) -> None:
+        calls.append((seq, seq2))
+
+    monkeypatch.setattr("genecoder.helix_view.show_helix_ui", fake_show)
+
+    args = argparse.Namespace(
+        method="base4_direct",
+        add_parity=False,
+        k_value=7,
+        parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T,
+        fec=None,
+        gc_min=0.45,
+        gc_max=0.55,
+        max_homopolymer=3,
+        alphabet="base4",
+        stream=False,
+        capsule=None,
+        export_csv=None,
+        mirror=True,
+    )
+
+    process_single_encode(str(input_file), str(output_file), args)
 
     records = from_fasta(output_file.read_text())
     assert len(records) == 2
     assert records[1][1] == reverse_complement(records[0][1])
     assert "mirror=rc" in records[1][0]
+    assert len(calls) == 1
 
 # --- Test Scenarios for Batch Decoding ---
 

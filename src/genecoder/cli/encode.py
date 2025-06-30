@@ -316,6 +316,15 @@ def process_single_encode(
         with open(output_file_path, "w", encoding="utf-8") as f_out:
             f_out.write(fasta_output)
 
+        if getattr(args, "mirror", False):
+            try:
+                from genecoder.helix_view import show_helix_ui
+
+                rc_seq = reverse_complement(final_encoded_dna_sequence)
+                show_helix_ui(final_encoded_dna_sequence, seq2=rc_seq)
+            except Exception as exc:  # pragma: no cover - optional GUI
+                logger.warning("Could not launch helix viewer: %s", exc)
+
         if getattr(args, "capsule", None):
             from genecoder.cache_dna import write_capsule
 

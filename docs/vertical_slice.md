@@ -89,6 +89,13 @@ genecoder decode --input-files big.fasta --output-file big.bin \
   --stream --chunk-size 1048576 --resume
 ```
 
+Using `--mirror` on the `encode` command automatically launches the helix
+viewer displaying the sequence and its reverse complement:
+
+```bash
+genecoder encode --input-files hello.txt --output-file hello.fasta --mirror
+```
+
 This document condenses the key steps from the installation and usage guides into a quick demo.
 
 Contributors may prefer to run these commands inside the provided
