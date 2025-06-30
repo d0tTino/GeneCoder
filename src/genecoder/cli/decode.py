@@ -8,6 +8,7 @@ import logging
 import os
 import random
 import re
+from pathlib import Path
 from dataclasses import dataclass
 
 from genecoder.encoders import decode_base4_direct, decode_gc_balanced, decode_triple_repeat
@@ -41,7 +42,7 @@ def _get_header_filename(file_path: str) -> str | None:
                 if line.startswith(">"):
                     match = re.search(r"input_file=([^ ]+)", line)
                     if match:
-                        return os.path.basename(match.group(1))
+                        return os.path.basename(match.group(1).strip())
                     return None
     except OSError:
         logger.debug("Could not read header from %s", file_path)
@@ -383,6 +384,12 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         help="Resume a previous interrupted streaming decode.",
     )
     parser.add_argument(
+        "--file-type",
+        type=str,
+        choices=["jpg", "png", "pdf", "txt"],
+        help="Expected output file extension if not inferrable from header.",
+    )
+    parser.add_argument(
         "--auto-ext",
         action="store_true",
         help="Automatically remove .dna and restore the original extension.",
@@ -435,14 +442,20 @@ def _handle_command(args: argparse.Namespace) -> None:
         os.environ["GENECODER_SQUIGULATOR_OPTIONS"] = args.squigulator_options
 
     num_input_files = len(args.input_files)
-    if num_input_files > 1 and not args.output_dir:
+    if num_input_files > 1 and not args.output_dir and not getattr(args, "file_type", None):
         logger.error(
-            "Error: --output-dir is required when providing multiple input files for decoding."
+            "Error: --output-dir is required when providing multiple input files for decoding unless --file-type is used."
         )
         raise SystemExit(1)
-    if num_input_files == 1 and not args.output_file and not args.output_dir:
+    if (
+        num_input_files == 1
+        and not args.output_file
+        and not args.output_dir
+        and not getattr(args, "file_type", None)
+        and _get_header_filename(args.input_files[0]) is None
+    ):
         logger.error(
-            "Error: For single input file, either --output-file or --output-dir must be specified for decoding."
+            "Error: For single input file, either --output-file or --output-dir must be specified for decoding unless the file type can be inferred."
         )
         raise SystemExit(1)
     if args.output_file and args.output_dir and num_input_files == 1:
@@ -470,10 +483,14 @@ def _handle_command(args: argparse.Namespace) -> None:
                 output_file_name = name_part + "_decoded.bin"
                 output_file_path = os.path.join(args.output_dir, output_file_name)
         else:
-            logger.error(
-                f"Error determining output path for decoding {input_file_path}. Please check arguments."
-            )
-            continue
+            header_name = _get_header_filename(input_file_path)
+            base_dir = os.path.dirname(input_file_path)
+            if header_name:
+                base = Path(header_name).stem
+            else:
+                base = Path(input_file_path).stem
+            ext = f".{args.file_type}" if getattr(args, "file_type", None) else (Path(header_name).suffix if header_name else ".bin")
+            output_file_path = os.path.join(base_dir, f"{base}{ext}")
         tasks.append((input_file_path, output_file_path, args))
 
     if num_input_files > 1:

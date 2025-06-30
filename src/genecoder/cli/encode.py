@@ -300,6 +300,11 @@ def process_single_encode(
             checksum = compute_checksum(plaintext_data)
 
         options = build_encoding_options(args)
+        header_name = os.path.basename(input_file_path)
+        if getattr(args, "file_type", None):
+            stem = Path(header_name).stem
+            header_name = f"{stem}.{args.file_type}"
+
         (
             final_encoded_dna_sequence,
             fasta_header,
@@ -307,7 +312,7 @@ def process_single_encode(
             current_input_data,
             fec_padding_bits,
         ) = run_encoding_pipeline(
-            data_for_encoding, options, os.path.basename(input_file_path)
+            data_for_encoding, options, header_name
         )
 
         if checksum:
@@ -528,6 +533,12 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         help="Resume a previous interrupted streaming encode.",
     )
     parser.add_argument(
+        "--file-type",
+        type=str,
+        choices=["jpg", "png", "pdf", "txt"],
+        help="File type to record in the FASTA header when inferring output paths.",
+    )
+    parser.add_argument(
         "--auto-ext",
         action="store_true",
         help="Automatically append a .dna suffix to output files.",
@@ -555,11 +566,20 @@ def _handle_command(args: argparse.Namespace) -> None:
         logger.error("Error: --chunk-size must be a positive integer.")
         raise SystemExit(1)
     num_input_files = len(args.input_files)
-    if num_input_files > 1 and not args.output_dir:
-        logger.error("Error: --output-dir is required when providing multiple input files for encoding.")
+    if num_input_files > 1 and not args.output_dir and not getattr(args, "file_type", None):
+        logger.error(
+            "Error: --output-dir is required when providing multiple input files for encoding unless --file-type is used."
+        )
         raise SystemExit(1)
-    if num_input_files == 1 and not args.output_file and not args.output_dir:
-        logger.error("Error: For single input file, either --output-file or --output-dir must be specified.")
+    if (
+        num_input_files == 1
+        and not args.output_file
+        and not args.output_dir
+        and not getattr(args, "file_type", None)
+    ):
+        logger.error(
+            "Error: For single input file, either --output-file or --output-dir must be specified unless --file-type is used."
+        )
         raise SystemExit(1)
     if args.output_file and args.output_dir and num_input_files == 1:
         logger.warning("Warning: Both --output-file and --output-dir provided for single input. Using --output-file.")
@@ -582,8 +602,12 @@ def _handle_command(args: argparse.Namespace) -> None:
             else:
                 output_file_name = base_name + ".fasta"
             output_file_path = os.path.join(args.output_dir, output_file_name)
+        elif getattr(args, "file_type", None):
+            output_file_path = f"{input_file_path}.{args.file_type}.dna"
         else:
-            logger.error(f"Error determining output path for {input_file_path}. Please check arguments.")
+            logger.error(
+                f"Error determining output path for {input_file_path}. Please check arguments."
+            )
             continue
         tasks.append((input_file_path, output_file_path, args))
 
