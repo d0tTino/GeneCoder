@@ -2,7 +2,16 @@ import pytest
 
 ft = pytest.importorskip("flet")
 
-from genecoder.glossary_tooltips import wrap_glossary_terms
+from genecoder.glossary_tooltips import load_glossary, wrap_glossary_terms
+
+
+def test_load_glossary() -> None:
+    glossary = load_glossary()
+    assert isinstance(glossary, dict)
+    assert "GC content" in glossary
+    assert "Homopolymer" in glossary
+    assert isinstance(glossary["GC content"], str)
+    assert isinstance(glossary["Homopolymer"], str)
 
 
 def test_wrap_glossary_terms_basic():
