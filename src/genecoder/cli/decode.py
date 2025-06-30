@@ -9,6 +9,8 @@ import os
 import random
 import re
 from pathlib import Path
+from dataclasses import dataclass
+
 from ..options import DecodingOptions
 
 
