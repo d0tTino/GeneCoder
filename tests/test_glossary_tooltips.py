@@ -14,6 +14,7 @@ def test_load_glossary() -> None:
     assert isinstance(glossary["Homopolymer"], str)
 
 
+
 def test_wrap_glossary_terms_basic():
     glossary = {"GC content": "desc", "Homopolymer": "info"}
     row = wrap_glossary_terms(
@@ -30,3 +31,13 @@ def test_wrap_glossary_terms_no_match():
     assert isinstance(row, ft.Row)
     assert len(row.controls) == 1
     assert isinstance(row.controls[0], ft.Text)
+
+
+def test_load_glossary_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    glossary_path = _GLOSSARY_PATH
+    backup = glossary_path.with_suffix(glossary_path.suffix + ".bak")
+    glossary_path.rename(backup)
+    try:
+        assert load_glossary() == {}
+    finally:
+        backup.rename(glossary_path)

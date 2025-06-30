@@ -1,12 +1,11 @@
 """CLI submodules for GeneCoder."""
 
+from ..options import EncodingOptions, DecodingOptions
 from .encode import (
-    EncodingOptions,
     build_encoding_options,
     run_encoding_pipeline,
 )
 from .decode import (
-    DecodingOptions,
     build_decoding_options,
     run_decoding_pipeline,
 )
