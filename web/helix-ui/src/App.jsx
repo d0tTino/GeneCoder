@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import applyGlossary from './glossary.js';
 
 const DEFAULT_COLORS = {
   A: 0xff5555,
@@ -42,6 +43,10 @@ export default function App() {
 
   const colorParam = params.get('colors');
   const colors = { ...DEFAULT_COLORS, ...(parseColors(colorParam) || {}) };
+
+  useEffect(() => {
+    applyGlossary();
+  }, []);
 
   useEffect(() => {
     const width = mount.current.clientWidth;
