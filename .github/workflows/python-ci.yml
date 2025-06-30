@@ -84,6 +84,7 @@ jobs:
         if [ "${RUNNER_OS}" = "Windows" ]; then
           file=poetry.lock.win
         else
+          # macOS uses the Linux lockfile
           file=poetry.lock.linux
         fi
         echo "file=$file" >> "$GITHUB_OUTPUT"
@@ -161,7 +162,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.11', '3.12']
 
     steps:
@@ -177,6 +178,7 @@ jobs:
         if [ "${RUNNER_OS}" = "Windows" ]; then
           file=poetry.lock.win
         else
+          # macOS uses the Linux lockfile
           file=poetry.lock.linux
         fi
         echo "file=$file" >> "$GITHUB_OUTPUT"
@@ -222,11 +224,30 @@ jobs:
       run: node -e "console.log('cua smoke')"
 
     - name: Smoke test GeneCoder GUI
-      run: timeout 10 python -m genecoder.flet_app || true
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        if command -v timeout >/dev/null 2>&1; then
+          timeout 10 python -m genecoder.flet_app || true
+        elif command -v gtimeout >/dev/null 2>&1; then
+          gtimeout 10 python -m genecoder.flet_app || true
+        else
+          python -m genecoder.flet_app &
+          PID=$!
+          sleep 10
+          kill $PID || true
+        fi
 
     - name: Smoke test GeneCoder web server
+      shell: bash
       run: |
-        timeout 10 poetry run uvicorn web.main:app --port 8000 &
+        if command -v timeout >/dev/null 2>&1; then
+          timeout 10 poetry run uvicorn web.main:app --port 8000 &
+        elif command -v gtimeout >/dev/null 2>&1; then
+          gtimeout 10 poetry run uvicorn web.main:app --port 8000 &
+        else
+          poetry run uvicorn web.main:app --port 8000 &
+        fi
         SERVER_PID=$!
         sleep 5
         kill $SERVER_PID
