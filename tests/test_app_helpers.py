@@ -1,7 +1,8 @@
 import re
 import pytest
 
-from genecoder.app_helpers import EncodeOptions, perform_encoding, perform_decoding
+from genecoder.options import EncodeOptions
+from genecoder.app_helpers import perform_encoding, perform_decoding
 from genecoder.reed_solomon_codec import _HAS_REEDSOLO
 
 

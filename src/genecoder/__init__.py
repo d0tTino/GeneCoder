@@ -50,8 +50,8 @@ def __getattr__(name: str) -> Any:
         })
         return globals()[name]
     if name in _LAZY_ATTRS:
+        from .options import EncodeOptions
         from .app_helpers import (
-            EncodeOptions,
             EncodeResult,
             DecodeResult,
             perform_encoding,
