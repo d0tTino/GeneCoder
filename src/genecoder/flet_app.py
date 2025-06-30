@@ -19,7 +19,6 @@ import flet as ft
 import os
 import asyncio  # For asynchronous operations
 import json
-from pathlib import Path
 import logging
 from typing import Optional, Any
 try:
@@ -38,17 +37,15 @@ from genecoder.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
 from genecoder.helix_view import show_helix
 from genecoder.formats import from_fasta
+from genecoder.glossary_tooltips import load_glossary, wrap_glossary_terms
 
 
 logger = logging.getLogger(__name__)
 
-GLOSSARY: dict[str, str] = {}
 try:
-    gloss_path = Path(__file__).resolve().parent.parent / "docs" / "glossary.json"
-    with open(gloss_path, "r", encoding="utf-8") as f:
-        GLOSSARY = json.load(f)
+    GLOSSARY: dict[str, str] = load_glossary()
 except Exception:
-    pass
+    GLOSSARY = {}
 
 
 encode_fasta_data_to_save_ref: ft.Ref[Optional[str]] = ft.Ref[Optional[str]]()
@@ -149,7 +146,7 @@ def main(page: ft.Page) -> None:
 
 
     window_size_input: ft.TextField = ft.TextField(
-        label="GC Window Size",
+        label=wrap_glossary_terms("GC Window Size", GLOSSARY),
         value="50",
         width=120,
         keyboard_type=ft.KeyboardType.NUMBER,
@@ -162,7 +159,7 @@ def main(page: ft.Page) -> None:
         keyboard_type=ft.KeyboardType.NUMBER,
     )
     min_homopolymer_input: ft.TextField = ft.TextField(
-        label="Min Homopolymer Length",
+        label=wrap_glossary_terms("Min Homopolymer Length", GLOSSARY),
         value="4",
         width=180,
         keyboard_type=ft.KeyboardType.NUMBER,
@@ -253,7 +250,7 @@ def main(page: ft.Page) -> None:
         page.update()
 
     fec_dropdown: ft.Dropdown = ft.Dropdown(
-        label="FEC Method",
+        label=wrap_glossary_terms("FEC Method", GLOSSARY),
         options=[
             ft.dropdown.Option("None"),
             ft.dropdown.Option("Triple-Repeat"),
@@ -272,9 +269,17 @@ def main(page: ft.Page) -> None:
     encode_dna_len_text: ft.Text = ft.Text("Encoded DNA length: - nucleotides")
     encode_comp_ratio_text: ft.Text = ft.Text("Compression ratio: -")
     encode_bits_per_nt_text: ft.Text = ft.Text("Bits per nucleotide: - bits/nt")
-    encode_actual_gc_text: ft.Text = ft.Text("Actual GC content (payload): -")
-    encode_actual_homopolymer_text: ft.Text = ft.Text(
-        "Actual max homopolymer (payload): -"
+    encode_actual_gc_value: ft.Text = ft.Text("-")
+    encode_actual_gc_text: ft.Row = wrap_glossary_terms(
+        "Actual GC content (payload): ", GLOSSARY
+    )
+    encode_actual_gc_text.controls.append(encode_actual_gc_value)
+    encode_actual_homopolymer_value: ft.Text = ft.Text("-")
+    encode_actual_homopolymer_text: ft.Row = wrap_glossary_terms(
+        "Actual max homopolymer (payload): ", GLOSSARY
+    )
+    encode_actual_homopolymer_text.controls.append(
+        encode_actual_homopolymer_value
     )
     encode_progress_ring: ft.ProgressRing = ft.ProgressRing(
         visible=False, width=20, height=20
@@ -346,8 +351,8 @@ def main(page: ft.Page) -> None:
         encode_dna_len_text.value = "Encoded DNA length: - nucleotides"
         encode_comp_ratio_text.value = "Compression ratio: -"
         encode_bits_per_nt_text.value = "Bits per nucleotide: - bits/nt"
-        encode_actual_gc_text.value = "Actual GC content (payload): -"
-        encode_actual_homopolymer_text.value = "Actual max homopolymer (payload): -"
+        encode_actual_gc_value.value = "-"
+        encode_actual_homopolymer_value.value = "-"
         encode_dna_snippet_text.value = ""
         encode_save_button.visible = False
         encode_manifest_save_button.visible = False
@@ -429,15 +434,11 @@ def main(page: ft.Page) -> None:
             )
 
             if options.method == "GC-Balanced":
-                encode_actual_gc_text.value = (
-                    f"Actual GC content (payload, pre-FEC): {metrics['actual_gc']:.2%}"
-                )
-                encode_actual_homopolymer_text.value = f"Actual max homopolymer (payload, pre-FEC): {metrics['max_homopolymer']}"
+                encode_actual_gc_value.value = f"{metrics['actual_gc']:.2%}"
+                encode_actual_homopolymer_value.value = f"{metrics['max_homopolymer']}"
             else:
-                encode_actual_gc_text.value = "Actual GC content (payload): N/A"
-                encode_actual_homopolymer_text.value = (
-                    "Actual max homopolymer (payload): N/A"
-                )
+                encode_actual_gc_value.value = "N/A"
+                encode_actual_homopolymer_value.value = "N/A"
 
             codeword_hist_image.src_base64 = result.plots.get("codeword_hist")
             nucleotide_freq_image.src_base64 = result.plots.get("nucleotide_freq")
@@ -761,8 +762,8 @@ def main(page: ft.Page) -> None:
             ),
             nucleotide_freq_image,
             ft.Divider(),  # New divider
-            ft.Text(
-                "Sequence GC & Homopolymer Analysis:", weight=ft.FontWeight.BOLD
+            wrap_glossary_terms(
+                "Sequence GC & Homopolymer Analysis:", GLOSSARY
             ),  # New title
             ft.Row(
                 [
