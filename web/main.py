@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+import os
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi import HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pathlib import Path
 from pydantic import BaseModel
 from dataclasses import asdict
@@ -23,7 +25,26 @@ from genecoder.report import (
 )
 from typing import cast
 
+API_TOKEN = os.getenv("GENECODER_API_TOKEN", "change-me")
+CORS_ORIGINS = os.getenv("GENECODER_CORS_ORIGINS", "*")
+security = HTTPBearer(auto_error=False)
+
+
+def verify_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> None:
+    if credentials is None or credentials.credentials != API_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid or missing token")
+
 app = FastAPI(title="GeneCoder Web")
+origins = [origin.strip() for origin in CORS_ORIGINS.split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 static_dir = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -91,7 +112,10 @@ class DecodeAIRequest(BaseModel):  # type: ignore[misc]
     info: dict[str, object]
 
 @app.post("/encode")  # type: ignore[misc]
-async def encode(req: EncodeRequest) -> dict[str, object]:
+async def encode(
+    req: EncodeRequest,
+    _: None = Depends(verify_token),
+) -> dict[str, object]:
     data_bytes = base64.b64decode(req.data.encode("utf-8"), validate=True)
     opts = EncodeOptions(**req.options.model_dump())
     result = await asyncio.to_thread(perform_encoding, data_bytes, opts)
@@ -99,7 +123,10 @@ async def encode(req: EncodeRequest) -> dict[str, object]:
 
 
 @app.post("/decode")  # type: ignore[misc]
-async def decode(req: DecodeRequest) -> dict[str, object]:
+async def decode(
+    req: DecodeRequest,
+    _: None = Depends(verify_token),
+) -> dict[str, object]:
     result = await asyncio.to_thread(
         perform_decoding, req.fasta_data, req.alphabet
     )

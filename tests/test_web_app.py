@@ -6,9 +6,15 @@ from fastapi.testclient import TestClient
 
 import base64
 
-from web.main import app, index_path, helix_index_path
+import web.main as main
 
+main.API_TOKEN = "test-token"
+app = main.app
+index_path = main.index_path
+helix_index_path = main.helix_index_path
 client = TestClient(app)
+
+AUTH_HEADERS = {"Authorization": f"Bearer {main.API_TOKEN}"}
 
 
 def test_root_route_serves_index_html() -> None:
@@ -37,7 +43,11 @@ def test_helix_ui_static() -> None:
 
 def test_encode_endpoint() -> None:
     payload = base64.b64encode(b"web app").decode()
-    r = client.post("/encode", json={"data": payload, "options": {"method": "Base-4 Direct"}})
+    r = client.post(
+        "/encode",
+        headers=AUTH_HEADERS,
+        json={"data": payload, "options": {"method": "Base-4 Direct"}},
+    )
     assert r.status_code == 200
     data = r.json()
     assert set(data) >= {"fasta", "encoded_dna", "metrics", "info_messages"}
@@ -45,9 +55,13 @@ def test_encode_endpoint() -> None:
 
 def test_decode_endpoint() -> None:
     payload = base64.b64encode(b"roundtrip").decode()
-    r = client.post("/encode", json={"data": payload, "options": {"method": "Base-4 Direct"}})
+    r = client.post(
+        "/encode",
+        headers=AUTH_HEADERS,
+        json={"data": payload, "options": {"method": "Base-4 Direct"}},
+    )
     fasta = r.json()["fasta"]
-    r2 = client.post("/decode", json={"fasta_data": fasta})
+    r2 = client.post("/decode", headers=AUTH_HEADERS, json={"fasta_data": fasta})
     assert r2.status_code == 200
     decoded = base64.b64decode(r2.json()["decoded_bytes"])
     assert decoded == b"roundtrip"
