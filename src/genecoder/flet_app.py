@@ -35,7 +35,7 @@ from genecoder.plugins import load_plugins
 from genecoder.manifest import generate_manifest
 from genecoder.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
-from genecoder.helix_view import show_helix
+from genecoder.helix_view import show_helix_ui
 from genecoder.formats import from_fasta
 from genecoder.glossary_tooltips import load_glossary, wrap_glossary_terms
 
@@ -880,13 +880,20 @@ def main(page: ft.Page) -> None:
                 fps_slider,
             ])
         )
+        colors = {
+            "A": int(helix_color_a.value.lstrip("#"), 16),
+            "C": int(helix_color_c.value.lstrip("#"), 16),
+            "G": int(helix_color_g.value.lstrip("#"), 16),
+            "T": int(helix_color_t.value.lstrip("#"), 16),
+        }
+
         helix_container.controls.append(
-            show_helix(
+            show_helix_ui(
                 dna_seq,
                 animate=animate_checkbox.value,
                 zoom=zoom_slider.value,
+                colors=colors,
                 fps=fps_slider.value,
-                ws_url="ws://localhost:8765" if ws_clients else None,
             )
         )
         page.update()
