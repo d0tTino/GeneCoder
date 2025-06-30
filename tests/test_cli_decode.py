@@ -2,12 +2,17 @@ import argparse
 import base64
 import pytest
 
+from pathlib import Path
+from tests.test_cli import run_cli_command
+
 from genecoder.cli import (
     build_encoding_options,
     build_decoding_options,
     run_encoding_pipeline,
     run_decoding_pipeline,
 )
+from genecoder.encoders import encode_base4_direct
+from genecoder.formats import to_fasta
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder import plugins
 
@@ -56,3 +61,33 @@ def test_run_decoding_invalid_fec_info_json() -> None:
     dec_opts = _decoding_opts()
     with pytest.raises(ValueError, match="Invalid 'fec_info'"):
         run_decoding_pipeline(dna, header, dec_opts, "in.bin")
+
+
+def test_cli_decode_duplicate_output_names(tmp_path: Path) -> None:
+    dna1 = encode_base4_direct(b"one")
+    dna2 = encode_base4_direct(b"two")
+    header = "method=base4_direct input_file=dup.bin"
+    f1 = tmp_path / "a.fasta"
+    f1.write_text(to_fasta(dna1, header))
+    f2 = tmp_path / "b.fasta"
+    f2.write_text(to_fasta(dna2, header))
+
+    res = run_cli_command(
+        [
+            "decode",
+            "--input-files",
+            str(f1),
+            str(f2),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--auto-ext",
+        ]
+    )
+    assert res.returncode == 0, res.stderr
+
+    out1 = tmp_path / "dup.bin"
+    out2 = tmp_path / "dup_1.bin"
+    assert out1.read_bytes() == b"one"
+    assert out2.read_bytes() == b"two"
