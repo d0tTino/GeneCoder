@@ -20,8 +20,12 @@ def to_fasta(dna_sequence: str, header: str, line_width: int = 60) -> str:
         dna_sequence (str): The DNA sequence string (e.g., "ATGC...").
         header (str): The header string for the FASTA sequence, which will be
             prefixed with ">". Do not include ">" in this argument.
-        line_width (int): The maximum number of characters per line for the 
+        line_width (int): The maximum number of characters per line for the
             sequence data. Defaults to 60. Must be a positive integer.
+        
+        The header is stripped of surrounding whitespace and validated to not
+        contain newlines or the ``">"`` character. Non-printable characters are
+        rejected.
 
     Returns:
         str: A string representing the DNA sequence in FASTA format.
@@ -30,12 +34,19 @@ def to_fasta(dna_sequence: str, header: str, line_width: int = 60) -> str:
              line followed by a newline.
 
     Raises:
-        ValueError: If `line_width` is not a positive integer.
+        ValueError: If ``line_width`` is not a positive integer or the header
+        contains unsafe characters.
     """
     if not isinstance(line_width, int) or line_width <= 0:
         raise ValueError("line_width must be a positive integer.")
 
-    fasta_string = f">{header}\n"
+    sanitized_header = header.strip()
+    if not sanitized_header or ">" in sanitized_header or any(c in sanitized_header for c in "\n\r"):
+        raise ValueError("Invalid FASTA header")
+    if not sanitized_header.isprintable():
+        raise ValueError("Invalid FASTA header")
+
+    fasta_string = f">{sanitized_header}\n"
     
     if not dna_sequence: # Handle empty sequence explicitly for clarity
         return fasta_string

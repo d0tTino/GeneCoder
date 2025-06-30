@@ -421,3 +421,13 @@ def test_decode_invalid_chunk_size(temp_dir: Path, chunk_size: int) -> None:
     assert result.returncode != 0
     assert "chunk-size" in result.stderr.lower()
 
+
+def test_to_fasta_invalid_header_newline():
+    with pytest.raises(ValueError):
+        to_fasta("ATGC", "bad\nheader")
+
+
+def test_to_fasta_invalid_header_gt():
+    with pytest.raises(ValueError):
+        to_fasta("ATGC", "bad>header")
+
