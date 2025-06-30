@@ -39,6 +39,7 @@ poetry install --no-interaction
 * `--output-file` – output path for a single input file.
 * `--output-dir` – directory for batch operations.
 * `--fec` – optional [FEC](glossary.md#forward-error-correction-fec) method (`triple_repeat`, `hamming_7_4`, `reed_solomon`, `ldpc`, `fountain`).
+* `--auto-ext` – save encoded files with a `.dna` suffix and decode back to the original extension.
 
 See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
@@ -128,18 +129,20 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    Set the environment variable `GENECODER_SIM_SEED` to an integer to make the
    simulated substitutions deterministic across runs.
 
-11. **Encode, corrupt and decode a file**
+11. **Encode, corrupt and decode a file with automatic extensions**
 
    ```bash
-   genecoder encode --input-files hello.jpg --method base4_direct --output-file hello.dna
-   genecoder simulate-errors hello.dna --sub-rate 0.01 --output-file corrupted.dna
-   genecoder decode corrupted.dna --output-file hello_out.jpg
+   genecoder encode --input-files hello.jpg --output-dir encoded \
+       --method base4_direct --auto-ext
+   genecoder simulate-errors encoded/hello.jpg.dna --sub-rate 0.01 \
+       --output-file corrupted.dna
+   genecoder decode corrupted.dna --output-dir decoded --auto-ext
    ```
 
    Verify the round-trip checksum:
 
    ```bash
-   sha256sum hello.jpg hello_out.jpg
+   sha256sum hello.jpg decoded/hello.jpg
    ```
 
    Add `--checksum` to the encode and decode commands for automatic validation.
