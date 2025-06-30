@@ -7,6 +7,7 @@ The helpers here form part of the integrated pipeline described in
 from __future__ import annotations
 
 from dataclasses import dataclass
+from .options import EncodeOptions
 from typing import Optional, Dict, List, Tuple, cast
 
 from .encoders import (
@@ -38,20 +39,6 @@ import base64
 import json
 import re
 
-
-@dataclass
-class EncodeOptions:
-    method: str
-    add_parity: bool = False
-    k_value: int = 7
-    fec_method: str = "None"  # "None", "Triple-Repeat", "Hamming(7,4)"
-    gc_min: float = 0.45
-    gc_max: float = 0.55
-    max_homopolymer: int = 3
-    window_size: int = 50
-    step_size: int = 10
-    min_homopolymer_len: int = 4
-    alphabet: str = "base4"
 
 
 @dataclass

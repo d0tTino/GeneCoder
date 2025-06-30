@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+import logging
 import re
 from typing import Dict, List, cast
 
@@ -15,8 +16,12 @@ _GLOSSARY_PATH = Path(__file__).resolve().parent.parent / "docs" / "glossary.jso
 
 def load_glossary() -> Dict[str, str]:
     """Load glossary terms from the project's ``glossary.json`` file."""
-    with open(_GLOSSARY_PATH, "r", encoding="utf-8") as f:
-        return cast(Dict[str, str], json.load(f))
+    try:
+        with open(_GLOSSARY_PATH, "r", encoding="utf-8") as f:
+            return cast(Dict[str, str], json.load(f))
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        logging.warning("Could not load glossary file %s: %s", _GLOSSARY_PATH, exc)
+        return {}
 
 
 def wrap_glossary_terms(text: str, glossary: Dict[str, str]) -> ft.Row:

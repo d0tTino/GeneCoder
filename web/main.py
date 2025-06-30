@@ -8,7 +8,8 @@ from dataclasses import asdict
 import asyncio
 import base64
 
-from genecoder import EncodeOptions, perform_encoding, perform_decoding
+from genecoder.options import EncodeOptions
+from genecoder import perform_encoding, perform_decoding
 from genecoder.formats import from_fasta
 from genecoder.encoders import calculate_gc_content
 from genecoder.utils import get_max_homopolymer_length
