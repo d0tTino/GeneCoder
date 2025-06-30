@@ -6,11 +6,15 @@ from ..plugins import SIMULATOR_REGISTRY
 from .base import BaseSimulator
 from .illumina import IlluminaChannel
 from .adv_nanopore import AdvancedNanoporeChannel
+from .replication import ReplicationSimulator
+from .transcription import TranscriptionSimulator
 
 __all__ = [
     "BaseSimulator",
     "IlluminaChannel",
     "AdvancedNanoporeChannel",
+    "ReplicationSimulator",
+    "TranscriptionSimulator",
     "simulate_reads",
 ]
 
