@@ -54,6 +54,10 @@ def build_parser() -> argparse.ArgumentParser:
     analyze = _analyze
     report = _report
 
+    # Load plugins here so that dynamically registered codecs, FEC backends and
+    # simulators are available during subcommand registration.
+    load_plugins()
+
     parser = argparse.ArgumentParser(
         description="GeneCoder: Encode and decode data into simulated DNA sequences."
     )
@@ -118,7 +122,6 @@ def _handle_sim_errors(args: argparse.Namespace) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    load_plugins()
     parser = build_parser()
     args = parser.parse_args(argv)
 
