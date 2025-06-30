@@ -8,6 +8,7 @@ from .illumina import IlluminaChannel
 from .adv_nanopore import AdvancedNanoporeChannel
 from .replication import ReplicationSimulator
 from .transcription import TranscriptionSimulator
+from .translation import TranslationSimulator
 
 __all__ = [
     "BaseSimulator",
@@ -15,6 +16,7 @@ __all__ = [
     "AdvancedNanoporeChannel",
     "ReplicationSimulator",
     "TranscriptionSimulator",
+    "TranslationSimulator",
     "simulate_reads",
 ]
 
