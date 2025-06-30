@@ -1,7 +1,8 @@
 """mRNA translation simulator stub."""
 from __future__ import annotations
 
-from typing import Callable, Sequence
+from typing import Callable, ClassVar
+from dataclasses import dataclass
 
 from .base import BaseSimulator
 from ..random_utils import make_rng
@@ -11,10 +12,11 @@ from ..channels.base import BaseChannel
 __all__ = ["TranslationSimulator", "register"]
 
 
+@dataclass
 class TranslationSimulator(BaseSimulator):
     """Simplified translation model converting RNA to amino acids."""
 
-    CODON_TABLE: dict[str, str] = {
+    CODON_TABLE: ClassVar[dict[str, str]] = {
         # Phenylalanine
         "UUU": "F",
         "UUC": "F",
@@ -101,22 +103,10 @@ class TranslationSimulator(BaseSimulator):
         "UGA": "*",
     }
 
-    def __init__(
-        self,
-        substitution_rate: float = 1e-4,
-        insertion_rate: float = 1e-5,
-        deletion_rate: float = 1e-5,
-        coverage: int = 1,
-        quality_profile: Sequence[float] | None = None,
-    ) -> None:
-        super().__init__(
-            substitution_rate=substitution_rate,
-            insertion_rate=insertion_rate,
-            deletion_rate=deletion_rate,
-            coverage=coverage,
-            read_length=0,
-            quality_profile=quality_profile,
-        )
+    substitution_rate: float = 1e-4
+    insertion_rate: float = 1e-5
+    deletion_rate: float = 1e-5
+    read_length: int = 0
 
     def simulate(self, sequence: str) -> str:
         """Return the translated peptide from ``sequence``."""

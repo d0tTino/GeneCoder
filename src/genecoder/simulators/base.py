@@ -2,38 +2,26 @@
 from __future__ import annotations
 
 from typing import Sequence
+from dataclasses import dataclass
+from abc import ABC, abstractmethod
 
 
 __all__ = ["BaseSimulator"]
 
 
-class BaseSimulator:
+@dataclass
+class BaseSimulator(ABC):
     """Base class for read simulators with simple error settings."""
+    substitution_rate: float = 0.0
+    insertion_rate: float = 0.0
+    deletion_rate: float = 0.0
+    coverage: int = 1
+    read_length: int = 150
+    quality_profile: Sequence[float] | None = None
 
-    substitution_rate: float
-    insertion_rate: float
-    deletion_rate: float
-    coverage: int
-    read_length: int
-    quality_profile: tuple[float, ...] | None
-
-    def __init__(
-        self,
-        substitution_rate: float = 0.0,
-        insertion_rate: float = 0.0,
-        deletion_rate: float = 0.0,
-        coverage: int = 1,
-        read_length: int = 150,
-        quality_profile: Sequence[float] | None = None,
-    ) -> None:
-        self.substitution_rate = substitution_rate
-        self.insertion_rate = insertion_rate
-        self.deletion_rate = deletion_rate
-        self.coverage = coverage
-        self.read_length = read_length
-        self.quality_profile = (
-            tuple(quality_profile) if quality_profile is not None else None
-        )
+    def __post_init__(self) -> None:
+        if self.quality_profile is not None:
+            self.quality_profile = tuple(self.quality_profile)
 
     def get_coverage(self, sequence: str) -> int:
         """Hook returning desired coverage for ``sequence``."""
@@ -47,13 +35,15 @@ class BaseSimulator:
         """Hook returning per-base quality values for ``sequence``."""
         if self.quality_profile is None:
             return None
-        if len(self.quality_profile) >= length:
-            return self.quality_profile[:length]
-        if not self.quality_profile:
+        profile = tuple(self.quality_profile)
+        if len(profile) >= length:
+            return profile[:length]
+        if not profile:
             return None
-        tail = self.quality_profile[-1]
-        return self.quality_profile + (tail,) * (length - len(self.quality_profile))
+        tail = profile[-1]
+        return profile + (tail,) * (length - len(profile))
 
+    @abstractmethod
     def simulate(self, sequence: str) -> str:  # pragma: no cover - abstract
         """Return a possibly corrupted version of ``sequence``."""
         raise NotImplementedError
