@@ -39,9 +39,9 @@ def _get_header_filename(file_path: str) -> str | None:
         with open(file_path, "r", encoding="utf-8") as f_in:
             for line in f_in:
                 if line.startswith(">"):
-                    match = re.search(r"input_file=([^ ]+)", line)
+                    match = re.search(r"input_file=([^\s]+)", line)
                     if match:
-                        return os.path.basename(match.group(1))
+                        return os.path.basename(match.group(1).strip())
                     return None
     except OSError:
         logger.debug("Could not read header from %s", file_path)
@@ -281,10 +281,23 @@ def process_single_decode(
                 raise SystemExit(1)
 
         os.makedirs(os.path.dirname(output_file_path) or ".", exist_ok=True)
-        with open(output_file_path, "wb") as f_out:
+
+        final_path = output_file_path
+        if os.path.exists(final_path):
+            base, ext = os.path.splitext(final_path)
+            i = 1
+            candidate = f"{base}_{i}{ext}"
+            while os.path.exists(candidate):
+                i += 1
+                candidate = f"{base}_{i}{ext}"
+            final_path = candidate
+
+        with open(final_path, "wb") as f_out:
             f_out.write(final_decoded_data)
 
-        logger.info(f"Successfully decoded '{input_file_path}' to '{output_file_path}'.")
+        logger.info(
+            f"Successfully decoded '{input_file_path}' to '{final_path}'."
+        )
 
     except FileNotFoundError:
         logger.error(f"Error for {input_file_path}: Input file not found.")
@@ -451,6 +464,7 @@ def _handle_command(args: argparse.Namespace) -> None:
         )
 
     tasks = []
+    existing_outputs: set[str] = set()
     for input_file_path in args.input_files:
         output_file_path = ""
         if args.output_file and num_input_files == 1:
@@ -474,6 +488,15 @@ def _handle_command(args: argparse.Namespace) -> None:
                 f"Error determining output path for decoding {input_file_path}. Please check arguments."
             )
             continue
+
+        base, ext = os.path.splitext(output_file_path)
+        candidate = output_file_path
+        i = 1
+        while candidate in existing_outputs or os.path.exists(candidate):
+            candidate = f"{base}_{i}{ext}"
+            i += 1
+        output_file_path = candidate
+        existing_outputs.add(output_file_path)
         tasks.append((input_file_path, output_file_path, args))
 
     if num_input_files > 1:
