@@ -18,3 +18,8 @@ repos:
         entry: pytest -q
         language: system
         pass_filenames: false
+      - id: check-glossary-terms
+        name: check glossary terms
+        entry: python scripts/check_glossary_terms.py
+        language: python
+        pass_filenames: false

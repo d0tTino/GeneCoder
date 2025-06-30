@@ -47,6 +47,10 @@ pre-commit run --files path/to/file.py
 
 The hook also runs automatically on each commit if installed.
 
+An additional `check-glossary-terms` hook verifies that every term in
+`docs/glossary.json` appears in at least one Markdown file. The commit
+will fail if any terms are missing.
+
 ## Running the Test Suite
 
 Unit tests use `pytest`. Install the pinned dependencies and run:
