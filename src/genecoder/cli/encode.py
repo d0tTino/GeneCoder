@@ -509,6 +509,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         help="Resume a previous interrupted streaming encode.",
     )
     parser.add_argument(
+        "--auto-ext",
+        action="store_true",
+        help="Automatically append a .dna suffix to output files.",
+    )
+    parser.add_argument(
         "--export-csv",
         type=str,
         help="Path to write a Twist/IDT order CSV with Name and Sequence columns.",
@@ -544,9 +549,14 @@ def _handle_command(args: argparse.Namespace) -> None:
         output_file_path = ""
         if args.output_file and num_input_files == 1:
             output_file_path = args.output_file
+            if args.auto_ext and not output_file_path.endswith(".dna"):
+                output_file_path += ".dna"
         elif args.output_dir:
             base_name = os.path.basename(input_file_path)
-            output_file_name = base_name + ".fasta"
+            if args.auto_ext:
+                output_file_name = base_name + ".dna"
+            else:
+                output_file_name = base_name + ".fasta"
             output_file_path = os.path.join(args.output_dir, output_file_name)
         else:
             logger.error(f"Error determining output path for {input_file_path}. Please check arguments.")

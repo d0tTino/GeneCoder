@@ -33,6 +33,21 @@ def _ensure_security_loaded() -> None:
 logger = logging.getLogger(__name__)
 
 
+def _get_header_filename(file_path: str) -> str | None:
+    """Return the original filename from the FASTA header if available."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as f_in:
+            for line in f_in:
+                if line.startswith(">"):
+                    match = re.search(r"input_file=([^ ]+)", line)
+                    if match:
+                        return os.path.basename(match.group(1))
+                    return None
+    except OSError:
+        logger.debug("Could not read header from %s", file_path)
+    return None
+
+
 @dataclass
 class DecodingOptions:
     method: str
@@ -368,6 +383,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         help="Resume a previous interrupted streaming decode.",
     )
     parser.add_argument(
+        "--auto-ext",
+        action="store_true",
+        help="Automatically remove .dna and restore the original extension.",
+    )
+    parser.add_argument(
         "--simulate-errors",
         type=float,
         default=0.0,
@@ -435,11 +455,20 @@ def _handle_command(args: argparse.Namespace) -> None:
         output_file_path = ""
         if args.output_file and num_input_files == 1:
             output_file_path = args.output_file
+            if args.auto_ext:
+                if output_file_path.endswith(".dna"):
+                    output_file_path = output_file_path[:-4]
         elif args.output_dir:
             base_name = os.path.basename(input_file_path)
-            name_part, _ = os.path.splitext(base_name)
-            output_file_name = name_part + "_decoded.bin"
-            output_file_path = os.path.join(args.output_dir, output_file_name)
+            if args.auto_ext:
+                orig_name = _get_header_filename(input_file_path) or base_name
+                if orig_name.endswith(".dna"):
+                    orig_name = orig_name[:-4]
+                output_file_path = os.path.join(args.output_dir, orig_name)
+            else:
+                name_part, _ = os.path.splitext(base_name)
+                output_file_name = name_part + "_decoded.bin"
+                output_file_path = os.path.join(args.output_dir, output_file_name)
         else:
             logger.error(
                 f"Error determining output path for decoding {input_file_path}. Please check arguments."
