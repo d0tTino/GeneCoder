@@ -18,6 +18,7 @@ def _simulate_homopolymer_errors(
     substitution_rate: float,
     insertion_rate: float,
     deletion_rate: float,
+    homopolymer_factor: float,
     rng: random.Random,
 ) -> str:
     result: list[str] = []
@@ -33,8 +34,8 @@ def _simulate_homopolymer_errors(
         ins_prob = insertion_rate
         del_prob = deletion_rate
         if run >= 3:
-            ins_prob *= 2
-            del_prob *= 2
+            ins_prob *= homopolymer_factor
+            del_prob *= homopolymer_factor
         if rng.random() < del_prob:
             continue
         if rng.random() < sub_prob:
@@ -53,6 +54,7 @@ class AdvancedNanoporeChannel(BaseSimulator):
         substitution_rate: float = 0.02,
         insertion_rate: float = 0.04,
         deletion_rate: float = 0.04,
+        homopolymer_factor: float = 2.0,
         coverage: int = 1,
         read_length: int = 500,
         quality_profile: Sequence[float] | None = None,
@@ -65,6 +67,7 @@ class AdvancedNanoporeChannel(BaseSimulator):
             read_length=read_length,
             quality_profile=quality_profile,
         )
+        self.homopolymer_factor = homopolymer_factor
 
     def simulate(self, sequence: str) -> str:
         rng = make_rng()
@@ -75,6 +78,7 @@ class AdvancedNanoporeChannel(BaseSimulator):
             substitution_rate=self.substitution_rate,
             insertion_rate=self.insertion_rate,
             deletion_rate=self.deletion_rate,
+            homopolymer_factor=self.homopolymer_factor,
             rng=rng,
         )
 

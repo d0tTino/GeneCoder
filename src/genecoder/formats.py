@@ -5,7 +5,7 @@ sequences, where nucleotides or amino acids are represented using single-letter
 codes. A sequence in FASTA format consists of a single-line description (header),
 followed by lines of sequence data.
 """
-from typing import List, Tuple  # For type hints
+from typing import List, Tuple, Sequence  # For type hints
 
 # The set of valid characters for FASTA sequence lines.
 # Valid characters are the uppercase ASCII letters ``A``-``Z``, the digits
@@ -126,5 +126,58 @@ def from_fasta(fasta_content: str) -> List[Tuple[str, str]]:
     # After the loop, save the last processed record, if any.
     if current_header is not None:
         records.append((current_header, "".join(current_sequence_parts)))
+
+    return records
+
+
+def to_fastq(
+    dna_sequence: str,
+    header: str,
+    qualities: Sequence[int] | str,
+) -> str:
+    """Formats a DNA sequence and qualities into FASTQ format."""
+    sanitized_header = header.strip()
+    if not sanitized_header or "@" in sanitized_header or any(c in sanitized_header for c in "\n\r"):
+        raise ValueError("Invalid FASTQ header")
+    if not sanitized_header.isprintable():
+        raise ValueError("Invalid FASTQ header")
+
+    if isinstance(qualities, str):
+        qual_str = qualities
+    else:
+        if len(qualities) != len(dna_sequence):
+            raise ValueError("Quality scores length must match sequence length")
+        qual_str = "".join(chr(q + 33) for q in qualities)
+
+    if len(qual_str) != len(dna_sequence):
+        raise ValueError("Quality string length must match sequence length")
+
+    return f"@{sanitized_header}\n{dna_sequence}\n+\n{qual_str}\n"
+
+
+def from_fastq(fastq_content: str) -> List[Tuple[str, str, str]]:
+    """Parses content in FASTQ format and extracts sequence records."""
+    records: List[Tuple[str, str, str]] = []
+    lines = [ln.strip() for ln in fastq_content.splitlines() if ln.strip()]
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if not line.startswith("@"):  # Skip non-record lines before first header
+            i += 1
+            continue
+        if i + 3 >= len(lines):
+            break
+        header = line[1:].strip()
+        seq = lines[i + 1].strip()
+        plus = lines[i + 2].strip()
+        qual = lines[i + 3].strip()
+        if not plus.startswith("+"):
+            raise ValueError("Invalid FASTQ record: missing '+' line")
+        if len(seq) != len(qual):
+            raise ValueError("Quality string length does not match sequence length")
+        if any(ch.islower() for ch in seq) or not set(seq).issubset(FASTA_ALLOWED_CHARS):
+            raise ValueError("Invalid characters in FASTQ sequence line")
+        records.append((header, seq, qual))
+        i += 4
 
     return records

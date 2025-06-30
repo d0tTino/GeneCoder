@@ -364,6 +364,8 @@ def test_simulate_errors_command(temp_dir: Path, small_fasta_file: Path):
         str(small_fasta_file),
         "--output-file",
         str(out_file),
+        "--simulator",
+        "illumina_profile",
         "--sub-prob",
         "0.5",
         "--seed",
