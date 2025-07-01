@@ -265,3 +265,14 @@ sequence in 3D with orbit controls, overlays for
 **pulses**, GC gauges and homopolymer bars along the helix. An *Animate* toggle
 and fullscreen button make the visualization interactive. The frontend lives
 under `web/helix-ui` and is loaded via a WebView in the GUI.
+
+## Web API
+
+Start the FastAPI server for browser-based access:
+
+```bash
+uvicorn web.main:app --reload
+```
+
+Rate limiting depends on Redis. Simply leave `GENECODER_REDIS_URL` unset to run
+without Redis; the API will work normally but requests won't be limited.
