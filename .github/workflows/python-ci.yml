@@ -154,6 +154,18 @@ jobs:
     - name: Run mypy
       run: mypy --config-file mypy.ini src --show-error-codes --no-error-summary
 
+  glossary:
+    needs: [changes, check-comments, lint]
+    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Check glossary terms
+      run: python scripts/check_glossary_terms.py
+
   build:
     needs: [changes, check-comments, lint]
     if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
