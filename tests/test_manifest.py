@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 from genecoder.manifest import generate_manifest
 from genecoder.cli import EncodingOptions
+from pathlib import Path
+import os
 
 
 def test_generate_manifest_basic() -> None:
@@ -18,8 +20,9 @@ def test_generate_manifest_basic() -> None:
         max_homopolymer=3,
     )
     metrics = {"dna_length": 10}
-    manifest = generate_manifest("file.txt", opts, metrics)
-    assert manifest["file"] == "file.txt"
+    file_path = Path("dir/sub") / "file.txt"
+    manifest = generate_manifest(file_path, opts, metrics)
+    assert manifest["file"] == os.path.basename(file_path.as_posix())
     assert manifest["encoding_parameters"]["method"] == "base4_direct"
     assert manifest["metrics"]["dna_length"] == 10
 
@@ -36,8 +39,9 @@ def test_generate_manifest_from_mapping() -> None:
         "max_homopolymer": 3,
     }
     metrics = {"dna_length": 20, "num_records": 1}
-    manifest = generate_manifest("data.bin", opts, metrics)
-    assert manifest["file"] == "data.bin"
+    file_path = Path("dir") / "data.bin"
+    manifest = generate_manifest(file_path, opts, metrics)
+    assert manifest["file"] == os.path.basename(file_path.as_posix())
     assert manifest["encoding_parameters"]["method"] == "huffman"
     assert manifest["metrics"]["num_records"] == 1
 

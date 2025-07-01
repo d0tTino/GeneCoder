@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
 from typing import Any, Mapping
+from pathlib import Path
+import os
 
 REQUIRED_ENCODING_KEYS: set[str] = {"method"}
 
 
 def generate_manifest(
-    file_name: str,
+    file_name: str | os.PathLike[str],
     encoding_params: Any,
     metrics: Mapping[str, Any],
 ) -> dict[str, Any]:
@@ -30,8 +32,10 @@ def generate_manifest(
         missing = ", ".join(sorted(missing_keys))
         raise ValueError(f"Missing required encoding parameter(s): {missing}")
 
+    file_basename = os.path.basename(Path(file_name).as_posix())
+
     return {
-        "file": file_name,
+        "file": file_basename,
         "encoding_parameters": params,
         "metrics": dict(metrics),
     }
