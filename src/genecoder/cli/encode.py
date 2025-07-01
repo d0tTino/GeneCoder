@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import concurrent.futures
 import csv
 import json
 import logging
@@ -25,6 +24,7 @@ from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
+from .common import run_tasks
 from typing import Callable
 
 _COMPLEMENT_MAP = str.maketrans("ACGTacgt", "TGCAtgca")
@@ -611,24 +611,9 @@ def _handle_command(args: argparse.Namespace) -> None:
             continue
         tasks.append((input_file_path, output_file_path, args))
 
-    if num_input_files > 1:
-        logger.info(f"Starting batch encoding for {num_input_files} files using ThreadPoolExecutor...")
-        cpu_count = os.cpu_count() or 1
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, cpu_count + 4)) as executor:
-            future_to_file = {executor.submit(process_single_encode, t[0], t[1], t[2]): t[0] for t in tasks}
-            for future in concurrent.futures.as_completed(future_to_file):
-                try:
-                    res = future.result()
-                    if args.export_csv and res:
-                        csv_rows.append(res)
-                except Exception:
-                    logger.exception("A file processing task generated an exception")
-        logger.info("\nBatch encoding finished.")
-    else:
-        if tasks:
-            res = process_single_encode(tasks[0][0], tasks[0][1], tasks[0][2])
-            if args.export_csv and res:
-                csv_rows.append(res)
+    results = run_tasks(tasks, process_single_encode, description="encoding", collect_results=True)
+    if args.export_csv:
+        csv_rows.extend([res for res in results if res])
 
     if args.export_csv and csv_rows:
         os.makedirs(os.path.dirname(args.export_csv) or ".", exist_ok=True)
