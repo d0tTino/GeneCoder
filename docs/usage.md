@@ -266,13 +266,9 @@ sequence in 3D with orbit controls, overlays for
 and fullscreen button make the visualization interactive. The frontend lives
 under `web/helix-ui` and is loaded via a WebView in the GUI.
 
-## Web API
+## Disclaimer
 
-Start the FastAPI server for browser-based access:
+GeneCoder is intended for educational simulations only. It should not be used
+to handle personal or medical DNA data. See the
+[README's Disclaimer](../README.md#disclaimer) for full details.
 
-```bash
-uvicorn web.main:app --reload
-```
-
-Rate limiting depends on Redis. Simply leave `GENECODER_REDIS_URL` unset to run
-without Redis; the API will work normally but requests won't be limited.

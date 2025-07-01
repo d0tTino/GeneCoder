@@ -60,7 +60,10 @@ def build_parser() -> argparse.ArgumentParser:
     load_plugins()
 
     parser = argparse.ArgumentParser(
-        description="GeneCoder: Encode and decode data into simulated DNA sequences."
+        description=(
+            "GeneCoder: Encode and decode data into simulated DNA sequences. "
+            "For educational simulations only; see the README's Disclaimer."
+        )
     )
     parser.add_argument("--version", action="version", version=f"GeneCoder {__version__}")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase output verbosity (can be used multiple times).")
