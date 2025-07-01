@@ -469,8 +469,8 @@ def _handle_command(args: argparse.Namespace) -> None:
             "Warning: Both --output-file and --output-dir provided for single input decode. Using --output-file."
         )
 
-    existing_outputs: set[str] = set()
-    tasks = []
+    tasks: list[tuple[str, str, argparse.Namespace]] = []
+
     existing_outputs: set[str] = set()
     for input_file_path in args.input_files:
         output_file_path = ""
