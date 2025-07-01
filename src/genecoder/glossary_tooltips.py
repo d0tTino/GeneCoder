@@ -11,8 +11,9 @@ from typing import Dict, List, cast
 import flet as ft
 
 
-_GLOSSARY_PATH = Path(__file__).resolve().parent.parent / "docs" / "glossary.json"
-_GLOSSARY_MD_PATH = Path(__file__).resolve().parent.parent / "docs" / "glossary.md"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_GLOSSARY_PATH = PROJECT_ROOT / "docs" / "glossary.json"
+_GLOSSARY_MD_PATH = PROJECT_ROOT / "docs" / "glossary.md"
 
 
 def load_glossary() -> Dict[str, str]:

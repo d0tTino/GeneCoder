@@ -1,7 +1,7 @@
 # GeneCoder
 
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://d0ttino.github.io/GeneCoder/)
-[![Coverage Status](https://codecov.io/gh/d0tTino/GeneCoder/branch/main/graph/badge.svg)](https://codecov.io/gh/d0tTino/GeneCoder)
+[![Coverage Status](coverage.svg)](https://codecov.io/gh/d0tTino/GeneCoder)
 
 GeneCoder is an educational toolkit for exploring DNA-based data storage. It provides a command line interface and a GUI for encoding and decoding files into simulated DNA sequences.
 
