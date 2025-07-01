@@ -380,6 +380,7 @@ def show_helix_ui(
     pulse: bool = False,
     pulse_speed: float = 2.0,
     fps: float = 60.0,
+    ws_url: str | None = None,
 ) -> flet_webview.WebView:
     """Return a ``WebView`` pointing at the React helix frontend.
 
@@ -413,6 +414,8 @@ def show_helix_ui(
         f"pulse_speed={pulse_speed}",
         f"fps={fps}",
     ]
+    if ws_url:
+        params.append(f"ws={quote(ws_url)}")
     if colors:
         color_str = ",".join(f"{b}:#{v:06x}" for b, v in colors.items())
         params.append(f"colors={quote(color_str)}")

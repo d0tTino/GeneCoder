@@ -38,9 +38,12 @@ export default function App() {
 
   const [animate, setAnimate] = useState(params.get('animate') !== 'false');
   const [zoom] = useState(parseFloat(params.get('zoom') || '1'));
-  const seq = params.get('seq') || 'ACGT';
-  const seq2 = params.get('seq2') || complementSeq(seq);
-  const gcRatio = seq.split('').filter((b) => b === 'G' || b === 'C').length / seq.length;
+  const seqParam = params.get('seq') || 'ACGT';
+  const seq2Param = params.get('seq2');
+  const [sequence, setSequence] = useState(seqParam);
+  const [sequence2, setSequence2] = useState(seq2Param || complementSeq(seqParam));
+  const wsUrl = params.get('ws');
+  const gcRatio = sequence.split('').filter((b) => b === 'G' || b === 'C').length / sequence.length;
   const [showGC, setShowGC] = useState(params.get('gc') !== 'false');
   const [showRuns, setShowRuns] = useState(params.get('runs') !== 'false');
   const [showGCBars, setShowGCBars] = useState(params.get('gc_bars') === 'true');
@@ -56,6 +59,19 @@ export default function App() {
   useEffect(() => {
     applyGlossary();
   }, []);
+
+  useEffect(() => {
+    if (!wsUrl) return;
+    const ws = new WebSocket(wsUrl);
+    ws.addEventListener('message', (e) => {
+      const chunk = e.data;
+      setSequence((prev) => prev + chunk);
+      if (!seq2Param) {
+        setSequence2((prev) => prev + complementSeq(chunk));
+      }
+    });
+    return () => ws.close();
+  }, [wsUrl]);
 
   useEffect(() => {
     const width = mount.current.clientWidth;
@@ -74,8 +90,8 @@ export default function App() {
     controls.enableDamping = true;
 
     const group = new THREE.Group();
-    const bases = seq.split('');
-    const compBases = seq2.split('');
+    const bases = sequence.split('');
+    const compBases = sequence2.split('');
     const len = Math.min(bases.length, compBases.length);
     const runs = new Array(bases.length).fill(1);
     for (let i = 1; i < bases.length; i++) {
@@ -173,7 +189,7 @@ export default function App() {
       cancelAnimationFrame(frameId);
       renderer.dispose();
     };
-  }, [seq, seq2, animate, zoom, colors, showGC, showRuns, showGCBars, showRunBars, showPulses, pulseSpeed, showGauge, flashErrors]);
+  }, [sequence, sequence2, animate, zoom, colors, showGC, showRuns, showGCBars, showRunBars, showPulses, pulseSpeed, showGauge, flashErrors]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>

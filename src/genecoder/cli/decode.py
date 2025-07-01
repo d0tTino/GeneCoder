@@ -9,7 +9,6 @@ import os
 import random
 import re
 from pathlib import Path
-from dataclasses import dataclass
 
 
 from genecoder.encoders import decode_base4_direct, decode_gc_balanced, decode_triple_repeat
@@ -19,6 +18,7 @@ from genecoder.plugins import FEC_REGISTRY, SIMULATOR_REGISTRY
 from genecoder.formats import from_fasta
 from genecoder.utils import get_alphabet_maps
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
+from ..options import DecodingOptions
 from typing import Callable
 
 # Delay importing heavy security module until needed
@@ -470,7 +470,6 @@ def _handle_command(args: argparse.Namespace) -> None:
         )
 
     tasks = []
-    existing_outputs: set[str] = set()
     for input_file_path in args.input_files:
         output_file_path = ""
         if args.output_file and num_input_files == 1:

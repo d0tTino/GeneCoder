@@ -34,7 +34,8 @@ from genecoder.manifest import generate_manifest
 from genecoder.flet_helpers import parse_int_input
 from genecoder.app_helpers import perform_decoding
 from genecoder.helix_view import show_helix_ui
-from genecoder.formats import from_fasta
+from genecoder.formats import from_fasta, to_fasta
+from genecoder.cli.encode import reverse_complement
 from genecoder.glossary_tooltips import (
     load_glossary,
     load_glossary_full,
@@ -283,6 +284,12 @@ def main(page: ft.Page) -> None:
         tooltip=GLOSSARY.get("Forward Error Correction (FEC)"),
     )
 
+    mirror_checkbox: ft.Checkbox = ft.Checkbox(
+        label="Mirror",
+        value=False,
+        tooltip=GLOSSARY.get("Mirror"),
+    )
+
     encode_button: ft.ElevatedButton = ft.ElevatedButton("Encode")
 
     encode_status_text: ft.Text = ft.Text("", selectable=True)
@@ -433,14 +440,23 @@ def main(page: ft.Page) -> None:
                 page.update()
                 return
 
-            encode_hidden_fasta_content.value = result.fasta
-            encode_hidden_sequence.value = result.encoded_dna
-            encode_dna_snippet_text.value = result.encoded_dna[:200]
+            final_fasta = result.fasta
+            forward_seq = result.encoded_dna
+            if mirror_checkbox.value:
+                rc_seq = reverse_complement(forward_seq)
+                rc_header = result.fasta.splitlines()[0][1:] + " mirror=rc"
+                final_fasta += to_fasta(rc_seq, rc_header, line_width=80)
+            encode_hidden_fasta_content.value = final_fasta
+            encode_hidden_sequence.value = forward_seq
+            encode_dna_snippet_text.value = forward_seq[:200]
             if ws_clients:
-                async def _broadcast(msg: str) -> None:
-                    await asyncio.gather(*(c.send(msg) for c in ws_clients))
+                async def _stream_bases(seq: str, step: int = 50) -> None:
+                    for i in range(0, len(seq), step):
+                        chunk = seq[i : i + step]
+                        await asyncio.gather(*(c.send(chunk) for c in ws_clients))
+                        await asyncio.sleep(0)
 
-                asyncio.create_task(_broadcast(result.encoded_dna))
+                asyncio.create_task(_stream_bases(forward_seq))
             encode_save_button.visible = True
             manifest = generate_manifest(
                 os.path.basename(input_path), options, result.metrics
@@ -850,6 +866,7 @@ def main(page: ft.Page) -> None:
                             alphabet_dropdown,
                             ft.Row([parity_checkbox, k_value_input]),
                             fec_dropdown,
+                            mirror_checkbox,
                             ft.Row(
                                 [encode_button, encode_progress_ring]
                             ),  # Added progress ring
@@ -910,6 +927,7 @@ def main(page: ft.Page) -> None:
             parsed = from_fasta(encode_hidden_fasta_content.value)
             if parsed:
                 dna_seq = parsed[0][1]
+        rc_seq = reverse_complement(dna_seq) if mirror_checkbox.value else None
         helix_container.controls.clear()
         helix_container.controls.append(
             ft.Row([
@@ -930,10 +948,12 @@ def main(page: ft.Page) -> None:
         helix_container.controls.append(
             show_helix_ui(
                 dna_seq,
+                strand2_sequence=rc_seq,
                 animate=animate_checkbox.value,
                 zoom=zoom_slider.value,
                 colors=colors,
                 fps=fps_slider.value,
+                ws_url="ws://localhost:8765",
             )
         )
         page.update()
