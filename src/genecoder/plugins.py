@@ -75,15 +75,23 @@ def load_plugins() -> None:
 
     failures: list[str] = []
 
-    _load_and_register(
-        entry_points(group="genecoder.plugins"), register_codec, "codec", failures
-    )
-    _load_and_register(
-        entry_points(group="genecoder.fec"), register_fec, "FEC", failures
-    )
-    _load_and_register(
-        entry_points(group="genecoder.simulators"), register_simulator, "simulator", failures
-    )
+    groups = {
+        "genecoder.plugins": (register_codec, "codec"),
+        "genecoder.fec": (register_fec, "FEC"),
+        "genecoder.simulators": (register_simulator, "simulator"),
+    }
+    for group, (registrar, kind) in groups.items():
+        try:
+            entries = entry_points(group=group)
+        except TypeError:
+            eps = entry_points()
+            if hasattr(eps, "select"):
+                entries = eps.select(group=group)
+            elif isinstance(eps, dict):
+                entries = eps.get(group, [])
+            else:
+                entries = [ep for ep in eps if getattr(ep, "group", None) == group]
+        _load_and_register(entries, registrar, kind, failures)
 
     # Also load plugins from a local ``plugins`` package if present
     try:

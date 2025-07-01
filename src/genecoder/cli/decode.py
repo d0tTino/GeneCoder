@@ -19,7 +19,6 @@ from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.formats import from_fasta
 from genecoder.utils import get_alphabet_maps
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
-from ..options import DecodingOptions
 from typing import Callable
 
 # Delay importing heavy security module until needed

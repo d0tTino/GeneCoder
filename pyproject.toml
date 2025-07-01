@@ -67,6 +67,9 @@ numba = "*"
 [tool.poetry.scripts]
 genecoder = "genecoder.cli.cli:main"
 
+[project.entry-points."genecoder.plugins"]
+reverse = "plugins.reverse_codec"
+
 [tool.poetry.plugins."genecoder.plugins"]
 reverse = "plugins.reverse_codec"
 
