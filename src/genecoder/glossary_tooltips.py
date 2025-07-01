@@ -16,6 +16,7 @@ _GLOSSARY_PATH = _ROOT_PATH / "docs" / "glossary.json"
 _GLOSSARY_MD_PATH = _ROOT_PATH / "docs" / "glossary.md"
 
 
+
 def load_glossary() -> Dict[str, str]:
     """Load glossary terms from the project's ``glossary.json`` file."""
     try:

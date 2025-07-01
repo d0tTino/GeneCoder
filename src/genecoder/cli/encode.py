@@ -79,7 +79,7 @@ def run_encoding_pipeline(
     encode_map, _ = get_alphabet_maps(options.alphabet)
     # Normalize path separators to ensure the FASTA header does not contain
     # backslashes which can appear on Windows paths.
-    sanitized_name = os.path.basename(input_file_name.replace("\\", "/"))
+    sanitized_name = Path(input_file_name.replace("\\", "/")).name
     header_parts = [f"method={options.method}", f"input_file={sanitized_name}"]
 
     if options.fec == "hamming_7_4":
@@ -209,7 +209,8 @@ def process_single_encode(
     )
     try:
         if args.stream and args.method == "base4_direct" and args.fec is None:
-            header = f"method=base4_direct input_file={os.path.basename(input_file_path)}"
+            sanitized_name = os.path.basename(input_file_path.replace("\\", "/"))
+            header = f"method=base4_direct input_file={sanitized_name}"
             if args.add_parity:
                 header += f" parity_k={args.k_value} parity_rule={args.parity_rule}"
             from genecoder.streaming import stream_encode_file
@@ -290,7 +291,7 @@ def process_single_encode(
             checksum = compute_checksum(plaintext_data)
 
         options = build_encoding_options(args)
-        header_name = os.path.basename(input_file_path)
+        header_name = os.path.basename(input_file_path.replace("\\", "/"))
         if getattr(args, "file_type", None):
             stem = Path(header_name).stem
             header_name = f"{stem}.{args.file_type}"

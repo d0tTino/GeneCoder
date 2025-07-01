@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import os
 
 from tests.test_cli import run_cli_command
 
@@ -20,5 +21,5 @@ def test_cli_writes_manifest(tmp_path: Path) -> None:
     manifest = tmp_path / "data.txt.manifest.json"
     assert manifest.exists()
     data = json.loads(manifest.read_text())
-    assert data["file"] == "data.txt"
+    assert data["file"] == os.path.basename(input_file.as_posix())
     assert data["encoding_parameters"]["method"] == "base4_direct"

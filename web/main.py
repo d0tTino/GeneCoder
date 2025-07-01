@@ -239,8 +239,11 @@ class ChunkUploadRequest(BaseModel):  # type: ignore[misc]
 @app.post("/upload-chunk")  # type: ignore[misc]
 async def upload_chunk(
     req: ChunkUploadRequest,
-    _rl: None = Depends(rate_limit),
+    request: Request,
+    response: Response,
 ) -> dict[str, str]:
+    if FastAPILimiter.redis:
+        await rate_limit(request, response)
     base_dir = get_temp_dir() / "chunks" / req.file_id
     base_dir.mkdir(parents=True, exist_ok=True)
     chunk_bytes = base64.b64decode(req.data.encode("utf-8"), validate=True)
@@ -258,10 +261,13 @@ async def upload_chunk(
 async def download_chunk(
     file_id: str,
     offset: int,
-    _rl: None = Depends(rate_limit),
+    request: Request,
+    response: Response,
 ) -> dict[str, str]:
+    if FastAPILimiter.redis:
+        await rate_limit(request, response)
     chunk_path = get_temp_dir() / "chunks" / file_id / f"{offset}.chunk"
     if not chunk_path.is_file():
         raise HTTPException(status_code=404, detail="Chunk not found")
     data = chunk_path.read_bytes()
-    return {"offset": offset, "data": base64.b64encode(data).decode("utf-8")}
+    return {"offset": str(offset), "data": base64.b64encode(data).decode("utf-8")}

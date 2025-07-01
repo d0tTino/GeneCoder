@@ -265,3 +265,10 @@ sequence in 3D with orbit controls, overlays for
 **pulses**, GC gauges and homopolymer bars along the helix. An *Animate* toggle
 and fullscreen button make the visualization interactive. The frontend lives
 under `web/helix-ui` and is loaded via a WebView in the GUI.
+
+## Disclaimer
+
+GeneCoder is intended for educational simulations only. It should not be used
+to handle personal or medical DNA data. See the
+[README's Disclaimer](../README.md#disclaimer) for full details.
+
