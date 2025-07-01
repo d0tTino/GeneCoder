@@ -73,7 +73,10 @@ Open <http://localhost:8000> in your browser to view the landing page.
 ## Streaming Encode and Resume
 
 Large files can be encoded and decoded in streaming mode to reduce memory usage.
-Specify a chunk size in bytes and pass `--resume` to continue a partial run:
+Each streaming run writes a `<output>.stream.manifest` file containing chunk offsets
+and SHA-256 hashes. Specify a chunk size in bytes and pass `--resume` to
+continue a partial run. Previously completed chunks are verified against the
+manifest before processing resumes:
 
 ```bash
 # initial encode
