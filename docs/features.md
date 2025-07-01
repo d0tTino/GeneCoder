@@ -12,9 +12,9 @@ GeneCoder provides a CLI and GUI for encoding and decoding data into simulated D
 * **Mirror encoding** via `--mirror` to output forward and reverse-complement sequences.
 
 
-## Helix View
+## Visualizer
 
-The GUI now includes a **Helix View** tab powered by a dedicated React
+The GUI now includes a **Visualizer** tab powered by a dedicated React
 application under `web/helix-ui`. The visualization renders each nucleotide as a
 colored sphere with tooltips. Orbit controls allow zooming and rotating. GC
 content colouring and homopolymer highlighting are shown both on the helix and
@@ -22,7 +22,7 @@ via an overlay canvas. Animated pulses can move along the helix to illustrate
 progress. The frontend is loaded on demand so it works in both desktop and web
 deployments.
 
-![Helix View GUI](https://flet.dev/docs/images/screenshot.png)
+![Visualizer tab GUI](https://flet.dev/docs/images/screenshot.png)
 
 ### Usage
 

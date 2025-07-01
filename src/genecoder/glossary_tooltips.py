@@ -11,9 +11,10 @@ from typing import Dict, List, cast
 import flet as ft
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_GLOSSARY_PATH = PROJECT_ROOT / "docs" / "glossary.json"
-_GLOSSARY_MD_PATH = PROJECT_ROOT / "docs" / "glossary.md"
+_ROOT_PATH = Path(__file__).resolve().parents[2]
+_GLOSSARY_PATH = _ROOT_PATH / "docs" / "glossary.json"
+_GLOSSARY_MD_PATH = _ROOT_PATH / "docs" / "glossary.md"
+
 
 
 def load_glossary() -> Dict[str, str]:
@@ -88,11 +89,12 @@ def glossary_modal_text(
         dialog.open = True
         page.update()
 
+    blue = getattr(getattr(ft, "colors", ft), "BLUE_500", "#2196f3")
     text_ctrl = ft.Text(
         term,
         tooltip=tooltip,
         style=ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE),
-        color=ft.colors.BLUE_500,
+        color=blue,
     )
     text_ctrl.on_click = _open_dialog
     return text_ctrl

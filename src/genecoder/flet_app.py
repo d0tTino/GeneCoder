@@ -69,9 +69,14 @@ if websockets:
             ws_clients.discard(websocket)
 
     try:
-        asyncio.get_event_loop().create_task(
-            websockets.serve(_ws_handler, "localhost", 8765)
-        )
+        try:
+            loop: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop:
+            loop.create_task(websockets.serve(_ws_handler, "localhost", 8765))
+        else:  # pragma: no cover - depends on environment
+            logger.error("No running event loop; WebSocket server not started")
     except OSError as exc:  # pragma: no cover - depends on environment
         logger.error("Failed to start WebSocket server: %s", exc)
 
@@ -112,7 +117,7 @@ def main(page: ft.Page) -> None:
         "Encode data to view analysis plots.", italic=True
     )
 
-    # Container used for the Helix View tab. Filled when the tab is selected.
+    # Container used for the Visualizer tab. Filled when the tab is selected.
     helix_container: ft.Column = ft.Column()
     animate_checkbox: ft.Checkbox = ft.Checkbox(label="Animate", value=True)
     zoom_slider: ft.Slider = ft.Slider(
@@ -217,9 +222,11 @@ def main(page: ft.Page) -> None:
             allow_multiple=False, dialog_title="Select Input File for Encoding"
         )
 
+    icons = getattr(ft, "icons", ft.Icons)
+    colors = getattr(ft, "colors", ft.Colors)
     encode_browse_button: ft.ElevatedButton = ft.ElevatedButton(
         "Browse File",
-        icon=ft.icons.FOLDER_OPEN,
+        icon=getattr(icons, "FOLDER_OPEN", None),
         on_click=_open_encode_file_picker,
     )
 
@@ -331,12 +338,12 @@ def main(page: ft.Page) -> None:
     )
 
     encode_save_button: ft.ElevatedButton = ft.ElevatedButton(
-        "Save Encoded FASTA...", icon=ft.icons.SAVE, visible=False
+        "Save Encoded FASTA...", icon=getattr(icons, "SAVE", None), visible=False
     )
 
     encode_manifest_save_button: ft.ElevatedButton = ft.ElevatedButton(
         "Save Manifest...",
-        icon=ft.icons.SAVE,
+        icon=getattr(icons, "SAVE", None),
         visible=False,
     )
 
@@ -408,7 +415,7 @@ def main(page: ft.Page) -> None:
             input_path = selected_encode_input_file_path.current
             if not input_path:
                 encode_status_text.value = "Error: Please select an input file first."
-                encode_status_text.color = ft.colors.RED_ACCENT_700
+                encode_status_text.color =  colors.RED_ACCENT_700
                 page.update()
                 return
 
@@ -428,7 +435,7 @@ def main(page: ft.Page) -> None:
                 )
             except ValueError as ex:
                 encode_status_text.value = f"Invalid numeric input: {ex}"
-                encode_status_text.color = ft.colors.RED_ACCENT_700
+                encode_status_text.color =  colors.RED_ACCENT_700
                 page.update()
                 return
 
@@ -436,7 +443,7 @@ def main(page: ft.Page) -> None:
                 result = await asyncio.to_thread(perform_encoding, input_data, options)
             except ValueError as ex:
                 encode_status_text.value = f"Error: {ex}"
-                encode_status_text.color = ft.colors.RED_ACCENT_700
+                encode_status_text.color =  colors.RED_ACCENT_700
                 page.update()
                 return
 
@@ -498,10 +505,10 @@ def main(page: ft.Page) -> None:
                 analysis_status_text.value = (
                     "All analysis plots generated successfully."
                 )
-                analysis_status_text.color = ft.colors.GREEN_700
+                analysis_status_text.color =  colors.GREEN_700
             else:
                 analysis_status_text.value = "No analysis plots applicable or generated for the selected options."
-                analysis_status_text.color = ft.colors.ORANGE_ACCENT_700
+                analysis_status_text.color =  colors.ORANGE_ACCENT_700
             if len(app_tabs.tabs) > 2:
                 app_tabs.tabs[2].disabled = not any_plot
 
@@ -514,18 +521,18 @@ def main(page: ft.Page) -> None:
             encode_status_text.value = (
                 status_prefix + " " if status_prefix else ""
             ) + "Encoding successful! Click 'Save Encoded FASTA...' to save."
-            encode_status_text.color = ft.colors.GREEN_700
+            encode_status_text.color =  colors.GREEN_700
 
         except FileNotFoundError:
             encode_status_text.value = f"Error: Input file '{input_path}' not found."
-            encode_status_text.color = ft.colors.RED_ACCENT_700
+            encode_status_text.color =  colors.RED_ACCENT_700
         except OSError as ex:
             encode_status_text.value = f"I/O error during encoding: {ex}"
-            encode_status_text.color = ft.colors.RED_ACCENT_700
+            encode_status_text.color =  colors.RED_ACCENT_700
         except Exception as ex:
             logger.exception("Unexpected error during encoding")
             encode_status_text.value = f"An unexpected error occurred: {ex}"
-            encode_status_text.color = ft.colors.RED_ACCENT_700
+            encode_status_text.color =  colors.RED_ACCENT_700
             raise
         finally:
             # Re-enable buttons and hide progress
@@ -545,18 +552,18 @@ def main(page: ft.Page) -> None:
                 encode_status_text.value = (
                     f"Encoded file saved successfully to: {e.path}"
                 )
-                encode_status_text.color = ft.colors.GREEN_700
+                encode_status_text.color =  colors.GREEN_700
             except OSError as ex:
                 encode_status_text.value = f"Error saving file: {ex}"
-                encode_status_text.color = ft.colors.RED_ACCENT_700
+                encode_status_text.color =  colors.RED_ACCENT_700
             except Exception as ex:
                 logger.exception("Unexpected error while saving encoded FASTA")
                 encode_status_text.value = f"Unexpected error saving file: {ex}"
-                encode_status_text.color = ft.colors.RED_ACCENT_700
+                encode_status_text.color =  colors.RED_ACCENT_700
                 raise
         else:
             encode_status_text.value = "Save operation cancelled by user."
-            encode_status_text.color = ft.colors.AMBER_ACCENT_700
+            encode_status_text.color =  colors.AMBER_ACCENT_700
         page.update()
 
     encode_save_file_picker: ft.FilePicker = ft.FilePicker(
@@ -579,18 +586,18 @@ def main(page: ft.Page) -> None:
                 with open(e.path, "w", encoding="utf-8") as f_out:
                     f_out.write(encode_hidden_manifest_content.value)
                 encode_status_text.value = f"Manifest saved successfully to: {e.path}"
-                encode_status_text.color = ft.colors.GREEN_700
+                encode_status_text.color =  colors.GREEN_700
             except OSError as ex:
                 encode_status_text.value = f"Error saving manifest: {ex}"
-                encode_status_text.color = ft.colors.RED_ACCENT_700
+                encode_status_text.color =  colors.RED_ACCENT_700
             except Exception as ex:
                 logger.exception("Unexpected error while saving manifest")
                 encode_status_text.value = f"Unexpected error saving manifest: {ex}"
-                encode_status_text.color = ft.colors.RED_ACCENT_700
+                encode_status_text.color =  colors.RED_ACCENT_700
                 raise
         else:
             encode_status_text.value = "Save operation cancelled by user."
-            encode_status_text.color = ft.colors.AMBER_ACCENT_700
+            encode_status_text.color =  colors.AMBER_ACCENT_700
         page.update()
 
     manifest_file_picker: ft.FilePicker = ft.FilePicker(
@@ -615,14 +622,14 @@ def main(page: ft.Page) -> None:
         "", selectable=True
     )  # Main status for decoding results
     decode_fec_info_text: ft.Text = ft.Text(
-        "", selectable=True, color=ft.colors.BLUE_GREY_500
+        "", selectable=True, color= colors.BLUE_GREY_500
     )  # Displays FEC correction/error counts
     decode_progress_ring: ft.ProgressRing = ft.ProgressRing(
         visible=False, width=20, height=20
     )  # Progress indicator
 
     decode_save_button: ft.ElevatedButton = ft.ElevatedButton(
-        "Save Decoded File...", icon=ft.icons.SAVE, visible=False
+        "Save Decoded File...", icon=getattr(icons, "SAVE", None), visible=False
     )
 
     decode_button: ft.ElevatedButton = ft.ElevatedButton("Decode")
@@ -670,7 +677,7 @@ def main(page: ft.Page) -> None:
 
     decode_browse_button: ft.ElevatedButton = ft.ElevatedButton(
         "Browse FASTA File",
-        icon=ft.icons.FOLDER_OPEN,
+        icon=getattr(icons, "FOLDER_OPEN", None),
         on_click=_open_decode_file_picker,
     )
 
@@ -692,7 +699,7 @@ def main(page: ft.Page) -> None:
                 decode_status_text.value = (
                     "Error: Please select an input FASTA file first."
                 )
-                decode_status_text.color = ft.colors.RED_ACCENT_700
+                decode_status_text.color =  colors.RED_ACCENT_700
                 page.update()
                 return
 
@@ -705,35 +712,35 @@ def main(page: ft.Page) -> None:
                 )
             except ValueError as ex:
                 decode_status_text.value = f"Error: {ex}"
-                decode_status_text.color = ft.colors.RED_ACCENT_700
+                decode_status_text.color =  colors.RED_ACCENT_700
                 page.update()
                 return
             except Exception as ex:
                 logger.exception("Unexpected error during decoding")
                 decode_status_text.value = f"Unexpected error: {ex}"
-                decode_status_text.color = ft.colors.RED_ACCENT_700
+                decode_status_text.color =  colors.RED_ACCENT_700
                 raise
 
             decoded_bytes_to_save = result.decoded_bytes
             decode_status_text.value = result.status_message
-            decode_status_text.color = ft.colors.GREEN_700
+            decode_status_text.color =  colors.GREEN_700
             if result.fec_info:
                 decode_fec_info_text.value = result.fec_info
-                decode_fec_info_text.color = ft.colors.GREEN_700
+                decode_fec_info_text.color =  colors.GREEN_700
             else:
                 decode_fec_info_text.value = ""
             decode_save_button.visible = True
 
         except FileNotFoundError:
             decode_status_text.value = f"Error: Input file '{input_path}' not found."
-            decode_status_text.color = ft.colors.RED_ACCENT_700
+            decode_status_text.color =  colors.RED_ACCENT_700
         except OSError as ex:
             decode_status_text.value = f"I/O error: {ex}"
-            decode_status_text.color = ft.colors.RED_ACCENT_700
+            decode_status_text.color =  colors.RED_ACCENT_700
         except Exception as ex:
             logger.exception("Unexpected error during decode_file_data")
             decode_status_text.value = f"Critical error: {ex}"
-            decode_status_text.color = ft.colors.RED_ACCENT_700
+            decode_status_text.color =  colors.RED_ACCENT_700
             raise
         finally:
             decode_progress_ring.visible = False
@@ -756,7 +763,7 @@ def main(page: ft.Page) -> None:
             except Exception as ex:
                 logger.exception("Unexpected error while saving decoded file")
                 decode_status_text.value = f"Unexpected error saving decoded file: {ex}"
-                decode_status_text.color = ft.colors.RED_ACCENT_700
+                decode_status_text.color =  colors.RED_ACCENT_700
                 raise
         else:
             decode_status_text.value = "Save decoded file cancelled."
@@ -839,7 +846,7 @@ def main(page: ft.Page) -> None:
     # Analysis tab needs to be referenced later to enable/disable
     analysis_tab: ft.Tab = ft.Tab(
         text="Analysis",
-        icon=ft.icons.ANALYTICS_OUTLINED,
+        icon=getattr(icons, "ANALYTICS_OUTLINED", None),
         content=ft.Container(
             analysis_tab_content_column,
             padding=10,
@@ -855,7 +862,7 @@ def main(page: ft.Page) -> None:
         tabs=[
             ft.Tab(
                 text="Encode",
-                icon=ft.icons.SEND_AND_ARCHIVE_OUTLINED,
+                icon=getattr(icons, "SEND_AND_ARCHIVE_OUTLINED", None),
                 content=ft.Container(
                     ft.Column(
                         controls=[
@@ -891,12 +898,12 @@ def main(page: ft.Page) -> None:
                         scroll=ft.ScrollMode.AUTO,
                     ),
                     padding=10,
-                    alignment=ft.alignment.TOP_LEFT,
+                    alignment=getattr(ft.alignment, "TOP_LEFT", ft.alignment.top_left),
                 ),
             ),
             ft.Tab(
                 text="Decode",
-                icon=ft.icons.UNARCHIVE_OUTLINED,
+                icon=getattr(icons, "UNARCHIVE_OUTLINED", None),
                 content=ft.Container(
                     decode_tab_content_column,
                     padding=10,
@@ -906,8 +913,8 @@ def main(page: ft.Page) -> None:
             #(analysis tab defined above to allow setting disabled after init)
             analysis_tab,
             ft.Tab(
-                text="Helix View",
-                icon=ft.icons.DNA,
+                text="Visualizer",
+                icon=getattr(icons, "DNA", None),
                 content=ft.Container(
                     ft.Column([
                         helix_controls,

@@ -258,7 +258,7 @@ python -m genecoder.flet_app
 
 The GUI exposes encoding options, error correction choices and displays metrics and analysis plots.
 
-The **Helix View** tab embeds a dedicated React/Three.js frontend. It renders the
+The **Visualizer** tab embeds a dedicated React/Three.js frontend. It renders the
 sequence in 3D with orbit controls, overlays for
 [GC content](glossary.md#gc-content) and
 [homopolymers](glossary.md#homopolymer). The viewer now includes progress

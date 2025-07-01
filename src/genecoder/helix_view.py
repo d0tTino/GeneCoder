@@ -68,14 +68,18 @@ def complement(seq: str) -> str:
     return seq.translate(_COMPLEMENT_MAP)
 
 
-def base_pair_coordinates(
-    seq: str, *, radius: float = 0.1, height: float = 0.4, angle_step: float = 0.3
+def helix_coordinates(
+    length: int,
+    *,
+    radius: float = 0.1,
+    height: float = 0.4,
+    angle_step: float = 0.3,
 ) -> tuple[list[tuple[float, float, float]], list[tuple[float, float, float]]]:
-    """Return coordinates for a simple double helix."""
+    """Return XYZ coordinates for both strands of a double helix."""
 
     strand1: list[tuple[float, float, float]] = []
     strand2: list[tuple[float, float, float]] = []
-    for i in range(len(seq)):
+    for i in range(length):
         angle = i * angle_step
         x = radius * math.cos(angle)
         y = radius * math.sin(angle)
@@ -83,6 +87,20 @@ def base_pair_coordinates(
         strand1.append((x, y, z))
         strand2.append((-x, -y, z))
     return strand1, strand2
+
+
+def base_pair_coordinates(
+    seq: str,
+    *,
+    radius: float = 0.1,
+    height: float = 0.4,
+    angle_step: float = 0.3,
+) -> tuple[list[tuple[float, float, float]], list[tuple[float, float, float]]]:
+    """Return coordinates for a double helix derived from ``seq``."""
+
+    return helix_coordinates(
+        len(seq), radius=radius, height=height, angle_step=angle_step
+    )
 
 HELIX_TEMPLATE = """
 <div id='helix-container' style='position:relative;width:100%%;height:100%%'></div>
@@ -113,11 +131,49 @@ const seq = '%(DNA_SEQ)s';
 const compSeq = '%(COMP_SEQ)s';
 const coords1 = %(COORDS1)s;
 const coords2 = %(COORDS2)s;
+const angleStep = %(ANGLE_STEP)s;
+const radius = %(RADIUS)s;
+const heightStep = %(HEIGHT)s;
+const complementMap = { A:'T', C:'G', G:'C', T:'A', a:'t', c:'g', g:'c', t:'a' };
 const wsUrl = '%(WS_URL)s';
 if (wsUrl) {
     const ws = new WebSocket(wsUrl);
     ws.addEventListener('message', (e) => {
-        console.log('seq chunk', e.data);
+        const chunk = e.data;
+        for (let j = 0; j < chunk.length; j++) {
+            const b = chunk[j];
+            const idx = bases.length;
+            bases.push(b);
+            const comp = complementMap[b] || b;
+            compSeq += comp;
+            const ang = idx * angleStep;
+            const x = radius * Math.cos(ang);
+            const y = radius * Math.sin(ang);
+            const z = idx * heightStep;
+            coords1.push([x, y, z]);
+            coords2.push([-x, -y, z]);
+            const m1 = new THREE.Mesh(
+                new THREE.SphereGeometry(radius, 16, 16),
+                new THREE.MeshPhongMaterial({ color: colors[b] || 0xffffff })
+            );
+            m1.position.set(x, y, z);
+            m1.userData = { info: `${b} (${idx})` };
+            group.add(m1);
+            const m2 = new THREE.Mesh(
+                new THREE.SphereGeometry(radius, 16, 16),
+                new THREE.MeshPhongMaterial({ color: colors[comp] || 0xffffff })
+            );
+            m2.position.set(-x, -y, z);
+            m2.userData = { info: `${comp} (${idx})` };
+            group.add(m2);
+            const pts = [
+                new THREE.Vector3(x, y, z),
+                new THREE.Vector3(-x, -y, z)
+            ];
+            const lineGeom = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(lineGeom, new THREE.LineBasicMaterial({color: 0xaaaaaa}));
+            group.add(line);
+        }
     });
 }
 const animateHelix = %(ANIMATE)s;
@@ -131,7 +187,6 @@ for (let i = 0; i < seq.length; i++) {
 
 const colors = %(COLOR_MAP)s;
 const group = new THREE.Group();
-const radius = 0.1;
 for (let i = 0; i < bases.length; i++) {
     const geometry = new THREE.SphereGeometry(radius, 16, 16);
     const material = new THREE.MeshPhongMaterial({ color: colors[bases[i]] || 0xffffff });
@@ -282,7 +337,7 @@ def _make_helix_html(
     colors_js = "{ " + ", ".join(f"{b}: 0x{v:06x}" for b, v in color_map.items()) + " }"
 
     comp_seq = complement(dna_sequence)
-    strand1, strand2 = base_pair_coordinates(dna_sequence)
+    strand1, strand2 = helix_coordinates(len(dna_sequence))
 
     def _coords_js(coords: list[tuple[float, float, float]]) -> str:
         return "[" + ",".join(f"[{x:.3f},{y:.3f},{z:.3f}]" for x, y, z in coords) + "]"
@@ -294,6 +349,9 @@ def _make_helix_html(
         "COMP_SEQ": comp_seq,
         "COORDS1": _coords_js(strand1),
         "COORDS2": _coords_js(strand2),
+        "ANGLE_STEP": 0.3,
+        "RADIUS": 0.1,
+        "HEIGHT": 0.4,
         "WS_URL": ws_url or "",
         "COLOR_MAP": colors_js,
         "ANIMATE": "true" if animate else "false",
