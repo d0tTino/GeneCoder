@@ -4,7 +4,7 @@ from typing import Callable, Dict, Any, Iterable
 from types import ModuleType
 
 from .channels.base import BaseChannel
-from importlib.metadata import entry_points
+from importlib.metadata import entry_points, EntryPoints
 import importlib
 import logging
 import pkgutil
@@ -75,7 +75,7 @@ def load_plugins() -> None:
 
     failures: list[str] = []
 
-    groups = {
+    groups: dict[str, tuple[Callable[..., Any], str]] = {
         "genecoder.plugins": (register_codec, "codec"),
         "genecoder.fec": (register_fec, "FEC"),
         "genecoder.simulators": (register_simulator, "simulator"),
@@ -88,7 +88,7 @@ def load_plugins() -> None:
             if hasattr(eps, "select"):
                 entries = eps.select(group=group)
             elif isinstance(eps, dict):
-                entries = eps.get(group, [])
+                entries = eps.get(group, EntryPoints())
             else:
                 entries = [ep for ep in eps if getattr(ep, "group", None) == group]
         _load_and_register(entries, registrar, kind, failures)

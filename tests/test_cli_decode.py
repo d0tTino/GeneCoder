@@ -1,5 +1,6 @@
 import argparse
 import base64
+import os
 import pytest
 
 from pathlib import Path
@@ -91,3 +92,110 @@ def test_cli_decode_duplicate_output_names(tmp_path: Path) -> None:
     out2 = tmp_path / "dup_1.bin"
     assert out1.read_bytes() == b"one"
     assert out2.read_bytes() == b"two"
+
+
+@pytest.mark.parametrize("sim_name", ["d2sim", "dnarsim", "squigulator"])
+def test_cli_decode_missing_simulator(tmp_path: Path, sim_name: str) -> None:
+    env = os.environ.copy()
+    src_path = Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+
+    input_file = tmp_path / "in.txt"
+    input_file.write_text("missing test")
+
+    enc_res = run_cli_command(
+        [
+            "encode",
+            "--input-files",
+            str(input_file),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--fec",
+            "triple_repeat",
+        ],
+        env=env,
+    )
+    assert enc_res.returncode == 0, enc_res.stderr
+    fasta_file = tmp_path / "in.txt.fasta"
+    assert fasta_file.exists()
+
+    dec_res = run_cli_command(
+        [
+            "decode",
+            "--input-files",
+            str(fasta_file),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--simulator",
+            sim_name,
+        ],
+        env=env,
+    )
+    assert dec_res.returncode == 0, dec_res.stderr
+    out_file = tmp_path / "in.txt_decoded.bin"
+    assert out_file.exists()
+    assert out_file.read_text().startswith("missing")
+
+
+@pytest.mark.parametrize("sim_name", ["d2sim", "dnarsim", "squigulator"])
+def test_cli_decode_simulator_failure(tmp_path: Path, sim_name: str) -> None:
+    env = os.environ.copy()
+    src_path = Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    script = bin_dir / sim_name
+    script.write_text("#!/bin/sh\nexit 1\n")
+    script.chmod(0o755)
+    env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+
+    input_file = tmp_path / "in.txt"
+    input_file.write_text("failure test")
+
+    enc_res = run_cli_command(
+        [
+            "encode",
+            "--input-files",
+            str(input_file),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--fec",
+            "triple_repeat",
+        ],
+        env=env,
+    )
+    assert enc_res.returncode == 0, enc_res.stderr
+    fasta_file = tmp_path / "in.txt.fasta"
+    assert fasta_file.exists()
+
+    dec_res = run_cli_command(
+        [
+            "decode",
+            "--input-files",
+            str(fasta_file),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--simulator",
+            sim_name,
+        ],
+        env=env,
+    )
+    assert dec_res.returncode == 0, dec_res.stderr
+    out_file = tmp_path / "in.txt_decoded.bin"
+    assert out_file.exists()
+    assert out_file.read_text().startswith("failure")
