@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from genecoder.stream_pipeline import stream_encode, stream_decode
+from genecoder.streaming import stream_encode, stream_decode
 from genecoder.encoders import encode_base4_direct, decode_base4_direct
 from genecoder.hamming_codec import encode_data_with_hamming, decode_data_with_hamming
 from genecoder.reed_solomon_codec import (
@@ -63,9 +63,7 @@ def test_stream_pipeline_roundtrip(fec_name, encode_fn, decode_fn, available):
         infos.append(info)
         return encoded, info
 
-    dna_chunks = list(
-        stream_encode(chunks, encode_base4_direct, fec_encode=fec_enc)
-    )
+    dna_chunks = [chunk for _, chunk in stream_encode(chunks, encode_base4_direct, fec_encode=fec_enc)]
 
     def decode_direct(dna: str) -> bytes:
         return decode_base4_direct(dna)[0]
@@ -74,8 +72,6 @@ def test_stream_pipeline_roundtrip(fec_name, encode_fn, decode_fn, available):
         info = infos.pop(0)
         return decode_fn(chunk, info)
 
-    decoded_chunks = list(
-        stream_decode(dna_chunks, decode_direct, fec_decode=fec_dec)
-    )
+    decoded_chunks = [chunk for _, chunk in stream_decode(dna_chunks, decode_direct, fec_decode=fec_dec)]
 
     assert b"".join(decoded_chunks) == data
