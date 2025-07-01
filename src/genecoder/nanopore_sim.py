@@ -21,6 +21,7 @@ __all__ = [
 ]
 
 from .channels.base import BaseChannel
+from .simulators import register_simulator as _register_simulator
 
 logger = logging.getLogger(__name__)
 
@@ -211,10 +212,12 @@ class Channel(BaseChannel):
 
 
 
-def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
+def register(
+    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+) -> None:
     """Register the builtin simulators."""
 
     for name in SIMULATOR_ADAPTERS:
-        register_simulator(name, Channel(name))
+        registrar(name, Channel(name))
 
 

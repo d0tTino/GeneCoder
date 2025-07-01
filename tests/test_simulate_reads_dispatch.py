@@ -2,8 +2,7 @@ import random
 import pytest
 
 from genecoder import nanopore_sim
-from genecoder.simulators import simulate_reads
-from genecoder.plugins import SIMULATOR_REGISTRY
+from genecoder.simulators import simulate_reads, SIMULATOR_REGISTRY
 
 
 @pytest.mark.parametrize("name", ["d2sim", "dnarsim", "squigulator"])

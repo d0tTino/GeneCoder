@@ -99,3 +99,23 @@ POST /report
 ```
 
 The response contains the rendered report as a string.
+
+## Chunk Upload/Download
+
+Large files can be transferred in pieces using `/upload-chunk` and
+`/download-chunk`. Chunks are tracked with the same manifest format as the
+streaming helpers.
+
+```python
+import base64, httpx
+
+chunk = b"hello"
+payload = {"file_id": "example", "offset": 0, "data": base64.b64encode(chunk).decode()}
+httpx.post("http://localhost:8000/upload-chunk", json=payload)
+
+r = httpx.get(
+    "http://localhost:8000/download-chunk",
+    params={"file_id": "example", "offset": 0},
+)
+data = base64.b64decode(r.json()["data"])
+```
