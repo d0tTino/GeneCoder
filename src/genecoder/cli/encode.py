@@ -323,7 +323,7 @@ def process_single_encode(
                 from genecoder.helix_view import show_helix_ui
 
                 rc_seq = reverse_complement(final_encoded_dna_sequence)
-                show_helix_ui(final_encoded_dna_sequence, seq2=rc_seq)
+                show_helix_ui(final_encoded_dna_sequence, strand2_sequence=rc_seq)
             except Exception as exc:  # pragma: no cover - optional GUI
                 logger.warning("Could not launch helix viewer: %s", exc)
 

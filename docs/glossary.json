@@ -1,5 +1,6 @@
 {
   "GC content": "The percentage of guanine (G) and cytosine (C) bases in a DNA sequence. Balanced GC content (often around 40–60%) improves stability and processability.",
   "Homopolymer": "A run of identical nucleotides, e.g. 'AAAAA'. Long homopolymers can cause synthesis and sequencing errors.",
-  "Forward Error Correction (FEC)": "Techniques that add redundancy to encoded data so errors can be detected and corrected during decoding."
+  "Forward Error Correction (FEC)": "Techniques that add redundancy to encoded data so errors can be detected and corrected during decoding.",
+  "Mirror": "Output both the forward and reverse-complement DNA sequences."
 }

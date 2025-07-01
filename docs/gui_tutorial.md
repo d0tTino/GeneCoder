@@ -23,6 +23,10 @@ The application window contains three main tabs:
 3. **Helix View** – render the resulting DNA sequence in 3D. See the
    [Helix Frontend guide](helix_frontend.md) for viewer options.
 
+The Encode tab includes a **Mirror** checkbox to output the reverse-complement
+alongside the main sequence. Toggle this on to view both strands together in the
+Helix View.
+
 ![GUI screenshot](https://flet.dev/docs/images/screenshot.png)
 
 Use the buttons at the bottom of each tab to start the selected operation.

@@ -17,3 +17,6 @@ A run of identical nucleotides, e.g. `AAAAA`. Long homopolymers can cause synthe
 
 ## Forward Error Correction (FEC)
 Techniques that add redundancy to encoded data so errors can be detected and corrected during decoding.
+
+## Mirror
+Output both the forward and reverse-complement DNA sequences.

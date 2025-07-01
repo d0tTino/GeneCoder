@@ -9,7 +9,6 @@ import os
 import random
 import re
 from pathlib import Path
-from genecoder.options import DecodingOptions
 
 
 from genecoder.encoders import decode_base4_direct, decode_gc_balanced, decode_triple_repeat
@@ -22,6 +21,7 @@ from genecoder.formats import from_fasta
 from genecoder.utils import get_alphabet_maps
 from ..options import DecodingOptions
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
+from ..options import DecodingOptions
 from typing import Callable
 
 # Delay importing heavy security module until needed
