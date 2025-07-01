@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import concurrent.futures
 import logging
 import os
 import random
@@ -18,6 +17,8 @@ from genecoder.plugins import FEC_REGISTRY
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.formats import from_fasta
 from genecoder.utils import get_alphabet_maps
+from ..options import DecodingOptions
+from .common import run_tasks
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from typing import Callable
 
@@ -509,23 +510,5 @@ def _handle_command(args: argparse.Namespace) -> None:
         existing_outputs.add(output_file_path)
         tasks.append((input_file_path, output_file_path, args))
 
-    if num_input_files > 1:
-        logger.info(
-            f"Starting batch decoding for {num_input_files} files using ThreadPoolExecutor..."
-        )
-        cpu_count = os.cpu_count() or 1
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, cpu_count + 4)) as executor:
-            futures_list = [
-                executor.submit(process_single_decode, task[0], task[1], task[2])
-                for task in tasks
-            ]
-            for decode_future in concurrent.futures.as_completed(futures_list):
-                try:
-                    decode_future.result()
-                except Exception:
-                    logger.exception("A file decoding task generated an exception")
-        logger.info("\nBatch decoding finished.")
-    else:
-        if tasks:
-            process_single_decode(tasks[0][0], tasks[0][1], tasks[0][2])
+    run_tasks(tasks, process_single_decode, description="decoding")
 
