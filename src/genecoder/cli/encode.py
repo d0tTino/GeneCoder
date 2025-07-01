@@ -555,7 +555,7 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     parser.add_argument(
         "--mirror",
         action="store_true",
-        help="Also output the reverse-complement sequence.",
+        help="Also output the reverse-complement sequence and launch the visualizer.",
     )
     parser.set_defaults(func=_handle_command)
 

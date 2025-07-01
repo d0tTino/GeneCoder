@@ -82,3 +82,15 @@ webview = show_helix_ui(
     show_runs=False,
 )
 ```
+
+## Viewer Controls
+
+Use the mouse to interact with the helix scene:
+
+- **Left drag** – rotate the camera around the helix.
+- **Right drag** – pan the view.
+- **Scroll wheel** – zoom in and out.
+
+The overlay checkboxes toggle animation, GC colouring, homopolymer
+highlights, progress pulses and error flashes. Adjust the FPS slider to
+limit frame rate if the viewer becomes sluggish.

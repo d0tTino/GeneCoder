@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from pyldpc import make_ldpc, decode, utils
 else:
     try:  # pragma: no cover - optional dependency
-        import numpy as np
         from pyldpc import make_ldpc, decode, utils
         # verify required functions are present and functional
         if callable(make_ldpc) and callable(decode):
@@ -23,6 +22,11 @@ else:
                 _HAS_PYLDPC = True
         else:
             _HAS_PYLDPC = False
+        import importlib.util
+        if importlib.util.find_spec("numpy") is None:  # pragma: no cover
+            np = None  # type: ignore
+        else:
+            import numpy as np  # type: ignore
     except Exception:  # pragma: no cover - missing optional dependency
         make_ldpc = decode = utils = None  # type: ignore
         np = None  # type: ignore
@@ -52,7 +56,10 @@ def encode_data_ldpc(data: bytes) -> Tuple[bytes, Any]:
         decoding.
     """
     _require_pyldpc()
-    assert np is not None
+    global np
+    if np is None:  # pragma: no cover - optional dependency
+        import numpy as _np
+        np = _np
     n_bits = len(data) * 8
     H, G = make_ldpc(n_bits, d_v=2, d_c=4, systematic=True)
     bits = np.unpackbits(np.frombuffer(data, dtype=np.uint8))
@@ -64,7 +71,10 @@ def encode_data_ldpc(data: bytes) -> Tuple[bytes, Any]:
 def decode_data_ldpc(encoded: bytes, info: Any) -> Tuple[bytes, int]:
     """Decode LDPC encoded ``encoded`` bytes using ``info`` from encoding."""
     _require_pyldpc()
-    assert np is not None
+    global np
+    if np is None:  # pragma: no cover - optional dependency
+        import numpy as _np
+        np = _np
     H = info["H"]
     n_bits = info["n_bits"]
     bits = np.unpackbits(np.frombuffer(encoded, dtype=np.uint8))
