@@ -34,7 +34,7 @@ def _setup_flet(monkeypatch: pytest.MonkeyPatch):
         if hasattr(ft.alignment, attr):
             setattr(ft.alignment, attr.upper(), getattr(ft.alignment, attr))
 
-    captured: dict[str, ft.ElevatedButton] = {}
+    captured: dict[str, ft.Control] = {}
     orig_button = ft.ElevatedButton
 
     def capture_button(*args, **kwargs):
@@ -46,6 +46,18 @@ def _setup_flet(monkeypatch: pytest.MonkeyPatch):
         return btn
 
     monkeypatch.setattr(ft, "ElevatedButton", capture_button)
+    drop_class = getattr(ft, "DropTarget", getattr(ft, "DragTarget", None))
+    if drop_class:
+        orig_drop = drop_class
+
+        def capture_drop(*args, **kwargs):
+            if "on_drop" in kwargs and not hasattr(orig_drop, "on_drop"):
+                kwargs.pop("on_drop")
+            dt = orig_drop(*args, **kwargs)
+            captured["drop"] = dt
+            return dt
+
+        monkeypatch.setattr(ft, drop_class.__name__, capture_drop)
     orig_tab = ft.Tab
     monkeypatch.setattr(ft, "Tab", lambda *a, disabled=False, **k: orig_tab(*a, **k))
 
@@ -163,6 +175,28 @@ def test_encode_value_error_handled(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
     asyncio.run(encode_cb(None))
     assert "bad input" in enc_vars["encode_status_text"].value
+
+
+def test_drop_zone_updates_selected_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured, _ = _setup_flet(monkeypatch)
+    from genecoder import flet_app
+
+    ft.app(target=flet_app.main, view=ft.AppView.FLET_APP_HIDDEN, port=0)
+
+    drop = captured.get("drop")
+    assert drop is not None
+    handler = getattr(drop, "on_drop", None) or getattr(drop, "on_accept", None)
+    assert handler is not None
+    vars_ = {n: c.cell_contents for n, c in zip(handler.__code__.co_freevars, handler.__closure__)}
+
+    file_path = tmp_path / "in.bin"
+    file_path.write_bytes(b"x")
+    evt = type("Evt", (), {
+        "files": [ft.core.file_picker.FilePickerFile(name=file_path.name, path=str(file_path), size=1, id=0)]
+    })()
+
+    handler(evt)
+    assert "Selected" in vars_["encode_selected_input_file_text"].value
 
 
 def test_decode_value_error_handled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

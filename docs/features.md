@@ -8,6 +8,7 @@ GeneCoder provides a CLI and GUI for encoding and decoding data into simulated D
 * **Parity checks** for additional error detection.
 * **Batch processing** and streaming support for large files.
 * **Flet-based GUI** with analysis plots and asynchronous operations.
+* **Drag-and-drop file selection** on the Encode tab.
 * **CSV export for synthesis** with length and [homopolymer](glossary.md#homopolymer) validation. The analysis command warns when sequences violate these constraints.
 * **Mirror encoding** via `--mirror` to output forward and reverse-complement sequences.
 
@@ -21,6 +22,8 @@ content colouring and homopolymer highlighting are shown both on the helix and
 via an overlay canvas. Animated pulses can move along the helix to illustrate
 progress. The frontend is loaded on demand so it works in both desktop and web
 deployments.
+Encoding results automatically trigger the viewer so you can inspect the output
+sequence right away.
 
 ![Visualizer tab GUI](https://flet.dev/docs/images/screenshot.png)
 
