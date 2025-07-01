@@ -79,7 +79,7 @@ def run_encoding_pipeline(
     encode_map, _ = get_alphabet_maps(options.alphabet)
     # Normalize path separators to ensure the FASTA header does not contain
     # backslashes which can appear on Windows paths.
-    sanitized_name = os.path.basename(input_file_name.replace("\\", "/"))
+    sanitized_name = Path(input_file_name.replace("\\", "/")).name
     header_parts = [f"method={options.method}", f"input_file={sanitized_name}"]
 
     if options.fec == "hamming_7_4":
