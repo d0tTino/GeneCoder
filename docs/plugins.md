@@ -63,16 +63,18 @@ extensions.
 
 See the [plugins-examples](../plugins-examples/) directory in the source tree for
 minimal sample packages implementing a codec, a
-[FEC](glossary.md#forward-error-correction-fec) backend and a read
-simulator. Install any of these packages with `pip install` to experiment with
-custom extensions locally.
+[FEC](glossary.md#forward-error-correction-fec) backend, a read
+simulator and a small package plugin using the `genecoder.plugins`
+group. Install any of these packages with `pip install` to experiment
+with custom extensions locally.
 
 ## Developing a Plugin Step by Step
 
 1. Copy `src/plugins/reverse_codec.py` as a starting point.
 2. Implement `encode` and `decode` functions for your algorithm.
 3. In the module's `register()` function call `register_codec` with a unique name.
-4. Add an entry under `genecoder.plugins` in your `pyproject.toml` pointing to the module.
+4. Add an entry under `genecoder.plugins` in the `[project.entry-points]`
+   section of your `pyproject.toml` pointing to the module.
 5. Install the package and run `python -m genecoder.plugins` or invoke the CLI to load it.
 
 ## Installing Third-Party Plugins
