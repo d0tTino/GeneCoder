@@ -22,6 +22,7 @@ from .common import run_tasks
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from ..options import DecodingOptions
 from typing import Callable
+from ..options import DecodingOptions
 
 # Delay importing heavy security module until needed
 decrypt_data: Callable[..., bytes] | None = None
