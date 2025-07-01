@@ -10,7 +10,8 @@ import random
 import re
 from pathlib import Path
 
-from ..options import DecodingOptions
+from genecoder.options import DecodingOptions
+
 
 
 from genecoder.encoders import decode_base4_direct, decode_gc_balanced, decode_triple_repeat
