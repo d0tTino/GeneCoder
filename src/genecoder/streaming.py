@@ -72,10 +72,15 @@ def stream_encode_file(
 ) -> int:
     """Encode ``input_path`` to ``output_path`` streaming chunks.
 
-    Returns the total encoded DNA length.
+    Returns the total encoded DNA length. If ``manifest_path`` is not provided,
+    ``<output_path>.stream.manifest`` is written with the SHA-256 hash and offset
+    for each chunk.
     """
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    if manifest_path is None:
+        base, _ = os.path.splitext(output_path)
+        manifest_path = base + ".stream.manifest"
     manifest_file = None
     processed_chunks = 0
     manifest_lines: list[dict[str, int | str]] = []
@@ -171,9 +176,17 @@ def stream_decode_file(
     parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
     alphabet: str = "base4",
 ) -> None:
-    """Decode ``input_path`` FASTA file to ``output_path`` streaming chunks."""
+    """Decode ``input_path`` FASTA file to ``output_path`` streaming chunks.
+
+    If ``manifest_path`` is not provided, ``<output_path>.stream.manifest`` is
+    used to track each chunk's offset and SHA-256 hash. Existing chunks are
+    verified when ``resume`` is ``True``.
+    """
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    if manifest_path is None:
+        base, _ = os.path.splitext(output_path)
+        manifest_path = base + ".stream.manifest"
     manifest_file = None
     processed_chunks = 0
     manifest_lines: list[dict[str, int | str]] = []

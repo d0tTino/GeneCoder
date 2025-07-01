@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Iterator
 import json
+import hashlib
 
 import pytest
 
@@ -11,6 +12,7 @@ from genecoder.streaming import (
     encode_base4_direct,
     decode_base4_direct,
 )
+from tests.test_cli import run_cli_command
 
 
 def test_stream_encode_resume(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -207,3 +209,87 @@ def test_stream_decode_resume_integrity_check(
             manifest_path=str(manifest),
             resume=True,
         )
+
+
+def test_stream_encode_default_manifest(tmp_path: Path) -> None:
+    data = os.urandom(120_000)
+    input_file = tmp_path / "data.bin"
+    input_file.write_bytes(data)
+    fasta = tmp_path / "data.fasta"
+    header = "method=base4_direct input_file=data.bin"
+
+    stream_encode_file(
+        str(input_file),
+        str(fasta),
+        header=header,
+        chunk_size=50_000,
+    )
+
+    manifest = fasta.with_suffix(".stream.manifest")
+    assert manifest.exists()
+    lines = [json.loads(line) for line in manifest.open()]
+    assert len(lines) == 3
+    dna_chunks = list(
+        encode_base4_direct(
+            [data[i : i + 50_000] for i in range(0, len(data), 50_000)],
+            stream=True,
+        )
+    )
+    for idx, entry in enumerate(lines):
+        expected_hash = hashlib.sha256(dna_chunks[idx].encode()).hexdigest()
+        assert entry["offset"] == idx * 50_000
+        assert entry["hash"] == expected_hash
+
+
+def test_cli_stream_resume_encode_decode(tmp_path: Path) -> None:
+    data = os.urandom(150_000)
+    bin_file = tmp_path / "info.bin"
+    bin_file.write_bytes(data)
+    fasta = tmp_path / "info.fasta"
+
+    # create partial encode using streaming helper
+    count = 0
+    orig = encode_base4_direct
+
+    def fail_after_two(*args: object, **kwargs: object) -> Iterator[str]:
+        nonlocal count
+        for chunk in orig(*args, **kwargs):
+            count += 1
+            if count == 2:
+                raise RuntimeError("stop")
+            yield chunk
+
+    with pytest.MonkeyPatch.context() as m:
+        m.setattr("genecoder.streaming.encode_base4_direct", fail_after_two)
+        with pytest.raises(RuntimeError):
+            stream_encode_file(
+                str(bin_file),
+                str(fasta),
+                header="method=base4_direct input_file=info.bin",
+                chunk_size=50_000,
+            )
+
+    result = run_cli_command(
+        [
+            "encode",
+            "--input-files",
+            str(bin_file),
+            "--output-file",
+            str(fasta),
+            "--method",
+            "base4_direct",
+            "--stream",
+            "--chunk-size",
+            "50000",
+            "--resume",
+        ]
+    )
+    assert result.returncode == 0, result.stderr
+
+    decoded = tmp_path / "out.bin"
+    stream_decode_file(
+        str(fasta),
+        str(decoded),
+        chunk_size=50_000,
+    )
+    assert decoded.read_bytes() == data
