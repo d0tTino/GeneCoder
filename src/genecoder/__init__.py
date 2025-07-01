@@ -16,10 +16,9 @@ _LAZY_ATTRS = {
 from .plugins import (
     CODEC_REGISTRY,
     FEC_REGISTRY,
-    SIMULATOR_REGISTRY,
     load_plugins,
 )
-from .simulators import simulate_reads
+from .simulators import SIMULATOR_REGISTRY, simulate_reads
 
 
 

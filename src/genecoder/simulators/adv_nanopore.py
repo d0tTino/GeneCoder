@@ -9,6 +9,7 @@ from .base import BaseSimulator
 from ..random_utils import make_rng
 
 from ..channels.base import BaseChannel
+from . import register_simulator as _register_simulator
 
 __all__ = ["AdvancedNanoporeChannel", "register"]
 
@@ -83,5 +84,7 @@ class AdvancedNanoporeChannel(BaseSimulator):
         )
 
 
-def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
-    register_simulator("adv_nanopore", AdvancedNanoporeChannel())
+def register(
+    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+) -> None:
+    registrar("adv_nanopore", AdvancedNanoporeChannel())

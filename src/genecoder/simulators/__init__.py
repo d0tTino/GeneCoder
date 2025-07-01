@@ -1,18 +1,31 @@
-"""Sequencing simulator implementations."""
+"""Sequencing simulator implementations and registry."""
 from __future__ import annotations
 
-from ..plugins import SIMULATOR_REGISTRY
+from typing import Dict
+
+from ..channels.base import BaseChannel
+
+SIMULATOR_REGISTRY: Dict[str, BaseChannel] = {}
+
+
+def register_simulator(name: str, channel: BaseChannel) -> None:
+    """Register ``channel`` under ``name``."""
+    SIMULATOR_REGISTRY[name] = channel
 
 from .base import BaseSimulator
 from .illumina import IlluminaChannel
+from .illumina_profile import IlluminaProfileChannel
 from .adv_nanopore import AdvancedNanoporeChannel
 from .replication import ReplicationSimulator
 from .transcription import TranscriptionSimulator
 from .translation import TranslationSimulator
 
 __all__ = [
+    "SIMULATOR_REGISTRY",
+    "register_simulator",
     "BaseSimulator",
     "IlluminaChannel",
+    "IlluminaProfileChannel",
     "AdvancedNanoporeChannel",
     "ReplicationSimulator",
     "TranscriptionSimulator",

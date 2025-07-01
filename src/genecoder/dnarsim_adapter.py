@@ -7,6 +7,7 @@ from typing import Callable
 from .channels.base import BaseChannel
 from .random_utils import make_rng
 from .nanopore_sim import _simulate_adapter, _run_external
+from .simulators import register_simulator as _register_simulator
 
 
 class _DNARSIM:
@@ -44,7 +45,9 @@ class DNArSimChannel(BaseChannel):
         return simulate_dnarsim(sequence, error_rate=self.error_rate, rng=make_rng())
 
 
-def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
+def register(
+    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+) -> None:
     """Register the ``dnarsim`` simulator."""
 
-    register_simulator("dnarsim", DNArSimChannel())
+    registrar("dnarsim", DNArSimChannel())

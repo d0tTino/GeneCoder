@@ -8,6 +8,7 @@ from .base import BaseSimulator
 from ..random_utils import make_rng
 from ..error_simulation import introduce_errors
 from ..channels.base import BaseChannel
+from . import register_simulator as _register_simulator
 
 __all__ = ["TranslationSimulator", "register"]
 
@@ -134,5 +135,7 @@ class TranslationSimulator(BaseSimulator):
         return "".join(peptide)
 
 
-def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
-    register_simulator("translation", TranslationSimulator())
+def register(
+    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+) -> None:
+    registrar("translation", TranslationSimulator())
