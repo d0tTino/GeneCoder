@@ -1,5 +1,7 @@
 import os
-from fastapi import FastAPI, HTTPException, Depends
+import json
+import hashlib
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +16,7 @@ from genecoder.options import EncodeOptions
 from genecoder import perform_encoding, perform_decoding
 from genecoder.formats import from_fasta
 from genecoder.encoders import calculate_gc_content
-from genecoder.utils import get_max_homopolymer_length
+from genecoder.utils import get_max_homopolymer_length, get_temp_dir
 from genecoder.plotting import calculate_windowed_gc_content
 from genecoder.app_helpers import EncodeResult, DecodeResult
 from genecoder.report import (
@@ -24,6 +26,9 @@ from genecoder.report import (
     decode_to_html,
 )
 from typing import cast
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+import redis.asyncio as redis
 
 API_TOKEN = os.getenv("GENECODER_API_TOKEN", "change-me")
 CORS_ORIGINS = os.getenv("GENECODER_CORS_ORIGINS", "*")
@@ -38,6 +43,27 @@ def verify_token(
 
 app = FastAPI(title="GeneCoder Web")
 origins = [origin.strip() for origin in CORS_ORIGINS.split(",") if origin.strip()]
+
+REDIS_URL = os.getenv("GENECODER_REDIS_URL")
+
+
+@app.on_event("startup")
+async def _startup() -> None:
+    if REDIS_URL:
+        r = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
+        await FastAPILimiter.init(r)
+
+
+@app.on_event("shutdown")
+async def _shutdown() -> None:
+    if FastAPILimiter.redis:
+        await FastAPILimiter.close()
+
+
+async def rate_limit(request: Request, response: Response) -> None:
+    if FastAPILimiter.redis:
+        limiter = RateLimiter(times=5, seconds=1)
+        await limiter(request, response)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -202,3 +228,40 @@ async def report(req: ReportRequest) -> dict[str, str]:
         else:
             text = decode_to_html(result)
     return {"report": text}
+
+
+class ChunkUploadRequest(BaseModel):  # type: ignore[misc]
+    file_id: str
+    offset: int
+    data: str
+
+
+@app.post("/upload-chunk")  # type: ignore[misc]
+async def upload_chunk(
+    req: ChunkUploadRequest,
+    _rl: None = Depends(rate_limit),
+) -> dict[str, str]:
+    base_dir = get_temp_dir() / "chunks" / req.file_id
+    base_dir.mkdir(parents=True, exist_ok=True)
+    chunk_bytes = base64.b64decode(req.data.encode("utf-8"), validate=True)
+    chunk_path = base_dir / f"{req.offset}.chunk"
+    with open(chunk_path, "wb") as f:
+        f.write(chunk_bytes)
+    manifest_path = base_dir / "upload.manifest"
+    h = hashlib.sha256(chunk_bytes).hexdigest()
+    with open(manifest_path, "a", encoding="utf-8") as mf:
+        mf.write(json.dumps({"offset": req.offset, "hash": h}) + "\n")
+    return {"status": "ok", "hash": h}
+
+
+@app.get("/download-chunk")  # type: ignore[misc]
+async def download_chunk(
+    file_id: str,
+    offset: int,
+    _rl: None = Depends(rate_limit),
+) -> dict[str, str]:
+    chunk_path = get_temp_dir() / "chunks" / file_id / f"{offset}.chunk"
+    if not chunk_path.is_file():
+        raise HTTPException(status_code=404, detail="Chunk not found")
+    data = chunk_path.read_bytes()
+    return {"offset": offset, "data": base64.b64encode(data).decode("utf-8")}

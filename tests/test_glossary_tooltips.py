@@ -2,7 +2,11 @@ import pytest
 
 ft = pytest.importorskip("flet")
 
-from genecoder.glossary_tooltips import load_glossary, wrap_glossary_terms
+from genecoder.glossary_tooltips import (
+    _GLOSSARY_PATH,
+    load_glossary,
+    wrap_glossary_terms,
+)
 
 
 def test_load_glossary() -> None:

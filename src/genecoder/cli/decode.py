@@ -9,6 +9,8 @@ import os
 import random
 import re
 from pathlib import Path
+from genecoder.options import DecodingOptions
+
 
 from genecoder.encoders import decode_base4_direct, decode_gc_balanced, decode_triple_repeat
 from genecoder.gc_balancer import AdvancedGCBalancer
