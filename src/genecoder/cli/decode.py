@@ -473,6 +473,7 @@ def _handle_command(args: argparse.Namespace) -> None:
         )
 
     tasks = []
+    existing_outputs: set[str] = set()
     for input_file_path in args.input_files:
         output_file_path = ""
         if args.output_file and num_input_files == 1:
