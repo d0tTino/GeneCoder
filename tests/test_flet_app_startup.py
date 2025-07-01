@@ -1,4 +1,5 @@
 
+import asyncio
 import pytest
 
 ft = pytest.importorskip("flet")
@@ -16,6 +17,7 @@ class _DummyPage:
 
 
 def test_flet_app_main_starts(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.set_event_loop(asyncio.new_event_loop())
     called = False
 
     def fake_app(*, target, view=ft.AppView.FLET_APP, **kwargs):

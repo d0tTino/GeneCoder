@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,8 @@ ft = pytest.importorskip("flet")
 
 
 def _setup_flet(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setitem(sys.modules, "websockets", None)
+    asyncio.set_event_loop(asyncio.new_event_loop())
     ft.icons = getattr(ft, "icons", getattr(ft, "Icons", None)) or ft.Icons
     ft.colors = getattr(ft, "colors", getattr(ft, "Colors", None)) or ft.Colors
     for name in [

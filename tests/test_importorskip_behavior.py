@@ -13,7 +13,16 @@ def _simulate_missing(module: str, missing: str, monkeypatch: pytest.MonkeyPatch
             return None
         return real_find_spec(name, *args, **kwargs)
 
+    import builtins
+    real_import = builtins.__import__
+
+    def fake_import(name: str, globals=None, locals=None, fromlist=(), level=0):
+        if name == missing:
+            raise ModuleNotFoundError
+        return real_import(name, globals, locals, fromlist, level)
+
     monkeypatch.setattr(importlib.util, "find_spec", fake_find_spec)
+    monkeypatch.setattr(builtins, "__import__", fake_import)
     sys.modules.pop(module, None)
     with pytest.raises(pytest.skip.Exception):
         importlib.import_module(module)
