@@ -50,6 +50,8 @@ The hook also runs automatically on each commit if installed.
 An additional `check-glossary-terms` hook verifies that every term in
 `docs/glossary.json` appears in at least one Markdown file. The commit
 will fail if any terms are missing.
+The `python-ci` workflow also runs this script in a dedicated job after linting
+to catch missing terms in pull requests.
 
 ## Running the Test Suite
 

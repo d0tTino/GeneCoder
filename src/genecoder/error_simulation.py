@@ -7,6 +7,7 @@ from typing import Callable
 from .random_utils import make_rng
 
 from .channels.base import BaseChannel
+from .simulators import register_simulator as _register_simulator
 
 __all__ = ["introduce_errors", "apply_substitutions", "apply_insertions", "apply_deletions", "Channel", "register"]
 
@@ -123,7 +124,9 @@ class Channel(BaseChannel):
         )
 
 
-def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
+def register(
+    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+) -> None:
     """Register the insertion/deletion error simulator."""
 
-    register_simulator("indel", Channel())
+    registrar("indel", Channel())
