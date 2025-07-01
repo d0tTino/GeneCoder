@@ -13,10 +13,13 @@ from pathlib import Path
 from genecoder.options import DecodingOptions
 
 
+
 from genecoder.encoders import decode_base4_direct, decode_gc_balanced, decode_triple_repeat
 from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import decode_data_with_hamming
-from genecoder.plugins import FEC_REGISTRY, SIMULATOR_REGISTRY
+from genecoder.plugins import FEC_REGISTRY
+from genecoder.simulators import SIMULATOR_REGISTRY
+from genecoder.options import DecodingOptions
 from genecoder.formats import from_fasta
 from genecoder.utils import get_alphabet_maps
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
@@ -499,6 +502,13 @@ def _handle_command(args: argparse.Namespace) -> None:
             ext = f".{args.file_type}" if getattr(args, "file_type", None) else (Path(header_name).suffix if header_name else ".bin")
             output_file_path = os.path.join(base_dir, f"{base}{ext}")
 
+        base_output = output_file_path
+        suffix = 1
+        while output_file_path in existing_outputs:
+            base, ext = os.path.splitext(base_output)
+            output_file_path = f"{base}_{suffix}{ext}"
+            suffix += 1
+        existing_outputs.add(output_file_path)
         tasks.append((input_file_path, output_file_path, args))
 
     if num_input_files > 1:

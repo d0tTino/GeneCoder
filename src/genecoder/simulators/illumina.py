@@ -8,6 +8,7 @@ from .base import BaseSimulator
 from ..random_utils import make_rng
 from ..channels.base import BaseChannel
 from ..error_simulation import introduce_errors
+from . import register_simulator as _register_simulator
 
 __all__ = ["IlluminaChannel", "register"]
 
@@ -46,5 +47,7 @@ class IlluminaChannel(BaseSimulator):
         )
 
 
-def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
-    register_simulator("illumina", IlluminaChannel())
+def register(
+    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+) -> None:
+    registrar("illumina", IlluminaChannel())

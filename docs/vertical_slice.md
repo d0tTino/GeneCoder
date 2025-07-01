@@ -6,7 +6,9 @@ PowerShell script is provided for Windows users to run the demo automatically.
 ## Prerequisites
 
 - **Python 3.11+**
-- GeneCoder uses **Poetry** for dependency management
+- GeneCoder uses **Poetry** for dependency management.
+- Ensure `pip` is up to date before installing dependencies:
+  `python -m pip install --upgrade pip`
 
 ## Environment Setup
 

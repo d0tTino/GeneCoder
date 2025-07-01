@@ -6,6 +6,7 @@ from typing import Callable, Sequence
 from .base import BaseSimulator
 from ..random_utils import make_rng
 from ..channels.base import BaseChannel
+from . import register_simulator as _register_simulator
 
 __all__ = ["IlluminaProfileChannel", "register"]
 
@@ -57,5 +58,7 @@ class IlluminaProfileChannel(BaseSimulator):
         return "".join(result)
 
 
-def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
-    register_simulator("illumina_profile", IlluminaProfileChannel())
+def register(
+    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+) -> None:
+    registrar("illumina_profile", IlluminaProfileChannel())
