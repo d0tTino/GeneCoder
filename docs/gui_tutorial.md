@@ -26,6 +26,8 @@ The application window contains three main tabs:
 The Encode tab includes a **Mirror** checkbox to output the reverse-complement
 alongside the main sequence. Toggle this on to view both strands together in the
 Visualizer.
+Drag files onto the Encode tab or use the **Browse File** button to select an
+input file.
 
 ![GUI screenshot](https://flet.dev/docs/images/screenshot.png)
 

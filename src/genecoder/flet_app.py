@@ -222,6 +222,19 @@ def main(page: ft.Page) -> None:
             allow_multiple=False, dialog_title="Select Input File for Encoding"
         )
 
+    def on_encode_file_drop(e: ft.ControlEvent) -> None:
+        """Handle files dropped onto the encode drop zone."""
+        files = getattr(e, "files", None)
+        if files and len(files) > 0:
+            selected_encode_input_file_path.current = files[0].path
+            encode_selected_input_file_text.value = (
+                f"Selected: {os.path.basename(files[0].name)}"
+            )
+        else:
+            selected_encode_input_file_path.current = ""
+            encode_selected_input_file_text.value = "File drop cancelled."
+        page.update()
+
     icons = getattr(ft, "icons", ft.Icons)
     colors = getattr(ft, "colors", ft.Colors)
     encode_browse_button: ft.ElevatedButton = ft.ElevatedButton(
@@ -229,6 +242,23 @@ def main(page: ft.Page) -> None:
         icon=getattr(icons, "FOLDER_OPEN", None),
         on_click=_open_encode_file_picker,
     )
+
+    DropTarget = getattr(ft, "DropTarget", getattr(ft, "DragTarget", None))
+    encode_drop_zone = None
+    if DropTarget:
+        drop_kwargs = {
+            "on_drop" if hasattr(DropTarget, "on_drop") else "on_accept": on_encode_file_drop
+        }
+        encode_drop_zone = DropTarget(
+            content=ft.Container(
+                ft.Text("Drop file"),
+                width=150,
+                height=80,
+                border=ft.border.all(1, ft.colors.BLUE_GREY_200),
+                alignment=ft.alignment.center,
+            ),
+            **drop_kwargs,
+        )
 
     method_dropdown: ft.Dropdown = ft.Dropdown(
         label="Encoding Method",
@@ -522,6 +552,10 @@ def main(page: ft.Page) -> None:
                 status_prefix + " " if status_prefix else ""
             ) + "Encoding successful! Click 'Save Encoded FASTA...' to save."
             encode_status_text.color =  colors.GREEN_700
+
+            refresh_helix_view()
+            app_tabs.selected_index = 3
+            page.update()
 
         except FileNotFoundError:
             encode_status_text.value = f"Error: Input file '{input_path}' not found."
@@ -869,6 +903,7 @@ def main(page: ft.Page) -> None:
                             ft.Row(
                                 [encode_browse_button, encode_selected_input_file_text]
                             ),
+                            encode_drop_zone if encode_drop_zone else ft.Container(),
                             method_dropdown,
                             alphabet_dropdown,
                             ft.Row([parity_checkbox, k_value_input]),
