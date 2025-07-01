@@ -8,9 +8,10 @@ from .base import BaseSimulator
 from ..random_utils import make_rng
 from ..channels.base import BaseChannel
 from ..error_simulation import introduce_errors
+from ..nanopore_sim import simulate_d2sim
 from . import register_simulator as _register_simulator
 
-__all__ = ["IlluminaChannel", "register"]
+__all__ = ["IlluminaChannel", "IlluminaD2SimChannel", "register"]
 
 
 class IlluminaChannel(BaseSimulator):
@@ -47,7 +48,18 @@ class IlluminaChannel(BaseSimulator):
         )
 
 
+class IlluminaD2SimChannel(BaseChannel):
+    """Wrapper using the external ``d2sim`` simulator."""
+
+    def __init__(self, error_rate: float = 0.05) -> None:
+        self.error_rate = error_rate
+
+    def simulate(self, sequence: str) -> str:
+        return simulate_d2sim(sequence, error_rate=self.error_rate, rng=make_rng())
+
+
 def register(
     registrar: Callable[[str, BaseChannel], None] = _register_simulator,
 ) -> None:
     registrar("illumina", IlluminaChannel())
+    registrar("illumina_d2sim", IlluminaD2SimChannel())
