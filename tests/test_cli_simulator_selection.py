@@ -4,7 +4,12 @@ from tests.test_cli import run_cli_command
 
 import pytest
 
-@pytest.mark.parametrize("sim_name", ["illumina", "adv_nanopore"])
+@pytest.mark.parametrize("sim_name", [
+    "illumina",
+    "adv_nanopore",
+    "illumina_d2sim",
+    "nanopore_d2sim",
+])
 def test_cli_decode_with_builtin_simulator(tmp_path: Path, sim_name: str):
     env = os.environ.copy()
     src_path = Path(__file__).resolve().parent.parent / "src"

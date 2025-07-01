@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import os
 from tests.test_cli import run_cli_command
 from genecoder.cache_dna import read_capsule
 import pytest
@@ -33,7 +34,7 @@ def test_encode_capsule_contents(tmp_path: Path) -> None:
     data = json.loads(capsule_path.read_text())
     assert data["version"] == 1
     assert "method=base4_direct" in data["header"]
-    assert data["metadata"]["input_file"] == "msg.txt"
+    assert data["metadata"]["input_file"] == os.path.basename(input_file.as_posix())
     assert data["metadata"]["method"] == "base4_direct"
     assert isinstance(data["sequence"], str) and data["sequence"]
 

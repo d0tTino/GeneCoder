@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Iterator
+from typing import (
+    Callable,
+    Iterable,
+    Iterator,
+    Tuple,
+    Union,
+)
 import os
 import json
 import hashlib
@@ -10,6 +16,45 @@ import hashlib
 from .encoders import encode_base4_direct, decode_base4_direct
 from .error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from .utils import get_alphabet_maps
+
+
+EncodeFunc = Callable[[bytes], str]
+DecodeFunc = Callable[[str], bytes]
+
+
+def stream_encode(
+    data_iter: Iterable[bytes],
+    encode_fn: EncodeFunc,
+    *,
+    fec_encode: Callable[[bytes], tuple[bytes, object]] | None = None,
+) -> Iterator[tuple[int, Union[str, Tuple[str, object]]]]:
+    """Yield encoded DNA chunks with progress index and optional FEC."""
+
+    for idx, chunk in enumerate(data_iter):
+        if fec_encode:
+            chunk, info = fec_encode(chunk)
+            yield idx, (encode_fn(chunk), info)
+        else:
+            yield idx, encode_fn(chunk)
+
+
+def stream_decode(
+    dna_iter: Iterable[Union[str, Tuple[str, object]]],
+    decode_fn: DecodeFunc,
+    *,
+    fec_decode: Callable[[bytes, object], tuple[bytes, int]] | None = None,
+) -> Iterator[tuple[int, bytes]]:
+    """Yield decoded binary chunks with progress index and optional FEC."""
+
+    for idx, item in enumerate(dna_iter):
+        if isinstance(item, tuple):
+            dna, info = item
+        else:
+            dna, info = item, None
+        chunk = decode_fn(dna)
+        if fec_decode:
+            chunk, _ = fec_decode(chunk, info)
+        yield idx, chunk
 
 
 def stream_encode_file(
@@ -27,10 +72,15 @@ def stream_encode_file(
 ) -> int:
     """Encode ``input_path`` to ``output_path`` streaming chunks.
 
-    Returns the total encoded DNA length.
+    Returns the total encoded DNA length. If ``manifest_path`` is not provided,
+    ``<output_path>.stream.manifest`` is written with the SHA-256 hash and offset
+    for each chunk.
     """
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    if manifest_path is None:
+        base, _ = os.path.splitext(output_path)
+        manifest_path = base + ".stream.manifest"
     manifest_file = None
     processed_chunks = 0
     manifest_lines: list[dict[str, int | str]] = []
@@ -126,9 +176,17 @@ def stream_decode_file(
     parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
     alphabet: str = "base4",
 ) -> None:
-    """Decode ``input_path`` FASTA file to ``output_path`` streaming chunks."""
+    """Decode ``input_path`` FASTA file to ``output_path`` streaming chunks.
+
+    If ``manifest_path`` is not provided, ``<output_path>.stream.manifest`` is
+    used to track each chunk's offset and SHA-256 hash. Existing chunks are
+    verified when ``resume`` is ``True``.
+    """
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    if manifest_path is None:
+        base, _ = os.path.splitext(output_path)
+        manifest_path = base + ".stream.manifest"
     manifest_file = None
     processed_chunks = 0
     manifest_lines: list[dict[str, int | str]] = []

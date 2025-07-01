@@ -271,3 +271,4 @@ under `web/helix-ui` and is loaded via a WebView in the GUI.
 GeneCoder is intended for educational simulations only. It should not be used
 to handle personal or medical DNA data. See the
 [README's Disclaimer](../README.md#disclaimer) for full details.
+
