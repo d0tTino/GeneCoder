@@ -6,6 +6,8 @@
 $ErrorActionPreference = 'Stop'
 
 Write-Host "Installing dependencies with optional extras..."
+Write-Host "Upgrading pip..."
+python -m pip install --upgrade pip
 poetry install --with gui,web,dnaformer --no-interaction
 
 Write-Host "Running CLI smoke test..."

@@ -4,7 +4,7 @@ import subprocess
 import pytest
 
 from genecoder import nanopore_sim
-from genecoder.plugins import SIMULATOR_REGISTRY
+from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.simulators import simulate_reads
 
 ADAPTERS = {

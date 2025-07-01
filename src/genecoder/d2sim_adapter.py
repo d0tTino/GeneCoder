@@ -5,6 +5,7 @@ import random
 from typing import Callable
 
 from .channels.base import BaseChannel
+from .simulators import register_simulator as _register_simulator
 
 from .random_utils import make_rng
 from .nanopore_sim import _simulate_adapter, _run_external
@@ -45,7 +46,9 @@ class D2SimChannel(BaseChannel):
         return simulate_d2sim(sequence, error_rate=self.error_rate, rng=make_rng())
 
 
-def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
+def register(
+    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+) -> None:
     """Register the ``d2sim`` simulator."""
 
-    register_simulator("d2sim", D2SimChannel())
+    registrar("d2sim", D2SimChannel())

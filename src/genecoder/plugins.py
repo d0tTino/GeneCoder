@@ -9,11 +9,12 @@ import importlib
 import logging
 import pkgutil
 
+from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
+
 logger = logging.getLogger(__name__)
 
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
-SIMULATOR_REGISTRY: Dict[str, BaseChannel] = {}
 
 
 def register_codec(name: str, encode: Callable[..., Any], decode: Callable[..., Any]) -> None:
@@ -28,7 +29,7 @@ def register_fec(name: str, encode: Callable[..., Any], decode: Callable[..., An
 
 def register_simulator(name: str, channel: BaseChannel) -> None:
     """Register a read simulator under ``name``."""
-    SIMULATOR_REGISTRY[name] = channel
+    _register_simulator(name, channel)
 
 
 def _load_and_register(

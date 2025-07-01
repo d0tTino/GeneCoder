@@ -33,11 +33,41 @@ def stream_encode_file(
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     manifest_file = None
     processed_chunks = 0
+    manifest_lines: list[dict[str, int | str]] = []
+    encode_map, _ = get_alphabet_maps(alphabet)
     if manifest_path:
         mode = "a" if resume else "w"
         if resume and os.path.exists(manifest_path):
             with open(manifest_path, "r", encoding="utf-8") as mf:
-                processed_chunks = sum(1 for _ in mf)
+                manifest_lines = [json.loads(line) for line in mf]
+            processed_chunks = len(manifest_lines)
+            # verify previously written chunks
+            if processed_chunks:
+                with open(input_path, "rb") as f_in:
+                    for idx in range(processed_chunks):
+                        chunk = f_in.read(chunk_size)
+                        if not chunk:
+                            raise ValueError(
+                                "Manifest exceeds input file length during resume"
+                            )
+                        dna_iter = encode_base4_direct(
+                            [chunk],
+                            add_parity=add_parity,
+                            k_value=k_value,
+                            parity_rule=parity_rule,
+                            encode_map=encode_map,
+                            stream=True,
+                        )
+                        dna_chunk = next(iter(dna_iter))
+                        expected = hashlib.sha256(dna_chunk.encode()).hexdigest()
+                        entry = manifest_lines[idx]
+                        if (
+                            entry["hash"] != expected
+                            or entry["offset"] != idx * chunk_size
+                        ):
+                            raise ValueError(
+                                f"Manifest hash mismatch at chunk {idx}"
+                            )
         manifest_file = open(manifest_path, mode, encoding="utf-8")
 
     start_offset = processed_chunks * chunk_size
@@ -51,8 +81,6 @@ def stream_encode_file(
                 if not chunk:
                     break
                 yield chunk
-
-    encode_map, _ = get_alphabet_maps(alphabet)
 
     total_len = 0
     line_width = 80
@@ -103,11 +131,30 @@ def stream_decode_file(
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     manifest_file = None
     processed_chunks = 0
+    manifest_lines: list[dict[str, int | str]] = []
     if manifest_path:
         mode = "a" if resume else "w"
         if resume and os.path.exists(manifest_path):
             with open(manifest_path, "r", encoding="utf-8") as mf:
-                processed_chunks = sum(1 for _ in mf)
+                manifest_lines = [json.loads(line) for line in mf]
+            processed_chunks = len(manifest_lines)
+            if processed_chunks and os.path.exists(output_path):
+                with open(output_path, "rb") as verify_f:
+                    for idx in range(processed_chunks):
+                        chunk = verify_f.read(chunk_size)
+                        if not chunk:
+                            raise ValueError(
+                                "Manifest exceeds output file length during resume"
+                            )
+                        expected = hashlib.sha256(chunk).hexdigest()
+                        entry = manifest_lines[idx]
+                        if (
+                            entry["hash"] != expected
+                            or entry["offset"] != idx * chunk_size
+                        ):
+                            raise ValueError(
+                                f"Manifest hash mismatch at chunk {idx}"
+                            )
         manifest_file = open(manifest_path, mode, encoding="utf-8")
 
     _, decode_map = get_alphabet_maps(alphabet)
