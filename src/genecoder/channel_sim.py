@@ -7,6 +7,7 @@ from typing import Protocol, Callable
 from .random_utils import make_rng
 
 from .channels.base import BaseChannel
+from .simulators import register_simulator as _register_simulator
 
 
 __all__ = ["simulate_errors", "RandomLike", "Channel", "register"]
@@ -60,7 +61,9 @@ class Channel(BaseChannel):
         return simulate_errors(sequence, self.error_rate, rng=make_rng())
 
 
-def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
+def register(
+    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+) -> None:
     """Register the simple substitution error simulator."""
 
-    register_simulator("simple", Channel())
+    registrar("simple", Channel())

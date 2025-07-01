@@ -8,6 +8,7 @@ from .base import BaseSimulator
 from ..random_utils import make_rng
 from ..error_simulation import introduce_errors
 from ..channels.base import BaseChannel
+from . import register_simulator as _register_simulator
 
 __all__ = ["TranscriptionSimulator", "register"]
 
@@ -33,5 +34,7 @@ class TranscriptionSimulator(BaseSimulator):
         return dna.replace("T", "U")
 
 
-def register(register_simulator: Callable[[str, BaseChannel], None]) -> None:
-    register_simulator("transcription", TranscriptionSimulator())
+def register(
+    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+) -> None:
+    registrar("transcription", TranscriptionSimulator())
