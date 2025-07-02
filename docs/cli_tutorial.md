@@ -17,3 +17,24 @@ genecoder decode --input-files example.fasta --output-file decoded.txt --method 
 ```
 
 See `genecoder --help` for all available options.
+
+## Running a bundle
+
+Bundle YAML files describe an encode/decode workflow. A simple example:
+
+```yaml
+encode:
+  input_files: [message.txt]
+  method: base4_direct
+decode:
+  method: base4_direct
+```
+
+Execute the bundle:
+
+```bash
+genecoder bundle run bundle.yaml --cache-dir runs/
+```
+
+Results are written to `runs/<hash>/<timestamp>/` and skipped when the same
+configuration is executed again.

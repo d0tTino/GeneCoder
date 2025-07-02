@@ -396,6 +396,36 @@ def test_simulate_errors_command(temp_dir: Path, small_fasta_file: Path):
     assert new_seq != original_seq
 
 
+def test_simulate_errors_missing_input(temp_dir: Path) -> None:
+    out_file = temp_dir / "corrupted.fasta"
+    cmd_args = [
+        "simulate-errors",
+        "--input-file",
+        str(temp_dir / "nofile.fasta"),
+        "--output-file",
+        str(out_file),
+    ]
+    result = run_cli_command(cmd_args)
+    assert result.returncode != 0
+    assert "not found" in result.stderr.lower()
+
+
+def test_simulate_errors_unknown_simulator(temp_dir: Path, small_fasta_file: Path) -> None:
+    out_file = temp_dir / "corrupt.fasta"
+    cmd_args = [
+        "simulate-errors",
+        "--input-file",
+        str(small_fasta_file),
+        "--output-file",
+        str(out_file),
+        "--simulator",
+        "bogus",
+    ]
+    result = run_cli_command(cmd_args)
+    assert result.returncode != 0
+    assert "invalid choice" in result.stderr.lower()
+
+
 def test_invalid_fec_none_choice(temp_dir: Path):
     """Passing '--fec None' should result in an argparse error."""
     input_file = temp_dir / "invalid.txt"

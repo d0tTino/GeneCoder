@@ -52,3 +52,37 @@ def test_replication_identity(monkeypatch):
     monkeypatch.setenv("GENECODER_SIM_SEED", "3")
     channel = ReplicationSimulator(substitution_rate=0.0, insertion_rate=0.0, deletion_rate=0.0)
     assert channel.simulate("GGCC") == "GGCC"
+
+
+def test_replication_all_deleted(monkeypatch):
+    monkeypatch.setenv("GENECODER_SIM_SEED", "4")
+    channel = ReplicationSimulator(substitution_rate=0.0, insertion_rate=0.0, deletion_rate=1.0)
+    assert channel.simulate("ATGC") == ""
+
+
+def test_replication_empty_input() -> None:
+    channel = ReplicationSimulator()
+    assert channel.simulate("") == ""
+
+
+def test_transcription_all_insertions(monkeypatch):
+    monkeypatch.setenv("GENECODER_SIM_SEED", "5")
+    channel = TranscriptionSimulator(substitution_rate=0.0, insertion_rate=1.0, deletion_rate=0.0)
+    result = channel.simulate("AT")
+    assert len(result) == 4
+    assert result.startswith("A")
+
+
+def test_transcription_empty_sequence() -> None:
+    channel = TranscriptionSimulator()
+    assert channel.simulate("") == ""
+
+
+def test_translation_incomplete_codon() -> None:
+    channel = TranslationSimulator(substitution_rate=0.0, insertion_rate=0.0, deletion_rate=0.0)
+    assert channel.simulate("AUGGC") == "M"
+
+
+def test_translation_all_deleted() -> None:
+    channel = TranslationSimulator(substitution_rate=0.0, insertion_rate=0.0, deletion_rate=1.0)
+    assert channel.simulate("AUGGCU") == ""

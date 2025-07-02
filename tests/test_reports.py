@@ -60,3 +60,45 @@ def test_decode_html_report(tmp_path: Path) -> None:
     ])
     assert result.returncode == 0
     assert "<h1>Decoding Report</h1>" in out_file.read_text()
+
+
+def test_cli_report_encode_stdout(tmp_path: Path) -> None:
+    enc = EncodeResult(
+        fasta=">seq\nACGT\n",
+        encoded_dna="ACGT",
+        metrics={"gc": 0.5},
+        info_messages=["ok"],
+    )
+    json_path = tmp_path / "enc.json"
+    json_path.write_text(json.dumps(enc.__dict__))
+    result = run_cli_command([
+        "report",
+        "--input-json",
+        str(json_path),
+        "--type",
+        "encode",
+    ])
+    assert result.returncode == 0
+    assert "# Encoding Report" in result.stdout
+
+
+def test_cli_report_decode_stdout(tmp_path: Path) -> None:
+    dec = DecodeResult(decoded_bytes=b"abc", status_message="ok", fec_info="none")
+    dec_dict = {
+        "decoded_bytes": base64.b64encode(dec.decoded_bytes).decode(),
+        "status_message": dec.status_message,
+        "fec_info": dec.fec_info,
+    }
+    json_path = tmp_path / "dec.json"
+    json_path.write_text(json.dumps(dec_dict))
+    result = run_cli_command([
+        "report",
+        "--input-json",
+        str(json_path),
+        "--type",
+        "decode",
+        "--format",
+        "html",
+    ])
+    assert result.returncode == 0
+    assert "<h1>Decoding Report</h1>" in result.stdout
