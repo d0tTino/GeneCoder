@@ -6,11 +6,17 @@ import os
 import sys
 import subprocess
 import urllib.request
-import yaml
+import importlib
+
+_yaml: Any
+try:  # pragma: no cover - import is trivial
+    _yaml = importlib.import_module("yaml")
+except Exception:  # pragma: no cover - optional dependency
+    _yaml = None
+yaml: Any | None = _yaml
 
 from .channels.base import BaseChannel
 from importlib.metadata import entry_points, EntryPoints
-import importlib
 import logging
 import pkgutil
 
@@ -39,6 +45,10 @@ def register_simulator(name: str, channel: BaseChannel) -> None:
 
 def _install_registry_plugins(url: str) -> None:
     """Install plugin packages listed in a YAML registry at ``url``."""
+
+    if yaml is None:  # pragma: no cover - optional dependency missing
+        logger.warning("YAML support unavailable, skipping plugin registry %s", url)
+        return
 
     try:
         with urllib.request.urlopen(url) as response:
