@@ -1,9 +1,9 @@
 import pytest
 import json
 from pathlib import Path
-from flet.core.control_event import ControlEvent
 
 ft = pytest.importorskip("flet")
+from flet.core.control_event import ControlEvent
 ft.icons = getattr(ft, "icons", getattr(ft, "Icons", None)) or ft.Icons
 ft.colors = getattr(ft, "colors", getattr(ft, "Colors", None)) or ft.Colors
 
