@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 from typing import Sequence
 
-import yaml
 
 from genecoder.formats import from_fasta, to_fasta
 from genecoder.simulators import SIMULATOR_REGISTRY
@@ -19,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def _load_config(path: str) -> tuple[list[str], dict[str, int]]:
+    import yaml
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     if not isinstance(data, dict):

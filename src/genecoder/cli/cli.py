@@ -13,6 +13,7 @@ decode: Any | None = None
 analyze: Any | None = None
 report: Any | None = None
 channel: Any | None = None
+bundle: Any | None = None
 
 
 logger = logging.getLogger(__name__)
@@ -55,15 +56,17 @@ def build_parser() -> argparse.ArgumentParser:
         analyze as _analyze,
         report as _report,
         channel as _channel,
+        bundle as _bundle,
     )
 
-    global encode, decode, analyze, report, channel
+    global encode, decode, analyze, report, channel, bundle
 
     encode = _encode
     decode = _decode
     analyze = _analyze
     report = _report
     channel = _channel
+    bundle = _bundle
 
 
     # Load plugins here so that dynamically registered codecs, FEC backends and
@@ -86,6 +89,7 @@ def build_parser() -> argparse.ArgumentParser:
     analyze.register_subcommand(subparsers)
     report.register_subcommand(subparsers)
     channel.register_subcommand(subparsers)
+    bundle.register_subcommand(subparsers)
 
 
     sim_parser = subparsers.add_parser(

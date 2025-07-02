@@ -29,9 +29,10 @@ You can add your own endpoints to expose encoding and decoding features.
 The server enables [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
 so that browser-based clients on other origins can call the API. Set
 `GENECODER_CORS_ORIGINS` to a comma-separated list of allowed origins (default
-`*`). Write endpoints also use a simple bearer token for authentication.
-
-Set the token before starting the server:
+`*`). Write endpoints also use a bearer token for authentication. Set
+`GENECODER_API_TOKEN` before starting the server to supply your own token. If the
+variable is unset, a random token is generated at startup and printed to the
+console.
 
 ```bash
 export GENECODER_API_TOKEN=secret
