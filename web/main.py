@@ -15,9 +15,14 @@ import base64
 from genecoder.options import EncodeOptions
 from genecoder import perform_encoding, perform_decoding
 from genecoder.formats import from_fasta
-from genecoder.encoders import calculate_gc_content
+from genecoder.encoders import calculate_gc_content, decode_base4_direct
 from genecoder.utils import get_max_homopolymer_length, get_temp_dir
-from genecoder.plotting import calculate_windowed_gc_content
+from genecoder.plotting import (
+    calculate_windowed_gc_content,
+    identify_homopolymer_regions,
+    generate_sequence_analysis_plot,
+)
+from genecoder.error_simulation import introduce_errors
 from genecoder.app_helpers import EncodeResult, DecodeResult
 from genecoder.report import (
     encode_to_markdown,
@@ -29,6 +34,18 @@ from typing import cast
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 import redis.asyncio as redis
+
+
+def bit_error_rate(original: bytes, recovered: bytes) -> float:
+    """Return the bit error rate between two byte strings."""
+    total_bits = len(original) * 8
+    min_len = min(len(original), len(recovered))
+    errors = 0
+    for o, r in zip(original[:min_len], recovered[:min_len]):
+        errors += (o ^ r).bit_count()
+    if len(recovered) < len(original):
+        errors += (len(original) - len(recovered)) * 8
+    return errors / total_bits if total_bits else 0.0
 
 API_TOKEN = os.getenv("GENECODER_API_TOKEN", "change-me")
 CORS_ORIGINS = os.getenv("GENECODER_CORS_ORIGINS", "*")
@@ -84,6 +101,10 @@ helix_index_path = helix_ui_dir / "dist" / "index.html"
 if not helix_index_path.is_file():
     helix_index_path = helix_ui_dir / "index.html"
 
+dashboard_index_path = helix_ui_dir / "dist" / "dashboard.html"
+if not dashboard_index_path.is_file():
+    dashboard_index_path = helix_ui_dir / "dashboard.html"
+
 @app.get("/", response_class=HTMLResponse)  # type: ignore[misc]
 async def index() -> str:
     return index_path.read_text(encoding="utf-8")
@@ -93,6 +114,12 @@ async def index() -> str:
 async def helix() -> str:
     """Return the React-based helix viewer."""
     return helix_index_path.read_text(encoding="utf-8")
+
+
+@app.get("/dashboard", response_class=HTMLResponse)  # type: ignore[misc]
+async def dashboard() -> str:
+    """Return the React-based dashboard interface."""
+    return dashboard_index_path.read_text(encoding="utf-8")
 
 
 class EncodeOptionsModel(BaseModel):  # type: ignore[misc]
@@ -123,6 +150,13 @@ class AnalyzeRequest(BaseModel):  # type: ignore[misc]
     fasta_data: str
     window_size: int = 50
     step_size: int = 10
+
+
+class DashboardMetricsRequest(BaseModel):  # type: ignore[misc]
+    dna_sequence: str
+    window_size: int = 50
+    step_size: int = 10
+    min_homopolymer_len: int = 4
 
 
 class ReportRequest(BaseModel):  # type: ignore[misc]
@@ -206,6 +240,28 @@ async def analyze(req: AnalyzeRequest) -> dict[str, object]:
         },
     }
     return metrics
+
+
+@app.post("/dashboard/metrics")  # type: ignore[misc]
+async def dashboard_metrics(req: DashboardMetricsRequest) -> dict[str, object]:
+    seq = req.dna_sequence
+    gc = calculate_gc_content(seq)
+    max_hp = get_max_homopolymer_length(seq)
+    gc_data = calculate_windowed_gc_content(seq, req.window_size, req.step_size)
+    hp_regions = identify_homopolymer_regions(seq, req.min_homopolymer_len)
+    buf = generate_sequence_analysis_plot(gc_data, hp_regions, len(seq))
+    plot_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    buf.close()
+    orig_bytes, _ = decode_base4_direct(seq)
+    corrupted = introduce_errors(seq, substitution_prob=0.05)
+    dec_bytes, _ = decode_base4_direct(corrupted)
+    ber = bit_error_rate(orig_bytes, dec_bytes)
+    return {
+        "gc_content": gc,
+        "max_homopolymer": max_hp,
+        "error_rate": ber,
+        "plot": plot_b64,
+    }
 
 
 @app.post("/report")  # type: ignore[misc]

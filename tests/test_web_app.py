@@ -41,6 +41,12 @@ def test_helix_ui_static() -> None:
     assert response.text == helix_index_path.read_text(encoding="utf-8")
 
 
+def test_dashboard_route() -> None:
+    response = client.get("/dashboard")
+    assert response.status_code == 200
+    assert "<!DOCTYPE html>" in response.text
+
+
 def test_encode_endpoint() -> None:
     payload = base64.b64encode(b"web app").decode()
     r = client.post(
