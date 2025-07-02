@@ -48,3 +48,21 @@ webview = show_helix_ui(seq1, seq2)
 
 The `--mirror` flag on the CLI writes both forward and reverse-complement
 records which can be viewed together using `show_helix_ui` as above.
+
+## DeepDNA Codec
+
+GeneCoder includes an optional AI-based FEC backend wrapping the open-source DeepDNA model. Install the extra and use it just like the other FEC methods:
+
+```bash
+pip install "genecoder[deepdna]"
+```
+
+### Example usage
+
+```python
+from genecoder.deepdna_codec import encode_data_deepdna, decode_data_deepdna
+
+data = b"hello world"
+encoded, info = encode_data_deepdna(data)
+decoded, _ = decode_data_deepdna(encoded, info)
+```

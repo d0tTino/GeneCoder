@@ -209,6 +209,14 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --method ai
    ```
 
+   Or install the alternative `deepdna` extras:
+
+   ```bash
+   poetry install --extras deepdna --no-interaction
+   genecoder decode --input-files noisy.fasta --output-file out.bin \
+       --method ai
+   ```
+
 ### Manifest files
 
 Each encoded file produces a companion JSON manifest capturing the encoding
