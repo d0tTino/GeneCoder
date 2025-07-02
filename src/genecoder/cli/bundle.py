@@ -6,7 +6,6 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-import yaml  # type: ignore
 
 from . import cli as cli_module
 
@@ -57,6 +56,8 @@ def _run_cli(args_list: list[str]) -> None:
 
 
 def _handle_run(args: argparse.Namespace) -> None:
+    import yaml
+
     with open(args.config, "r", encoding="utf-8") as fh:
         config = yaml.safe_load(fh) or {}
 

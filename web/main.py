@@ -1,6 +1,7 @@
 import os
 import json
 import hashlib
+import secrets
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -47,7 +48,7 @@ def bit_error_rate(original: bytes, recovered: bytes) -> float:
         errors += (len(original) - len(recovered)) * 8
     return errors / total_bits if total_bits else 0.0
 
-API_TOKEN = os.getenv("GENECODER_API_TOKEN", "change-me")
+API_TOKEN: str | None = os.getenv("GENECODER_API_TOKEN")
 CORS_ORIGINS = os.getenv("GENECODER_CORS_ORIGINS", "*")
 security = HTTPBearer(auto_error=False)
 
@@ -66,6 +67,10 @@ REDIS_URL = os.getenv("GENECODER_REDIS_URL")
 
 @app.on_event("startup")
 async def _startup() -> None:
+    global API_TOKEN
+    if API_TOKEN is None:
+        API_TOKEN = secrets.token_urlsafe(16)
+        print(f"Generated API token: {API_TOKEN}")
     if REDIS_URL:
         r = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
         await FastAPILimiter.init(r)

@@ -71,6 +71,10 @@ poetry install --with web --no-interaction
 poetry run uvicorn web.main:app --reload
 ```
 
+Set the `GENECODER_API_TOKEN` environment variable to supply the bearer token
+required by the API. If the variable is not set, a random token is generated and
+printed at startup.
+
 See [docs/installation.md](docs/installation.md) for detailed setup and testing instructions, including the [mamba-based setup](docs/installation.md#mamba-based-setup) and the [Windows Quick Start](docs/installation.md#windows-quick-start).
 - For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md).
 - For working inside the VS Code Dev Container see [docs/installation.md#using-the-dev-container](docs/installation.md#using-the-dev-container).
