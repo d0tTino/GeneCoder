@@ -131,6 +131,9 @@ jobs:
         assert "example" in plugins.SIMULATOR_REGISTRY, "simulator not registered"
         PY
 
+    - name: Run ruff lint
+      run: ruff check --exit-non-zero-on-fix .
+
     - name: Restore pre-commit cache
       id: precommit-cache
       uses: actions/cache/restore@v3
