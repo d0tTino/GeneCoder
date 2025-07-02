@@ -64,14 +64,14 @@ origins = [origin.strip() for origin in CORS_ORIGINS.split(",") if origin.strip(
 REDIS_URL = os.getenv("GENECODER_REDIS_URL")
 
 
-@app.on_event("startup")
+@app.on_event("startup")  # type: ignore[misc]
 async def _startup() -> None:
     if REDIS_URL:
         r = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
         await FastAPILimiter.init(r)
 
 
-@app.on_event("shutdown")
+@app.on_event("shutdown")  # type: ignore[misc]
 async def _shutdown() -> None:
     if FastAPILimiter.redis:
         await FastAPILimiter.close()
@@ -243,7 +243,10 @@ async def analyze(req: AnalyzeRequest) -> dict[str, object]:
 
 
 @app.post("/dashboard/metrics")  # type: ignore[misc]
-async def dashboard_metrics(req: DashboardMetricsRequest) -> dict[str, object]:
+async def dashboard_metrics(
+    req: DashboardMetricsRequest,
+    _: None = Depends(verify_token),
+) -> dict[str, object]:
     seq = req.dna_sequence
     gc = calculate_gc_content(seq)
     max_hp = get_max_homopolymer_length(seq)

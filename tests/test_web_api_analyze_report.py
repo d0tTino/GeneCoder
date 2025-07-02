@@ -4,9 +4,12 @@ fastapi = pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
 from fastapi.testclient import TestClient
 
-from web.main import app
+import web.main as main
 
-client = TestClient(app)
+main.API_TOKEN = "test-token"
+client = TestClient(main.app)
+
+AUTH_HEADERS = {"Authorization": f"Bearer {main.API_TOKEN}"}
 
 
 def test_analyze_endpoint() -> None:
@@ -29,3 +32,17 @@ def test_report_endpoint() -> None:
     r = client.post("/report", json={"data": enc, "type": "encode", "format": "html"})
     assert r.status_code == 200
     assert "<h1>Encoding Report</h1>" in r.json()["report"]
+
+
+def test_dashboard_metrics_requires_token() -> None:
+    payload = {"dna_sequence": "ACGT"}
+    r = client.post("/dashboard/metrics", json=payload)
+    assert r.status_code == 401
+
+
+def test_dashboard_metrics_with_token() -> None:
+    payload = {"dna_sequence": "ACGT"}
+    r = client.post("/dashboard/metrics", headers=AUTH_HEADERS, json=payload)
+    assert r.status_code == 200
+    data = r.json()
+    assert set(data) >= {"gc_content", "max_homopolymer", "error_rate", "plot"}

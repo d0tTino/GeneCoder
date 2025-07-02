@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-import yaml  # type: ignore
+import yaml
 
 from . import cli as cli_module
 
