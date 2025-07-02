@@ -12,7 +12,8 @@ encode: Any | None = None
 decode: Any | None = None
 analyze: Any | None = None
 report: Any | None = None
-bundle: Any | None = None
+channel: Any | None = None
+
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +49,22 @@ def setup_logging(level: int) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    from . import encode as _encode, decode as _decode, analyze as _analyze, report as _report, bundle as _bundle
+    from . import (
+        encode as _encode,
+        decode as _decode,
+        analyze as _analyze,
+        report as _report,
+        channel as _channel,
+    )
 
-    global encode, decode, analyze, report, bundle
+    global encode, decode, analyze, report, channel
+
     encode = _encode
     decode = _decode
     analyze = _analyze
     report = _report
-    bundle = _bundle
+    channel = _channel
+
 
     # Load plugins here so that dynamically registered codecs, FEC backends and
     # simulators are available during subcommand registration.
@@ -76,7 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
     decode.register_subcommand(subparsers)
     analyze.register_subcommand(subparsers)
     report.register_subcommand(subparsers)
-    bundle.register_subcommand(subparsers)
+    channel.register_subcommand(subparsers)
+
 
     sim_parser = subparsers.add_parser(
         "simulate-errors", help="Introduce random errors into a FASTA sequence."

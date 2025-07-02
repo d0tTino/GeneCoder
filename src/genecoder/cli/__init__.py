@@ -10,6 +10,7 @@ from .decode import (
     run_decoding_pipeline,
 )
 from .cli import main
+from .channel import process_channel
 
 __all__ = [
     "EncodingOptions",
@@ -19,5 +20,6 @@ __all__ = [
     "build_decoding_options",
     "run_decoding_pipeline",
     "main",
+    "process_channel",
 ]
 
