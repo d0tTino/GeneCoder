@@ -4,7 +4,7 @@ import sys
 
 from genecoder import __version__
 from genecoder.plugins import load_plugins
-from genecoder.simulators import SIMULATOR_REGISTRY
+from genecoder.simulators import SIMULATOR_REGISTRY, ChannelPipeline
 from typing import Any
 
 # Delay heavy imports until building the parser to keep --version lightweight
@@ -149,7 +149,8 @@ def _handle_sim_errors(args: argparse.Namespace) -> None:
             read_len = getattr(args, "read_length", None)
             if read_len is not None and hasattr(channel, "read_length"):
                 channel.read_length = read_len
-            corrupted = channel.simulate(seq)
+            pipeline = ChannelPipeline([channel])
+            corrupted = pipeline.simulate(seq)
         else:
             corrupted = introduce_errors(
                 seq,

@@ -11,7 +11,8 @@ from typing import Sequence
 
 
 from genecoder.formats import from_fasta, to_fasta
-from genecoder.simulators import SIMULATOR_REGISTRY
+from genecoder.simulators import SIMULATOR_REGISTRY, ChannelPipeline
+from genecoder.channels.base import BaseChannel
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
 
 logger = logging.getLogger(__name__)
@@ -33,14 +34,17 @@ def _load_config(path: str) -> tuple[list[str], dict[str, int]]:
 
 
 def _apply_simulators(sequence: str, simulators: Sequence[str]) -> str:
+    channels: list[BaseChannel] = []
     for name in simulators:
         if name not in SIMULATOR_REGISTRY:
             logger.error("Unknown simulator: %s", name)
             raise SystemExit(1)
-        channel = SIMULATOR_REGISTRY[name]
-        sequence = channel.simulate(sequence)
+        channels.append(SIMULATOR_REGISTRY[name])
+    pipeline = ChannelPipeline(channels)
+    result: str = pipeline.simulate(sequence)
+    for name in simulators:
         logger.info("Applied %s simulator", name)
-    return sequence
+    return result
 
 
 def process_channel(
