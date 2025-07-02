@@ -72,7 +72,10 @@ if websockets:
         try:
             loop: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
         except RuntimeError:
-            loop = None
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = None
         if loop:
             loop.create_task(websockets.serve(_ws_handler, "localhost", 8765))
         else:  # pragma: no cover - depends on environment
