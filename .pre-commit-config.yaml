@@ -10,7 +10,7 @@ repos:
       - id: mypy
         args: ["--config-file", "mypy.ini", "src"]
         pass_filenames: false
-        additional_dependencies: ["cryptography"]
+        additional_dependencies: ["cryptography", "types-PyYAML"]
   - repo: local
     hooks:
       - id: pytest

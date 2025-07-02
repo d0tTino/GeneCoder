@@ -174,7 +174,31 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --output-file decoded.bin --simulator squigulator
    ```
 
-13. **AI-assisted decoding**
+13. **Combine simulators into a channel**
+
+   Apply multiple simulators and enforce synthesis constraints:
+
+   ```bash
+   genecoder channel --input-file encoded.fasta \
+       --output-file channel.fasta --simulator simple --simulator indel
+   ```
+
+   The same configuration can be provided via YAML:
+
+   ```yaml
+   simulators:
+     - simple
+     - indel
+   constraints:
+     max_homopolymer: 5
+   ```
+
+   ```bash
+   genecoder channel --input-file encoded.fasta \
+       --output-file channel.fasta --config config.yml
+   ```
+
+14. **AI-assisted decoding**
 
    Install the optional `dnaformer` extras to enable a machine learning model
    that can recover sequences with high error rates:
