@@ -109,6 +109,16 @@ poetry install --extras dnaformer --no-interaction
 Once installed, GeneCoder will automatically register the codec when
 imported.
 
+## DeepDNA Plugin
+
+Install the optional DeepDNA model with Poetry's extras support:
+
+```bash
+poetry install --extras deepdna --no-interaction
+```
+
+The codec registers itself automatically when imported.
+
 ## FrameD FEC Backend
 
 The optional FrameD plugin wraps optimized C++ kernels using CFFI to provide additional

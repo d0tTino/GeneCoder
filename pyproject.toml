@@ -38,6 +38,7 @@ flet-webview = {version = "*", optional = true}
 fastapi = {version = ">=0.110", optional = true}
 uvicorn = { version = "*", extras = ["standard"], optional = true }
 httpx = {version = "<0.28", optional = true}
+deepdna = {version = "*", optional = true}
 
 [tool.poetry.group.gui.dependencies]
 flet = ">=0.28,<0.29"
@@ -79,6 +80,7 @@ bch = "genecoder.bch_codec"
 raptorq = "genecoder.raptorq_codec"
 framed = "genecoder.fec.framed"
 dnaformer = "genecoder.dnaformer_codec"
+deepdna = "genecoder.deepdna_codec"
 
 [tool.poetry.plugins."genecoder.simulators"]
 nanopore = "genecoder.nanopore_sim"
@@ -97,6 +99,7 @@ ldpc = ["pyldpc", "numpy"]
 fountain = ["pyfinite"]
 raptorq = ["raptorq", "numpy"]
 bch = ["bchlib"]
+deepdna = ["deepdna", "torch"]
 
 gui = ["flet", "matplotlib", "flet-webview"]
 web = ["fastapi", "uvicorn", "httpx"]
