@@ -103,3 +103,20 @@ from genecoder.plugins import CODEC_REGISTRY
 genecoder.plugins.load_plugins()
 print(CODEC_REGISTRY.keys())
 ```
+
+## Plugin Registries
+
+`load_plugins()` can optionally install third‑party plugins from a remote
+registry before discovering entry points. Set the environment variable
+`GENECODER_PLUGIN_REGISTRY_URL` to the location of a YAML file listing plugin
+packages:
+
+```yaml
+packages:
+  - genecoder-fancy-plugin>=1.0
+  - git+https://example.com/user/custom.git
+```
+
+The URL may use HTTP(S) or point to a local file via ``file://``. Each entry is
+passed directly to ``pip install``. Only use registries from trusted sources as
+their packages are installed and executed automatically.

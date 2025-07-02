@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from typing import Callable, Dict, Any, Iterable
 from types import ModuleType
+import os
+import sys
+import subprocess
+import urllib.request
+import yaml
 
 from .channels.base import BaseChannel
 from importlib.metadata import entry_points, EntryPoints
@@ -30,6 +35,23 @@ def register_fec(name: str, encode: Callable[..., Any], decode: Callable[..., An
 def register_simulator(name: str, channel: BaseChannel) -> None:
     """Register a read simulator under ``name``."""
     _register_simulator(name, channel)
+
+
+def _install_registry_plugins(url: str) -> None:
+    """Install plugin packages listed in a YAML registry at ``url``."""
+
+    try:
+        with urllib.request.urlopen(url) as response:
+            data = yaml.safe_load(response.read()) or {}
+    except Exception as exc:  # pragma: no cover - network error path
+        logger.warning("Failed to fetch plugin registry %s: %s", url, exc)
+        return
+
+    for spec in data.get("packages", []):
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
+        except Exception as exc:  # pragma: no cover - install error path
+            logger.warning("Failed to install plugin %s from registry: %s", spec, exc)
 
 
 def _load_and_register(
@@ -72,6 +94,10 @@ def load_plugins() -> None:
     builtin = importlib.import_module("genecoder.builtin_plugins")
     if hasattr(builtin, "register_builtin_plugins"):
         builtin.register_builtin_plugins()
+
+    registry_url = os.getenv("GENECODER_PLUGIN_REGISTRY_URL")
+    if registry_url:
+        _install_registry_plugins(registry_url)
 
     failures: list[str] = []
 
