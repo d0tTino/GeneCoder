@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Dict
 
 from ..channels.base import BaseChannel
+from .pipeline import ChannelPipeline
 
 SIMULATOR_REGISTRY: Dict[str, BaseChannel] = {}
 
@@ -30,6 +31,7 @@ __all__ = [
     "ReplicationSimulator",
     "TranscriptionSimulator",
     "TranslationSimulator",
+    "ChannelPipeline",
     "simulate_reads",
 ]
 
