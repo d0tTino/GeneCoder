@@ -70,7 +70,7 @@ if websockets:
 
     try:
         try:
-            loop: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
+            loop: asyncio.AbstractEventLoop | None = asyncio.get_event_loop()
         except RuntimeError:
             loop = None
         if loop:
