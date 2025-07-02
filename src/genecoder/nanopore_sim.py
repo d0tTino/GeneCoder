@@ -31,12 +31,22 @@ from .formats import from_fasta, to_fasta
 
 
 def _parse_env_options(command: str) -> list[str]:
-    """Return additional options for ``command`` parsed from the environment."""
+    """Return additional options for ``command`` parsed from the environment.
+
+    The environment variable ``GENECODER_<CMD>_OPTIONS`` allows forwarding extra
+    command line arguments to the external simulators.  For security reasons
+    only a limited set of characters is permitted.  If ``raw`` contains
+    potentially dangerous characters a ``ValueError`` is raised.
+    """
 
     env_var = f"GENECODER_{command.upper()}_OPTIONS"
     raw = os.getenv(env_var)
     if not raw:
         return []
+
+    if any(c in raw for c in ";&|`$<>\\\n\r") or not raw.isprintable():
+        raise ValueError(f"Unsafe characters in {env_var}")
+
     import shlex
 
     try:
@@ -87,6 +97,10 @@ def _simulate_adapter(
                 cmd_list += ["-e", str(error_rate)]
             cmd_list += _parse_env_options(command)
             return _run_external(cmd_list, sequence)
+        except ValueError as exc:  # pragma: no cover - invalid options
+            raise ValueError(
+                f"Invalid GENECODER_{command.upper()}_OPTIONS: {exc}"
+            ) from exc
         except (RuntimeError, subprocess.CalledProcessError) as exc:  # pragma: no cover - error path
             logger.warning(
                 "%s failed: %s; falling back to simple error model",
