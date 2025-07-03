@@ -1,17 +1,27 @@
 import pytest
 
 fastapi = pytest.importorskip("fastapi")
-httpx = pytest.importorskip("httpx")
-from httpx import AsyncClient
+from fastapi.testclient import TestClient
 
 import web.main as main
 
 main.API_TOKEN = "test-token"
 
-@pytest.mark.asyncio
-async def test_dashboard_metrics_async() -> None:
-    async with AsyncClient(app=main.app, base_url="http://test") as ac:
-        resp = await ac.post(
+
+def _client() -> TestClient:
+    return TestClient(main.app)
+
+
+def test_dashboard_page() -> None:
+    with _client() as client:
+        resp = client.get("/dashboard")
+    assert resp.status_code == 200
+    assert "GeneCoder Dashboard" in resp.text
+
+
+def test_dashboard_metrics() -> None:
+    with _client() as client:
+        resp = client.post(
             "/dashboard/metrics",
             headers={"Authorization": f"Bearer {main.API_TOKEN}"},
             json={"dna_sequence": "ACGT"},
