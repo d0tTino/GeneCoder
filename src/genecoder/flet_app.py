@@ -42,6 +42,10 @@ from genecoder.glossary_tooltips import (
     wrap_glossary_terms,
     glossary_modal_text,
 )
+from genecoder.gc_constrained_encoder import calculate_gc_content
+from genecoder.utils import get_max_homopolymer_length
+from genecoder.synthesis import SynthesisConstraints
+from genecoder.constraint_fixer import fix_sequence
 
 
 logger = logging.getLogger(__name__)
@@ -333,6 +337,7 @@ def main(page: ft.Page) -> None:
     encode_button: ft.ElevatedButton = ft.ElevatedButton("Encode")
 
     encode_status_text: ft.Text = ft.Text("", selectable=True)
+    fix_suggestion_text: ft.Text = ft.Text("", selectable=True)
     encode_orig_size_text: ft.Text = ft.Text("Original size: - bytes")
     encode_dna_len_text: ft.Text = ft.Text("Encoded DNA length: - nucleotides")
     encode_comp_ratio_text: ft.Text = ft.Text("Compression ratio: -")
@@ -439,6 +444,7 @@ def main(page: ft.Page) -> None:
         nucleotide_freq_image.src_base64 = None
         sequence_analysis_plot_image.src_base64 = None  # Clear new plot
         analysis_status_text.value = "Encode data to view analysis plots."
+        fix_suggestion_text.value = ""
         if len(app_tabs.tabs) > 2:
             app_tabs.tabs[2].disabled = True
 
@@ -555,6 +561,28 @@ def main(page: ft.Page) -> None:
                 status_prefix + " " if status_prefix else ""
             ) + "Encoding successful! Click 'Save Encoded FASTA...' to save."
             encode_status_text.color =  colors.GREEN_700
+
+            gc_val = calculate_gc_content(forward_seq)
+            hp_len = get_max_homopolymer_length(forward_seq)
+            constraints = SynthesisConstraints()
+            if (
+                gc_val < 0.4
+                or gc_val > 0.6
+                or hp_len > constraints.max_homopolymer
+            ):
+                fixed = fix_sequence(
+                    forward_seq,
+                    target_gc_min=0.4,
+                    target_gc_max=0.6,
+                    max_homopolymer=constraints.max_homopolymer,
+                )
+                fix_gc = calculate_gc_content(fixed)
+                fix_hp = get_max_homopolymer_length(fixed)
+                fix_suggestion_text.value = (
+                    f"Suggested fix GC {fix_gc:.2%}, max HP {fix_hp}."
+                )
+            else:
+                fix_suggestion_text.value = ""
 
             refresh_helix_view()
             app_tabs.selected_index = 3
@@ -928,6 +956,7 @@ def main(page: ft.Page) -> None:
                             encode_save_button,
                             encode_manifest_save_button,
                             encode_status_text,
+                            fix_suggestion_text,
                             encode_hidden_fasta_content,
                             encode_hidden_manifest_content,
                             encode_hidden_sequence,

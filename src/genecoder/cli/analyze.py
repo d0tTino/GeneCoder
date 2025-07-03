@@ -15,6 +15,7 @@ from genecoder.plotting import (
 from genecoder.utils import get_max_homopolymer_length
 from genecoder.encoders import calculate_gc_content
 from genecoder.synthesis import SynthesisConstraints
+from genecoder.constraint_fixer import fix_sequence
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,25 @@ def process_single_analyze(input_file_path: str, args: argparse.Namespace) -> No
         if max_hp > constraints.max_homopolymer:
             logger.warning(
                 f"Warning for {input_file_path}: Maximum homopolymer {max_hp} exceeds allowed {constraints.max_homopolymer}."
+            )
+
+        if (
+            gc_content < 0.4
+            or gc_content > 0.6
+            or max_hp > constraints.max_homopolymer
+        ):
+            fixed = fix_sequence(
+                sequence,
+                target_gc_min=0.4,
+                target_gc_max=0.6,
+                max_homopolymer=constraints.max_homopolymer,
+            )
+            fixed_gc = calculate_gc_content(fixed)
+            fixed_hp = get_max_homopolymer_length(fixed)
+            logger.info(
+                "Suggested fix -> GC: %.2f%%, max HP: %d",
+                fixed_gc * 100,
+                fixed_hp,
             )
         if gc_values:
             logger.info(
