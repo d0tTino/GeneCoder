@@ -4,6 +4,8 @@
 
 See the [Disclaimer](../README.md#disclaimer) before using the toolkit.
 
+For a hands-on introduction check the Jupyter notebooks in the [notebooks/](../notebooks) directory.
+
 GeneCoder operations are performed with the `genecoder` CLI:
 
 ```bash
