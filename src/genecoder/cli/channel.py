@@ -76,32 +76,37 @@ def process_channel(
     if not records:
         logger.error("No FASTA records found in %s", input_file)
         raise SystemExit(1)
-    header, seq = records[0]
-
-    seq = _apply_simulators(
-        seq,
-        simulators,
-        parallel=parallel,
-        threads=threads,
-        processes=processes,
-    )
 
     synth = SynthesisConstraints(**constraints)
-    if not validate_sequence(seq, synth):
-        logger.error("Sequence violates synthesis constraints")
-        raise SystemExit(1)
-    logger.info("Sequence satisfies synthesis constraints")
+    processed_records: list[tuple[str, str]] = []
+    for header, seq in records:
+        seq = _apply_simulators(
+            seq,
+            simulators,
+            parallel=parallel,
+            threads=threads,
+            processes=processes,
+        )
 
-    fasta_out = to_fasta(seq, header, line_width=80)
+        if not validate_sequence(seq, synth):
+            logger.error("Sequence violates synthesis constraints")
+            raise SystemExit(1)
+        logger.info("Sequence satisfies synthesis constraints")
+        processed_records.append((header, seq))
+
+    fasta_out = "".join(
+        to_fasta(seq, header, line_width=80) for header, seq in processed_records
+    )
     os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
     with open(output_file, "w", encoding="utf-8") as f_out:
         f_out.write(fasta_out)
 
+    total_len = sum(len(seq) for _, seq in processed_records)
     manifest = {
         "file": os.path.basename(Path(input_file).as_posix()),
         "simulators": list(simulators),
         "constraints": constraints,
-        "metrics": {"length": len(seq)},
+        "metrics": {"length": total_len},
     }
     manifest_path = os.path.splitext(output_file)[0] + ".manifest.json"
     with open(manifest_path, "w", encoding="utf-8") as m_out:
