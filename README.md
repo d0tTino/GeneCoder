@@ -124,3 +124,15 @@ See [docs/plugins.md](docs/plugins.md) for details on writing and registering
 new codecs, FEC back-ends or simulators. Plugins are automatically loaded when
 using the CLI or GUI. When using GeneCoder as a library call
 ``genecoder.plugins.load_plugins()`` first to populate the registries.
+
+Remote plugin sources can be configured via the environment variables
+``GENECODER_PLUGIN_REGISTRY_URL`` and ``GENECODER_PLUGIN_CATALOG_URL``. Set
+``GENECODER_PLUGIN_REGISTRY_URL`` to a YAML file with package names to install
+automatically and ``GENECODER_PLUGIN_CATALOG_URL`` to a JSON or YAML catalog
+used by the ``genecoder plugin`` commands. The catalog URL may be an HTTP(S)
+address or a local file via ``file://``.
+
+```bash
+export GENECODER_PLUGIN_REGISTRY_URL=https://example.com/registry.yaml
+export GENECODER_PLUGIN_CATALOG_URL=https://example.com/catalog.yaml
+```
