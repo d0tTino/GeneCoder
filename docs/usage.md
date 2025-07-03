@@ -262,8 +262,9 @@ genecoder encode --input-files msg.txt \
 ```
 ### Security Options
 
-Use `--encrypt` to XOR-encrypt the input bytes. You **must** provide your own
-key via `--key <file>` as GeneCoder does not include a secure default. The
+Use `--encrypt` to AES-GCM encrypt the input bytes with a built-in key before
+encoding. Provide `--key <file>` to read custom key bytes from a file. The
+
 `--checksum` flag stores a SHA256 checksum of the plaintext in the FASTA header
 which is validated during decoding.
 
