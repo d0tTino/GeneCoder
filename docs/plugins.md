@@ -108,8 +108,14 @@ print(CODEC_REGISTRY.keys())
 
 `load_plugins()` can optionally install third‑party plugins from a remote
 registry before discovering entry points. Set the environment variable
-`GENECODER_PLUGIN_REGISTRY_URL` to the location of a YAML file listing plugin
-packages:
+`GENECODER_PLUGIN_REGISTRY_URL` to the URL of a YAML file listing plugin
+packages. Example:
+
+```bash
+export GENECODER_PLUGIN_REGISTRY_URL=https://example.com/registry.yaml
+```
+
+The registry file must contain:
 
 ```yaml
 packages:
@@ -124,7 +130,13 @@ their packages are installed and executed automatically.
 ## Plugin Marketplace
 
 Set ``GENECODER_PLUGIN_CATALOG_URL`` to a JSON or YAML file describing
-available plugins. The format is:
+available plugins. Example:
+
+```bash
+export GENECODER_PLUGIN_CATALOG_URL=https://example.com/catalog.yaml
+```
+
+The file may be JSON or YAML and should follow this structure:
 
 ```yaml
 plugins:
@@ -132,6 +144,18 @@ plugins:
     version: "1.0.0"
     url: myplugin==1.0.0
     description: Example plugin
+```
+
+The URL may use HTTP(S) or point to a local file via ``file://``.
+
+JSON uses the same keys:
+
+```json
+{
+  "plugins": [
+    {"name": "myplugin", "version": "1.0.0", "url": "myplugin==1.0.0", "description": "Example plugin"}
+  ]
+}
 ```
 
 After loading plugins, list available entries:
