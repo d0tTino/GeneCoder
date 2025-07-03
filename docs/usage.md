@@ -282,6 +282,14 @@ python -m genecoder.flet_app
 
 The GUI exposes encoding options, error correction choices and displays metrics and analysis plots.
 
+### Constraint Fix Suggestions
+
+Both the CLI `analyze` command and the GUI provide simple suggestions when a
+sequence falls outside the 40-60% GC range or exceeds the default homopolymer
+limit. After running `genecoder analyze`, a log entry shows the GC content and
+maximum homopolymer length of an adjusted sequence. The GUI displays a
+"Suggested fix" message beneath the encoding status when applicable.
+
 The **Visualizer** tab embeds a dedicated React/Three.js frontend. It renders the
 sequence in 3D with orbit controls, overlays for
 [GC content](glossary.md#gc-content) and

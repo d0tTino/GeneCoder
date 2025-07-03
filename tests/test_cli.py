@@ -371,6 +371,16 @@ def test_analyze_multiple_files(temp_dir: Path):
     assert result.stdout.count("Sequence length:") == 2
 
 
+def test_analyze_suggest_fix(temp_dir: Path):
+    fasta_file = temp_dir / "bad.fasta"
+    create_simple_fasta(fasta_file, "AAAAAA")
+
+    result = run_cli_command(["analyze", "--input-files", str(fasta_file)])
+
+    assert result.returncode == 0
+    assert "Suggested fix" in result.stdout
+
+
 def test_simulate_errors_command(temp_dir: Path, small_fasta_file: Path):
     """CLI simulate-errors should output a corrupted FASTA file."""
     out_file = temp_dir / "corrupted.fasta"
