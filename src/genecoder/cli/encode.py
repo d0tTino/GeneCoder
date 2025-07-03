@@ -280,6 +280,9 @@ def process_single_encode(
             with open(args.key, "rb") as kf:
                 _key_bytes = kf.read()
         if getattr(args, "encrypt", False):
+            if _key_bytes is None:
+                logger.error("Encryption key required when --encrypt is used.")
+                raise SystemExit(1)
             _ensure_security_loaded()
             assert encrypt_data is not None
             data_for_encoding = encrypt_data(plaintext_data, key=_key_bytes)
@@ -504,12 +507,12 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     parser.add_argument(
         "--encrypt",
         action="store_true",
-        help="Encrypt input bytes before encoding.",
+        help="Encrypt input bytes before encoding (requires --key).",
     )
     parser.add_argument(
         "--key",
         type=str,
-        help="Path to file containing encryption key bytes.",
+        help="Path to file containing encryption key bytes (required with --encrypt).",
     )
     parser.add_argument(
         "--checksum",
