@@ -23,3 +23,4 @@ For more details, explore the sections below.
 * [Technology Stack](technology_stack.md) – Overview of dependencies and tooling.
 * [Glossary](glossary.md) – Key terms used throughout the docs.
 * [Introductory Notebooks](../notebooks) – Encoding, channel simulation and decoding examples.
+* [Lesson Notebooks](../notebooks/lessons) – Step-by-step guides for encoding basics, FEC, simulation and analysis.
