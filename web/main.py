@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from dataclasses import asdict
 import asyncio
 import base64
+import re
 
 from genecoder.options import EncodeOptions
 from genecoder import perform_encoding, perform_decoding
@@ -35,6 +36,8 @@ from typing import cast
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 import redis.asyncio as redis
+
+DNA_RE = re.compile(r"^[ACGT]+$")
 
 
 def bit_error_rate(original: bytes, recovered: bytes) -> float:
@@ -65,18 +68,20 @@ origins = [origin.strip() for origin in CORS_ORIGINS.split(",") if origin.strip(
 REDIS_URL = os.getenv("GENECODER_REDIS_URL")
 
 
-@app.on_event("startup")  # type: ignore[misc]
+@app.on_event("startup")
 async def _startup() -> None:
     global API_TOKEN
     if API_TOKEN is None:
         API_TOKEN = secrets.token_urlsafe(16)
         print(f"Generated API token: {API_TOKEN}")
     if REDIS_URL:
-        r = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
+        r = redis.from_url(
+            REDIS_URL, encoding="utf-8", decode_responses=True
+        )  # type: ignore[no-untyped-call]
         await FastAPILimiter.init(r)
 
 
-@app.on_event("shutdown")  # type: ignore[misc]
+@app.on_event("shutdown")
 async def _shutdown() -> None:
     if FastAPILimiter.redis:
         await FastAPILimiter.close()
@@ -110,24 +115,24 @@ dashboard_index_path = helix_ui_dir / "dist" / "dashboard.html"
 if not dashboard_index_path.is_file():
     dashboard_index_path = helix_ui_dir / "dashboard.html"
 
-@app.get("/", response_class=HTMLResponse)  # type: ignore[misc]
+@app.get("/", response_class=HTMLResponse)
 async def index() -> str:
     return index_path.read_text(encoding="utf-8")
 
 
-@app.get("/helix", response_class=HTMLResponse)  # type: ignore[misc]
+@app.get("/helix", response_class=HTMLResponse)
 async def helix() -> str:
     """Return the React-based helix viewer."""
     return helix_index_path.read_text(encoding="utf-8")
 
 
-@app.get("/dashboard", response_class=HTMLResponse)  # type: ignore[misc]
+@app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard() -> str:
     """Return the React-based dashboard interface."""
     return dashboard_index_path.read_text(encoding="utf-8")
 
 
-class EncodeOptionsModel(BaseModel):  # type: ignore[misc]
+class EncodeOptionsModel(BaseModel):
     method: str
     add_parity: bool = False
     k_value: int = 7
@@ -141,42 +146,42 @@ class EncodeOptionsModel(BaseModel):  # type: ignore[misc]
     alphabet: str = "base4"
 
 
-class EncodeRequest(BaseModel):  # type: ignore[misc]
+class EncodeRequest(BaseModel):
     data: str
     options: EncodeOptionsModel
 
 
-class DecodeRequest(BaseModel):  # type: ignore[misc]
+class DecodeRequest(BaseModel):
     fasta_data: str
     alphabet: str = "base4"
 
 
-class AnalyzeRequest(BaseModel):  # type: ignore[misc]
+class AnalyzeRequest(BaseModel):
     fasta_data: str
     window_size: int = 50
     step_size: int = 10
 
 
-class DashboardMetricsRequest(BaseModel):  # type: ignore[misc]
+class DashboardMetricsRequest(BaseModel):
     dna_sequence: str
     window_size: int = 50
     step_size: int = 10
     min_homopolymer_len: int = 4
 
 
-class ReportRequest(BaseModel):  # type: ignore[misc]
+class ReportRequest(BaseModel):
     data: dict[str, object]
     type: str  # "encode" or "decode"
     format: str = "markdown"
 
 
-class DecodeAIRequest(BaseModel):  # type: ignore[misc]
+class DecodeAIRequest(BaseModel):
     """Request model for the AI-based decode endpoint."""
 
     encoded: str
     info: dict[str, object]
 
-@app.post("/encode")  # type: ignore[misc]
+@app.post("/encode")
 async def encode(
     req: EncodeRequest,
     _: None = Depends(verify_token),
@@ -187,7 +192,7 @@ async def encode(
     return asdict(result)
 
 
-@app.post("/decode")  # type: ignore[misc]
+@app.post("/decode")
 async def decode(
     req: DecodeRequest,
     _: None = Depends(verify_token),
@@ -202,7 +207,7 @@ async def decode(
     }
 
 
-@app.post("/decode/ai")  # type: ignore[misc]
+@app.post("/decode/ai")
 async def decode_ai(req: DecodeAIRequest) -> dict[str, object]:
     """Decode data using the optional DNAformer model."""
 
@@ -221,7 +226,7 @@ async def decode_ai(req: DecodeAIRequest) -> dict[str, object]:
     }
 
 
-@app.post("/analyze")  # type: ignore[misc]
+@app.post("/analyze")
 async def analyze(req: AnalyzeRequest) -> dict[str, object]:
     parsed = from_fasta(req.fasta_data)
     if not parsed:
@@ -247,12 +252,14 @@ async def analyze(req: AnalyzeRequest) -> dict[str, object]:
     return metrics
 
 
-@app.post("/dashboard/metrics")  # type: ignore[misc]
+@app.post("/dashboard/metrics")
 async def dashboard_metrics(
     req: DashboardMetricsRequest,
     _: None = Depends(verify_token),
 ) -> dict[str, object]:
     seq = req.dna_sequence
+    if not DNA_RE.fullmatch(seq):
+        raise HTTPException(status_code=400, detail="Invalid DNA sequence")
     gc = calculate_gc_content(seq)
     max_hp = get_max_homopolymer_length(seq)
     gc_data = calculate_windowed_gc_content(seq, req.window_size, req.step_size)
@@ -260,10 +267,13 @@ async def dashboard_metrics(
     buf = generate_sequence_analysis_plot(gc_data, hp_regions, len(seq))
     plot_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
     buf.close()
-    orig_bytes, _ = decode_base4_direct(seq)
-    corrupted = introduce_errors(seq, substitution_prob=0.05)
-    dec_bytes, _ = decode_base4_direct(corrupted)
-    ber = bit_error_rate(orig_bytes, dec_bytes)
+    try:
+        orig_bytes, _ = decode_base4_direct(seq)
+        corrupted = introduce_errors(seq, substitution_prob=0.05)
+        dec_bytes, _ = decode_base4_direct(corrupted)
+        ber = bit_error_rate(orig_bytes, dec_bytes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {
         "gc_content": gc,
         "max_homopolymer": max_hp,
@@ -272,7 +282,7 @@ async def dashboard_metrics(
     }
 
 
-class PlotDataRequest(BaseModel):  # type: ignore[misc]
+class PlotDataRequest(BaseModel):
     """Request model for dashboard heatmap data."""
 
     dna_sequence: str
@@ -297,7 +307,7 @@ def _homopolymer_lengths(seq: str) -> list[int]:
     return lengths
 
 
-@app.post("/dashboard/plot-data")  # type: ignore[misc]
+@app.post("/dashboard/plot-data")
 async def dashboard_plot_data(
     req: PlotDataRequest,
     _: None = Depends(verify_token),
@@ -305,6 +315,8 @@ async def dashboard_plot_data(
     """Return windowed GC content and homopolymer lengths."""
 
     seq = req.dna_sequence
+    if not DNA_RE.fullmatch(seq):
+        raise HTTPException(status_code=400, detail="Invalid DNA sequence")
     starts, gc_values = calculate_windowed_gc_content(
         seq, req.window_size, req.step_size
     )
@@ -316,7 +328,7 @@ async def dashboard_plot_data(
     }
 
 
-@app.post("/report")  # type: ignore[misc]
+@app.post("/report")
 async def report(req: ReportRequest) -> dict[str, str]:
     if req.type == "encode":
         result = EncodeResult(**req.data)
@@ -338,13 +350,13 @@ async def report(req: ReportRequest) -> dict[str, str]:
     return {"report": text}
 
 
-class ChunkUploadRequest(BaseModel):  # type: ignore[misc]
+class ChunkUploadRequest(BaseModel):
     file_id: str
     offset: int
     data: str
 
 
-@app.post("/upload-chunk")  # type: ignore[misc]
+@app.post("/upload-chunk")
 async def upload_chunk(
     req: ChunkUploadRequest,
     request: Request,
@@ -365,7 +377,7 @@ async def upload_chunk(
     return {"status": "ok", "hash": h}
 
 
-@app.get("/download-chunk")  # type: ignore[misc]
+@app.get("/download-chunk")
 async def download_chunk(
     file_id: str,
     offset: int,
