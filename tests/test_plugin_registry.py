@@ -63,6 +63,7 @@ def test_registry_install_failure(monkeypatch, caplog):
     monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(builtins, "input", lambda _: "y")
 
     with caplog.at_level(logging.WARNING):
         plugins.load_plugins()
