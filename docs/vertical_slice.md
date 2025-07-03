@@ -72,6 +72,14 @@ poetry run uvicorn web.main:app --reload
 
 Open <http://localhost:8000> in your browser to view the landing page.
 
+## Dashboard
+
+The server includes a small dashboard for quick sequence analysis. Navigate to
+`http://localhost:8000/dashboard` and paste a DNA sequence to view GC content,
+homopolymer metrics and heatmap plots. The GUI also provides an "Open Web
+Dashboard" button under the Analysis tab which launches the same page in your
+default browser.
+
 ## Streaming Encode and Resume
 
 Large files can be encoded and decoded in streaming mode to reduce memory usage.

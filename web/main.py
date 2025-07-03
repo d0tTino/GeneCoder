@@ -272,6 +272,50 @@ async def dashboard_metrics(
     }
 
 
+class PlotDataRequest(BaseModel):  # type: ignore[misc]
+    """Request model for dashboard heatmap data."""
+
+    dna_sequence: str
+    window_size: int = 50
+    step_size: int = 10
+
+
+def _homopolymer_lengths(seq: str) -> list[int]:
+    """Return the length of the homopolymer each base belongs to."""
+
+    lengths: list[int] = [0] * len(seq)
+    i = 0
+    n = len(seq)
+    while i < n:
+        j = i
+        while j < n and seq[j] == seq[i]:
+            j += 1
+        run_len = j - i
+        for k in range(i, j):
+            lengths[k] = run_len
+        i = j
+    return lengths
+
+
+@app.post("/dashboard/plot-data")  # type: ignore[misc]
+async def dashboard_plot_data(
+    req: PlotDataRequest,
+    _: None = Depends(verify_token),
+) -> dict[str, object]:
+    """Return windowed GC content and homopolymer lengths."""
+
+    seq = req.dna_sequence
+    starts, gc_values = calculate_windowed_gc_content(
+        seq, req.window_size, req.step_size
+    )
+    hp_lengths = _homopolymer_lengths(seq)
+    return {
+        "gc_positions": starts,
+        "gc_values": gc_values,
+        "hp_lengths": hp_lengths,
+    }
+
+
 @app.post("/report")  # type: ignore[misc]
 async def report(req: ReportRequest) -> dict[str, str]:
     if req.type == "encode":
