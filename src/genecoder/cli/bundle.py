@@ -9,6 +9,27 @@ from pathlib import Path
 
 from . import cli as cli_module
 
+_ALLOWED_CACHE: dict[str, set[str]] | None = None
+
+
+def _get_allowed(command: str) -> set[str]:
+    global _ALLOWED_CACHE
+    if _ALLOWED_CACHE is None:
+        parser = cli_module.build_parser()
+        subparsers = next(
+            a for a in parser._actions if isinstance(a, argparse._SubParsersAction)
+        )
+        _ALLOWED_CACHE = {}
+        for name in ("encode", "simulate-errors", "decode"):
+            sub = subparsers.choices[name]
+            allowed = {
+                act.dest
+                for act in sub._actions
+                if act.option_strings and act.dest != "help"
+            }
+            _ALLOWED_CACHE[name] = allowed
+    return _ALLOWED_CACHE[command]
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,6 +52,14 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
 
 
 def _normalize_args(prefix: str, opts: dict[str, object]) -> list[str]:
+    if not isinstance(opts, dict):
+        raise TypeError(f"{prefix} section must be a mapping")
+
+    allowed = _get_allowed(prefix)
+    unknown = set(opts) - allowed
+    if unknown:
+        raise ValueError(f"Unknown {prefix} options: {', '.join(sorted(unknown))}")
+
     args = [prefix]
     for key, value in opts.items():
         if value is None:
@@ -42,8 +71,12 @@ def _normalize_args(prefix: str, opts: dict[str, object]) -> list[str]:
         elif isinstance(value, list):
             args.append(opt)
             args.extend([str(v) for v in value])
-        else:
+        elif isinstance(value, (int, float, str)):
             args.extend([opt, str(value)])
+        else:
+            raise TypeError(
+                f"Invalid type for {prefix}.{key}: {type(value).__name__}"
+            )
     return args
 
 
@@ -60,6 +93,16 @@ def _handle_run(args: argparse.Namespace) -> None:
 
     with open(args.config, "r", encoding="utf-8") as fh:
         config = yaml.safe_load(fh) or {}
+
+    if not isinstance(config, dict):
+        raise TypeError("Top level YAML must be a mapping")
+
+    allowed_sections = {"encode", "simulate", "decode"}
+    unknown_sections = set(config) - allowed_sections
+    if unknown_sections:
+        raise ValueError(
+            f"Unknown top-level keys: {', '.join(sorted(unknown_sections))}"
+        )
 
     config_hash = hashlib.sha256(
         json.dumps(config, sort_keys=True).encode()
@@ -78,13 +121,17 @@ def _handle_run(args: argparse.Namespace) -> None:
     decoded_dir.mkdir(parents=True, exist_ok=True)
 
     enc_cfg = config.get("encode", {})
+    if not isinstance(enc_cfg, dict):
+        raise TypeError("encode section must be a mapping")
     enc_args = _normalize_args("encode", enc_cfg)
     enc_args += ["--output-dir", str(encoded_dir)]
     _run_cli(enc_args)
 
     input_files = [encoded_dir / (Path(p).name + ".fasta") for p in enc_cfg.get("input_files", [])]
 
-    sim_cfg = config.get("simulator")
+    sim_cfg = config.get("simulate")
+    if sim_cfg is not None and not isinstance(sim_cfg, dict):
+        raise TypeError("simulate section must be a mapping")
     if sim_cfg:
         simulated_dir.mkdir(parents=True, exist_ok=True)
         sim_args_common = _normalize_args("simulate-errors", sim_cfg)
@@ -97,6 +144,8 @@ def _handle_run(args: argparse.Namespace) -> None:
         input_files = new_inputs
 
     dec_cfg = config.get("decode")
+    if dec_cfg is not None and not isinstance(dec_cfg, dict):
+        raise TypeError("decode section must be a mapping")
     if dec_cfg:
         dec_args = _normalize_args("decode", dec_cfg)
         dec_args += ["--input-files"] + [str(p) for p in input_files]
