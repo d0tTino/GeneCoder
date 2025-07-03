@@ -112,6 +112,7 @@ Plugins can be installed automatically from a remote registry using the
 ``GENECODER_PLUGIN_REGISTRY_URL`` to the URL of a YAML file listing plugin
 packages and then run the installer. Example:
 
+
 ```bash
 export GENECODER_PLUGIN_REGISTRY_URL=https://example.com/registry.yaml
 ```
@@ -126,13 +127,16 @@ The registry file must contain:
 
 ```yaml
 packages:
-  - genecoder-fancy-plugin>=1.0
-  - git+https://example.com/user/custom.git
+  - spec: genecoder-fancy-plugin>=1.0
+    checksum: abcdef123456...
+  - spec: git+https://example.com/user/custom.git
+    checksum: 0123456789ab...
 ```
 
-The URL may use HTTP(S) or point to a local file via ``file://``. Each entry is
-passed directly to ``pip install``. Only use registries from trusted sources as
-their packages are installed and executed automatically.
+Only HTTPS URLs (or ``file://`` for local testing) are accepted. Each package is
+installed only if the checksum matches; otherwise installation is aborted and a
+warning is logged. Use registries from trusted sources as their packages are
+installed and executed automatically.
 
 ## Plugin Marketplace
 
@@ -176,3 +180,15 @@ Install a plugin from the catalog:
 ```bash
 genecoder plugin install myplugin
 ```
+
+## Third-Party Plugin Risks and Verification
+
+GeneCoder automatically imports any packages that expose the appropriate entry
+points or are listed in a plugin registry. These plugins execute arbitrary
+Python code with the privileges of the current user. Malicious or poorly
+written plugins could therefore compromise your system or corrupt data.
+
+GeneCoder itself does not verify the authenticity of third-party packages. When
+using a registry or catalog, ensure the listed sources are trustworthy and, if
+possible, manually inspect the plugin code or compare checksums before
+installation.

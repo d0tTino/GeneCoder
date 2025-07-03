@@ -159,7 +159,7 @@ jobs:
         key: pre-commit-3.11-${{ hashFiles('.pre-commit-config.yaml') }}
 
     - name: Run mypy
-      run: mypy --config-file mypy.ini src --show-error-codes --no-error-summary
+      run: mypy --config-file mypy.ini --strict src/genecoder --show-error-codes --no-error-summary
 
   glossary:
     needs: [changes, check-comments, lint]

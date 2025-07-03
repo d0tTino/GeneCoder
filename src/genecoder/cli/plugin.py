@@ -58,6 +58,10 @@ def _handle_install(args: argparse.Namespace) -> None:
     version = meta.get("version")
     if version and not meta.get("url"):
         spec = f"{name}=={version}"
+    checksum = meta.get("checksum")
+    if checksum and plugins.compute_checksum(spec.encode()) != checksum:
+        logger.warning("Checksum mismatch for plugin %s", name)
+        raise SystemExit(1)
     subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
 
 

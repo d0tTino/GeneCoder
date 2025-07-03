@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from html import escape
-from typing import Iterable
+from typing import Iterable, List, Dict
+import io
+
+from .plotting import plt, _MATPLOTLIB_AVAILABLE, _dummy_png
 
 from .app_helpers import EncodeResult, DecodeResult
 
@@ -10,6 +13,7 @@ __all__ = [
     "decode_to_markdown",
     "encode_to_html",
     "decode_to_html",
+    "plot_fec_benchmark",
 ]
 
 
@@ -75,3 +79,34 @@ def _markdown_to_html(markdown: str) -> str:
     if in_ul:
         html_lines.append("</ul>")
     return "\n".join(html_lines)
+
+
+def plot_fec_benchmark(results: List[Dict[str, float | str]]) -> io.BytesIO:
+    """Return a bar plot of encode/decode throughput for FEC benchmarks."""
+    if not _MATPLOTLIB_AVAILABLE:
+        return _dummy_png()
+
+    names = [r.get("fec", "") for r in results]
+    enc = [float(r.get("encode_mb_s", 0)) for r in results]
+    dec = [float(r.get("decode_mb_s", 0)) for r in results]
+
+    x = list(range(len(names)))
+    width = 0.35
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.bar([i - width / 2 for i in x], enc, width, label="encode MB/s")
+    ax.bar([i + width / 2 for i in x], dec, width, label="decode MB/s")
+    ax.set_ylabel("MB/s")
+    ax.set_title("FEC Benchmark")
+    ax.set_xticks(x)
+    ax.set_xticklabels(names)
+    ax.legend()
+    plt.tight_layout()
+
+    buf = io.BytesIO()
+    try:
+        plt.savefig(buf, format="png")
+        buf.seek(0)
+    finally:
+        plt.close(fig)
+    return buf
