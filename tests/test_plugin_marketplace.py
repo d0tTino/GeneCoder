@@ -1,8 +1,11 @@
 import sys
 import argparse
+import logging
+import pytest
 
 import genecoder.plugins as plugins
 from genecoder.cli import plugin as plugin_cli
+from genecoder.security import compute_checksum
 
 
 class DummyResponse:
@@ -20,7 +23,11 @@ class DummyResponse:
 
 
 def test_catalog_list_and_install(monkeypatch, capsys):
-    catalog = b"plugins:\n  - name: plug\n    version: '0.1'\n    url: plug==0.1\n    description: Example"
+    h = compute_checksum("plug==0.1".encode())
+    catalog = (
+        "plugins:\n  - name: plug\n    version: '0.1'\n    url: plug==0.1\n    description: Example\n    checksum: "
+        + h
+    ).encode()
 
     def fake_urlopen(url):
         assert url == "https://example.com/catalog.yaml"
@@ -71,6 +78,7 @@ def test_catalog_invalid_signature(monkeypatch, caplog):
 
     catalog = b"plugins:\n  - name: bad\n    version: '0.1'\n    url: bad==0.1\n    description: Bad\nsignature: wrong"
 
+
     def fake_urlopen(url):
         assert url == "https://example.com/catalog.yaml"
         return DummyResponse(catalog)
@@ -87,3 +95,4 @@ def test_catalog_invalid_signature(monkeypatch, caplog):
 
     assert "Invalid catalog signature" in caplog.text
     assert plugins.PLUGIN_CATALOG == {}
+

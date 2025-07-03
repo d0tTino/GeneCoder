@@ -3,6 +3,7 @@ import logging
 
 import builtins
 import genecoder.plugins as plugins
+from genecoder.security import compute_checksum
 
 
 class DummyResponse:
@@ -27,7 +28,13 @@ def test_registry_install(monkeypatch):
 
     def fake_urlopen(url):
         assert url == "https://example.com/plugins.yaml"
-        data = b"packages:\n  - pkgA>=1.0\n  - pkgB"
+        c1 = compute_checksum("pkgA>=1.0".encode())
+        c2 = compute_checksum("pkgB".encode())
+        data = (
+            "packages:\n"
+            f"  - spec: pkgA>=1.0\n    checksum: {c1}\n"
+            f"  - spec: pkgB\n    checksum: {c2}"
+        ).encode()
         return DummyResponse(data)
 
     monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
@@ -55,7 +62,11 @@ def test_registry_install_failure(monkeypatch, caplog):
 
     def fake_urlopen(url):
         assert url == "https://example.com/plugins.yaml"
-        data = b"packages:\n  - pkgA"
+        c1 = compute_checksum("pkgA".encode())
+        data = (
+            "packages:\n"
+            f"  - spec: pkgA\n    checksum: {c1}"
+        ).encode()
 
         return DummyResponse(data)
 

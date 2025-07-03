@@ -34,10 +34,16 @@ def _legacy_xor_encrypt(data: bytes, key: bytes) -> bytes:
     return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
 
 
-def test_decrypt_legacy_format() -> None:
+def test_decrypt_legacy_format_fails() -> None:
     data = b"legacy"
     legacy_enc = _legacy_xor_encrypt(data, _DEFAULT_KEY)
-    assert decrypt_data(legacy_enc) == data
+    with pytest.raises(ValueError):
+        decrypt_data(legacy_enc)
+
+
+def test_decrypt_unencrypted_bytes() -> None:
+    with pytest.raises(ValueError):
+        decrypt_data(b"not encrypted")
 
 
 def test_cli_encrypt_checksum_roundtrip(tmp_path: Path) -> None:
