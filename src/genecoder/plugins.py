@@ -8,6 +8,7 @@ import subprocess
 import urllib.request
 from urllib.parse import urlparse
 import importlib
+import hashlib
 
 _yaml: Any
 try:  # pragma: no cover - import is trivial
@@ -44,6 +45,20 @@ def register_fec(name: str, encode: Callable[..., Any], decode: Callable[..., An
 def register_simulator(name: str, channel: BaseChannel) -> None:
     """Register a read simulator under ``name``."""
     _register_simulator(name, channel)
+
+
+def _verify_catalog_signature(data: bytes, signature: str) -> bool:
+    """Return True if ``data`` matches ``signature``.
+
+    The default implementation uses a SHA256 hex digest. This is a minimal
+    check intended mainly for testing and does not provide real security.
+    """
+
+    try:
+        digest = hashlib.sha256(data).hexdigest()
+    except Exception:
+        return False
+    return digest == signature
 
 
 def _install_registry_plugins(url: str) -> None:
@@ -95,10 +110,21 @@ def _fetch_catalog(url: str) -> None:
 
     try:
         with urllib.request.urlopen(url) as response:
-            data = yaml.safe_load(response.read()) or {}
+            raw = response.read()
+        data = yaml.safe_load(raw) or {}
     except Exception as exc:  # pragma: no cover - network error path
         logger.warning("Failed to fetch plugin catalog %s: %s", url, exc)
         return
+
+    sig = data.get("signature")
+    if sig:
+        try:
+            if not _verify_catalog_signature(raw, str(sig)):
+                logger.warning("Invalid catalog signature for %s", url)
+                return
+        except Exception as exc:  # pragma: no cover - signature error path
+            logger.warning("Invalid catalog signature for %s: %s", url, exc)
+            return
 
     PLUGIN_CATALOG.clear()
     for entry in data.get("plugins", []):
