@@ -264,6 +264,7 @@ genecoder encode --input-files msg.txt \
 
 Use `--encrypt` to AES-GCM encrypt the input bytes with a built-in key before
 encoding. Provide `--key <file>` to read custom key bytes from a file. The
+
 `--checksum` flag stores a SHA256 checksum of the plaintext in the FASTA header
 which is validated during decoding.
 

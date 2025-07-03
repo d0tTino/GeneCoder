@@ -169,3 +169,15 @@ Install a plugin from the catalog:
 ```bash
 genecoder plugin install myplugin
 ```
+
+## Third-Party Plugin Risks and Verification
+
+GeneCoder automatically imports any packages that expose the appropriate entry
+points or are listed in a plugin registry. These plugins execute arbitrary
+Python code with the privileges of the current user. Malicious or poorly
+written plugins could therefore compromise your system or corrupt data.
+
+GeneCoder itself does not verify the authenticity of third-party packages. When
+using a registry or catalog, ensure the listed sources are trustworthy and, if
+possible, manually inspect the plugin code or compare checksums before
+installation.
