@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
+PLUGIN_CATALOG: Dict[str, Dict[str, str]] = {}
 
 
 def register_codec(name: str, encode: Callable[..., Any], decode: Callable[..., Any]) -> None:
@@ -58,10 +59,40 @@ def _install_registry_plugins(url: str) -> None:
         return
 
     for spec in data.get("packages", []):
+        confirm = input(f"Install plugin package {spec}? [y/N]: ")
+        if confirm.strip().lower() not in {"y", "yes"}:
+            logger.info("Skipping plugin %s", spec)
+            continue
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
         except Exception as exc:  # pragma: no cover - install error path
             logger.warning("Failed to install plugin %s from registry: %s", spec, exc)
+
+
+def _fetch_catalog(url: str) -> None:
+    """Fetch plugin catalogue from ``url`` and store in ``PLUGIN_CATALOG``."""
+
+    if yaml is None:  # pragma: no cover - optional dependency missing
+        logger.warning("YAML support unavailable, skipping plugin catalog %s", url)
+        return
+
+    try:
+        with urllib.request.urlopen(url) as response:
+            data = yaml.safe_load(response.read()) or {}
+    except Exception as exc:  # pragma: no cover - network error path
+        logger.warning("Failed to fetch plugin catalog %s: %s", url, exc)
+        return
+
+    PLUGIN_CATALOG.clear()
+    for entry in data.get("plugins", []):
+        name = str(entry.get("name", ""))
+        if not name:
+            continue
+        PLUGIN_CATALOG[name] = {
+            "version": str(entry.get("version", "")),
+            "url": str(entry.get("url", "")),
+            "description": str(entry.get("description", "")),
+        }
 
 
 def _load_and_register(
@@ -94,7 +125,7 @@ def _load_and_register(
 
 
 def load_plugins() -> None:
-    """Load plugins defined via GeneCoder entry points."""
+    """Load plugins and fetch catalog entries."""
 
     CODEC_REGISTRY.clear()
     FEC_REGISTRY.clear()
@@ -108,6 +139,12 @@ def load_plugins() -> None:
     registry_url = os.getenv("GENECODER_PLUGIN_REGISTRY_URL")
     if registry_url:
         _install_registry_plugins(registry_url)
+
+    catalog_url = os.getenv("GENECODER_PLUGIN_CATALOG_URL")
+    if catalog_url:
+        _fetch_catalog(catalog_url)
+    else:
+        PLUGIN_CATALOG.clear()
 
     failures: list[str] = []
 

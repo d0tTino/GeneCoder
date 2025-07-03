@@ -1,6 +1,7 @@
 import sys
 import logging
 
+import builtins
 import genecoder.plugins as plugins
 
 
@@ -33,6 +34,7 @@ def test_registry_install(monkeypatch):
     monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(builtins, "input", lambda _: "y")
 
     plugins.CODEC_REGISTRY.clear()
     plugins.FEC_REGISTRY.clear()
@@ -54,6 +56,7 @@ def test_registry_install_failure(monkeypatch, caplog):
     def fake_urlopen(url):
         assert url == "https://example.com/plugins.yaml"
         data = b"packages:\n  - pkgA"
+
         return DummyResponse(data)
 
     monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")

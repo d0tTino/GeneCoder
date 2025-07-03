@@ -22,3 +22,4 @@ For more details, explore the sections below.
 * [FEC Benchmarks](benchmarks.md) – Forward error correction examples and results.
 * [Technology Stack](technology_stack.md) – Overview of dependencies and tooling.
 * [Glossary](glossary.md) – Key terms used throughout the docs.
+* [Introductory Notebooks](../notebooks) – Encoding, channel simulation and decoding examples.

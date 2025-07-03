@@ -8,6 +8,7 @@ GeneCoder is an educational toolkit for exploring DNA-based data storage. It pro
 For full usage instructions and additional documentation see the [docs/](docs/) directory or the hosted documentation linked above.
 For instructions on launching the GUI see the [usage guide](docs/usage.md#launching-the-flet-app).
 For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md).
+Introductory Jupyter notebooks with encoding and decoding examples are available in the [notebooks/](notebooks) directory.
 
 GeneCoder's long-term goal is to provide an integrated research platform that
 bridges encoding algorithms with sequencing and synthesis simulations while
