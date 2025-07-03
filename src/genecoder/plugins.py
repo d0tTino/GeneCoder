@@ -59,10 +59,6 @@ def _install_registry_plugins(url: str) -> None:
         return
 
     for spec in data.get("packages", []):
-        confirm = input(f"Install plugin package {spec}? [y/N]: ")
-        if confirm.strip().lower() not in {"y", "yes"}:
-            logger.info("Skipping plugin %s", spec)
-            continue
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
         except Exception as exc:  # pragma: no cover - install error path

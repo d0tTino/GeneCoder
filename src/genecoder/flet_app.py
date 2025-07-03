@@ -20,6 +20,7 @@ import os
 import asyncio  # For asynchronous operations
 import json
 import logging
+import webbrowser
 from typing import Optional, Any
 try:
     import websockets
@@ -902,6 +903,12 @@ def main(page: ft.Page) -> None:
                 alignment=ft.MainAxisAlignment.START,
             ),
             sequence_analysis_plot_image,  # New plot image
+            ft.ElevatedButton(
+                "Open Web Dashboard",
+                on_click=lambda _: webbrowser.open(
+                    "http://localhost:8000/dashboard"
+                ),
+            ),
         ],
         spacing=10,
         scroll=ft.ScrollMode.AUTO,
