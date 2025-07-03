@@ -15,6 +15,7 @@ import base64
 
 from genecoder.options import EncodeOptions
 from genecoder import perform_encoding, perform_decoding
+from genecoder.plugins import load_plugins
 from genecoder.formats import from_fasta
 from genecoder.encoders import calculate_gc_content, decode_base4_direct
 from genecoder.utils import get_max_homopolymer_length, get_temp_dir
@@ -68,6 +69,7 @@ REDIS_URL = os.getenv("GENECODER_REDIS_URL")
 @app.on_event("startup")  # type: ignore[misc]
 async def _startup() -> None:
     global API_TOKEN
+    load_plugins()
     if API_TOKEN is None:
         API_TOKEN = secrets.token_urlsafe(16)
         print(f"Generated API token: {API_TOKEN}")

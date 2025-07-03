@@ -65,6 +65,15 @@ def _install_registry_plugins(url: str) -> None:
             logger.warning("Failed to install plugin %s from registry: %s", spec, exc)
 
 
+def install_registry_plugins(url: str | None = None) -> None:
+    """Install packages from a registry URL or :envvar:`GENECODER_PLUGIN_REGISTRY_URL`."""
+    if url is None:
+        url = os.getenv("GENECODER_PLUGIN_REGISTRY_URL")
+    if not url:
+        return
+    _install_registry_plugins(url)
+
+
 def _fetch_catalog(url: str) -> None:
     """Fetch plugin catalogue from ``url`` and store in ``PLUGIN_CATALOG``."""
 
@@ -131,10 +140,6 @@ def load_plugins() -> None:
     builtin = importlib.import_module("genecoder.builtin_plugins")
     if hasattr(builtin, "register_builtin_plugins"):
         builtin.register_builtin_plugins()
-
-    registry_url = os.getenv("GENECODER_PLUGIN_REGISTRY_URL")
-    if registry_url:
-        _install_registry_plugins(registry_url)
 
     catalog_url = os.getenv("GENECODER_PLUGIN_CATALOG_URL")
     if catalog_url:

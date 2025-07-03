@@ -106,13 +106,20 @@ print(CODEC_REGISTRY.keys())
 
 ## Plugin Registries
 
-`load_plugins()` can optionally install third‑party plugins from a remote
-registry before discovering entry points. Set the environment variable
-`GENECODER_PLUGIN_REGISTRY_URL` to the URL of a YAML file listing plugin
-packages. Example:
+Plugins can be installed automatically from a remote registry using the
+:func:`genecoder.plugins.install_registry_plugins` function or the
+``genecoder plugin install-registry`` command. Set the environment variable
+``GENECODER_PLUGIN_REGISTRY_URL`` to the URL of a YAML file listing plugin
+packages and then run the installer. Example:
 
 ```bash
 export GENECODER_PLUGIN_REGISTRY_URL=https://example.com/registry.yaml
+```
+
+Then install the packages with:
+
+```bash
+genecoder plugin install-registry
 ```
 
 The registry file must contain:
