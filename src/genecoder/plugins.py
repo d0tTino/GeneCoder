@@ -6,6 +6,7 @@ import os
 import sys
 import subprocess
 import urllib.request
+from urllib.parse import urlparse
 import importlib
 
 _yaml: Any
@@ -21,6 +22,7 @@ import logging
 import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
+from .security import compute_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,10 @@ def _install_registry_plugins(url: str) -> None:
         logger.warning("YAML support unavailable, skipping plugin registry %s", url)
         return
 
+    if urlparse(url).scheme != "https":
+        logger.warning("Insecure plugin registry URL %s", url)
+        return
+
     try:
         with urllib.request.urlopen(url) as response:
             data = yaml.safe_load(response.read()) or {}
@@ -58,7 +64,22 @@ def _install_registry_plugins(url: str) -> None:
         logger.warning("Failed to fetch plugin registry %s: %s", url, exc)
         return
 
-    for spec in data.get("packages", []):
+    for entry in data.get("packages", []):
+        if isinstance(entry, dict):
+            spec = str(entry.get("spec") or entry.get("package") or entry.get("url") or "")
+            checksum = str(entry.get("checksum", ""))
+        else:
+            logger.warning("Missing checksum for plugin entry %s", entry)
+            continue
+
+        if not spec or not checksum:
+            logger.warning("Incomplete plugin entry in registry: %s", entry)
+            continue
+
+        if compute_checksum(spec.encode()) != checksum:
+            logger.warning("Checksum mismatch for plugin %s", spec)
+            continue
+
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
         except Exception as exc:  # pragma: no cover - install error path
@@ -88,6 +109,7 @@ def _fetch_catalog(url: str) -> None:
             "version": str(entry.get("version", "")),
             "url": str(entry.get("url", "")),
             "description": str(entry.get("description", "")),
+            "checksum": str(entry.get("checksum", "")),
         }
 
 

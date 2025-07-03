@@ -109,7 +109,8 @@ print(CODEC_REGISTRY.keys())
 `load_plugins()` can optionally install third‑party plugins from a remote
 registry before discovering entry points. Set the environment variable
 `GENECODER_PLUGIN_REGISTRY_URL` to the URL of a YAML file listing plugin
-packages. Example:
+packages. The URL **must** use HTTPS and each entry must provide a SHA256
+checksum. Example:
 
 ```bash
 export GENECODER_PLUGIN_REGISTRY_URL=https://example.com/registry.yaml
@@ -119,13 +120,16 @@ The registry file must contain:
 
 ```yaml
 packages:
-  - genecoder-fancy-plugin>=1.0
-  - git+https://example.com/user/custom.git
+  - spec: genecoder-fancy-plugin>=1.0
+    checksum: abcdef123456...
+  - spec: git+https://example.com/user/custom.git
+    checksum: 0123456789ab...
 ```
 
-The URL may use HTTP(S) or point to a local file via ``file://``. Each entry is
-passed directly to ``pip install``. Only use registries from trusted sources as
-their packages are installed and executed automatically.
+Only HTTPS URLs (or ``file://`` for local testing) are accepted. Each package is
+installed only if the checksum matches; otherwise installation is aborted and a
+warning is logged. Use registries from trusted sources as their packages are
+installed and executed automatically.
 
 ## Plugin Marketplace
 
