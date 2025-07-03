@@ -43,6 +43,8 @@ def _setup_flet(monkeypatch: pytest.MonkeyPatch):
             captured["encode"] = btn
         elif args and args[0] == "Decode":
             captured["decode"] = btn
+        elif args and args[0] == "Fix Sequence":
+            captured["fix"] = btn
         return btn
 
     monkeypatch.setattr(ft, "ElevatedButton", capture_button)
@@ -219,3 +221,26 @@ def test_decode_value_error_handled(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
     asyncio.run(decode_cb(None))
     assert "bad fasta" in dec_vars["decode_status_text"].value
+
+
+def test_fix_sequence_button(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured, _ = _setup_flet(monkeypatch)
+    from genecoder import flet_app
+
+    ft.app(target=flet_app.main, view=ft.AppView.FLET_APP_HIDDEN, port=0)
+
+    encode_cb = captured["encode"].on_click
+    fix_cb = captured["fix"].on_click
+
+    enc_vars = {n: c.cell_contents for n, c in zip(encode_cb.__code__.co_freevars, encode_cb.__closure__)}
+    fix_vars = {n: c.cell_contents for n, c in zip(fix_cb.__code__.co_freevars, fix_cb.__closure__)}
+
+    input_path = tmp_path / "data.bin"
+    input_path.write_bytes(b"A" * 100)
+    enc_vars["selected_encode_input_file_path"].current = str(input_path)
+
+    asyncio.run(encode_cb(None))
+    asyncio.run(fix_cb(None))
+
+    assert fix_vars["fixed_dna_snippet_text"].value
+    assert "Fixed GC" in fix_vars["fixed_metrics_text"].value

@@ -32,3 +32,7 @@ input file.
 ![GUI screenshot](https://flet.dev/docs/images/screenshot.png)
 
 Use the buttons at the bottom of each tab to start the selected operation.
+
+After encoding completes, GC and homopolymer metrics are shown. If they fall outside recommended ranges, a **Fix Sequence** button allows automatic adjustment. Clicking it displays the fixed DNA snippet and updated metrics.
+
+Example: encode any file, then click **Fix Sequence** when the suggestion text appears to view the corrected sequence.

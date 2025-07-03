@@ -339,6 +339,16 @@ def main(page: ft.Page) -> None:
 
     encode_status_text: ft.Text = ft.Text("", selectable=True)
     fix_suggestion_text: ft.Text = ft.Text("", selectable=True)
+    fix_button: ft.ElevatedButton = ft.ElevatedButton("Fix Sequence")
+    fixed_dna_snippet_text: ft.TextField = ft.TextField(
+        label="Fixed DNA Snippet (first 200 chars)",
+        read_only=True,
+        multiline=True,
+        max_lines=3,
+        value="",
+        width=500,
+    )
+    fixed_metrics_text: ft.Text = ft.Text("", selectable=True)
     encode_orig_size_text: ft.Text = ft.Text("Original size: - bytes")
     encode_dna_len_text: ft.Text = ft.Text("Encoded DNA length: - nucleotides")
     encode_comp_ratio_text: ft.Text = ft.Text("Compression ratio: -")
@@ -436,6 +446,8 @@ def main(page: ft.Page) -> None:
         encode_actual_gc_value.value = "-"
         encode_actual_homopolymer_value.value = "-"
         encode_dna_snippet_text.value = ""
+        fixed_dna_snippet_text.value = ""
+        fixed_metrics_text.value = ""
         encode_save_button.visible = False
         encode_manifest_save_button.visible = False
         encode_hidden_fasta_content.value = ""
@@ -608,6 +620,28 @@ def main(page: ft.Page) -> None:
             page.update()
 
     encode_button.on_click = encode_data
+
+    async def apply_fix(_: ft.ControlEvent) -> None:
+        seq = encode_hidden_sequence.value
+        if not seq:
+            fixed_metrics_text.value = "No sequence available to fix."
+            fixed_dna_snippet_text.value = ""
+            page.update()
+            return
+        constraints = SynthesisConstraints()
+        fixed = fix_sequence(
+            seq,
+            target_gc_min=0.4,
+            target_gc_max=0.6,
+            max_homopolymer=constraints.max_homopolymer,
+        )
+        fixed_dna_snippet_text.value = fixed[:200]
+        gc_val = calculate_gc_content(fixed)
+        hp_len = get_max_homopolymer_length(fixed)
+        fixed_metrics_text.value = f"Fixed GC {gc_val:.2%}, max HP {hp_len}"
+        page.update()
+
+    fix_button.on_click = apply_fix
 
     async def on_encode_save_file_result(e: ft.FilePickerResultEvent) -> None:  # Made async for consistency, though not strictly needed here
 
@@ -964,6 +998,9 @@ def main(page: ft.Page) -> None:
                             encode_manifest_save_button,
                             encode_status_text,
                             fix_suggestion_text,
+                            fix_button,
+                            fixed_metrics_text,
+                            fixed_dna_snippet_text,
                             encode_hidden_fasta_content,
                             encode_hidden_manifest_content,
                             encode_hidden_sequence,
