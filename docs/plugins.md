@@ -120,3 +120,11 @@ packages:
 The URL may use HTTP(S) or point to a local file via ``file://``. Each entry is
 passed directly to ``pip install``. Only use registries from trusted sources as
 their packages are installed and executed automatically.
+
+### Security Considerations
+
+When ``GENECODER_PLUGIN_REGISTRY_URL`` is set, GeneCoder will prompt for
+confirmation before installing each package from the registry. Review the list
+of packages carefully and only accept installations from sources you trust.
+Consider verifying a digital signature for the registry file or each package
+before proceeding.
