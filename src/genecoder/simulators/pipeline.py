@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import Iterable, List
+import concurrent.futures
+import os
 
 from ..channels.base import BaseChannel
 
@@ -17,7 +19,32 @@ class ChannelPipeline(BaseChannel):
         """Append ``channel`` to the pipeline."""
         self.channels.append(channel)
 
-    def simulate(self, sequence: str) -> str:
-        for channel in self.channels:
-            sequence = channel.simulate(sequence)
-        return sequence
+    def simulate(
+        self,
+        sequence: str,
+        *,
+        parallel: bool = False,
+        workers: int | None = None,
+        use_process_pool: bool = False,
+    ) -> str:
+        """Return ``sequence`` processed by each channel."""
+
+        if not parallel or len(self.channels) <= 1:
+            for channel in self.channels:
+                sequence = channel.simulate(sequence)
+            return sequence
+
+        if workers is None:
+            workers = min(len(self.channels), os.cpu_count() or 1)
+
+        executor_cls = (
+            concurrent.futures.ProcessPoolExecutor
+            if use_process_pool
+            else concurrent.futures.ThreadPoolExecutor
+        )
+
+        current = sequence
+        with executor_cls(max_workers=workers) as executor:
+            for channel in self.channels:
+                current = executor.submit(channel.simulate, current).result()
+        return current

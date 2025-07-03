@@ -33,7 +33,14 @@ def _load_config(path: str) -> tuple[list[str], dict[str, int]]:
     return list(sim), {k: int(v) for k, v in constraints.items()}
 
 
-def _apply_simulators(sequence: str, simulators: Sequence[str]) -> str:
+def _apply_simulators(
+    sequence: str,
+    simulators: Sequence[str],
+    *,
+    parallel: bool = False,
+    threads: int | None = None,
+    processes: int | None = None,
+) -> str:
     channels: list[BaseChannel] = []
     for name in simulators:
         if name not in SIMULATOR_REGISTRY:
@@ -41,7 +48,13 @@ def _apply_simulators(sequence: str, simulators: Sequence[str]) -> str:
             raise SystemExit(1)
         channels.append(SIMULATOR_REGISTRY[name])
     pipeline = ChannelPipeline(channels)
-    result: str = pipeline.simulate(sequence)
+    workers = processes or threads
+    result: str = pipeline.simulate(
+        sequence,
+        parallel=parallel,
+        workers=workers,
+        use_process_pool=processes is not None,
+    )
     for name in simulators:
         logger.info("Applied %s simulator", name)
     return result
@@ -52,6 +65,10 @@ def process_channel(
     output_file: str,
     simulators: Sequence[str],
     constraints: dict[str, int],
+    *,
+    parallel: bool = False,
+    threads: int | None = None,
+    processes: int | None = None,
 ) -> None:
     with open(input_file, "r", encoding="utf-8") as f:
         fasta_str = f.read()
@@ -61,7 +78,13 @@ def process_channel(
         raise SystemExit(1)
     header, seq = records[0]
 
-    seq = _apply_simulators(seq, simulators)
+    seq = _apply_simulators(
+        seq,
+        simulators,
+        parallel=parallel,
+        threads=threads,
+        processes=processes,
+    )
 
     synth = SynthesisConstraints(**constraints)
     if not validate_sequence(seq, synth):
@@ -101,6 +124,9 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     parser.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
     parser.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
     parser.add_argument("--max-homopolymer", type=int, default=4, help="Maximum homopolymer")
+    parser.add_argument("--parallel", action="store_true", help="Run channel steps in parallel")
+    parser.add_argument("--threads", type=int, default=None, help="Number of worker threads")
+    parser.add_argument("--processes", type=int, default=None, help="Use process pool with N workers")
     parser.set_defaults(func=_handle_command)
 
 
@@ -119,4 +145,12 @@ def _handle_command(args: argparse.Namespace) -> None:
     if not simulators:
         logger.error("At least one simulator must be specified")
         raise SystemExit(1)
-    process_channel(args.input_file, args.output_file, simulators, constraints)
+    process_channel(
+        args.input_file,
+        args.output_file,
+        simulators,
+        constraints,
+        parallel=args.parallel,
+        threads=args.threads,
+        processes=args.processes,
+    )
