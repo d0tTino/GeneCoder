@@ -23,6 +23,17 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     install_parser.add_argument("name", help="Plugin name to install")
     install_parser.set_defaults(func=_handle_install)
 
+    reg_parser = plugin_sub.add_parser(
+        "install-registry",
+        help="Install all plugins from a registry",
+    )
+    reg_parser.add_argument(
+        "--url",
+        help="Registry YAML URL (defaults to $GENECODER_PLUGIN_REGISTRY_URL)",
+        default=None,
+    )
+    reg_parser.set_defaults(func=_handle_install_registry)
+
 
 def _handle_list(args: argparse.Namespace) -> None:
     if not plugins.PLUGIN_CATALOG:
@@ -52,4 +63,8 @@ def _handle_install(args: argparse.Namespace) -> None:
         logger.warning("Checksum mismatch for plugin %s", name)
         raise SystemExit(1)
     subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
+
+
+def _handle_install_registry(args: argparse.Namespace) -> None:
+    plugins.install_registry_plugins(args.url)
 
