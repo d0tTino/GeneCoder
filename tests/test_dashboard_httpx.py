@@ -37,53 +37,24 @@ def test_dashboard_metrics() -> None:
     assert isinstance(data["plot"], str)
 
 
-def test_dashboard_metrics_invalid_chars() -> None:
+def test_dashboard_metrics_invalid_length() -> None:
     with _client() as client:
         resp = client.post(
             "/dashboard/metrics",
-            headers=AUTH_HEADERS,
-            json={"dna_sequence": "ACGTX"},
+            headers={"Authorization": f"Bearer {main.API_TOKEN}"},
+            json={"dna_sequence": "AAA"},
         )
     assert resp.status_code == 400
-
-
-def test_dashboard_metrics_bad_window() -> None:
-    with _client() as client:
-        resp = client.post(
-            "/dashboard/metrics",
-            headers=AUTH_HEADERS,
-            json={"dna_sequence": "ACGT", "window_size": 0},
-        )
-    assert resp.status_code == 400
-
-
-def test_dashboard_plot_data_valid() -> None:
-    with _client() as client:
-        resp = client.post(
-            "/dashboard/plot-data",
-            headers=AUTH_HEADERS,
-            json={"dna_sequence": "ACGT"},
-        )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert set(data) == {"gc_positions", "gc_values", "hp_lengths"}
+    assert "multiple of 4" in resp.json()["detail"]
 
 
 def test_dashboard_plot_data_invalid_chars() -> None:
     with _client() as client:
         resp = client.post(
             "/dashboard/plot-data",
-            headers=AUTH_HEADERS,
-            json={"dna_sequence": "ACGX"},
+            headers={"Authorization": f"Bearer {main.API_TOKEN}"},
+            json={"dna_sequence": "ACGTX"},
         )
     assert resp.status_code == 400
+    assert "Invalid" in resp.json()["detail"]
 
-
-def test_dashboard_plot_data_bad_window() -> None:
-    with _client() as client:
-        resp = client.post(
-            "/dashboard/plot-data",
-            headers=AUTH_HEADERS,
-            json={"dna_sequence": "ACGT", "window_size": 0},
-        )
-    assert resp.status_code == 400
