@@ -6,7 +6,9 @@ import os
 import sys
 import subprocess
 import urllib.request
+from urllib.parse import urlparse
 import importlib
+import hashlib
 
 _yaml: Any
 try:  # pragma: no cover - import is trivial
@@ -21,6 +23,7 @@ import logging
 import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
+from .security import compute_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -44,11 +47,29 @@ def register_simulator(name: str, channel: BaseChannel) -> None:
     _register_simulator(name, channel)
 
 
+def _verify_catalog_signature(data: bytes, signature: str) -> bool:
+    """Return True if ``data`` matches ``signature``.
+
+    The default implementation uses a SHA256 hex digest. This is a minimal
+    check intended mainly for testing and does not provide real security.
+    """
+
+    try:
+        digest = hashlib.sha256(data).hexdigest()
+    except Exception:
+        return False
+    return digest == signature
+
+
 def _install_registry_plugins(url: str) -> None:
     """Install plugin packages listed in a YAML registry at ``url``."""
 
     if yaml is None:  # pragma: no cover - optional dependency missing
         logger.warning("YAML support unavailable, skipping plugin registry %s", url)
+        return
+
+    if urlparse(url).scheme != "https":
+        logger.warning("Insecure plugin registry URL %s", url)
         return
 
     try:
@@ -58,11 +79,35 @@ def _install_registry_plugins(url: str) -> None:
         logger.warning("Failed to fetch plugin registry %s: %s", url, exc)
         return
 
-    for spec in data.get("packages", []):
+    for entry in data.get("packages", []):
+        if isinstance(entry, dict):
+            spec = str(entry.get("spec") or entry.get("package") or entry.get("url") or "")
+            checksum = str(entry.get("checksum", ""))
+        else:
+            logger.warning("Missing checksum for plugin entry %s", entry)
+            continue
+
+        if not spec or not checksum:
+            logger.warning("Incomplete plugin entry in registry: %s", entry)
+            continue
+
+        if compute_checksum(spec.encode()) != checksum:
+            logger.warning("Checksum mismatch for plugin %s", spec)
+            continue
+
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
         except Exception as exc:  # pragma: no cover - install error path
             logger.warning("Failed to install plugin %s from registry: %s", spec, exc)
+
+
+def install_registry_plugins(url: str | None = None) -> None:
+    """Install packages from a registry URL or :envvar:`GENECODER_PLUGIN_REGISTRY_URL`."""
+    if url is None:
+        url = os.getenv("GENECODER_PLUGIN_REGISTRY_URL")
+    if not url:
+        return
+    _install_registry_plugins(url)
 
 
 def _fetch_catalog(url: str) -> None:
@@ -74,10 +119,21 @@ def _fetch_catalog(url: str) -> None:
 
     try:
         with urllib.request.urlopen(url) as response:
-            data = yaml.safe_load(response.read()) or {}
+            raw = response.read()
+        data = yaml.safe_load(raw) or {}
     except Exception as exc:  # pragma: no cover - network error path
         logger.warning("Failed to fetch plugin catalog %s: %s", url, exc)
         return
+
+    sig = data.get("signature")
+    if sig:
+        try:
+            if not _verify_catalog_signature(raw, str(sig)):
+                logger.warning("Invalid catalog signature for %s", url)
+                return
+        except Exception as exc:  # pragma: no cover - signature error path
+            logger.warning("Invalid catalog signature for %s: %s", url, exc)
+            return
 
     PLUGIN_CATALOG.clear()
     for entry in data.get("plugins", []):
@@ -88,6 +144,7 @@ def _fetch_catalog(url: str) -> None:
             "version": str(entry.get("version", "")),
             "url": str(entry.get("url", "")),
             "description": str(entry.get("description", "")),
+            "checksum": str(entry.get("checksum", "")),
         }
 
 
@@ -131,10 +188,6 @@ def load_plugins() -> None:
     builtin = importlib.import_module("genecoder.builtin_plugins")
     if hasattr(builtin, "register_builtin_plugins"):
         builtin.register_builtin_plugins()
-
-    registry_url = os.getenv("GENECODER_PLUGIN_REGISTRY_URL")
-    if registry_url:
-        _install_registry_plugins(registry_url)
 
     catalog_url = os.getenv("GENECODER_PLUGIN_CATALOG_URL")
     if catalog_url:

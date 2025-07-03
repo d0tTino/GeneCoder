@@ -254,6 +254,9 @@ def process_single_decode(
             with open(args.key, "rb") as kf:
                 _key_bytes = kf.read()
         if getattr(args, "encrypt", False):
+            if _key_bytes is None:
+                logger.error("Encryption key required when --encrypt is used.")
+                raise SystemExit(1)
             _ensure_security_loaded()
             assert decrypt_data is not None
             final_decoded_data = decrypt_data(final_decoded_data, key=_key_bytes)
@@ -362,12 +365,12 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     parser.add_argument(
         "--encrypt",
         action="store_true",
-        help="Decrypt output assuming the encoded data was encrypted.",
+        help="Decrypt output assuming the encoded data was encrypted (requires --key).",
     )
     parser.add_argument(
         "--key",
         type=str,
-        help="Path to file containing encryption key bytes.",
+        help="Path to file containing encryption key bytes (required with --encrypt).",
     )
     parser.add_argument(
         "--checksum",

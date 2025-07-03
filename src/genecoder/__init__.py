@@ -17,6 +17,7 @@ from .plugins import (
     CODEC_REGISTRY,
     FEC_REGISTRY,
     load_plugins,
+    install_registry_plugins,
 )
 from .simulators import SIMULATOR_REGISTRY, simulate_reads
 
@@ -30,6 +31,7 @@ __all__ = [
     "SIMULATOR_REGISTRY",
     "simulate_reads",
     "load_plugins",
+    "install_registry_plugins",
     "encrypt_data",
     "decrypt_data",
     "compute_checksum",

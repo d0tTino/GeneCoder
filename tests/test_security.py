@@ -7,7 +7,6 @@ from genecoder.security import (
     encrypt_data,
     decrypt_data,
     compute_checksum,
-    _DEFAULT_KEY,
 )
 from tests.test_cli import run_cli_command
 
@@ -34,15 +33,18 @@ def _legacy_xor_encrypt(data: bytes, key: bytes) -> bytes:
     return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
 
 
-def test_decrypt_legacy_format() -> None:
+def test_decrypt_legacy_format_fails() -> None:
     data = b"legacy"
-    legacy_enc = _legacy_xor_encrypt(data, _DEFAULT_KEY)
-    assert decrypt_data(legacy_enc) == data
+    legacy_key = b"GeneCoder"
+    legacy_enc = _legacy_xor_encrypt(data, legacy_key)
+    assert decrypt_data(legacy_enc, key=legacy_key) == data
 
 
 def test_cli_encrypt_checksum_roundtrip(tmp_path: Path) -> None:
     src = tmp_path / "msg.txt"
     src.write_text("secure message")
+    key_path = tmp_path / "roundtrip.key"
+    key_path.write_bytes(b"roundtrip-key")
 
     enc_res = run_cli_command(
         [
@@ -54,6 +56,8 @@ def test_cli_encrypt_checksum_roundtrip(tmp_path: Path) -> None:
             "--method",
             "base4_direct",
             "--encrypt",
+            "--key",
+            str(key_path),
             "--checksum",
         ]
     )
@@ -72,6 +76,8 @@ def test_cli_encrypt_checksum_roundtrip(tmp_path: Path) -> None:
             "--method",
             "base4_direct",
             "--encrypt",
+            "--key",
+            str(key_path),
             "--checksum",
         ]
     )
@@ -102,11 +108,10 @@ def test_encrypt_roundtrip_key_mismatch(tmp_path: Path) -> None:
         decrypt_data(enc, key=b"wrong")
 
 
-def test_cli_encrypt_checksum_key_file(tmp_path: Path, monkeypatch) -> None:
+def test_cli_encrypt_checksum_key_file(tmp_path: Path) -> None:
     pytest.importorskip("cryptography")
     key_path = tmp_path / "cli.key"
     key_path.write_bytes(b"cli-key")
-    monkeypatch.setattr("genecoder.security._DEFAULT_KEY", key_path.read_bytes())
 
     src = tmp_path / "msg2.txt"
     src.write_text("secure keyfile")
@@ -120,6 +125,8 @@ def test_cli_encrypt_checksum_key_file(tmp_path: Path, monkeypatch) -> None:
         "--method",
         "base4_direct",
         "--encrypt",
+        "--key",
+        str(key_path),
         "--checksum",
     ])
     assert enc_res.returncode == 0, enc_res.stderr
@@ -134,6 +141,8 @@ def test_cli_encrypt_checksum_key_file(tmp_path: Path, monkeypatch) -> None:
         "--method",
         "base4_direct",
         "--encrypt",
+        "--key",
+        str(key_path),
         "--checksum",
     ])
     assert dec_res.returncode == 0, dec_res.stderr

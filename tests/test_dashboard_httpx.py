@@ -11,6 +11,8 @@ main.API_TOKEN = "test-token"
 def _client() -> TestClient:
     return TestClient(main.app)
 
+AUTH_HEADERS = {"Authorization": f"Bearer {main.API_TOKEN}"}
+
 
 def test_dashboard_page() -> None:
     with _client() as client:
@@ -23,7 +25,7 @@ def test_dashboard_metrics() -> None:
     with _client() as client:
         resp = client.post(
             "/dashboard/metrics",
-            headers={"Authorization": f"Bearer {main.API_TOKEN}"},
+            headers=AUTH_HEADERS,
             json={"dna_sequence": "ACGT"},
         )
     assert resp.status_code == 200
@@ -55,3 +57,4 @@ def test_dashboard_plot_data_invalid_chars() -> None:
         )
     assert resp.status_code == 400
     assert "Invalid" in resp.json()["detail"]
+
