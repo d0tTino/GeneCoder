@@ -120,3 +120,28 @@ packages:
 The URL may use HTTP(S) or point to a local file via ``file://``. Each entry is
 passed directly to ``pip install``. Only use registries from trusted sources as
 their packages are installed and executed automatically.
+
+## Plugin Marketplace
+
+Set ``GENECODER_PLUGIN_CATALOG_URL`` to a JSON or YAML file describing
+available plugins. The format is:
+
+```yaml
+plugins:
+  - name: myplugin
+    version: "1.0.0"
+    url: myplugin==1.0.0
+    description: Example plugin
+```
+
+After loading plugins, list available entries:
+
+```bash
+genecoder plugin list
+```
+
+Install a plugin from the catalog:
+
+```bash
+genecoder plugin install myplugin
+```
