@@ -129,11 +129,18 @@ using the CLI or GUI. When using GeneCoder as a library call
 Remote plugin sources can be configured via the environment variables
 ``GENECODER_PLUGIN_REGISTRY_URL`` and ``GENECODER_PLUGIN_CATALOG_URL``. Set
 ``GENECODER_PLUGIN_REGISTRY_URL`` to a YAML file with package names to install
-automatically and ``GENECODER_PLUGIN_CATALOG_URL`` to a JSON or YAML catalog
+via the ``genecoder plugin install-registry`` command (or the
+:func:`genecoder.plugins.install_registry_plugins` function) and ``GENECODER_PLUGIN_CATALOG_URL`` to a JSON or YAML catalog
 used by the ``genecoder plugin`` commands. The catalog URL may be an HTTP(S)
 address or a local file via ``file://``.
 
 ```bash
 export GENECODER_PLUGIN_REGISTRY_URL=https://example.com/registry.yaml
 export GENECODER_PLUGIN_CATALOG_URL=https://example.com/catalog.yaml
+```
+
+Install registry packages with:
+
+```bash
+genecoder plugin install-registry
 ```

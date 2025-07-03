@@ -15,6 +15,7 @@ import base64
 
 from genecoder.options import EncodeOptions
 from genecoder import perform_encoding, perform_decoding
+from genecoder.plugins import load_plugins
 from genecoder.formats import from_fasta
 from genecoder.encoders import calculate_gc_content, decode_base4_direct
 from genecoder.utils import get_max_homopolymer_length, get_temp_dir
@@ -68,6 +69,7 @@ REDIS_URL = os.getenv("GENECODER_REDIS_URL")
 @app.on_event("startup")  # type: ignore[misc]
 async def _startup() -> None:
     global API_TOKEN
+    load_plugins()
     if API_TOKEN is None:
         API_TOKEN = secrets.token_urlsafe(16)
         print(f"Generated API token: {API_TOKEN}")
@@ -253,17 +255,24 @@ async def dashboard_metrics(
     _: None = Depends(verify_token),
 ) -> dict[str, object]:
     seq = req.dna_sequence
-    gc = calculate_gc_content(seq)
-    max_hp = get_max_homopolymer_length(seq)
-    gc_data = calculate_windowed_gc_content(seq, req.window_size, req.step_size)
-    hp_regions = identify_homopolymer_regions(seq, req.min_homopolymer_len)
-    buf = generate_sequence_analysis_plot(gc_data, hp_regions, len(seq))
-    plot_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-    buf.close()
-    orig_bytes, _ = decode_base4_direct(seq)
-    corrupted = introduce_errors(seq, substitution_prob=0.05)
-    dec_bytes, _ = decode_base4_direct(corrupted)
-    ber = bit_error_rate(orig_bytes, dec_bytes)
+    if set(seq.upper()) - {"A", "C", "G", "T"}:
+        raise HTTPException(status_code=400, detail="Invalid characters in sequence")
+    try:
+        gc = calculate_gc_content(seq)
+        max_hp = get_max_homopolymer_length(seq)
+        gc_data = calculate_windowed_gc_content(
+            seq, req.window_size, req.step_size
+        )
+        hp_regions = identify_homopolymer_regions(seq, req.min_homopolymer_len)
+        buf = generate_sequence_analysis_plot(gc_data, hp_regions, len(seq))
+        plot_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        buf.close()
+        orig_bytes, _ = decode_base4_direct(seq)
+        corrupted = introduce_errors(seq, substitution_prob=0.05)
+        dec_bytes, _ = decode_base4_direct(corrupted)
+        ber = bit_error_rate(orig_bytes, dec_bytes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {
         "gc_content": gc,
         "max_homopolymer": max_hp,
@@ -305,10 +314,15 @@ async def dashboard_plot_data(
     """Return windowed GC content and homopolymer lengths."""
 
     seq = req.dna_sequence
-    starts, gc_values = calculate_windowed_gc_content(
-        seq, req.window_size, req.step_size
-    )
-    hp_lengths = _homopolymer_lengths(seq)
+    if set(seq.upper()) - {"A", "C", "G", "T"}:
+        raise HTTPException(status_code=400, detail="Invalid characters in sequence")
+    try:
+        starts, gc_values = calculate_windowed_gc_content(
+            seq, req.window_size, req.step_size
+        )
+        hp_lengths = _homopolymer_lengths(seq)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {
         "gc_positions": starts,
         "gc_values": gc_values,

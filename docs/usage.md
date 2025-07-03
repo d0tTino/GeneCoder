@@ -267,6 +267,7 @@ provide the encryption key bytes. The `--checksum` flag stores a SHA256
 checksum of the plaintext in the FASTA header which is validated during
 decoding.
 
+
 ```bash
 genecoder encode --input-files secret.txt \
     --output-dir out/ --method base4_direct --encrypt --key key.bin --checksum

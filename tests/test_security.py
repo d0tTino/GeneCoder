@@ -33,7 +33,7 @@ def _legacy_xor_encrypt(data: bytes, key: bytes) -> bytes:
     return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
 
 
-def test_decrypt_legacy_format() -> None:
+def test_decrypt_legacy_format_fails() -> None:
     data = b"legacy"
     legacy_key = b"GeneCoder"
     legacy_enc = _legacy_xor_encrypt(data, legacy_key)

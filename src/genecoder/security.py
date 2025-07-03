@@ -17,6 +17,7 @@ def _xor_cipher(data: bytes, key: bytes) -> bytes:
 
 def encrypt_data(data: bytes, key: bytes) -> bytes:
     """Encrypt ``data`` using AES-GCM with a random nonce."""
+
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
     aes_key = hashlib.sha256(key).digest()
@@ -25,9 +26,6 @@ def encrypt_data(data: bytes, key: bytes) -> bytes:
 
 
     return _AES_HEADER + nonce + enc
-
-
-
 
 def decrypt_data(data: bytes, key: bytes) -> bytes:
     """Decrypt data produced by :func:`encrypt_data` or legacy XOR."""
@@ -40,7 +38,11 @@ def decrypt_data(data: bytes, key: bytes) -> bytes:
         return dec
 
 
-    return _xor_cipher(data, key)
+    aes_key = hashlib.sha256(key).digest()
+    nonce = data[len(_AES_HEADER) : len(_AES_HEADER) + 12]
+    ciphertext = data[len(_AES_HEADER) + 12 :]
+    dec: bytes = AESGCM(aes_key).decrypt(nonce, ciphertext, None)
+    return dec
 
 
 def compute_checksum(data: bytes) -> str:
