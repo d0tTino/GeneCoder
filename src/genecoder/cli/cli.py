@@ -15,6 +15,7 @@ report: Any | None = None
 channel: Any | None = None
 bundle: Any | None = None
 plugin: Any | None = None
+benchmark: Any | None = None
 
 
 logger = logging.getLogger(__name__)
@@ -59,9 +60,10 @@ def build_parser() -> argparse.ArgumentParser:
         channel as _channel,
         bundle as _bundle,
         plugin as _plugin_mod,
+        benchmark as _benchmark,
     )
 
-    global encode, decode, analyze, report, channel, bundle, plugin
+    global encode, decode, analyze, report, channel, bundle, plugin, benchmark
 
     encode = _encode
     decode = _decode
@@ -70,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     channel = _channel
     bundle = _bundle
     plugin = _plugin_mod
+    benchmark = _benchmark
 
 
     # Load plugins here so that dynamically registered codecs, FEC backends and
@@ -94,6 +97,7 @@ def build_parser() -> argparse.ArgumentParser:
     channel.register_subcommand(subparsers)
     bundle.register_subcommand(subparsers)
     plugin.register_subcommand(subparsers)
+    benchmark.register_subcommand(subparsers)
 
 
     sim_parser = subparsers.add_parser(
