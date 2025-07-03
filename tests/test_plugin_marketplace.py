@@ -45,3 +45,45 @@ def test_catalog_list_and_install(monkeypatch, capsys):
 
     plugin_cli._handle_install(argparse.Namespace(name="plug"))
     assert installs == [[sys.executable, "-m", "pip", "install", "plug==0.1"]]
+
+
+def test_catalog_network_error(monkeypatch, caplog):
+    """Network failures fetching the catalog are logged as warnings."""
+
+    def fake_urlopen(url):
+        raise RuntimeError("offline")
+
+    monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
+
+    plugins.PLUGIN_CATALOG.clear()
+
+    with caplog.at_level("WARNING"):
+        plugins.load_plugins()
+
+    assert "Failed to fetch plugin catalog" in caplog.text
+    assert plugins.PLUGIN_CATALOG == {}
+
+
+def test_catalog_invalid_signature(monkeypatch, caplog):
+    """Invalid catalog signatures are logged and ignored."""
+
+    catalog = b"plugins:\n  - name: bad\n    version: '0.1'\n    url: bad==0.1\n    description: Bad\nsignature: wrong"
+
+    def fake_urlopen(url):
+        assert url == "https://example.com/catalog.yaml"
+        return DummyResponse(catalog)
+
+    monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
+    monkeypatch.setattr(plugins, "_verify_catalog_signature", lambda data, sig: False)
+
+    plugins.PLUGIN_CATALOG.clear()
+
+    with caplog.at_level("WARNING"):
+        plugins.load_plugins()
+
+    assert "Invalid catalog signature" in caplog.text
+    assert plugins.PLUGIN_CATALOG == {}
