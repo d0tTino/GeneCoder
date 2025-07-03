@@ -13,13 +13,8 @@ _AES_HEADER = b"AESGCM1"
 _DEFAULT_KEY = b"GeneCoder"
 
 
-def _xor_cipher(data: bytes, key: bytes) -> bytes:
-    """Return ``data`` XORed with ``key``."""
-    return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
-
-
 def encrypt_data(data: bytes, key: Optional[bytes] = None) -> bytes:
-    """Encrypt ``data`` using AES-GCM with a random nonce."""
+    """Return ``data`` encrypted using AES-GCM with a random nonce."""
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
     key = key or _DEFAULT_KEY
@@ -31,22 +26,35 @@ def encrypt_data(data: bytes, key: Optional[bytes] = None) -> bytes:
     return _AES_HEADER + nonce + enc
 
 
-
-
 def decrypt_data(data: bytes, key: Optional[bytes] = None) -> bytes:
-    """Decrypt data produced by :func:`encrypt_data` or legacy XOR."""
+    """Decrypt bytes produced by :func:`encrypt_data`.
+
+    Parameters
+    ----------
+    data:
+        Bytes previously returned by :func:`encrypt_data`.
+    key:
+        Optional secret key used during encryption. If omitted, a built-in
+        default is used.
+
+    Raises
+    ------
+    ValueError
+        If ``data`` does not appear to be AES encrypted.
+    cryptography.exceptions.InvalidTag
+        If decryption fails because the key or ciphertext is invalid.
+    """
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
     key = key or _DEFAULT_KEY
-    if data.startswith(_AES_HEADER):
-        aes_key = hashlib.sha256(key).digest()
-        nonce = data[len(_AES_HEADER) : len(_AES_HEADER) + 12]
-        ciphertext = data[len(_AES_HEADER) + 12 :]
-        dec: bytes = AESGCM(aes_key).decrypt(nonce, ciphertext, None)
-        return dec
+    if not data.startswith(_AES_HEADER):
+        raise ValueError("Data is not AES encrypted")
 
-
-    return _xor_cipher(data, key)
+    aes_key = hashlib.sha256(key).digest()
+    nonce = data[len(_AES_HEADER) : len(_AES_HEADER) + 12]
+    ciphertext = data[len(_AES_HEADER) + 12 :]
+    dec: bytes = AESGCM(aes_key).decrypt(nonce, ciphertext, None)
+    return dec
 
 
 def compute_checksum(data: bytes) -> str:
