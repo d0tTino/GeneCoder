@@ -6,6 +6,20 @@ line-length = 88
   extend-select = []
   extend-ignore = ["E402"]
 
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+strict = true
+explicit_package_bases = true
+files = [
+    "src",
+    "plugins-examples/example_codec/example_codec",
+    "plugins-examples/example_fec/example_fec",
+    "plugins-examples/example_simulator/example_simulator",
+    "plugins-examples/example_package_plugin/example_plugin",
+    "plugins-examples/advanced_fec/advanced_fec",
+]
+
 
 [tool.poetry]
 name = "GeneCoder"

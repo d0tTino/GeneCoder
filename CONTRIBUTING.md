@@ -45,6 +45,13 @@ Or restrict it to specific files:
 pre-commit run --files path/to/file.py
 ```
 
+When developing plugins in `plugins-examples/`, include the package path so Ruff
+and mypy lint those files as well:
+
+```bash
+pre-commit run --files plugins-examples/example_codec/example_codec/__init__.py
+```
+
 The hook also runs automatically on each commit if installed.
 
 An additional `check-glossary-terms` hook verifies that every term in
