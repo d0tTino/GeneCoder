@@ -210,7 +210,10 @@ async def decode(
 
 
 @app.post("/decode/ai")
-async def decode_ai(req: DecodeAIRequest) -> dict[str, object]:
+async def decode_ai(
+    req: DecodeAIRequest,
+    _: None = Depends(verify_token),
+) -> dict[str, object]:
     """Decode data using the optional DNAformer model."""
 
     try:
