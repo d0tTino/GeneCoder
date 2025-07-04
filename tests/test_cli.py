@@ -381,24 +381,24 @@ def test_analyze_suggest_fix(temp_dir: Path):
     assert "Suggested fix" in result.stdout
 
 
-def test_simulate_errors_command(temp_dir: Path, small_fasta_file: Path):
-    """CLI simulate-errors should output a corrupted FASTA file."""
+def test_channel_command_probabilities(temp_dir: Path, small_fasta_file: Path) -> None:
+    """CLI channel with probabilities should output a corrupted FASTA file."""
     out_file = temp_dir / "corrupted.fasta"
     cmd_args = [
-        "simulate-errors",
+        "channel",
         "--input-file",
         str(small_fasta_file),
         "--output-file",
         str(out_file),
-        "--simulator",
-        "illumina_profile",
         "--sub-prob",
         "0.5",
         "--seed",
         "1",
+        "--min-length",
+        "1",
     ]
     result = run_cli_command(cmd_args)
-    assert result.returncode == 0, f"simulate-errors failed: {result.stderr}"
+    assert result.returncode == 0, f"channel failed: {result.stderr}"
     assert out_file.exists()
 
     original_seq = from_fasta(small_fasta_file.read_text())[0][1]
@@ -406,34 +406,40 @@ def test_simulate_errors_command(temp_dir: Path, small_fasta_file: Path):
     assert new_seq != original_seq
 
 
-def test_simulate_errors_missing_input(temp_dir: Path) -> None:
+def test_channel_missing_input(temp_dir: Path) -> None:
     out_file = temp_dir / "corrupted.fasta"
     cmd_args = [
-        "simulate-errors",
+        "channel",
         "--input-file",
         str(temp_dir / "nofile.fasta"),
         "--output-file",
         str(out_file),
+        "--sub-prob",
+        "0.1",
+        "--min-length",
+        "1",
     ]
     result = run_cli_command(cmd_args)
     assert result.returncode != 0
     assert "not found" in result.stderr.lower()
 
 
-def test_simulate_errors_unknown_simulator(temp_dir: Path, small_fasta_file: Path) -> None:
+def test_channel_unknown_simulator(temp_dir: Path, small_fasta_file: Path) -> None:
     out_file = temp_dir / "corrupt.fasta"
     cmd_args = [
-        "simulate-errors",
+        "channel",
         "--input-file",
         str(small_fasta_file),
         "--output-file",
         str(out_file),
         "--simulator",
         "bogus",
+        "--min-length",
+        "1",
     ]
     result = run_cli_command(cmd_args)
     assert result.returncode != 0
-    assert "invalid choice" in result.stderr.lower()
+    assert "unknown simulator" in result.stderr.lower()
 
 
 def test_invalid_fec_none_choice(temp_dir: Path):

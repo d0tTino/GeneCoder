@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import os
+import random
 from pathlib import Path
 from typing import Sequence
 
@@ -14,6 +15,7 @@ from genecoder.formats import from_fasta, to_fasta
 from genecoder.simulators import SIMULATOR_REGISTRY, ChannelPipeline
 from genecoder.channels.base import BaseChannel
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
+from genecoder.error_simulation import introduce_errors
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +68,20 @@ def process_channel(
     simulators: Sequence[str],
     constraints: dict[str, int],
     *,
+    sub_prob: float = 0.0,
+    ins_prob: float = 0.0,
+    del_prob: float = 0.0,
+    seed: int | None = None,
     parallel: bool = False,
     threads: int | None = None,
     processes: int | None = None,
 ) -> None:
-    with open(input_file, "r", encoding="utf-8") as f:
-        fasta_str = f.read()
+    try:
+        with open(input_file, "r", encoding="utf-8") as f:
+            fasta_str = f.read()
+    except FileNotFoundError:
+        logger.error("Error: Input file %s not found.", input_file)
+        raise SystemExit(1)
     records = from_fasta(fasta_str)
     if not records:
         logger.error("No FASTA records found in %s", input_file)
@@ -80,13 +90,23 @@ def process_channel(
     synth = SynthesisConstraints(**constraints)
     processed_records: list[tuple[str, str]] = []
     for header, seq in records:
-        seq = _apply_simulators(
-            seq,
-            simulators,
-            parallel=parallel,
-            threads=threads,
-            processes=processes,
-        )
+        if simulators:
+            seq = _apply_simulators(
+                seq,
+                simulators,
+                parallel=parallel,
+                threads=threads,
+                processes=processes,
+            )
+        else:
+            rng = random.Random(seed)
+            seq = introduce_errors(
+                seq,
+                substitution_prob=sub_prob,
+                insertion_prob=ins_prob,
+                deletion_prob=del_prob,
+                rng=rng,
+            )
 
         if not validate_sequence(seq, synth):
             logger.error("Sequence violates synthesis constraints")
@@ -105,6 +125,11 @@ def process_channel(
     manifest = {
         "file": os.path.basename(Path(input_file).as_posix()),
         "simulators": list(simulators),
+        "probabilities": {
+            "sub_prob": sub_prob,
+            "ins_prob": ins_prob,
+            "del_prob": del_prob,
+        },
         "constraints": constraints,
         "metrics": {"length": total_len},
     }
@@ -126,6 +151,10 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         help="Simulator to apply (can be repeated)",
     )
     parser.add_argument("--config", type=str, help="YAML config defining simulators and constraints")
+    parser.add_argument("--sub-prob", type=float, default=0.0, help="Substitution probability per nucleotide")
+    parser.add_argument("--ins-prob", type=float, default=0.0, help="Insertion probability after each nucleotide")
+    parser.add_argument("--del-prob", type=float, default=0.0, help="Deletion probability per nucleotide")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output")
     parser.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
     parser.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
     parser.add_argument("--max-homopolymer", type=int, default=4, help="Maximum homopolymer")
@@ -147,14 +176,22 @@ def _handle_command(args: argparse.Namespace) -> None:
         if cfg_sim:
             simulators = cfg_sim
         constraints.update(cfg_con)
-    if not simulators:
-        logger.error("At least one simulator must be specified")
+    prob_specified = any([args.sub_prob, args.ins_prob, args.del_prob])
+    if simulators and prob_specified:
+        logger.error("Probability options cannot be combined with --simulator or --config")
+        raise SystemExit(1)
+    if not simulators and not prob_specified:
+        logger.error("At least one simulator or probability option must be specified")
         raise SystemExit(1)
     process_channel(
         args.input_file,
         args.output_file,
         simulators,
         constraints,
+        sub_prob=args.sub_prob,
+        ins_prob=args.ins_prob,
+        del_prob=args.del_prob,
+        seed=args.seed,
         parallel=args.parallel,
         threads=args.threads,
         processes=args.processes,

@@ -20,7 +20,7 @@ def _get_allowed(command: str) -> set[str]:
             a for a in parser._actions if isinstance(a, argparse._SubParsersAction)
         )
         _ALLOWED_CACHE = {}
-        for name in ("encode", "simulate-errors", "decode"):
+        for name in ("encode", "channel", "decode"):
             sub = subparsers.choices[name]
             allowed = {
                 act.dest
@@ -134,7 +134,7 @@ def _handle_run(args: argparse.Namespace) -> None:
         raise TypeError("simulate section must be a mapping")
     if sim_cfg:
         simulated_dir.mkdir(parents=True, exist_ok=True)
-        sim_args_common = _normalize_args("simulate-errors", sim_cfg)
+        sim_args_common = _normalize_args("channel", sim_cfg)
         new_inputs = []
         for f in input_files:
             out_f = simulated_dir / f.name

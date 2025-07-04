@@ -26,7 +26,7 @@ A quick sanity check is to run the command and ensure the usage header appears.
 
 ```bash
 $ genecoder --help | head -n 5
-Usage: genecoder [-h] [--version] {encode,decode,analyze,simulate-errors} ...
+Usage: genecoder [-h] [--version] {encode,decode,analyze,channel} ...
 GeneCoder: Encode and decode data into simulated DNA sequences.
 ...
 ```
@@ -136,8 +136,8 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    ```bash
    genecoder encode --input-files hello.jpg --output-dir encoded \
        --method base4_direct --auto-ext
-   genecoder simulate-errors encoded/hello.jpg.dna --sub-rate 0.01 \
-       --output-file corrupted.dna
+   genecoder channel --input-file encoded/hello.jpg.dna --output-file corrupted.dna \
+       --sub-prob 0.01
    genecoder decode corrupted.dna --output-dir decoded --auto-ext
    ```
 

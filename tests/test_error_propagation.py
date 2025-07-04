@@ -4,7 +4,7 @@ import pytest
 
 from genecoder.cli.analyze import process_single_analyze
 from genecoder.cli.decode import process_single_decode
-from genecoder.cli.cli import _handle_sim_errors
+from genecoder.cli.channel import process_channel
 from genecoder.formats import to_fasta
 
 
@@ -34,10 +34,15 @@ def _sim_args(input_file: Path, output_file: Path) -> argparse.Namespace:
     return argparse.Namespace(
         input_file=str(input_file),
         output_file=str(output_file),
+        simulators=[],
+        constraints={"min_length": 0, "max_length": 1000, "max_homopolymer": 4},
         sub_prob=0.1,
         ins_prob=0.0,
         del_prob=0.0,
         seed=None,
+        parallel=False,
+        threads=None,
+        processes=None,
     )
 
 
@@ -76,6 +81,15 @@ def test_handle_sim_errors_unexpected_error(monkeypatch, tmp_path: Path) -> None
     def boom(*_a, **_k):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("genecoder.error_simulation.introduce_errors", boom)
+    monkeypatch.setattr("genecoder.cli.channel.introduce_errors", boom)
     with pytest.raises(RuntimeError):
-        _handle_sim_errors(args)
+        process_channel(
+            args.input_file,
+            args.output_file,
+            args.simulators,
+            args.constraints,
+            sub_prob=args.sub_prob,
+            ins_prob=args.ins_prob,
+            del_prob=args.del_prob,
+            seed=args.seed,
+        )
