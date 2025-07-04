@@ -30,6 +30,7 @@ def encrypt_data(data: bytes, key: bytes) -> bytes:
 def decrypt_data(data: bytes, key: bytes) -> bytes:
     """Decrypt data produced by :func:`encrypt_data` or legacy XOR."""
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
     if data.startswith(_AES_HEADER):
         aes_key = hashlib.sha256(key).digest()
         nonce = data[len(_AES_HEADER) : len(_AES_HEADER) + 12]

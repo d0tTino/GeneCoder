@@ -41,6 +41,13 @@ def test_decrypt_aes_and_xor(encryptor) -> None:
     assert decrypt_data(enc, key=key) == data
 
 
+def test_decrypt_xor_cipher_roundtrip() -> None:
+    data = b"old-data"
+    key = b"legacy-key"
+    enc = _legacy_xor_encrypt(data, key)
+    assert decrypt_data(enc, key=key) == data
+
+
 def test_cli_encrypt_checksum_roundtrip(tmp_path: Path) -> None:
     src = tmp_path / "msg.txt"
     src.write_text("secure message")
