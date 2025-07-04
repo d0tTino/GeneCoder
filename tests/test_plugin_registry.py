@@ -26,61 +26,77 @@ def test_registry_install(monkeypatch):
         installs.append(cmd)
 
     def fake_urlopen(url):
-        assert url == "https://example.com/plugins.yaml"
-        c1 = compute_checksum("pkgA>=1.0".encode())
-        c2 = compute_checksum("pkgB".encode())
-        data = (
-            "packages:\n"
-            f"  - spec: pkgA>=1.0\n    checksum: {c1}\n"
-            f"  - spec: pkgB\n    checksum: {c2}"
-        ).encode()
-        return DummyResponse(data)
+        if url == "https://example.com/plugins.yaml":
+            pkg_a = b"AAA"
+            pkg_b = b"BBB"
+            c1 = compute_checksum(pkg_a)
+            c2 = compute_checksum(pkg_b)
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkgA.whl\n    checksum: {c1}\n"
+                f"  - spec: https://example.com/pkgB.whl\n    checksum: {c2}"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkgA.whl":
+            return DummyResponse(b"AAA")
+        elif url == "https://example.com/pkgB.whl":
+            return DummyResponse(b"BBB")
+        raise AssertionError(url)
 
-    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
+    monkeypatch.setenv(
+        "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
+    )
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
 
     plugins.install_registry_plugins()
 
-    assert installs == [
-        [sys.executable, "-m", "pip", "install", "pkgA>=1.0"],
-        [sys.executable, "-m", "pip", "install", "pkgB"],
+    assert [cmd[:4] for cmd in installs] == [
+        [sys.executable, "-m", "pip", "install"],
+        [sys.executable, "-m", "pip", "install"],
     ]
 
 
 def test_registry_install_failure(monkeypatch, caplog):
-    """Warnings are logged if installation of a package fails."""
     def fake_check_call(cmd):
         raise RuntimeError("boom")
 
     def fake_urlopen(url):
-        assert url == "https://example.com/plugins.yaml"
-        c1 = compute_checksum("pkgA".encode())
-        data = (
-            "packages:\n"
-            f"  - spec: pkgA\n    checksum: {c1}"
-        ).encode()
+        if url == "https://example.com/plugins.yaml":
+            pkg = b"CCC"
+            c1 = compute_checksum(pkg)
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkgC.whl\n    checksum: {c1}"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkgC.whl":
+            return DummyResponse(b"CCC")
+        raise AssertionError(url)
 
-        return DummyResponse(data)
-
-    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
+    monkeypatch.setenv(
+        "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
+    )
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
 
     with caplog.at_level(logging.WARNING):
         plugins.install_registry_plugins()
 
-    assert "Failed to install plugin pkgA from registry" in caplog.text
+    assert (
+        "Failed to install plugin https://example.com/pkgC.whl from registry"
+        in caplog.text
+    )
 
 
 def test_registry_bad_yaml(monkeypatch, caplog):
-    """Malformed registry YAML triggers a warning and no installation."""
-
     def fake_urlopen(url):
         assert url == "https://example.com/plugins.yaml"
         return DummyResponse(b"not: [yaml")
 
-    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
+    monkeypatch.setenv(
+        "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
+    )
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
 
@@ -89,3 +105,33 @@ def test_registry_bad_yaml(monkeypatch, caplog):
 
     assert "Failed to fetch plugin registry" in caplog.text
 
+
+def test_registry_checksum_mismatch(monkeypatch, caplog):
+    installs = []
+
+    def fake_check_call(cmd):
+        installs.append(cmd)
+
+    def fake_urlopen(url):
+        if url == "https://example.com/plugins.yaml":
+            wrong = compute_checksum(b"WRONG")
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkgD.whl\n    checksum: {wrong}"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkgD.whl":
+            return DummyResponse(b"DDD")
+        raise AssertionError(url)
+
+    monkeypatch.setenv(
+        "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
+    )
+    monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+
+    with caplog.at_level(logging.WARNING):
+        plugins.install_registry_plugins()
+
+    assert not installs
+    assert "Checksum mismatch for plugin https://example.com/pkgD.whl" in caplog.text

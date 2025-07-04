@@ -5,6 +5,7 @@ from types import ModuleType
 import os
 import sys
 import subprocess
+import tempfile
 import urllib.request
 from urllib.parse import urlparse
 import importlib
@@ -32,12 +33,16 @@ FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 PLUGIN_CATALOG: Dict[str, Dict[str, str]] = {}
 
 
-def register_codec(name: str, encode: Callable[..., Any], decode: Callable[..., Any]) -> None:
+def register_codec(
+    name: str, encode: Callable[..., Any], decode: Callable[..., Any]
+) -> None:
     """Register a codec implementation under ``name``."""
     CODEC_REGISTRY[name] = {"encode": encode, "decode": decode}
 
 
-def register_fec(name: str, encode: Callable[..., Any], decode: Callable[..., Any]) -> None:
+def register_fec(
+    name: str, encode: Callable[..., Any], decode: Callable[..., Any]
+) -> None:
     """Register a FEC backend under ``name``."""
     FEC_REGISTRY[name] = {"encode": encode, "decode": decode}
 
@@ -81,7 +86,9 @@ def _install_registry_plugins(url: str) -> None:
 
     for entry in data.get("packages", []):
         if isinstance(entry, dict):
-            spec = str(entry.get("spec") or entry.get("package") or entry.get("url") or "")
+            spec = str(
+                entry.get("spec") or entry.get("package") or entry.get("url") or ""
+            )
             checksum = str(entry.get("checksum", ""))
         else:
             logger.warning("Missing checksum for plugin entry %s", entry)
@@ -91,14 +98,37 @@ def _install_registry_plugins(url: str) -> None:
             logger.warning("Incomplete plugin entry in registry: %s", entry)
             continue
 
-        if compute_checksum(spec.encode()) != checksum:
-            logger.warning("Checksum mismatch for plugin %s", spec)
+        scheme = urlparse(spec).scheme
+        if scheme not in {"https", "file"}:
+            logger.warning("Insecure plugin URL %s", spec)
             continue
 
         try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
+            with urllib.request.urlopen(spec) as resp:
+                pkg_bytes = resp.read()
+        except Exception as exc:  # pragma: no cover - download error path
+            logger.warning("Failed to download plugin %s: %s", spec, exc)
+            continue
+
+        if compute_checksum(pkg_bytes) != checksum:
+            logger.warning("Checksum mismatch for plugin %s", spec)
+            continue
+
+        tmp_file = None
+        try:
+            suffix = os.path.splitext(urlparse(spec).path)[1]
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(pkg_bytes)
+                tmp_file = tmp.name
+            subprocess.check_call([sys.executable, "-m", "pip", "install", tmp_file])
         except Exception as exc:  # pragma: no cover - install error path
             logger.warning("Failed to install plugin %s from registry: %s", spec, exc)
+        finally:
+            if tmp_file:
+                try:
+                    os.unlink(tmp_file)
+                except Exception:
+                    pass
 
 
 def install_registry_plugins(url: str | None = None) -> None:
@@ -162,9 +192,11 @@ def _load_and_register(
             module = (
                 item
                 if isinstance(item, ModuleType)
-                else item.load()
-                if hasattr(item, "load")
-                else importlib.import_module(name)
+                else (
+                    item.load()
+                    if hasattr(item, "load")
+                    else importlib.import_module(name)
+                )
             )
         except Exception:  # pragma: no cover - error path
             if failures is not None:
@@ -249,4 +281,3 @@ def load_plugins() -> None:
 
     if failures:
         logger.warning("Failed to import plugins: %s", ", ".join(failures))
-
