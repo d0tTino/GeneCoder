@@ -37,12 +37,7 @@ def decrypt_data(data: bytes, key: bytes) -> bytes:
         dec: bytes = AESGCM(aes_key).decrypt(nonce, ciphertext, None)
         return dec
 
-
-    aes_key = hashlib.sha256(key).digest()
-    nonce = data[len(_AES_HEADER) : len(_AES_HEADER) + 12]
-    ciphertext = data[len(_AES_HEADER) + 12 :]
-    dec: bytes = AESGCM(aes_key).decrypt(nonce, ciphertext, None)
-    return dec
+    return _xor_cipher(data, key)
 
 
 def compute_checksum(data: bytes) -> str:
