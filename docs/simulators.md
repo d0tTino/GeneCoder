@@ -4,7 +4,7 @@ GeneCoder supports both built-in error models and adapters to external nanopore 
 
 ## Built-in simulators
 
-- **simple** — random substitution errors. Use `--simulate-errors` on the CLI or
+- **simple** — random substitution errors. Use `genecoder channel --sub-prob` or
   `--simulator simple`.
 - **indel** — introduces insertions and deletions in addition to substitutions.
 - **none** — disable simulation (the default).

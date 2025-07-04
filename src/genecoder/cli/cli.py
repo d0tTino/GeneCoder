@@ -99,86 +99,11 @@ def build_parser() -> argparse.ArgumentParser:
     plugin.register_subcommand(subparsers)
     benchmark.register_subcommand(subparsers)
 
-
-    sim_parser = subparsers.add_parser(
-        "simulate-errors", help="Introduce random errors into a FASTA sequence."
-    )
-    sim_parser.add_argument("--input-file", type=str, required=True, help="Path to the input FASTA file.")
-    sim_parser.add_argument("--output-file", type=str, required=True, help="Path to save the corrupted FASTA file.")
-    sim_parser.add_argument("--sub-prob", type=float, default=0.01, help="Substitution probability per nucleotide.")
-    sim_parser.add_argument("--ins-prob", type=float, default=0.0, help="Insertion probability after each nucleotide.")
-    sim_parser.add_argument("--del-prob", type=float, default=0.0, help="Deletion probability per nucleotide.")
-    sim_choices = list(sorted(SIMULATOR_REGISTRY.keys())) or ["none"]
-    sim_parser.add_argument(
-        "--simulator",
-        type=str,
-        choices=sim_choices,
-        help="Use a named simulator instead of simple probabilities.",
-    )
-    sim_parser.add_argument(
-        "--read-length",
-        type=int,
-        help="Override read length when using a simulator.",
-    )
-    sim_parser.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output.")
-    sim_parser.set_defaults(func=_handle_sim_errors)
+    # deprecated simulate-errors subcommand was removed in favor of channel
 
     return parser
 
 
-def _handle_sim_errors(args: argparse.Namespace) -> None:
-    from genecoder.formats import to_fasta, from_fasta
-    from genecoder.error_simulation import introduce_errors
-    from genecoder.simulators import SIMULATOR_REGISTRY
-    import os
-    import random
-
-    try:
-        with open(args.input_file, "r", encoding="utf-8") as f_in:
-            fasta_str = f_in.read()
-        records = from_fasta(fasta_str)
-        if not records:
-            logger.error(f"Error: No FASTA records found in {args.input_file}.")
-            raise SystemExit(1)
-        header, seq = records[0]
-        rng = random.Random(args.seed)
-        sim_name = getattr(args, "simulator", None)
-        if sim_name:
-            if sim_name not in SIMULATOR_REGISTRY:
-                logger.error("Unknown simulator: %s", sim_name)
-                raise SystemExit(1)
-            channel = SIMULATOR_REGISTRY[sim_name]
-            if hasattr(channel, "substitution_rate"):
-                channel.substitution_rate = args.sub_prob
-            if hasattr(channel, "insertion_rate"):
-                channel.insertion_rate = args.ins_prob
-            if hasattr(channel, "deletion_rate"):
-                channel.deletion_rate = args.del_prob
-            read_len = getattr(args, "read_length", None)
-            if read_len is not None and hasattr(channel, "read_length"):
-                channel.read_length = read_len
-            pipeline = ChannelPipeline([channel])
-            corrupted = pipeline.simulate(seq)
-        else:
-            corrupted = introduce_errors(
-                seq,
-                substitution_prob=args.sub_prob,
-                insertion_prob=args.ins_prob,
-                deletion_prob=args.del_prob,
-                rng=rng,
-            )
-        new_header = f"{header} sub_prob={args.sub_prob} ins_prob={args.ins_prob} del_prob={args.del_prob}"
-        fasta_out = to_fasta(corrupted, new_header, line_width=80)
-        os.makedirs(os.path.dirname(args.output_file) or ".", exist_ok=True)
-        with open(args.output_file, "w", encoding="utf-8") as f_out:
-            f_out.write(fasta_out)
-        logger.info(f"Corrupted FASTA sequence written to {args.output_file}")
-    except FileNotFoundError:
-        logger.error(f"Error: Input file {args.input_file} not found.")
-        raise SystemExit(1)
-    except ValueError as exc:
-        logger.error("Error during simulate-errors: %s", exc)
-        raise SystemExit(1)
 
 
 def main(argv: list[str] | None = None) -> None:
