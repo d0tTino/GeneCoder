@@ -135,3 +135,38 @@ def test_registry_checksum_mismatch(monkeypatch, caplog):
 
     assert not installs
     assert "Checksum mismatch for plugin https://example.com/pkgD.whl" in caplog.text
+
+
+def test_registry_checksum_validation(monkeypatch):
+    """The checksum is computed from the downloaded package bytes."""
+    pkg = b"EEE"
+    expected = compute_checksum(pkg)
+    calls: list[bytes] = []
+
+    orig_compute = compute_checksum
+
+    def fake_compute_checksum(data: bytes) -> str:
+        calls.append(data)
+        return orig_compute(data)
+
+    def fake_urlopen(url):
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkgE.whl\n    checksum: {expected}"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkgE.whl":
+            return DummyResponse(pkg)
+        raise AssertionError(url)
+
+    monkeypatch.setenv(
+        "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
+    )
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins, "compute_checksum", fake_compute_checksum)
+
+    plugins.install_registry_plugins()
+
+    assert calls == [pkg]
