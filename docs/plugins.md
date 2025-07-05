@@ -135,8 +135,9 @@ packages:
 
 Only HTTPS URLs (or ``file://`` for local testing) are accepted. Each package is
 installed only if the checksum matches; otherwise installation is aborted and a
-warning is logged. Use registries from trusted sources as their packages are
-installed and executed automatically.
+warning is logged. The checksum check merely confirms that the package was not
+altered in transit; it does **not** guarantee the plugin is safe. Always use
+registries from trusted sources and review plugins before installing them.
 
 ## Plugin Marketplace
 
@@ -180,6 +181,12 @@ Install a plugin from the catalog:
 ```bash
 genecoder plugin install myplugin
 ```
+
+Always verify that catalog entries originate from reputable sources or trusted
+registries. A matching checksum only proves the downloaded file has not been
+corrupted or tampered with; it does not guarantee that the plugin's code is
+safe to execute. Review the plugin code when possible and install only from
+maintained or well-known repositories.
 
 ## Third-Party Plugin Risks and Verification
 
