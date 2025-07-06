@@ -33,19 +33,27 @@ def _legacy_xor_encrypt(data: bytes, key: bytes) -> bytes:
     return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
 
 
-@pytest.mark.parametrize("encryptor", [encrypt_data, _legacy_xor_encrypt])
-def test_decrypt_aes_and_xor(encryptor) -> None:
+def test_decrypt_aes_roundtrip() -> None:
     data = b"legacy"
     key = b"GeneCoder"
-    enc = encryptor(data, key)
+    enc = encrypt_data(data, key)
     assert decrypt_data(enc, key=key) == data
+
+
+def test_xor_decryption_emits_warning() -> None:
+    data = b"legacy"
+    key = b"GeneCoder"
+    enc = _legacy_xor_encrypt(data, key)
+    with pytest.warns(DeprecationWarning):
+        assert decrypt_data(enc, key=key) == data
 
 
 def test_decrypt_xor_cipher_roundtrip() -> None:
     data = b"old-data"
     key = b"legacy-key"
     enc = _legacy_xor_encrypt(data, key)
-    assert decrypt_data(enc, key=key) == data
+    with pytest.warns(DeprecationWarning):
+        assert decrypt_data(enc, key=key) == data
 
 
 def test_cli_encrypt_checksum_roundtrip(tmp_path: Path) -> None:

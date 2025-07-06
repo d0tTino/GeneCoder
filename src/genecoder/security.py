@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import warnings
 
 
 _AES_HEADER = b"AESGCM1"
@@ -38,6 +39,11 @@ def decrypt_data(data: bytes, key: bytes) -> bytes:
         dec: bytes = AESGCM(aes_key).decrypt(nonce, ciphertext, None)
         return dec
 
+    warnings.warn(
+        "XOR decryption is deprecated and will be removed in a future release.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return _xor_cipher(data, key)
 
 
