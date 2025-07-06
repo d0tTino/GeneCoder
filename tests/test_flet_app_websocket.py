@@ -18,11 +18,11 @@ def test_websocket_start_error_logged(monkeypatch, caplog):
     loop = asyncio.new_event_loop()
     monkeypatch.setattr(asyncio, "get_event_loop", lambda: loop)
 
-    if "genecoder.flet_app" in sys.modules:
-        del sys.modules["genecoder.flet_app"]
+    if "genecoder.flet_ws" in sys.modules:
+        del sys.modules["genecoder.flet_ws"]
 
     with caplog.at_level(logging.ERROR):
-        importlib.import_module("genecoder.flet_app")
+        importlib.import_module("genecoder.flet_ws")
 
     assert any(
         "Failed to start WebSocket server" in rec.message for rec in caplog.records

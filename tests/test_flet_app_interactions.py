@@ -120,7 +120,7 @@ def test_encode_unexpected_error_propagates(tmp_path: Path, monkeypatch: pytest.
     def boom(*_a, **_k):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(flet_app, "perform_encoding", boom)
+    monkeypatch.setattr("genecoder.flet_handlers.perform_encoding", boom)
 
     ft.app(target=flet_app.main, view=ft.AppView.FLET_APP_HIDDEN, port=0)
 
@@ -142,7 +142,7 @@ def test_decode_unexpected_error_propagates(tmp_path: Path, monkeypatch: pytest.
     def boom(*_a, **_k):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(flet_app, "perform_decoding", boom)
+    monkeypatch.setattr("genecoder.flet_handlers.perform_decoding", boom)
 
     ft.app(target=flet_app.main, view=ft.AppView.FLET_APP_HIDDEN, port=0)
 
@@ -164,7 +164,7 @@ def test_encode_value_error_handled(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     def bad(*_a, **_k):
         raise ValueError("bad input")
 
-    monkeypatch.setattr(flet_app, "perform_encoding", bad)
+    monkeypatch.setattr("genecoder.flet_handlers.perform_encoding", bad)
 
     ft.app(target=flet_app.main, view=ft.AppView.FLET_APP_HIDDEN, port=0)
 
@@ -208,7 +208,7 @@ def test_decode_value_error_handled(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     def bad(*_a, **_k):
         raise ValueError("bad fasta")
 
-    monkeypatch.setattr(flet_app, "perform_decoding", bad)
+    monkeypatch.setattr("genecoder.flet_handlers.perform_decoding", bad)
 
     ft.app(target=flet_app.main, view=ft.AppView.FLET_APP_HIDDEN, port=0)
 
