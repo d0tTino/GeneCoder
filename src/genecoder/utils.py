@@ -78,3 +78,15 @@ def check_homopolymer_length(dna_sequence: str, max_len: int) -> bool:
     """Checks if any homopolymer in the DNA sequence exceeds a maximum length."""
     return get_max_homopolymer_length(dna_sequence) > max_len
 
+
+def bit_error_rate(original: bytes, recovered: bytes) -> float:
+    """Return the bit error rate between two byte strings."""
+    total_bits = len(original) * 8
+    min_len = min(len(original), len(recovered))
+    errors = 0
+    for o, r in zip(original[:min_len], recovered[:min_len]):
+        errors += (o ^ r).bit_count()
+    if len(recovered) < len(original):
+        errors += (len(original) - len(recovered)) * 8
+    return errors / total_bits if total_bits else 0.0
+

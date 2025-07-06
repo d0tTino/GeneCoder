@@ -22,7 +22,7 @@ from genecoder.cli import plugin as plugin_cli
 import argparse
 from genecoder.formats import from_fasta
 from genecoder.encoders import calculate_gc_content, decode_base4_direct
-from genecoder.utils import get_max_homopolymer_length, get_temp_dir
+from genecoder.utils import get_max_homopolymer_length, get_temp_dir, bit_error_rate
 from genecoder.plotting import (
     calculate_windowed_gc_content,
     identify_homopolymer_regions,
@@ -44,18 +44,6 @@ import redis.asyncio as redis
 
 DNA_RE = re.compile(r"^[ACGT]+$")
 FILE_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
-
-
-def bit_error_rate(original: bytes, recovered: bytes) -> float:
-    """Return the bit error rate between two byte strings."""
-    total_bits = len(original) * 8
-    min_len = min(len(original), len(recovered))
-    errors = 0
-    for o, r in zip(original[:min_len], recovered[:min_len]):
-        errors += (o ^ r).bit_count()
-    if len(recovered) < len(original):
-        errors += (len(original) - len(recovered)) * 8
-    return errors / total_bits if total_bits else 0.0
 
 API_TOKEN: str | None = os.getenv("GENECODER_API_TOKEN")
 CORS_ORIGINS = os.getenv("GENECODER_CORS_ORIGINS", "*")
