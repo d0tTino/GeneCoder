@@ -1,0 +1,5 @@
+line-length = 88
+
+[lint]
+extend-select = []
+extend-ignore = ["E402"]
