@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import logging
+import os
 import subprocess
 import sys
 import tempfile
@@ -61,6 +63,16 @@ def _handle_install(args: argparse.Namespace) -> None:
     if version and not meta.get("url"):
         spec = f"{name}=={version}"
     checksum = meta.get("checksum")
+    signature_b64 = meta.get("signature")
+    pubkey: bytes | None = None
+
+    key_path = os.getenv("GENECODER_PLUGIN_PUBLIC_KEY")
+    if signature_b64 and key_path:
+        try:
+            pubkey = Path(key_path).read_bytes()
+        except Exception:  # pragma: no cover - filesystem error path
+            logger.warning("Failed to read public key %s", key_path)
+            pubkey = None
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         subprocess.check_call(
@@ -81,6 +93,16 @@ def _handle_install(args: argparse.Namespace) -> None:
             raise SystemExit(1)
         pkg_path = files[0]
         pkg_bytes = pkg_path.read_bytes()
+        if signature_b64 and pubkey is not None:
+            try:
+                plugins.compute_checksum(
+                    pkg_bytes,
+                    signature=base64.b64decode(signature_b64),
+                    public_key=pubkey,
+                )
+            except Exception:
+                logger.warning("Signature verification failed for plugin %s", name)
+                raise SystemExit(1)
         if checksum and plugins.compute_checksum(pkg_bytes) != checksum:
             logger.warning("Checksum mismatch for plugin %s", name)
             raise SystemExit(1)

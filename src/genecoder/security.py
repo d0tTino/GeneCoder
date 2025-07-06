@@ -41,6 +41,35 @@ def decrypt_data(data: bytes, key: bytes) -> bytes:
     return _xor_cipher(data, key)
 
 
-def compute_checksum(data: bytes) -> str:
-    """Return a hexadecimal SHA256 checksum for ``data``."""
-    return hashlib.sha256(data).hexdigest()
+def compute_checksum(
+    data: bytes,
+    *,
+    signature: bytes | None = None,
+    public_key: bytes | None = None,
+) -> str:
+    """Return a hexadecimal SHA256 checksum for ``data``.
+
+    If ``signature`` and ``public_key`` are provided, verify that the signature
+    matches ``data`` using RSA or ECDSA with a SHA256 hash. ``InvalidSignature``
+    or ``ValueError`` is raised on failure.
+    """
+
+    digest = hashlib.sha256(data).hexdigest()
+
+    if signature is not None:
+        from cryptography.exceptions import InvalidSignature
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import padding, ec, rsa
+
+        if public_key is None:
+            raise ValueError("public_key required when verifying a signature")
+
+        key = serialization.load_pem_public_key(public_key)
+        if isinstance(key, rsa.RSAPublicKey):
+            key.verify(signature, data, padding.PKCS1v15(), hashes.SHA256())
+        elif isinstance(key, ec.EllipticCurvePublicKey):
+            key.verify(signature, data, ec.ECDSA(hashes.SHA256()))
+        else:  # pragma: no cover - unsupported key type
+            raise InvalidSignature("Unsupported key type")
+
+    return digest
