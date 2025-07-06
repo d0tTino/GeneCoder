@@ -1,5 +1,8 @@
 import base64
+from pathlib import Path
 import pytest
+
+pytest.importorskip("fastapi_limiter")
 
 fastapi = pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
@@ -10,8 +13,8 @@ import web.main as main
 client = TestClient(main.app)
 
 
-def test_chunk_endpoints_without_redis(tmp_path):
-    main.FastAPILimiter.redis = None
+def test_chunk_endpoints_without_redis(tmp_path: Path) -> None:
+    main.FastAPILimiter.redis = None  # type: ignore[attr-defined]
     data = b"no redis"
     payload = {
         "file_id": "file",

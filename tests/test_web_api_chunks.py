@@ -3,6 +3,8 @@ import hashlib
 import json
 import pytest
 
+pytest.importorskip("fastapi_limiter")
+
 fastapi = pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
 from fastapi.testclient import TestClient
@@ -12,9 +14,13 @@ import web.main as main
 client = TestClient(main.app)
 
 
-def test_chunk_upload_and_download(tmp_path, monkeypatch):
+from pathlib import Path
+from fastapi import Request
+
+
+def test_chunk_upload_and_download(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GENECODER_TMP", str(tmp_path))
-    main.FastAPILimiter.redis = None
+    main.FastAPILimiter.redis = None  # type: ignore[attr-defined]
     data = b"chunk data"
     payload = {
         "file_id": "file1",
@@ -39,13 +45,13 @@ def test_chunk_upload_and_download(tmp_path, monkeypatch):
     assert base64.b64decode(r2.json()["data"]) == data
 
 
-def test_rate_limiter_requires_token(monkeypatch, tmp_path):
+def test_rate_limiter_requires_token(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("GENECODER_TMP", str(tmp_path))
-    main.FastAPILimiter.redis = object()
+    main.FastAPILimiter.redis = object()  # type: ignore[attr-defined]
 
-    async def fake_rate_limit(request, _response):
+    async def fake_rate_limit(request: Request, _response: object) -> None:
         if "authorization" not in request.headers:
-            raise main.HTTPException(status_code=401, detail="missing token")
+            raise main.HTTPException(status_code=401, detail="missing token")  # type: ignore[attr-defined]
 
     monkeypatch.setattr(main, "rate_limit", fake_rate_limit)
 
