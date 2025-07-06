@@ -64,3 +64,18 @@ def test_rate_limiter_requires_token(monkeypatch, tmp_path):
     )
     assert r2.status_code == 200
 
+
+
+def test_upload_chunk_missing_field(tmp_path, monkeypatch):
+    monkeypatch.setenv("GENECODER_TMP", str(tmp_path))
+    main.FastAPILimiter.redis = None
+    payload = {"offset": 0, "data": base64.b64encode(b"d").decode()}
+    r = client.post("/upload-chunk", json=payload)
+    assert r.status_code == 422
+
+
+def test_download_chunk_not_found(monkeypatch, tmp_path):
+    monkeypatch.setenv("GENECODER_TMP", str(tmp_path))
+    main.FastAPILimiter.redis = None
+    r = client.get("/download-chunk", params={"file_id": "missing", "offset": 1})
+    assert r.status_code == 404
