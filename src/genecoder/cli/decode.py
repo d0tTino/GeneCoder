@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import random
 import re
 from pathlib import Path
 
@@ -232,17 +231,6 @@ def process_single_decode(
                 f"Applied {args.simulator} simulator before decoding."
             )
 
-        if args.simulate_errors > 0.0:
-            from genecoder.channel_sim import simulate_errors
-
-            seed_env = os.getenv("GENECODER_SIM_SEED")
-            rng = random.Random(int(seed_env)) if seed_env is not None else random.Random()
-            sequence_from_fasta = simulate_errors(
-                sequence_from_fasta, args.simulate_errors, rng=rng
-            )
-            logger.info(
-                f"Applied simulated errors (p={args.simulate_errors}) before decoding."
-            )
 
         options = build_decoding_options(args)
         final_decoded_data = run_decoding_pipeline(
@@ -403,16 +391,6 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--auto-ext",
         action="store_true",
         help="Automatically remove .dna and restore the original extension.",
-    )
-    parser.add_argument(
-        "--simulate-errors",
-        type=float,
-        default=0.0,
-        help=(
-            "Probability of random substitution errors applied before decoding. "
-            "Set the GENECODER_SIM_SEED environment variable to an integer to "
-            "seed the random generator."
-        ),
     )
     sim_choices = list(sorted(SIMULATOR_REGISTRY.keys())) or ["none"]
     parser.add_argument(

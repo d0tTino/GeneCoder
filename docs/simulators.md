@@ -81,10 +81,12 @@ sudo make install
 
 ## Command-line usage
 
-Apply simple substitutions with a chosen probability:
+Apply simple substitutions with a chosen probability using the ``channel`` command:
 
 ```bash
-genecoder decode --simulate-errors 0.02 <other options>
+genecoder channel --input-file input.fasta --output-file corrupted.fasta \
+    --sub-prob 0.02
+genecoder decode corrupted.fasta --output-file decoded.bin <other options>
 ```
 
 Invoke the replication or transcription models:
