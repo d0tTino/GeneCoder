@@ -1,7 +1,11 @@
 import json
 import os
+import argparse
 from pathlib import Path
+
+import pytest
 from tests.test_cli import run_cli_command
+from src.genecoder.cli.channel import _handle_command
 
 
 def create_fasta(path: Path, seq: str = "ACGT", header: str = "seq") -> None:
@@ -103,4 +107,58 @@ def test_channel_cli_multi_record(tmp_path: Path) -> None:
     from src.genecoder.formats import from_fasta
     parsed = from_fasta(output_fasta.read_text())
     assert [hdr for hdr, _ in parsed] == ["seq1", "seq2"]
+
+
+def test_channel_cli_threads_and_processes_error(tmp_path: Path) -> None:
+    input_fasta = tmp_path / "in_tp.fasta"
+    create_fasta(input_fasta)
+    output_fasta = tmp_path / "out_tp.fasta"
+    env = os.environ.copy()
+    from pathlib import Path as _Path
+    src_path = _Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+    result = run_cli_command(
+        [
+            "channel",
+            "--input-file",
+            str(input_fasta),
+            "--output-file",
+            str(output_fasta),
+            "--simulator",
+            "simple",
+            "--min-length",
+            "1",
+            "--threads",
+            "2",
+            "--processes",
+            "2",
+        ],
+        env=env,
+    )
+    assert result.returncode != 0
+    assert "Cannot specify both --threads and --processes" in result.stderr
+
+
+def test_handle_command_threads_processes_error(tmp_path: Path) -> None:
+    input_fasta = tmp_path / "in.fasta"
+    create_fasta(input_fasta)
+    args = argparse.Namespace(
+        simulators=["simple"],
+        input_file=str(input_fasta),
+        output_file=str(tmp_path / "out.fasta"),
+        sub_prob=0.0,
+        ins_prob=0.0,
+        del_prob=0.0,
+        seed=None,
+        parallel=False,
+        threads=1,
+        processes=1,
+        config=None,
+        min_length=1,
+        max_length=300,
+        max_homopolymer=4,
+    )
+    with pytest.raises(SystemExit):
+        _handle_command(args)
 

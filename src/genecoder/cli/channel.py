@@ -183,6 +183,9 @@ def _handle_command(args: argparse.Namespace) -> None:
     if not simulators and not prob_specified:
         logger.error("At least one simulator or probability option must be specified")
         raise SystemExit(1)
+    if args.threads is not None and args.processes is not None:
+        logger.error("Cannot specify both --threads and --processes")
+        raise SystemExit(1)
     process_channel(
         args.input_file,
         args.output_file,
