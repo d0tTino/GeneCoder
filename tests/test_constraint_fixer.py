@@ -26,3 +26,31 @@ def test_fix_sequence_no_change_needed():
     fixed = fix_sequence(seq, target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=3)
     assert fixed == seq
 
+
+def test_fix_sequence_enforces_gc_and_homopolymer_limits_low_gc() -> None:
+    seq = "A" * 12
+    fixed = fix_sequence(
+        seq,
+        target_gc_min=0.4,
+        target_gc_max=0.6,
+        max_homopolymer=3,
+        rng=random.Random(0),
+    )
+    assert 0.4 <= calculate_gc_content(fixed) <= 0.6
+    assert get_max_homopolymer_length(fixed) <= 3
+    assert len(fixed) == len(seq)
+
+
+def test_fix_sequence_enforces_gc_and_homopolymer_limits_high_gc() -> None:
+    seq = "G" * 10
+    fixed = fix_sequence(
+        seq,
+        target_gc_min=0.4,
+        target_gc_max=0.6,
+        max_homopolymer=2,
+        rng=random.Random(0),
+    )
+    assert 0.4 <= calculate_gc_content(fixed) <= 0.6
+    assert get_max_homopolymer_length(fixed) <= 2
+    assert len(fixed) == len(seq)
+
