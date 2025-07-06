@@ -199,3 +199,17 @@ GeneCoder itself does not verify the authenticity of third-party packages. When
 using a registry or catalog, ensure the listed sources are trustworthy and, if
 possible, manually inspect the plugin code or compare checksums before
 installation.
+
+## Signed Plugin Packages
+
+For higher assurance you may sign plugin distributions with an RSA or ECDSA
+private key and publish the detached signature alongside the package. The
+catalog or registry entry should include the base64 encoded signature under the
+``signature`` field. Set the ``GENECODER_PLUGIN_PUBLIC_KEY`` environment
+variable to the path of the corresponding PEM encoded public key. During
+installation GeneCoder verifies the signature before falling back to the regular
+checksum check. A failed signature verification aborts the install and logs a
+warning.
+
+Signed packages help detect tampering, but they do not make untrusted code safe.
+Always audit plugins and obtain public keys from verified sources.
