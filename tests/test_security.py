@@ -8,6 +8,9 @@ from genecoder.security import (
     decrypt_data,
     compute_checksum,
 )
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.exceptions import InvalidSignature
 from tests.test_cli import run_cli_command
 
 
@@ -255,4 +258,21 @@ def test_cli_encrypt_key_file_wrong_key(tmp_path: Path) -> None:
         ]
     )
     assert dec_res.returncode != 0
+
+
+def test_compute_checksum_missing_public_key() -> None:
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    signature = key.sign(b"data", padding.PKCS1v15(), hashes.SHA256())
+    with pytest.raises(ValueError):
+        compute_checksum(b"data", signature=signature)
+
+
+def test_compute_checksum_invalid_signature() -> None:
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pub = key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    bad_sig = key.sign(b"other", padding.PKCS1v15(), hashes.SHA256())
+    with pytest.raises(InvalidSignature):
+        compute_checksum(b"data", signature=bad_sig, public_key=pub)
 
