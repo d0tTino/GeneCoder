@@ -4,7 +4,7 @@ import sys
 
 from genecoder import __version__
 from genecoder.plugins import load_plugins
-from genecoder.simulators import SIMULATOR_REGISTRY, ChannelPipeline
+# simulators are imported lazily by subcommands that need them
 from typing import Any
 
 # Delay heavy imports until building the parser to keep --version lightweight
@@ -16,6 +16,7 @@ channel: Any | None = None
 bundle: Any | None = None
 plugin: Any | None = None
 benchmark: Any | None = None
+cloud: Any | None = None
 
 
 logger = logging.getLogger(__name__)
@@ -59,11 +60,12 @@ def build_parser() -> argparse.ArgumentParser:
         report as _report,
         channel as _channel,
         bundle as _bundle,
+        cloud as _cloud,
         plugin as _plugin_mod,
         benchmark as _benchmark,
     )
 
-    global encode, decode, analyze, report, channel, bundle, plugin, benchmark
+    global encode, decode, analyze, report, channel, bundle, cloud, plugin, benchmark
 
     encode = _encode
     decode = _decode
@@ -71,6 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
     report = _report
     channel = _channel
     bundle = _bundle
+    cloud = _cloud
     plugin = _plugin_mod
     benchmark = _benchmark
 
@@ -96,6 +99,7 @@ def build_parser() -> argparse.ArgumentParser:
     report.register_subcommand(subparsers)
     channel.register_subcommand(subparsers)
     bundle.register_subcommand(subparsers)
+    cloud.register_subcommand(subparsers)
     plugin.register_subcommand(subparsers)
     benchmark.register_subcommand(subparsers)
 
