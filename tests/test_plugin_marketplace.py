@@ -1,5 +1,7 @@
 import sys
 import argparse
+from pathlib import Path
+import pytest
 
 
 import genecoder.plugins as plugins
@@ -22,7 +24,8 @@ class DummyResponse:
 
 
 def test_catalog_list_and_install(monkeypatch, capsys):
-    h = compute_checksum("plug==0.1".encode())
+    pkg = b"PKG"
+    h = compute_checksum(pkg)
     catalog = (
         "plugins:\n  - name: plug\n    version: '0.1'\n    url: plug==0.1\n    description: Example\n    checksum: "
         + h
@@ -33,13 +36,26 @@ def test_catalog_list_and_install(monkeypatch, capsys):
         return DummyResponse(catalog)
 
     installs = []
+    calls = []
 
     def fake_check_call(cmd):
-        installs.append(cmd)
+        if cmd[:4] == [sys.executable, "-m", "pip", "download"]:
+            dest = cmd[cmd.index("-d") + 1]
+            Path(dest).mkdir(parents=True, exist_ok=True)
+            (Path(dest) / "plug.whl").write_bytes(pkg)
+        elif cmd[:4] == [sys.executable, "-m", "pip", "install"]:
+            installs.append(cmd)
+        else:
+            raise AssertionError(cmd)
+
+    def fake_compute_checksum(data: bytes) -> str:
+        calls.append(data)
+        return compute_checksum(data)
 
     monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
+    monkeypatch.setattr(plugins, "compute_checksum", fake_compute_checksum)
     monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
 
     plugins.load_plugins()
@@ -50,7 +66,46 @@ def test_catalog_list_and_install(monkeypatch, capsys):
     assert "plug" in captured
 
     plugin_cli._handle_install(argparse.Namespace(name="plug"))
-    assert installs == [[sys.executable, "-m", "pip", "install", "plug==0.1"]]
+    assert installs and installs[0][:4] == [sys.executable, "-m", "pip", "install"]
+    assert calls == [pkg]
+
+
+def test_install_checksum_mismatch(monkeypatch, caplog):
+    pkg = b"PKG"
+    wrong = compute_checksum(b"WRONG")
+    catalog = (
+        "plugins:\n  - name: plug\n    version: '0.1'\n    url: plug==0.1\n    checksum: "
+        + wrong
+    ).encode()
+
+    def fake_urlopen(url):
+        assert url == "https://example.com/catalog.yaml"
+        return DummyResponse(catalog)
+
+    installs = []
+
+    def fake_check_call(cmd):
+        if cmd[:4] == [sys.executable, "-m", "pip", "download"]:
+            dest = cmd[cmd.index("-d") + 1]
+            Path(dest).mkdir(parents=True, exist_ok=True)
+            (Path(dest) / "plug.whl").write_bytes(pkg)
+        elif cmd[:4] == [sys.executable, "-m", "pip", "install"]:
+            installs.append(cmd)
+        else:
+            raise AssertionError(cmd)
+
+    monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
+    monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
+
+    plugins.load_plugins()
+
+    with caplog.at_level("WARNING"), pytest.raises(SystemExit):
+        plugin_cli._handle_install(argparse.Namespace(name="plug"))
+
+    assert not installs
+    assert "Checksum mismatch for plugin plug" in caplog.text
 
 
 def test_catalog_network_error(monkeypatch, caplog):
