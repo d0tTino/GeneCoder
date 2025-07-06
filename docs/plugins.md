@@ -213,3 +213,7 @@ warning.
 
 Signed packages help detect tampering, but they do not make untrusted code safe.
 Always audit plugins and obtain public keys from verified sources.
+
+## Submitting to the Marketplace
+
+Signed plugin packages can be shared publicly by submitting them to the GeneCoder marketplace. After building a wheel and generating the detached signature, visit the marketplace dashboard and upload both files. The system verifies the signature and runs automated checks before listing the plugin in the public catalog.

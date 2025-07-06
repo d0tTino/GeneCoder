@@ -11,6 +11,7 @@
    - Provide automated reports summarizing encoding accuracy and efficiency.
 4. **Phase 4: Ecosystem & Automation**
    - Publish a plugin repository enabling community codecs and FEC modules.
+   - Require digital signatures for plugins submitted to the new marketplace.
    - Offer workflow templates powered by n8n for routine processing tasks.
    - Package the toolkit for easy container deployment in research pipelines.
 5. **Long-Term Vision**
