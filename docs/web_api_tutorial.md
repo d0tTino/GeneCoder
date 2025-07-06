@@ -85,6 +85,30 @@ The JSON response includes the sequence length,
 [GC content](glossary.md#gc-content) and the longest
 [homopolymer](glossary.md#homopolymer) run.
 
+## Sequence Design
+
+Open `/design` in the browser to launch a simple React interface for
+validating and fixing DNA sequences.
+
+The validation endpoint returns basic sequence metrics:
+
+```json
+POST /design/validate
+{ "sequence": "ACGT" }
+```
+
+The response reports whether the sequence falls within the supplied GC
+and homopolymer limits.
+
+To automatically adjust a sequence, call `/design/fix`:
+
+```json
+POST /design/fix
+{ "sequence": "AAAAAA", "gc_min": 0.4, "gc_max": 0.6, "max_homopolymer": 3 }
+```
+
+The fixed sequence and its metrics are returned in the JSON response.
+
 ## Generating Reports
 
 Use `/report` to convert an encoding or decoding result into Markdown or HTML

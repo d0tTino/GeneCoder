@@ -29,6 +29,7 @@ from genecoder.plotting import (
     generate_sequence_analysis_plot,
 )
 from genecoder.error_simulation import introduce_errors
+from genecoder import constraint_fixer
 from genecoder.app_helpers import EncodeResult, DecodeResult
 from genecoder.report import (
     encode_to_markdown,
@@ -124,6 +125,10 @@ plugin_index_path = helix_ui_dir / "dist" / "plugins.html"
 if not plugin_index_path.is_file():
     plugin_index_path = helix_ui_dir / "plugins.html"
 
+design_index_path = helix_ui_dir / "dist" / "design.html"
+if not design_index_path.is_file():
+    design_index_path = helix_ui_dir / "design.html"
+
 @app.get("/", response_class=HTMLResponse)
 async def index() -> str:
     return index_path.read_text(encoding="utf-8")
@@ -145,6 +150,12 @@ async def dashboard() -> str:
 async def plugin_catalog_page() -> str:
     """Return the React-based plugin catalog interface."""
     return plugin_index_path.read_text(encoding="utf-8")
+
+
+@app.get("/design", response_class=HTMLResponse)
+async def design_page() -> str:
+    """Return the React-based sequence design interface."""
+    return design_index_path.read_text(encoding="utf-8")
 
 
 class EncodeOptionsModel(BaseModel):
@@ -345,6 +356,49 @@ async def dashboard_plot_data(
         "gc_positions": starts,
         "gc_values": gc_values,
         "hp_lengths": hp_lengths,
+    }
+
+
+class DesignRequest(BaseModel):
+    """Request model for sequence design tools."""
+
+    sequence: str
+    gc_min: float = 0.4
+    gc_max: float = 0.6
+    max_homopolymer: int = 4
+
+
+@app.post("/design/validate")
+async def design_validate(req: DesignRequest) -> dict[str, object]:
+    """Validate a sequence against GC and homopolymer constraints."""
+
+    seq = req.sequence.upper()
+    gc_val = calculate_gc_content(seq)
+    max_hp = get_max_homopolymer_length(seq)
+    valid = req.gc_min <= gc_val <= req.gc_max and max_hp <= req.max_homopolymer
+    return {
+        "valid": valid,
+        "gc_content": gc_val,
+        "max_homopolymer": max_hp,
+    }
+
+
+@app.post("/design/fix")
+async def design_fix(req: DesignRequest) -> dict[str, object]:
+    """Return a sequence adjusted to satisfy constraints."""
+
+    fixed = constraint_fixer.fix_sequence(
+        req.sequence,
+        target_gc_min=req.gc_min,
+        target_gc_max=req.gc_max,
+        max_homopolymer=req.max_homopolymer,
+    )
+    gc_val = calculate_gc_content(fixed)
+    max_hp = get_max_homopolymer_length(fixed)
+    return {
+        "sequence": fixed,
+        "gc_content": gc_val,
+        "max_homopolymer": max_hp,
     }
 
 

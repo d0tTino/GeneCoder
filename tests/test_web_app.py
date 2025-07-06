@@ -3,6 +3,7 @@ import pytest
 fastapi = pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
 from fastapi.testclient import TestClient
+from genecoder.utils import get_max_homopolymer_length
 
 import base64
 
@@ -12,6 +13,7 @@ main.API_TOKEN = "test-token"
 app = main.app
 index_path = main.index_path
 helix_index_path = main.helix_index_path
+design_index_path = main.design_index_path
 client = TestClient(app)
 
 AUTH_HEADERS = {"Authorization": f"Bearer {main.API_TOKEN}"}
@@ -97,3 +99,26 @@ def test_report_endpoint() -> None:
     r = client.post("/report", json={"data": enc, "type": "encode", "format": "html"})
     assert r.status_code == 200
     assert "<h1>Encoding Report</h1>" in r.json()["report"]
+
+
+def test_design_page() -> None:
+    response = client.get("/design")
+    assert response.status_code == 200
+    assert response.text == design_index_path.read_text(encoding="utf-8")
+
+
+def test_design_validate_endpoint() -> None:
+    payload = {"sequence": "ACGT"}
+    r = client.post("/design/validate", json=payload)
+    assert r.status_code == 200
+    data = r.json()
+    assert set(data) >= {"valid", "gc_content", "max_homopolymer"}
+
+
+def test_design_fix_endpoint() -> None:
+    payload = {"sequence": "AAAA", "max_homopolymer": 2}
+    r = client.post("/design/fix", json=payload)
+    assert r.status_code == 200
+    data = r.json()
+    assert "sequence" in data
+    assert get_max_homopolymer_length(data["sequence"]) <= 2
