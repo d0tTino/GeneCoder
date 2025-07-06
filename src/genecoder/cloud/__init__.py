@@ -22,8 +22,16 @@ class CloudClient:
         headers = {}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        resp = self._client.post("/jobs", json={"type": job_type, "payload": payload}, headers=headers)
-        resp.raise_for_status()
+        import httpx
+
+        try:
+            resp = self._client.post(
+                "/jobs", json={"type": job_type, "payload": payload}, headers=headers
+            )
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:  # pragma: no cover - network errors
+            raise RuntimeError(f"Failed to submit job: {exc}") from exc
+
         data = resp.json()
         job_id = data.get("job_id")
         if not isinstance(job_id, str):
