@@ -17,25 +17,21 @@ integrated pipeline and extensible design.
 
 import flet as ft
 import os
-import asyncio  # For asynchronous operations
-import json
 import logging
 import webbrowser
-from typing import Optional, Any
-try:
-    import websockets
-except Exception:  # pragma: no cover - optional dependency
-    websockets = None
+from typing import Optional
+
+from genecoder.flet_ws import ws_clients  # noqa: F401 - start server on import
+from genecoder.flet_handlers import (
+    make_decode_handler,
+    make_encode_handler,
+    decoded_bytes_to_save,
+)
 
 # Project module imports
-from genecoder.options import EncodeOptions
-from genecoder import perform_encoding
 from genecoder.plugins import load_plugins
-from genecoder.manifest import generate_manifest
-from genecoder.flet_helpers import parse_int_input
-from genecoder.app_helpers import perform_decoding
 from genecoder.helix_view import show_helix_ui
-from genecoder.formats import from_fasta, to_fasta
+from genecoder.formats import from_fasta
 from genecoder.cli.encode import reverse_complement
 from genecoder.glossary_tooltips import (
     load_glossary,
@@ -60,33 +56,6 @@ except Exception:
 
 
 encode_fasta_data_to_save_ref: ft.Ref[Optional[str]] = ft.Ref[Optional[str]]()
-decoded_bytes_to_save: bytes = b""
-
-# --- optional WebSocket streaming setup ---
-ws_clients: set[Any] = set()
-if websockets:
-    async def _ws_handler(websocket: Any) -> None:
-        ws_clients.add(websocket)
-        try:
-            async for _ in websocket:
-                pass
-        finally:
-            ws_clients.discard(websocket)
-
-    try:
-        try:
-            loop: asyncio.AbstractEventLoop | None = asyncio.get_event_loop()
-        except RuntimeError:
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = None
-        if loop:
-            loop.create_task(websockets.serve(_ws_handler, "localhost", 8765))
-        else:  # pragma: no cover - depends on environment
-            logger.error("No running event loop; WebSocket server not started")
-    except OSError as exc:  # pragma: no cover - depends on environment
-        logger.error("Failed to start WebSocket server: %s", exc)
 
 
 def main(page: ft.Page) -> None:
@@ -262,7 +231,7 @@ def main(page: ft.Page) -> None:
                 ft.Text("Drop file"),
                 width=150,
                 height=80,
-                border=ft.border.all(1, ft.colors.BLUE_GREY_200),
+                border=ft.border.all(1, colors.BLUE_GREY_200),
                 alignment=ft.alignment.center,
             ),
             **drop_kwargs,
@@ -411,215 +380,86 @@ def main(page: ft.Page) -> None:
     # This is a forward declaration of sorts for app_tabs, its full definition with content is later.
     app_tabs: ft.Tabs = ft.Tabs()
 
-    # --- Encode Event Handlers ---
-    async def encode_data(e: ft.ControlEvent) -> None:
-        """
-        Handles the encoding process when the 'Encode' button is clicked.
+    def refresh_helix_view(_: ft.ControlEvent | None = None) -> None:
+        dna_seq = ""
+        if encode_hidden_fasta_content.value:
+            parsed = from_fasta(encode_hidden_fasta_content.value)
+            if parsed:
+                dna_seq = parsed[0][1]
+        rc_seq = reverse_complement(dna_seq) if mirror_checkbox.value else None
+        helix_container.controls.clear()
+        helix_container.controls.append(
+            ft.Row([
+                animate_checkbox,
+                ft.Text("Zoom:"),
+                zoom_slider,
+                ft.Text("FPS:"),
+                fps_slider,
+            ])
+        )
+        colors = {
+            "A": int(helix_color_a.value.lstrip("#"), 16),
+            "C": int(helix_color_c.value.lstrip("#"), 16),
+            "G": int(helix_color_g.value.lstrip("#"), 16),
+            "T": int(helix_color_t.value.lstrip("#"), 16),
+        }
 
-        This asynchronous function performs the following steps:
-        1. Disables UI controls (buttons, progress ring) to prevent concurrent operations.
-        2. Resets UI elements (status texts, image displays).
-        3. Validates user inputs (file selection, parity k-value).
-        4. Reads input file data asynchronously.
-        5. Applies the selected encoding method (Base-4 Direct, Huffman, GC-Balanced)
-           asynchronously using `asyncio.to_thread`.
-        6. Optionally applies Triple-Repeat, Hamming(7,4), or Reed-Solomon FEC if selected,
-           also asynchronously.
-        7. Constructs FASTA header and formats the output.
-        8. Calculates and displays encoding metrics.
-        9. Generates and displays analysis plots (Huffman codeword lengths, nucleotide frequencies)
-           asynchronously if applicable.
-        10. Updates status messages and re-enables UI controls in a `finally` block.
-        """
-        # The encode workflow does not use the decoded bytes buffer
-
-        # Disable buttons and show progress
-        encode_button.disabled = True
-        encode_browse_button.disabled = True
-        encode_progress_ring.visible = True
-
-        encode_status_text.value = "Processing..."
-        encode_orig_size_text.value = "Original size: - bytes"
-        encode_dna_len_text.value = "Encoded DNA length: - nucleotides"
-        encode_comp_ratio_text.value = "Compression ratio: -"
-        encode_bits_per_nt_text.value = "Bits per nucleotide: - bits/nt"
-        encode_actual_gc_value.value = "-"
-        encode_actual_homopolymer_value.value = "-"
-        encode_dna_snippet_text.value = ""
-        fixed_dna_snippet_text.value = ""
-        fixed_metrics_text.value = ""
-        encode_save_button.visible = False
-        encode_manifest_save_button.visible = False
-        encode_hidden_fasta_content.value = ""
-        encode_hidden_manifest_content.value = ""
-
-        codeword_hist_image.src_base64 = None
-        nucleotide_freq_image.src_base64 = None
-        sequence_analysis_plot_image.src_base64 = None  # Clear new plot
-        analysis_status_text.value = "Encode data to view analysis plots."
-        fix_suggestion_text.value = ""
-        if len(app_tabs.tabs) > 2:
-            app_tabs.tabs[2].disabled = True
-
+        helix_container.controls.append(
+            show_helix_ui(
+                dna_seq,
+                strand2_sequence=rc_seq,
+                animate=animate_checkbox.value,
+                zoom=zoom_slider.value,
+                colors=colors,
+                fps=fps_slider.value,
+                ws_url="ws://localhost:8765",
+            )
+        )
         page.update()
 
-        try:
-            input_path = selected_encode_input_file_path.current
-            if not input_path:
-                encode_status_text.value = "Error: Please select an input file first."
-                encode_status_text.color =  colors.RED_ACCENT_700
-                page.update()
-                return
+    animate_checkbox.on_change = refresh_helix_view
+    zoom_slider.on_change = refresh_helix_view
+    fps_slider.on_change = refresh_helix_view
 
-            with open(input_path, "rb") as f_in:
-                input_data = await asyncio.to_thread(f_in.read)
-
-            try:
-                options = EncodeOptions(
-                    method=method_dropdown.value,
-                    add_parity=parity_checkbox.value,
-                    k_value=parse_int_input(k_value_input.value, 7),
-                    fec_method=fec_dropdown.value,
-                    window_size=parse_int_input(window_size_input.value, 50),
-                    step_size=parse_int_input(step_size_input.value, 10),
-                    min_homopolymer_len=parse_int_input(min_homopolymer_input.value, 4),
-                    alphabet=alphabet_dropdown.value,
-                )
-            except ValueError as ex:
-                encode_status_text.value = f"Invalid numeric input: {ex}"
-                encode_status_text.color =  colors.RED_ACCENT_700
-                page.update()
-                return
-
-            try:
-                result = await asyncio.to_thread(perform_encoding, input_data, options)
-            except ValueError as ex:
-                encode_status_text.value = f"Error: {ex}"
-                encode_status_text.color =  colors.RED_ACCENT_700
-                page.update()
-                return
-
-            final_fasta = result.fasta
-            forward_seq = result.encoded_dna
-            if mirror_checkbox.value:
-                rc_seq = reverse_complement(forward_seq)
-                rc_header = result.fasta.splitlines()[0][1:] + " mirror=rc"
-                final_fasta += to_fasta(rc_seq, rc_header, line_width=80)
-            encode_hidden_fasta_content.value = final_fasta
-            encode_hidden_sequence.value = forward_seq
-            encode_dna_snippet_text.value = forward_seq[:200]
-            if ws_clients:
-                async def _stream_bases(seq: str, step: int = 50) -> None:
-                    for i in range(0, len(seq), step):
-                        chunk = seq[i : i + step]
-                        await asyncio.gather(*(c.send(chunk) for c in ws_clients))
-                        await asyncio.sleep(0)
-
-                asyncio.create_task(_stream_bases(forward_seq))
-            encode_save_button.visible = True
-            manifest = generate_manifest(
-                os.path.basename(input_path), options, result.metrics
-            )
-            encode_hidden_manifest_content.value = json.dumps(manifest, indent=2)
-            encode_manifest_save_button.visible = True
-
-            metrics = result.metrics
-            encode_orig_size_text.value = (
-                f"Original size: {metrics['original_size']} bytes"
-            )
-            encode_dna_len_text.value = (
-                f"Encoded DNA length: {metrics['dna_length']} nucleotides"
-            )
-            encode_comp_ratio_text.value = (
-                f"Compression ratio: {metrics['compression_ratio']:.2f}"
-            )
-            encode_bits_per_nt_text.value = (
-                f"Bits per nucleotide: {metrics['bits_per_nt']:.2f} bits/nt"
-            )
-
-            if options.method == "GC-Balanced":
-                encode_actual_gc_value.value = f"{metrics['actual_gc']:.2%}"
-                encode_actual_homopolymer_value.value = f"{metrics['max_homopolymer']}"
-            else:
-                encode_actual_gc_value.value = "N/A"
-                encode_actual_homopolymer_value.value = "N/A"
-
-            codeword_hist_image.src_base64 = result.plots.get("codeword_hist")
-            nucleotide_freq_image.src_base64 = result.plots.get("nucleotide_freq")
-            sequence_analysis_plot_image.src_base64 = result.plots.get(
-                "sequence_analysis"
-            )
-
-            # Compute after populating result.plots so checks use a stable value
-            any_plot = any(result.plots.values())
-
-            if any_plot:
-                analysis_status_text.value = (
-                    "All analysis plots generated successfully."
-                )
-                analysis_status_text.color =  colors.GREEN_700
-            else:
-                analysis_status_text.value = "No analysis plots applicable or generated for the selected options."
-                analysis_status_text.color =  colors.ORANGE_ACCENT_700
-            if len(app_tabs.tabs) > 2:
-                app_tabs.tabs[2].disabled = not any_plot
-
-            info_msgs = list(result.info_messages)
-            if options.method == "GC-Balanced" and options.add_parity:
-                info_msgs.insert(
-                    0, "Info: 'Add Parity' not directly used by GC-Balanced."
-                )
-            status_prefix = " ".join(info_msgs)
-            encode_status_text.value = (
-                status_prefix + " " if status_prefix else ""
-            ) + "Encoding successful! Click 'Save Encoded FASTA...' to save."
-            encode_status_text.color =  colors.GREEN_700
-
-            gc_val = calculate_gc_content(forward_seq)
-            hp_len = get_max_homopolymer_length(forward_seq)
-            constraints = SynthesisConstraints()
-            if (
-                gc_val < 0.4
-                or gc_val > 0.6
-                or hp_len > constraints.max_homopolymer
-            ):
-                fixed = fix_sequence(
-                    forward_seq,
-                    target_gc_min=0.4,
-                    target_gc_max=0.6,
-                    max_homopolymer=constraints.max_homopolymer,
-                )
-                fix_gc = calculate_gc_content(fixed)
-                fix_hp = get_max_homopolymer_length(fixed)
-                fix_suggestion_text.value = (
-                    f"Suggested fix GC {fix_gc:.2%}, max HP {fix_hp}."
-                )
-            else:
-                fix_suggestion_text.value = ""
-
-            refresh_helix_view()
-            app_tabs.selected_index = 3
-            page.update()
-
-        except FileNotFoundError:
-            encode_status_text.value = f"Error: Input file '{input_path}' not found."
-            encode_status_text.color =  colors.RED_ACCENT_700
-        except OSError as ex:
-            encode_status_text.value = f"I/O error during encoding: {ex}"
-            encode_status_text.color =  colors.RED_ACCENT_700
-        except Exception as ex:
-            logger.exception("Unexpected error during encoding")
-            encode_status_text.value = f"An unexpected error occurred: {ex}"
-            encode_status_text.color =  colors.RED_ACCENT_700
-            raise
-        finally:
-            # Re-enable buttons and hide progress
-            encode_button.disabled = False
-            encode_browse_button.disabled = False
-            encode_progress_ring.visible = False
-            page.update()
-
-    encode_button.on_click = encode_data
+    # --- Encode Event Handlers ---
+    encode_button.on_click = make_encode_handler(
+        page=page,
+        selected_encode_input_file_path=selected_encode_input_file_path,
+        encode_button=encode_button,
+        encode_browse_button=encode_browse_button,
+        encode_progress_ring=encode_progress_ring,
+        encode_status_text=encode_status_text,
+        encode_orig_size_text=encode_orig_size_text,
+        encode_dna_len_text=encode_dna_len_text,
+        encode_comp_ratio_text=encode_comp_ratio_text,
+        encode_bits_per_nt_text=encode_bits_per_nt_text,
+        encode_actual_gc_value=encode_actual_gc_value,
+        encode_actual_homopolymer_value=encode_actual_homopolymer_value,
+        encode_dna_snippet_text=encode_dna_snippet_text,
+        fixed_dna_snippet_text=fixed_dna_snippet_text,
+        fixed_metrics_text=fixed_metrics_text,
+        encode_save_button=encode_save_button,
+        encode_manifest_save_button=encode_manifest_save_button,
+        encode_hidden_fasta_content=encode_hidden_fasta_content,
+        encode_hidden_manifest_content=encode_hidden_manifest_content,
+        encode_hidden_sequence=encode_hidden_sequence,
+        codeword_hist_image=codeword_hist_image,
+        nucleotide_freq_image=nucleotide_freq_image,
+        sequence_analysis_plot_image=sequence_analysis_plot_image,
+        analysis_status_text=analysis_status_text,
+        fix_suggestion_text=fix_suggestion_text,
+        app_tabs=app_tabs,
+        method_dropdown=method_dropdown,
+        parity_checkbox=parity_checkbox,
+        k_value_input=k_value_input,
+        fec_dropdown=fec_dropdown,
+        window_size_input=window_size_input,
+        step_size_input=step_size_input,
+        min_homopolymer_input=min_homopolymer_input,
+        alphabet_dropdown=alphabet_dropdown,
+        mirror_checkbox=mirror_checkbox,
+        refresh_helix_view=refresh_helix_view,
+    )
 
     async def apply_fix(_: ft.ControlEvent) -> None:
         seq = encode_hidden_sequence.value
@@ -781,74 +621,17 @@ def main(page: ft.Page) -> None:
         on_click=_open_decode_file_picker,
     )
 
-    async def decode_file_data(e: ft.ControlEvent) -> None:
-        """Decode an input FASTA file using :func:`perform_decoding`."""
-        global decoded_bytes_to_save
-
-        decode_status_text.value = "Processing..."
-        decode_progress_ring.visible = True
-        decode_button.disabled = True
-        decode_browse_button.disabled = True
-        decode_save_button.visible = False
-        decoded_bytes_to_save = b""
-        page.update()
-
-        try:
-            input_path = selected_decode_input_file_path.current
-            if not input_path:
-                decode_status_text.value = (
-                    "Error: Please select an input FASTA file first."
-                )
-                decode_status_text.color =  colors.RED_ACCENT_700
-                page.update()
-                return
-
-            with open(input_path, "r", encoding="utf-8") as f_in:
-                file_content_str = await asyncio.to_thread(f_in.read)
-
-            try:
-                result = await asyncio.to_thread(
-                    perform_decoding, file_content_str, decode_alphabet_dropdown.value
-                )
-            except ValueError as ex:
-                decode_status_text.value = f"Error: {ex}"
-                decode_status_text.color =  colors.RED_ACCENT_700
-                page.update()
-                return
-            except Exception as ex:
-                logger.exception("Unexpected error during decoding")
-                decode_status_text.value = f"Unexpected error: {ex}"
-                decode_status_text.color =  colors.RED_ACCENT_700
-                raise
-
-            decoded_bytes_to_save = result.decoded_bytes
-            decode_status_text.value = result.status_message
-            decode_status_text.color =  colors.GREEN_700
-            if result.fec_info:
-                decode_fec_info_text.value = result.fec_info
-                decode_fec_info_text.color =  colors.GREEN_700
-            else:
-                decode_fec_info_text.value = ""
-            decode_save_button.visible = True
-
-        except FileNotFoundError:
-            decode_status_text.value = f"Error: Input file '{input_path}' not found."
-            decode_status_text.color =  colors.RED_ACCENT_700
-        except OSError as ex:
-            decode_status_text.value = f"I/O error: {ex}"
-            decode_status_text.color =  colors.RED_ACCENT_700
-        except Exception as ex:
-            logger.exception("Unexpected error during decode_file_data")
-            decode_status_text.value = f"Critical error: {ex}"
-            decode_status_text.color =  colors.RED_ACCENT_700
-            raise
-        finally:
-            decode_progress_ring.visible = False
-            decode_button.disabled = False
-            decode_browse_button.disabled = False
-            page.update()
-
-    decode_button.on_click = decode_file_data
+    decode_button.on_click = make_decode_handler(
+        page=page,
+        selected_decode_input_file_path=selected_decode_input_file_path,
+        decode_button=decode_button,
+        decode_browse_button=decode_browse_button,
+        decode_progress_ring=decode_progress_ring,
+        decode_status_text=decode_status_text,
+        decode_fec_info_text=decode_fec_info_text,
+        decode_save_button=decode_save_button,
+        decode_alphabet_dropdown=decode_alphabet_dropdown,
+    )
 
     async def on_save_decoded_file_result(e: ft.FilePickerResultEvent) -> None:  # Made async
         if e.path:
@@ -1039,46 +822,6 @@ def main(page: ft.Page) -> None:
         expand=True,
     )
 
-    def refresh_helix_view(_: ft.ControlEvent | None = None) -> None:
-        dna_seq = ""
-        if encode_hidden_fasta_content.value:
-            parsed = from_fasta(encode_hidden_fasta_content.value)
-            if parsed:
-                dna_seq = parsed[0][1]
-        rc_seq = reverse_complement(dna_seq) if mirror_checkbox.value else None
-        helix_container.controls.clear()
-        helix_container.controls.append(
-            ft.Row([
-                animate_checkbox,
-                ft.Text("Zoom:"),
-                zoom_slider,
-                ft.Text("FPS:"),
-                fps_slider,
-            ])
-        )
-        colors = {
-            "A": int(helix_color_a.value.lstrip("#"), 16),
-            "C": int(helix_color_c.value.lstrip("#"), 16),
-            "G": int(helix_color_g.value.lstrip("#"), 16),
-            "T": int(helix_color_t.value.lstrip("#"), 16),
-        }
-
-        helix_container.controls.append(
-            show_helix_ui(
-                dna_seq,
-                strand2_sequence=rc_seq,
-                animate=animate_checkbox.value,
-                zoom=zoom_slider.value,
-                colors=colors,
-                fps=fps_slider.value,
-                ws_url="ws://localhost:8765",
-            )
-        )
-        page.update()
-
-    animate_checkbox.on_change = refresh_helix_view
-    zoom_slider.on_change = refresh_helix_view
-    fps_slider.on_change = refresh_helix_view
 
     def on_tab_change(e: ft.ControlEvent) -> None:
         if app_tabs.selected_index == 3:
