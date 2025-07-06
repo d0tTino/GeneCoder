@@ -28,3 +28,19 @@ def test_fec_bench_csv() -> None:
     lines = [line for line in result.stdout.strip().splitlines() if line]
     assert lines[0].startswith("fec,")
     assert len(lines) >= 2
+
+
+def test_fec_bench_redundancy_json() -> None:
+    result = _run_fec_bench([
+        "--size",
+        "16",
+        "--error-prob",
+        "0",
+        "--format",
+        "json",
+        "--redundancy",
+        "2",
+    ])
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert all("redundancy_param" in item for item in data)

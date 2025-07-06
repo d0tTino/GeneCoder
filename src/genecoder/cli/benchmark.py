@@ -28,6 +28,13 @@ def register_subcommand(
     fec_parser.add_argument("--output", "-o", type=Path)
     fec_parser.add_argument("--size", type=int, default=_DATA_SIZE)
     fec_parser.add_argument("--error-prob", type=float, default=_ERROR_PROB)
+    fec_parser.add_argument(
+        "--redundancy",
+        type=int,
+        nargs="+",
+        default=[0],
+        help="Redundancy levels to test",
+    )
     fec_parser.add_argument("--plot", type=Path, help="Write PNG plot of results")
     fec_parser.set_defaults(func=_handle_fec)
 
@@ -51,6 +58,8 @@ def _handle_fec(args: argparse.Namespace) -> None:
         "--error-prob",
         str(args.error_prob),
     ]
+    for r in args.redundancy:
+        cmd.extend(["--redundancy", str(r)])
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
@@ -58,7 +67,10 @@ def _handle_fec(args: argparse.Namespace) -> None:
     results_text = proc.stdout
     if args.plot:
         results = _parse_results(results_text, args.format)
-        buf = report_module.plot_fec_benchmark(results)
+        if any("redundancy" in r for r in results):
+            buf = report_module.plot_fec_success(results)
+        else:
+            buf = report_module.plot_fec_benchmark(results)
         with open(args.plot, "wb") as fh:
             fh.write(buf.getvalue())
         buf.close()
