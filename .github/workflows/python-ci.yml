@@ -8,6 +8,8 @@ on:
       - 'tests/**'
       - 'pyproject.toml'
       - 'poetry.lock'
+      - 'mypy.ini'
+      - 'ruff.toml'
       - '.github/workflows/**'
       - 'scripts/**'
       - 'openai_testing/**'
@@ -35,6 +37,8 @@ jobs:
               - 'tests/**'
               - 'pyproject.toml'
               - 'poetry.lock'
+              - 'mypy.ini'
+              - 'ruff.toml'
               - '.github/workflows/**'
               - 'scripts/**'
               - 'openai_testing/**'
@@ -159,7 +163,7 @@ jobs:
         key: pre-commit-3.11-${{ hashFiles('.pre-commit-config.yaml') }}
 
     - name: Run mypy
-      run: mypy --config-file mypy.ini --strict src/genecoder --show-error-codes --no-error-summary
+      run: mypy --config-file mypy.ini --show-error-codes --no-error-summary
 
   glossary:
     needs: [changes, check-comments, lint]
@@ -221,6 +225,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install poetry
         poetry install --with gui,web,dev --extras ldpc --no-interaction --no-root
+
+    - name: Run ruff
+      run: ruff check .
+
+    - name: Run mypy
+      run: mypy --config-file mypy.ini --show-error-codes --no-error-summary
 
 
     - name: Setup Node
