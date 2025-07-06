@@ -20,6 +20,7 @@ from .plugins import (
     install_registry_plugins,
 )
 from .simulators import SIMULATOR_REGISTRY, simulate_reads
+from .cloud import CloudClient
 
 
 
@@ -35,6 +36,7 @@ __all__ = [
     "encrypt_data",
     "decrypt_data",
     "compute_checksum",
+    "CloudClient",
 ]
 
 
