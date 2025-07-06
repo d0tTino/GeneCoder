@@ -58,3 +58,20 @@ def test_dashboard_plot_data_invalid_chars() -> None:
     assert resp.status_code == 400
     assert "Invalid" in resp.json()["detail"]
 
+
+def test_dashboard_plot_data_valid_sequence() -> None:
+    seq = "ACGT" * 25
+    with _client() as client:
+        resp = client.post(
+            "/dashboard/plot-data",
+            headers=AUTH_HEADERS,
+            json={"dna_sequence": seq},
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert set(data) >= {"gc_positions", "gc_values", "hp_lengths"}
+    assert data["gc_positions"] == [0, 10, 20, 30, 40, 50]
+    assert all(value == 0.5 for value in data["gc_values"])
+    assert len(data["hp_lengths"]) == len(seq)
+    assert all(length == 1 for length in data["hp_lengths"])
+
