@@ -2,7 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from genecoder.utils import get_temp_dir
+from genecoder.utils import get_temp_dir, bit_error_rate
 
 
 def test_get_temp_dir_env_override(monkeypatch):
@@ -26,3 +26,13 @@ def test_mkdtemp_respects_env(monkeypatch):
             assert Path(path).parent == Path(base)
         finally:
             os.rmdir(path)
+
+
+def test_bit_error_rate_identical() -> None:
+    assert bit_error_rate(b"abc", b"abc") == 0.0
+
+
+def test_bit_error_rate_basic() -> None:
+    original = b"\x00"
+    recovered = b"\x01"
+    assert bit_error_rate(original, recovered) == 1 / 8
