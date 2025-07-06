@@ -10,4 +10,7 @@ export default defineConfig({
       '@docs': resolve(__dirname, '../../docs'),
     },
   },
+  test: {
+    environment: 'jsdom',
+  },
 });

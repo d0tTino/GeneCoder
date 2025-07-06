@@ -4,7 +4,6 @@ import sys
 
 from genecoder import __version__
 from genecoder.plugins import load_plugins
-from genecoder.simulators import SIMULATOR_REGISTRY, ChannelPipeline
 from typing import Any
 
 # Delay heavy imports until building the parser to keep --version lightweight

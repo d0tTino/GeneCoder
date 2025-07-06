@@ -17,6 +17,9 @@ import re
 from genecoder.options import EncodeOptions
 from genecoder import perform_encoding, perform_decoding
 from genecoder.plugins import load_plugins
+from genecoder import plugins
+from genecoder.cli import plugin as plugin_cli
+import argparse
 from genecoder.formats import from_fasta
 from genecoder.encoders import calculate_gc_content, decode_base4_direct
 from genecoder.utils import get_max_homopolymer_length, get_temp_dir
@@ -117,6 +120,10 @@ dashboard_index_path = helix_ui_dir / "dist" / "dashboard.html"
 if not dashboard_index_path.is_file():
     dashboard_index_path = helix_ui_dir / "dashboard.html"
 
+plugin_index_path = helix_ui_dir / "dist" / "plugins.html"
+if not plugin_index_path.is_file():
+    plugin_index_path = helix_ui_dir / "plugins.html"
+
 @app.get("/", response_class=HTMLResponse)
 async def index() -> str:
     return index_path.read_text(encoding="utf-8")
@@ -132,6 +139,12 @@ async def helix() -> str:
 async def dashboard() -> str:
     """Return the React-based dashboard interface."""
     return dashboard_index_path.read_text(encoding="utf-8")
+
+
+@app.get("/plugin-catalog", response_class=HTMLResponse)
+async def plugin_catalog_page() -> str:
+    """Return the React-based plugin catalog interface."""
+    return plugin_index_path.read_text(encoding="utf-8")
 
 
 class EncodeOptionsModel(BaseModel):
@@ -398,3 +411,26 @@ async def download_chunk(
         raise HTTPException(status_code=404, detail="Chunk not found")
     data = chunk_path.read_bytes()
     return {"offset": str(offset), "data": base64.b64encode(data).decode("utf-8")}
+
+
+class PluginInstallRequest(BaseModel):
+    name: str
+
+
+@app.get("/plugins")
+async def list_plugins() -> dict[str, object]:
+    """Return the plugin catalog."""
+    return {"plugins": plugins.PLUGIN_CATALOG}
+
+
+@app.post("/plugins/install")
+async def install_plugin(
+    req: PluginInstallRequest,
+    _: None = Depends(verify_token),
+) -> dict[str, str]:
+    args = argparse.Namespace(name=req.name)
+    try:
+        await asyncio.to_thread(plugin_cli._handle_install, args)
+    except SystemExit as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "ok"}
