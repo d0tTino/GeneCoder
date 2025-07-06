@@ -4,6 +4,8 @@ import argparse
 import logging
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 
 from genecoder import plugins
 
@@ -59,10 +61,36 @@ def _handle_install(args: argparse.Namespace) -> None:
     if version and not meta.get("url"):
         spec = f"{name}=={version}"
     checksum = meta.get("checksum")
-    if checksum and plugins.compute_checksum(spec.encode()) != checksum:
-        logger.warning("Checksum mismatch for plugin %s", name)
-        raise SystemExit(1)
-    subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "download",
+                "--no-deps",
+                "-d",
+                tmp_dir,
+                spec,
+            ]
+        )
+        files = list(Path(tmp_dir).iterdir())
+        if not files:
+            logger.error("No package downloaded for plugin %s", name)
+            raise SystemExit(1)
+        pkg_path = files[0]
+        pkg_bytes = pkg_path.read_bytes()
+        if checksum and plugins.compute_checksum(pkg_bytes) != checksum:
+            logger.warning("Checksum mismatch for plugin %s", name)
+            raise SystemExit(1)
+        subprocess.check_call([
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            str(pkg_path),
+        ])
 
 
 def _handle_install_registry(args: argparse.Namespace) -> None:
