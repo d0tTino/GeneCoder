@@ -95,3 +95,10 @@ Follow these steps to publish a new version:
 
 5. Create a GitHub release pointing at the same tag.
 
+## Publishing Plugins to the Marketplace
+
+Plugins intended for distribution must be signed using the helper scripts in
+`plugins-examples/signing/`. Once signed, submit the package through the new
+marketplace process described in `docs/plugins.md`. Marketplace reviewers verify
+the signature before the plugin is listed.
+
