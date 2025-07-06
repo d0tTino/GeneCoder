@@ -121,11 +121,12 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    Streaming operations are **resumable**. Pass `--resume state.json` to
    continue an interrupted encode or decode run.
 
-10. **Decode with simulated channel errors**
+10. **Introduce channel errors before decoding**
 
    ```bash
-   genecoder decode --input-files encoded.fasta \
-       --output-file decoded.bin --simulate-errors 0.02
+   genecoder channel --input-file encoded.fasta --output-file corrupted.fasta \
+       --sub-prob 0.02
+   genecoder decode corrupted.fasta --output-file decoded.bin
    ```
 
    Set the environment variable `GENECODER_SIM_SEED` to an integer to make the
