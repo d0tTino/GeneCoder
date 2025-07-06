@@ -87,7 +87,19 @@ def test_download_chunk_not_found(monkeypatch, tmp_path):
     assert r.status_code == 404
 
 
-@pytest.mark.parametrize("bad_id", ["../bad", "foo/../bar", "..", "foo/bar"])
+@pytest.mark.parametrize(
+    "bad_id",
+    [
+        "../bad",
+        "foo/../bar",
+        "..",
+        "foo/bar",
+        "..%2fetc",
+        "..%2f..%2fsecret",
+        "..\\evil",
+        "..%5c..%5cwin",
+    ],
+)
 def test_invalid_file_ids_rejected_upload(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, bad_id: str) -> None:
     monkeypatch.setenv("GENECODER_TMP", str(tmp_path))
     main.FastAPILimiter.redis = None
@@ -100,7 +112,19 @@ def test_invalid_file_ids_rejected_upload(monkeypatch: pytest.MonkeyPatch, tmp_p
     assert r.status_code == 400
 
 
-@pytest.mark.parametrize("bad_id", ["../bad", "foo/../bar", "..", "foo/bar"])
+@pytest.mark.parametrize(
+    "bad_id",
+    [
+        "../bad",
+        "foo/../bar",
+        "..",
+        "foo/bar",
+        "..%2fetc",
+        "..%2f..%2fsecret",
+        "..\\evil",
+        "..%5c..%5cwin",
+    ],
+)
 def test_invalid_file_ids_rejected_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, bad_id: str) -> None:
     monkeypatch.setenv("GENECODER_TMP", str(tmp_path))
     main.FastAPILimiter.redis = None
