@@ -66,3 +66,40 @@ def test_bundle_unknown_encode_option(tmp_path: Path) -> None:
     res = run_cli_command(["bundle", "run", str(p), "--cache-dir", str(tmp_path / "runs")])
     assert res.returncode != 0
     assert "Unknown encode options" in res.stderr
+
+
+def test_bundle_caching_manifest(tmp_path: Path) -> None:
+    """Second run should use cached results and manifest has metrics."""
+    inp = tmp_path / "msg.txt"
+    inp.write_text("hello")
+
+    config = {
+        "encode": {"input_files": [str(inp)], "method": "base4_direct"},
+        "decode": {"method": "base4_direct"},
+    }
+    cfg = tmp_path / "config.yml"
+    cfg.write_text(yaml.safe_dump(config))
+
+    cache = tmp_path / "runs"
+
+    first = run_cli_command(["bundle", "run", str(cfg), "--cache-dir", str(cache)])
+    assert first.returncode == 0, first.stderr
+
+    cfg_hash = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
+    root = cache / cfg_hash
+    runs = sorted(root.iterdir())
+    assert len(runs) == 1
+    run_dir = runs[0]
+
+    manifest = run_dir / "encoded" / "msg.txt.manifest.json"
+    assert manifest.exists()
+    data = json.loads(manifest.read_text())
+    metrics = data.get("metrics", {})
+    for key in ["original_size", "dna_length", "compression_ratio", "bits_per_nt"]:
+        assert key in metrics
+
+    second = run_cli_command(["bundle", "run", str(cfg), "--cache-dir", str(cache)])
+    assert second.returncode == 0, second.stderr
+    assert "Cached result found" in second.stdout
+
+    assert sorted(root.iterdir()) == runs
