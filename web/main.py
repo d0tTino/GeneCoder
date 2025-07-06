@@ -43,6 +43,7 @@ from fastapi_limiter.depends import RateLimiter
 import redis.asyncio as redis
 
 DNA_RE = re.compile(r"^[ACGT]+$")
+FILE_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def bit_error_rate(original: bytes, recovered: bytes) -> float:
@@ -438,6 +439,8 @@ async def upload_chunk(
 ) -> dict[str, str]:
     if FastAPILimiter.redis:
         await rate_limit(request, response)
+    if not FILE_ID_RE.fullmatch(req.file_id):
+        raise HTTPException(status_code=400, detail="Invalid file ID")
     base_dir = get_temp_dir() / "chunks" / req.file_id
     base_dir.mkdir(parents=True, exist_ok=True)
     chunk_bytes = base64.b64decode(req.data.encode("utf-8"), validate=True)
@@ -460,6 +463,8 @@ async def download_chunk(
 ) -> dict[str, str]:
     if FastAPILimiter.redis:
         await rate_limit(request, response)
+    if not FILE_ID_RE.fullmatch(file_id):
+        raise HTTPException(status_code=400, detail="Invalid file ID")
     chunk_path = get_temp_dir() / "chunks" / file_id / f"{offset}.chunk"
     if not chunk_path.is_file():
         raise HTTPException(status_code=404, detail="Chunk not found")

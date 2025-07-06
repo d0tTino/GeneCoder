@@ -85,3 +85,24 @@ def test_download_chunk_not_found(monkeypatch, tmp_path):
     main.FastAPILimiter.redis = None
     r = client.get("/download-chunk", params={"file_id": "missing", "offset": 1})
     assert r.status_code == 404
+
+
+@pytest.mark.parametrize("bad_id", ["../bad", "foo/../bar", "..", "foo/bar"])
+def test_invalid_file_ids_rejected_upload(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, bad_id: str) -> None:
+    monkeypatch.setenv("GENECODER_TMP", str(tmp_path))
+    main.FastAPILimiter.redis = None
+    payload = {
+        "file_id": bad_id,
+        "offset": 0,
+        "data": base64.b64encode(b"x").decode(),
+    }
+    r = client.post("/upload-chunk", json=payload)
+    assert r.status_code == 400
+
+
+@pytest.mark.parametrize("bad_id", ["../bad", "foo/../bar", "..", "foo/bar"])
+def test_invalid_file_ids_rejected_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, bad_id: str) -> None:
+    monkeypatch.setenv("GENECODER_TMP", str(tmp_path))
+    main.FastAPILimiter.redis = None
+    r = client.get("/download-chunk", params={"file_id": bad_id, "offset": 0})
+    assert r.status_code == 400
