@@ -14,6 +14,7 @@ __all__ = [
     "encode_to_html",
     "decode_to_html",
     "plot_fec_benchmark",
+    "plot_fec_success",
 ]
 
 
@@ -100,6 +101,38 @@ def plot_fec_benchmark(results: List[Dict[str, float | str]]) -> io.BytesIO:
     ax.set_title("FEC Benchmark")
     ax.set_xticks(x)
     ax.set_xticklabels(names)
+    ax.legend()
+    plt.tight_layout()
+
+    buf = io.BytesIO()
+    try:
+        plt.savefig(buf, format="png")
+        buf.seek(0)
+    finally:
+        plt.close(fig)
+    return buf
+
+
+def plot_fec_success(results: List[Dict[str, float | str]]) -> io.BytesIO:
+    """Return a success-rate vs redundancy plot for FEC benchmarks."""
+    if not _MATPLOTLIB_AVAILABLE:
+        return _dummy_png()
+
+    names = sorted({r.get("fec", "") for r in results})
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for name in names:
+        subset = [r for r in results if r.get("fec") == name and "redundancy" in r]
+        if not subset:
+            continue
+        subset.sort(key=lambda d: float(d.get("redundancy_param", d.get("redundancy", 0))))
+        xs = [float(r.get("redundancy_param", r.get("redundancy", 0))) for r in subset]
+        ys = [1.0 - float(r.get("ber", 1.0)) for r in subset]
+        ax.plot(xs, ys, marker="o", label=name)
+
+    ax.set_xlabel("redundancy")
+    ax.set_ylabel("success rate")
+    ax.set_title("FEC Success Rate")
+    ax.set_ylim(0, 1)
     ax.legend()
     plt.tight_layout()
 

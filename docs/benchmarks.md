@@ -13,6 +13,15 @@ python -m genecoder.cli benchmark fec --format csv > results.csv
 Use `--format json` to emit JSON instead of CSV, `--output` to write to a file and
 `--plot` to save a PNG chart of the results generated with `genecoder.report`.
 
+To explore how redundancy affects error correction pass one or more `--redundancy`
+values. The benchmark will run each FEC backend for every level and report the
+resulting bit error rate.
+
+```bash
+python -m genecoder.cli benchmark fec --size 1024 --error-prob 0.05 \
+    --format json --redundancy 4 8 12
+```
+
 ## Quick Tutorial
 
 To quickly test the benchmark script with minimal data run:
