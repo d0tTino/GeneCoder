@@ -46,3 +46,8 @@ def test_dashboard_metrics_with_token() -> None:
     assert r.status_code == 200
     data = r.json()
     assert set(data) >= {"gc_content", "max_homopolymer", "error_rate", "plot"}
+
+
+def test_report_invalid_request() -> None:
+    r = client.post("/report", json={"data": "bad", "type": "encode"})
+    assert r.status_code == 422
