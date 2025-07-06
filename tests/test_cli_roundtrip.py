@@ -285,6 +285,31 @@ def test_decode_sim_errors_deterministic(tmp_path: Path):
     env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
     env["GENECODER_SIM_SEED"] = "7"
 
+    corrupted1 = tmp_path / "c1.fasta"
+    corrupted2 = tmp_path / "c2.fasta"
+
+    channel_args = [
+        "channel",
+        "--input-file",
+        str(fasta_file),
+        "--output-file",
+        str(corrupted1),
+        "--sub-prob",
+        "0.2",
+        "--seed",
+        "7",
+        "--min-length",
+        "1",
+        "--max-homopolymer",
+        "10",
+    ]
+    result1 = run_cli_command(channel_args, env=env)
+    assert result1.returncode == 0, result1.stderr
+
+    channel_args[4] = str(corrupted2)  # update output path
+    result2 = run_cli_command(channel_args, env=env)
+    assert result2.returncode == 0, result2.stderr
+
     out_dir1 = tmp_path / "d1"
     out_dir2 = tmp_path / "d2"
     out_dir1.mkdir()
@@ -293,22 +318,21 @@ def test_decode_sim_errors_deterministic(tmp_path: Path):
     decode_args = [
         "decode",
         "--input-files",
-        str(fasta_file),
+        str(corrupted1),
         "--output-dir",
         str(out_dir1),
         "--method",
         "base4_direct",
-        "--simulate-errors",
-        "0.2",
     ]
     decode_result1 = run_cli_command(decode_args, env=env)
     assert decode_result1.returncode == 0, decode_result1.stderr
 
     decode_args[4] = str(out_dir2)  # update output-dir for second run
+    decode_args[2] = str(corrupted2)
     decode_result2 = run_cli_command(decode_args, env=env)
     assert decode_result2.returncode == 0, decode_result2.stderr
 
-    output_file1 = out_dir1 / "seed.txt_decoded.bin"
-    output_file2 = out_dir2 / "seed.txt_decoded.bin"
+    output_file1 = out_dir1 / "c1_decoded.bin"
+    output_file2 = out_dir2 / "c2_decoded.bin"
     assert output_file1.read_bytes() == output_file2.read_bytes()
 

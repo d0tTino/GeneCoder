@@ -1,7 +1,6 @@
 import sys
 import argparse
-import logging
-import pytest
+
 
 import genecoder.plugins as plugins
 from genecoder.cli import plugin as plugin_cli

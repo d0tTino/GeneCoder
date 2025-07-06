@@ -5,6 +5,7 @@ import sys
 from genecoder import __version__
 from genecoder.plugins import load_plugins
 # simulators are imported lazily by subcommands that need them
+
 from typing import Any
 
 # Delay heavy imports until building the parser to keep --version lightweight
@@ -102,8 +103,6 @@ def build_parser() -> argparse.ArgumentParser:
     cloud.register_subcommand(subparsers)
     plugin.register_subcommand(subparsers)
     benchmark.register_subcommand(subparsers)
-
-    # deprecated simulate-errors subcommand was removed in favor of channel
 
     return parser
 
