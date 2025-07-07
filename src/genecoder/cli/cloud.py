@@ -20,13 +20,20 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         help="Worker base URL",
     )
     submit.add_argument("--token", type=str, help="Bearer token for authentication")
+    submit.add_argument(
+        "--async",
+        dest="use_async",
+        action="store_true",
+        help="Use asynchronous submission",
+    )
     submit.set_defaults(func=_handle_submit)
 
 
 def _handle_submit(args: argparse.Namespace) -> None:
     import warnings
     import yaml
-    from genecoder.cloud import CloudClient
+    import asyncio
+    from genecoder.cloud import CloudClient, AsyncCloudClient
 
     if not args.server.startswith("https://"):
         warnings.warn("Using a non-HTTPS server URL", stacklevel=2)
@@ -44,6 +51,14 @@ def _handle_submit(args: argparse.Namespace) -> None:
                 zf.write(f, arcname=f.name)
         archive_b64 = base64.b64encode(archive_path.read_bytes()).decode("utf-8")
 
-    with CloudClient(args.server, args.token) as client:
-        job_id = client.submit("bundle", {"archive": archive_b64})
-    print(job_id)
+    if getattr(args, "use_async", False):
+        async def _run() -> None:
+            async with AsyncCloudClient(args.server, args.token) as client:
+                jid = await client.submit("bundle", {"archive": archive_b64})
+                print(jid)
+
+        asyncio.run(_run())
+    else:
+        with CloudClient(args.server, args.token) as client:
+            job_id = client.submit("bundle", {"archive": archive_b64})
+        print(job_id)
