@@ -1,5 +1,6 @@
 import argparse
 import json
+import tempfile
 from pathlib import Path
 from typing import cast
 
@@ -133,3 +134,80 @@ def test_async_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     assert "archive" in cast(dict[str, object], calls["payload"])
     assert calls["base_url"] == "https://s"
     assert calls["token"] is None
+
+fastapi = pytest.importorskip("fastapi")
+from genecoder.cloud import worker
+
+
+def _build_archive(bundle_path: Path) -> str:
+    import base64
+    import zipfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        archive = Path(tmpdir) / "bundle.zip"
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.write(bundle_path, arcname=bundle_path.name)
+        return base64.b64encode(archive.read_bytes()).decode()
+
+
+def test_worker_integration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    worker.API_TOKEN = "tok"
+    called: dict[str, object] = {}
+
+    def dummy(args: argparse.Namespace) -> None:
+        called["config"] = args.config
+
+    monkeypatch.setattr(worker.bundle_cli, "_handle_run", dummy)
+    bundle_file = tmp_path / "b.yaml"
+    bundle_file.write_text("encode:\n  input_files: []\n")
+    archive_b64 = _build_archive(bundle_file)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        transport = httpx.ASGITransport(app=worker.app)
+
+        async def _call() -> httpx.Response:
+            async with httpx.AsyncClient(transport=transport, base_url="http://worker") as ac:
+                resp = await ac.request(
+                    request.method,
+                    request.url.path,
+                    headers=request.headers,
+                    content=request.content,
+                )
+            return resp
+
+        resp = asyncio.run(_call())
+        return httpx.Response(
+            resp.status_code, headers=resp.headers, content=resp.content
+        )
+
+    transport = httpx.MockTransport(handler)
+    http_client = httpx.Client(transport=transport, base_url="http://worker")
+    client = CloudClient("http://worker", token="tok", client=http_client)
+    jid = client.submit("bundle", {"archive": archive_b64})
+    http_client.close()
+    assert jid
+    assert Path(called["config"]).name == "b.yaml"
+
+
+def test_worker_integration_async(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    worker.API_TOKEN = "tok"
+    called: dict[str, object] = {}
+
+    def dummy(args: argparse.Namespace) -> None:
+        called["config"] = args.config
+
+    monkeypatch.setattr(worker.bundle_cli, "_handle_run", dummy)
+    bundle_file = tmp_path / "b.yaml"
+    bundle_file.write_text("encode:\n  input_files: []\n")
+    archive_b64 = _build_archive(bundle_file)
+
+    async def _run() -> None:
+        transport = httpx.ASGITransport(app=worker.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://worker") as ac_client:
+            async with AsyncCloudClient("http://worker", token="tok", client=ac_client) as ac:
+                jid = await ac.submit("bundle", {"archive": archive_b64})
+                assert jid
+        assert Path(called["config"]).name == "b.yaml"
+
+    asyncio.run(_run())
+
