@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import logging
+import tarfile
 from datetime import datetime
 from pathlib import Path
 
@@ -48,6 +49,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         default="bundle_runs",
         help="Directory to store bundle outputs",
     )
+    run_parser.add_argument(
+        "--export-archive",
+        type=str,
+        help="Path to write a tar.gz archive of the run directory",
+    )
     run_parser.set_defaults(func=_handle_run)
 
 
@@ -88,6 +94,22 @@ def _run_cli(args_list: list[str]) -> None:
             raise
 
 
+def _create_archive(run_dir: Path, archive_path: Path, config_hash: str) -> None:
+    """Create a gzipped tar archive of ``run_dir`` with a summary manifest."""
+    summary = {
+        "config_hash": config_hash,
+        "timestamp": run_dir.name,
+        "files": [str(p.relative_to(run_dir)) for p in run_dir.rglob("*") if p.is_file()],
+    }
+    summary_path = run_dir / "summary.json"
+    with open(summary_path, "w", encoding="utf-8") as fh:
+        json.dump(summary, fh, indent=2)
+
+    with tarfile.open(archive_path, "w:gz") as tf:
+        tf.add(run_dir, arcname=run_dir.name)
+    logger.info("Archive written to %s", archive_path)
+
+
 def _handle_run(args: argparse.Namespace) -> None:
     import yaml
 
@@ -110,6 +132,10 @@ def _handle_run(args: argparse.Namespace) -> None:
     hash_dir = Path(args.cache_dir) / config_hash
     if hash_dir.exists():
         logger.info("Cached result found in %s", hash_dir)
+        if args.export_archive:
+            run_dirs = sorted(hash_dir.iterdir())
+            if run_dirs:
+                _create_archive(run_dirs[-1], Path(args.export_archive), config_hash)
         return
 
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
@@ -153,3 +179,5 @@ def _handle_run(args: argparse.Namespace) -> None:
         _run_cli(dec_args)
 
     logger.info("Bundle output written to %s", run_dir)
+    if args.export_archive:
+        _create_archive(run_dir, Path(args.export_archive), config_hash)

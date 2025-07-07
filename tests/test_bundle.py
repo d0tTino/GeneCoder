@@ -103,3 +103,60 @@ def test_bundle_caching_manifest(tmp_path: Path) -> None:
     assert "Cached result found" in second.stdout
 
     assert sorted(root.iterdir()) == runs
+
+
+def test_bundle_export_archive(tmp_path: Path) -> None:
+    inp = tmp_path / "msg.txt"
+    inp.write_text("archive")
+    cfg = {
+        "encode": {"input_files": [str(inp)], "method": "base4_direct"},
+        "decode": {"method": "base4_direct"},
+    }
+    cfg_path = tmp_path / "b.yml"
+    cfg_path.write_text(yaml.safe_dump(cfg))
+    archive = tmp_path / "out.tar.gz"
+    cache = tmp_path / "runs"
+
+    res = run_cli_command(
+        ["bundle", "run", str(cfg_path), "--cache-dir", str(cache), "--export-archive", str(archive)]
+    )
+    assert res.returncode == 0, res.stderr
+    assert archive.exists()
+
+    import json
+    import tarfile
+
+    with tarfile.open(archive, "r:gz") as tf:
+        names = tf.getnames()
+        summary = [n for n in names if n.endswith("summary.json")][0]
+        data = json.loads(tf.extractfile(summary).read().decode())
+    assert "config_hash" in data
+
+
+def test_bundle_export_archive_cached(tmp_path: Path) -> None:
+    inp = tmp_path / "msg.txt"
+    inp.write_text("cache")
+    cfg = {
+        "encode": {"input_files": [str(inp)], "method": "base4_direct"},
+        "decode": {"method": "base4_direct"},
+    }
+    cfg_path = tmp_path / "c.yml"
+    cfg_path.write_text(yaml.safe_dump(cfg))
+    cache = tmp_path / "runs"
+    first_archive = tmp_path / "first.tar.gz"
+    second_archive = tmp_path / "second.tar.gz"
+
+    first = run_cli_command(
+        ["bundle", "run", str(cfg_path), "--cache-dir", str(cache), "--export-archive", str(first_archive)]
+    )
+    assert first.returncode == 0, first.stderr
+    second = run_cli_command(
+        ["bundle", "run", str(cfg_path), "--cache-dir", str(cache), "--export-archive", str(second_archive)]
+    )
+    assert second.returncode == 0, second.stderr
+    assert "Cached result found" in second.stdout
+
+    import tarfile
+
+    with tarfile.open(first_archive, "r:gz") as t1, tarfile.open(second_archive, "r:gz") as t2:
+        assert sorted(t1.getnames()) == sorted(t2.getnames())
