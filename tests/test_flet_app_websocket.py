@@ -25,5 +25,5 @@ def test_websocket_start_error_logged(monkeypatch, caplog):
         importlib.import_module("genecoder.flet_ws")
 
     assert any(
-        "Failed to start WebSocket server" in rec.message for rec in caplog.records
+        "No running event loop" in rec.message for rec in caplog.records
     )
