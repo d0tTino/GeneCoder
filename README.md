@@ -61,6 +61,33 @@ Poetry's ``--extras`` flag:
 poetry install --extras dnaformer --extras framed --no-interaction
 ```
 
+### Optional Extras for Full Test Suite
+
+Install the following extras to enable all optional features exercised by the
+test suite:
+
+| Extras        | Provides                                        |
+|---------------|-------------------------------------------------|
+| `gui`         | Flet GUI and helix viewer dependencies          |
+| `web`         | FastAPI server and HTTPX client                 |
+| `dev`         | Pytest, Ruff, MyPy and Playwright tools         |
+| `ldpc`        | Low-density parity-check codes                  |
+| `fountain`    | Fountain code support                           |
+| `bch`         | BCH error-correcting codes                      |
+| `raptorq`     | RaptorQ FEC algorithms                          |
+| `framed`      | FrameD C++ backend                              |
+| `dnaformer`   | DNAformer AI codec                              |
+| `deepdna`     | DeepDNA FEC plugin                              |
+
+Install all groups required for development and testing with:
+
+```bash
+poetry install --with gui,web,dev \
+  --extras ldpc --extras fountain --extras bch \
+  --extras raptorq --extras framed --extras dnaformer \
+  --extras deepdna --no-interaction
+```
+
 
 Desktop packages are available on the [releases page](https://github.com/d0tTino/GeneCoder/releases).
 Download the `.msix` file for Windows or the `.dmg` for macOS and follow your
