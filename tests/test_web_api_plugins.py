@@ -49,6 +49,25 @@ def test_install_requires_token() -> None:
     assert r.status_code == 401
 
 
+def test_install_signature_missing_key() -> None:
+    pkg = b"PKG"
+    checksum = plugins.compute_checksum(pkg)
+    sig_b64 = base64.b64encode(b"sig").decode()
+    plugins.PLUGIN_CATALOG["signed"] = {"checksum": checksum, "signature": sig_b64}
+
+    def fake_check_call(cmd):
+        raise AssertionError("pip should not run")
+
+    def fake_compute(*args, **kwargs):  # pragma: no cover - should not be called
+        raise AssertionError("compute_checksum should not run")
+
+    with pytest.MonkeyPatch().context() as m:
+        m.setattr(plugin_cli.subprocess, "check_call", fake_check_call)
+        m.setattr(plugin_cli.plugins, "compute_checksum", fake_compute)
+        r = client.post("/plugins/install", headers=AUTH_HEADERS, json={"name": "signed"})
+    assert r.status_code == 400
+
+
 def test_install_signature_failure() -> None:
     pkg = b"PKG"
     checksum = plugins.compute_checksum(pkg)

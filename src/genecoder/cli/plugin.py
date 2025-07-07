@@ -67,7 +67,10 @@ def _handle_install(args: argparse.Namespace) -> None:
     pubkey: bytes | None = None
 
     key_path = os.getenv("GENECODER_PLUGIN_PUBLIC_KEY")
-    if signature_b64 and key_path:
+    if signature_b64:
+        if not key_path:
+            logger.error("Missing public key for signed plugin %s", name)
+            raise SystemExit(1)
         try:
             pubkey = Path(key_path).read_bytes()
         except Exception:  # pragma: no cover - filesystem error path
