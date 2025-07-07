@@ -28,16 +28,11 @@ def start_server() -> None:
 
     try:
         try:
-            loop: asyncio.AbstractEventLoop | None = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
         except RuntimeError:
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = None
-        if loop:
-            loop.create_task(websockets.serve(_ws_handler, "localhost", 8765))
-        else:  # pragma: no cover - depends on environment
             logger.error("No running event loop; WebSocket server not started")
+            return
+        loop.create_task(websockets.serve(_ws_handler, "localhost", 8765))
     except OSError as exc:  # pragma: no cover - depends on environment
         logger.error("Failed to start WebSocket server: %s", exc)
 

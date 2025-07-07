@@ -50,6 +50,34 @@ API_TOKEN: str | None = os.getenv("GENECODER_API_TOKEN")
 CORS_ORIGINS = os.getenv("GENECODER_CORS_ORIGINS", "*")
 security = HTTPBearer(auto_error=False)
 PLUGIN_RATINGS: dict[str, list[int]] = {}
+RATINGS_PATH = os.getenv("GENECODER_RATINGS_PATH")
+
+
+def _load_plugin_ratings() -> None:
+    """Load plugin ratings from ``RATINGS_PATH`` if configured."""
+    global PLUGIN_RATINGS
+    if not RATINGS_PATH:
+        return
+    path = Path(RATINGS_PATH)
+    if not path.is_file():
+        return
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:  # pragma: no cover - corrupt file
+        return
+    if isinstance(data, dict):
+        PLUGIN_RATINGS = {
+            k: [int(x) for x in v] for k, v in data.items() if isinstance(v, list)
+        }
+
+
+def _save_plugin_ratings() -> None:
+    """Persist plugin ratings to ``RATINGS_PATH`` if configured."""
+    if not RATINGS_PATH:
+        return
+    path = Path(RATINGS_PATH)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(PLUGIN_RATINGS), encoding="utf-8")
 
 
 def verify_token(
@@ -68,6 +96,7 @@ REDIS_URL = os.getenv("GENECODER_REDIS_URL")
 async def _startup() -> None:
     global API_TOKEN
     load_plugins()
+    _load_plugin_ratings()
     if API_TOKEN is None:
         API_TOKEN = secrets.token_urlsafe(16)
         print(f"Generated API token: {API_TOKEN}")
@@ -80,6 +109,7 @@ async def _startup() -> None:
 
 @app.on_event("shutdown")
 async def _shutdown() -> None:
+    _save_plugin_ratings()
     if FastAPILimiter.redis:
         await FastAPILimiter.close()
 
@@ -528,4 +558,5 @@ async def rate_plugin(req: PluginRatingRequest) -> dict[str, float]:
     ratings.append(req.rating)
     avg = sum(ratings) / len(ratings)
     plugins.PLUGIN_CATALOG.setdefault(req.name, {}).update({"stars": avg})
+    _save_plugin_ratings()
     return {"average": avg}
