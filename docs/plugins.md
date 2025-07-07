@@ -156,6 +156,8 @@ plugins:
     version: "1.0.0"
     url: myplugin==1.0.0
     description: Example plugin
+    author: Example Author
+    stars: 4.5
 ```
 
 The URL may use HTTP(S) or point to a local file via ``file://``.
@@ -165,7 +167,7 @@ JSON uses the same keys:
 ```json
 {
   "plugins": [
-    {"name": "myplugin", "version": "1.0.0", "url": "myplugin==1.0.0", "description": "Example plugin"}
+    {"name": "myplugin", "version": "1.0.0", "url": "myplugin==1.0.0", "description": "Example plugin", "author": "Example Author", "stars": 4.5}
   ]
 }
 ```
@@ -181,6 +183,17 @@ Install a plugin from the catalog:
 ```bash
 genecoder plugin install myplugin
 ```
+
+The ``/plugin-catalog`` web page lets you search and sort available plugins by
+name, description or rating. To submit feedback programmatically send a rating
+to the API:
+
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"name": "myplugin", "rating": 5}' http://localhost:8000/plugins/rate
+```
+
+The response includes the updated average star count for the plugin.
 
 Always verify that catalog entries originate from reputable sources or trusted
 registries. A matching checksum only proves the downloaded file has not been

@@ -122,3 +122,13 @@ def test_install_signature_success(tmp_path) -> None:
         r = client.post("/plugins/install", headers=AUTH_HEADERS, json={"name": "signed"})
     assert r.status_code == 200
     assert installs
+
+
+def test_rate_plugin() -> None:
+    main.PLUGIN_RATINGS.clear()
+    r = client.post('/plugins/rate', json={'name': 'demo', 'rating': 4})
+    assert r.status_code == 200
+    assert r.json()['average'] == 4
+    r = client.post('/plugins/rate', json={'name': 'demo', 'rating': 2})
+    assert r.status_code == 200
+    assert r.json()['average'] == 3

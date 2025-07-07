@@ -48,6 +48,7 @@ FILE_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 API_TOKEN: str | None = os.getenv("GENECODER_API_TOKEN")
 CORS_ORIGINS = os.getenv("GENECODER_CORS_ORIGINS", "*")
 security = HTTPBearer(auto_error=False)
+PLUGIN_RATINGS: dict[str, list[int]] = {}
 
 
 def verify_token(
@@ -464,6 +465,11 @@ class PluginInstallRequest(BaseModel):
     name: str
 
 
+class PluginRatingRequest(BaseModel):
+    name: str
+    rating: int
+
+
 @app.get("/plugins")
 async def list_plugins() -> dict[str, object]:
     """Return the plugin catalog."""
@@ -481,3 +487,15 @@ async def install_plugin(
     except SystemExit as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"status": "ok"}
+
+
+@app.post("/plugins/rate")
+async def rate_plugin(req: PluginRatingRequest) -> dict[str, float]:
+    """Submit a rating for a plugin and return the new average."""
+    if req.rating < 1 or req.rating > 5:
+        raise HTTPException(status_code=400, detail="rating must be 1-5")
+    ratings = PLUGIN_RATINGS.setdefault(req.name, [])
+    ratings.append(req.rating)
+    avg = sum(ratings) / len(ratings)
+    plugins.PLUGIN_CATALOG.setdefault(req.name, {}).update({"stars": avg})
+    return {"average": avg}
