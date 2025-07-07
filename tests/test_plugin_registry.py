@@ -1,6 +1,11 @@
 import sys
 import logging
 
+from typing import Callable
+
+import httpx
+import pytest
+
 import genecoder.plugins as plugins
 from genecoder.security import compute_checksum
 
@@ -170,3 +175,88 @@ def test_registry_checksum_validation(monkeypatch):
     plugins.install_registry_plugins()
 
     assert calls == [pkg]
+
+
+def _urlopen_via_httpx(client: httpx.Client) -> Callable[[str], DummyResponse]:
+    """Return a urlopen replacement using ``client``."""
+
+    def _open(url: str) -> DummyResponse:
+        resp = client.get(url)
+        return DummyResponse(resp.content)
+
+    return _open
+
+
+def test_registry_install_via_httpx(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plugins are installed when checksums match using ``httpx``."""
+
+    pkg = b"PKG"
+    checksum = compute_checksum(pkg)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}"
+            )
+            return httpx.Response(200, text=data)
+        elif request.url.path == "/pkg.whl":
+            return httpx.Response(200, content=pkg)
+        raise AssertionError(request.url)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    installs: list[list[str]] = []
+
+    monkeypatch.setenv(
+        "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
+    )
+    monkeypatch.setattr(
+        plugins.urllib.request, "urlopen", _urlopen_via_httpx(client)
+    )
+    monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+
+    plugins.install_registry_plugins()
+
+    assert installs and installs[0][:4] == [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+    ]
+
+
+def test_registry_install_via_httpx_checksum_mismatch(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Installation is refused when the checksum does not match."""
+
+    pkg = b"PKG"
+    wrong = compute_checksum(b"WRONG")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {wrong}"
+            )
+            return httpx.Response(200, text=data)
+        elif request.url.path == "/pkg.whl":
+            return httpx.Response(200, content=pkg)
+        raise AssertionError(request.url)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    installs: list[list[str]] = []
+
+    monkeypatch.setenv(
+        "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
+    )
+    monkeypatch.setattr(
+        plugins.urllib.request, "urlopen", _urlopen_via_httpx(client)
+    )
+    monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+
+    with caplog.at_level(logging.WARNING):
+        plugins.install_registry_plugins()
+
+    assert not installs
+    assert "Checksum mismatch for plugin https://example.com/pkg.whl" in caplog.text
