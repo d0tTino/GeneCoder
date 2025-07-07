@@ -18,6 +18,7 @@ bundle: Any | None = None
 plugin: Any | None = None
 benchmark: Any | None = None
 cloud: Any | None = None
+decode_ai: Any | None = None
 
 
 logger = logging.getLogger(__name__)
@@ -62,11 +63,12 @@ def build_parser() -> argparse.ArgumentParser:
         channel as _channel,
         bundle as _bundle,
         cloud as _cloud,
+        decode_ai as _decode_ai,
         plugin as _plugin_mod,
         benchmark as _benchmark,
     )
 
-    global encode, decode, analyze, report, channel, bundle, cloud, plugin, benchmark
+    global encode, decode, analyze, report, channel, bundle, cloud, plugin, benchmark, decode_ai
 
     encode = _encode
     decode = _decode
@@ -75,6 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
     channel = _channel
     bundle = _bundle
     cloud = _cloud
+    decode_ai = _decode_ai
     plugin = _plugin_mod
     benchmark = _benchmark
 
@@ -96,6 +99,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     encode.register_subcommand(subparsers)
     decode.register_subcommand(subparsers)
+    decode_ai.register_subcommand(subparsers)
     analyze.register_subcommand(subparsers)
     report.register_subcommand(subparsers)
     channel.register_subcommand(subparsers)

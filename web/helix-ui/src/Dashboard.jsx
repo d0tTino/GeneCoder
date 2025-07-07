@@ -5,6 +5,14 @@ export default function Dashboard() {
   const [sequence, setSequence] = useState('ACGT');
   const [data, setData] = useState(null);
   const [plotData, setPlotData] = useState(null);
+  const [deepdna, setDeepdna] = useState(null);
+
+  const loadFile = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const txt = await f.text();
+    setSequence(txt.trim());
+  };
 
   const analyze = async () => {
     const resp = await fetch('/dashboard/metrics', {
@@ -24,6 +32,19 @@ export default function Dashboard() {
     setPlotData(plotJson);
   };
 
+  const decodeDeepdna = async () => {
+    const resp = await fetch('/dashboard/deepdna', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        encoded: btoa(sequence),
+        info: { model_name: 'deepdna-small' },
+      }),
+    });
+    const json = await resp.json();
+    setDeepdna(json);
+  };
+
   return (
     <div style={{ padding: 20 }}>
       <h1>GeneCoder Dashboard</h1>
@@ -33,7 +54,11 @@ export default function Dashboard() {
         value={sequence}
         onChange={(e) => setSequence(e.target.value)}
       />
+      <div>
+        <input type="file" onChange={loadFile} />
+      </div>
       <button onClick={analyze}>Analyze</button>
+      <button onClick={decodeDeepdna}>DeepDNA Decode</button>
       {data && (
         <div>
           <p>GC Content: {(data.gc_content * 100).toFixed(2)}%</p>
@@ -46,6 +71,11 @@ export default function Dashboard() {
               gcValues={plotData.gc_values}
               hpLengths={plotData.hp_lengths}
             />
+          )}
+          {deepdna && (
+            <div>
+              <p>DeepDNA corrected: {deepdna.corrected}</p>
+            </div>
           )}
         </div>
       )}

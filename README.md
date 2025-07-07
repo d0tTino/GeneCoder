@@ -28,6 +28,7 @@ handle personal or medical DNA data.
 - Batch processing, parity checks and streaming support.
 - Resumable streaming for interrupted runs.
 - Optional AI-driven decoding via the DNAformer plugin.
+- `decode-ai` CLI subcommand and dashboard support for DeepDNA corrections.
 - Flet-based GUI with analysis plots and an enhanced 3D helix viewer.
 - Base5 and base6 alphabet options for alternative nucleotide letters. These
   modes remap the standard ACGT symbols but **do not increase capacity**.

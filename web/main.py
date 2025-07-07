@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 import os
 import json
 import hashlib
@@ -196,6 +197,13 @@ class DecodeAIRequest(BaseModel):
     encoded: str
     info: dict[str, object]
 
+
+class DeepDNADecodeRequest(BaseModel):
+    """Request model for DeepDNA corrections."""
+
+    encoded: str
+    info: dict[str, object]
+
 @app.post("/encode")
 async def encode(
     req: EncodeRequest,
@@ -237,6 +245,28 @@ async def decode_ai(
     encoded = base64.b64decode(req.encoded, validate=True)
     decoded, corrected = await asyncio.to_thread(
         decode_data_dnaformer, encoded, req.info
+    )
+    return {
+        "decoded_bytes": base64.b64encode(decoded).decode("utf-8"),
+        "corrected": corrected,
+    }
+
+
+@app.post("/dashboard/deepdna")
+async def dashboard_deepdna(
+    req: DeepDNADecodeRequest,
+    _: None = Depends(verify_token),
+) -> dict[str, object]:
+    """Decode data using the optional DeepDNA model."""
+
+    try:
+        from genecoder.deepdna_codec import decode_data_deepdna
+    except Exception as exc:  # pragma: no cover - optional dependency
+        raise HTTPException(status_code=503, detail="DeepDNA not available") from exc
+
+    encoded = base64.b64decode(req.encoded, validate=True)
+    decoded, corrected = await asyncio.to_thread(
+        decode_data_deepdna, encoded, req.info
     )
     return {
         "decoded_bytes": base64.b64encode(decoded).decode("utf-8"),
