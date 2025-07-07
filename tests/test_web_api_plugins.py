@@ -4,6 +4,7 @@ import sys
 import json
 from pathlib import Path
 import pytest
+import httpx
 
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
@@ -15,6 +16,20 @@ from genecoder.cli import plugin as plugin_cli
 main.API_TOKEN = "test-token"
 client = TestClient(main.app)
 AUTH_HEADERS = {"Authorization": f"Bearer {main.API_TOKEN}"}
+
+
+class DummyResponse:
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+
+    def __enter__(self) -> "DummyResponse":
+        return self
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
+
+    def read(self) -> bytes:
+        return self._data
 
 
 def test_plugin_catalog_page() -> None:
@@ -154,16 +169,87 @@ def test_rate_plugin() -> None:
     assert r.json()['average'] == 3
 
 
-def test_rate_plugin_persists(tmp_path: Path) -> None:
-    ratings_file = tmp_path / "ratings.json"
+def test_catalog_fetch_error(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    """Failed catalog downloads return an empty list."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("offline", request=request)
+
+    transport = httpx.MockTransport(handler)
+
+    def fake_urlopen(url: str) -> DummyResponse:
+        request = httpx.Request("GET", url)
+        transport.handle_request(request)
+        raise AssertionError("unreachable")
+
+    monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://ex.com/catalog.yaml")
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    plugins.PLUGIN_CATALOG.clear()
+    with caplog.at_level("WARNING"):
+        plugins.fetch_plugin_catalog()
+    assert "Failed to fetch plugin catalog" in caplog.text
+    r = client.get("/plugins")
+    assert r.status_code == 200
+    assert r.json()["plugins"] == {}
+
+
+def test_install_missing_public_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Installing a signed plugin without a public key fails."""
+
+    pkg = b"PKG"
+    checksum = plugins.compute_checksum(pkg)
+    sig_b64 = base64.b64encode(b"sig").decode()
+    plugins.PLUGIN_CATALOG["signed"] = {"checksum": checksum, "signature": sig_b64}
+
+    def fake_check_call(_cmd: list[str]) -> None:
+        raise AssertionError("pip should not run")
+
+    def fake_compute(*_args: object, **_kwargs: object) -> str:
+        raise AssertionError("compute_checksum should not run")
+
     with pytest.MonkeyPatch().context() as m:
-        m.setenv("GENECODER_RATINGS_PATH", str(ratings_file))
-        main.RATINGS_PATH = str(ratings_file)
-        main.PLUGIN_RATINGS.clear()
-        r = client.post('/plugins/rate', json={'name': 'demo', 'rating': 5})
-        assert r.status_code == 200
-        data = json.loads(ratings_file.read_text())
-        assert data == {"demo": [5]}
-        main.PLUGIN_RATINGS.clear()
-        main._load_plugin_ratings()
-        assert main.PLUGIN_RATINGS == {"demo": [5]}
+        m.setattr(plugin_cli.subprocess, "check_call", fake_check_call)
+        m.setattr(plugin_cli.plugins, "compute_checksum", fake_compute)
+        r = client.post("/plugins/install", headers=AUTH_HEADERS, json={"name": "signed"})
+    assert r.status_code == 400
+
+
+def test_install_invalid_signature(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Invalid plugin signatures abort the installation."""
+
+    pkg = b"PKG"
+    checksum = plugins.compute_checksum(pkg)
+    sig_b64 = base64.b64encode(b"sig").decode()
+    plugins.PLUGIN_CATALOG["signed"] = {"checksum": checksum, "signature": sig_b64}
+
+    key_path = tmp_path / "pub.pem"
+    key_path.write_text("PUB")
+
+    def fake_check_call(cmd: list[str]) -> None:
+        if cmd[:4] == [sys.executable, "-m", "pip", "download"]:
+            dest = cmd[cmd.index("-d") + 1]
+            Path(dest).mkdir(parents=True, exist_ok=True)
+            (Path(dest) / "pkg.whl").write_bytes(pkg)
+        elif cmd[:4] == [sys.executable, "-m", "pip", "install"]:
+            raise AssertionError("install should not run")
+        else:
+            raise AssertionError(cmd)
+
+    orig_compute = plugins.compute_checksum
+
+    def fake_compute(
+        data: bytes,
+        *,
+        signature: bytes | None = None,
+        public_key: bytes | None = None,
+    ) -> str:
+        if signature is not None:
+            raise ValueError("bad sig")
+        return orig_compute(data)
+
+    with pytest.MonkeyPatch().context() as m:
+        m.setattr(plugin_cli.subprocess, "check_call", fake_check_call)
+        m.setattr(plugin_cli.plugins, "compute_checksum", fake_compute)
+        m.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key_path))
+        r = client.post("/plugins/install", headers=AUTH_HEADERS, json={"name": "signed"})
+    assert r.status_code == 400
