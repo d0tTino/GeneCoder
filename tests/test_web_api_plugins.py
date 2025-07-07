@@ -1,6 +1,7 @@
 import argparse
 import base64
 import sys
+import json
 from pathlib import Path
 import pytest
 
@@ -151,3 +152,18 @@ def test_rate_plugin() -> None:
     r = client.post('/plugins/rate', json={'name': 'demo', 'rating': 2})
     assert r.status_code == 200
     assert r.json()['average'] == 3
+
+
+def test_rate_plugin_persists(tmp_path: Path) -> None:
+    ratings_file = tmp_path / "ratings.json"
+    with pytest.MonkeyPatch().context() as m:
+        m.setenv("GENECODER_RATINGS_PATH", str(ratings_file))
+        main.RATINGS_PATH = str(ratings_file)
+        main.PLUGIN_RATINGS.clear()
+        r = client.post('/plugins/rate', json={'name': 'demo', 'rating': 5})
+        assert r.status_code == 200
+        data = json.loads(ratings_file.read_text())
+        assert data == {"demo": [5]}
+        main.PLUGIN_RATINGS.clear()
+        main._load_plugin_ratings()
+        assert main.PLUGIN_RATINGS == {"demo": [5]}
