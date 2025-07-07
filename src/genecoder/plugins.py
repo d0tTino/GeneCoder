@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
-PLUGIN_CATALOG: Dict[str, Dict[str, str]] = {}
+PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
 
 def register_codec(
@@ -175,6 +175,8 @@ def _fetch_catalog(url: str) -> None:
             "url": str(entry.get("url", "")),
             "description": str(entry.get("description", "")),
             "checksum": str(entry.get("checksum", "")),
+            "author": str(entry.get("author", "")),
+            "stars": entry.get("stars", 0),
         }
 
 
