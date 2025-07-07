@@ -24,3 +24,16 @@ The command creates a ZIP archive containing the bundle file and any input files
 listed under the `encode.input_files` section. The archive is Base64 encoded and
 sent to the remote worker's `/jobs` endpoint. The returned job ID is printed to
 stdout.
+
+## Running the Worker
+
+The worker application is located at `genecoder.cloud.worker`. It exposes a `/jobs` endpoint that accepts the archive produced by `genecoder cloud submit` and executes the bundle locally.
+
+A convenient way to start the worker is using Docker:
+
+```bash
+docker run -p 8000:8000 -e GENECODER_API_TOKEN=TOKEN ghcr.io/d0ttino/genecoder \
+    python -m genecoder.cloud.worker
+```
+
+Replace `TOKEN` with a secret value and use the same token when submitting jobs.
