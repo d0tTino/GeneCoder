@@ -13,14 +13,23 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     cloud_sub = parser.add_subparsers(dest="cloud_command", required=True)
     submit = cloud_sub.add_parser("submit", help="Submit a bundle to a remote worker")
     submit.add_argument("bundle", type=str, help="Path to bundle YAML file")
-    submit.add_argument("--server", type=str, default="http://localhost:8000", help="Worker base URL")
+    submit.add_argument(
+        "--server",
+        type=str,
+        default="https://localhost:8000",
+        help="Worker base URL",
+    )
     submit.add_argument("--token", type=str, help="Bearer token for authentication")
     submit.set_defaults(func=_handle_submit)
 
 
 def _handle_submit(args: argparse.Namespace) -> None:
+    import warnings
     import yaml
     from genecoder.cloud import CloudClient
+
+    if not args.server.startswith("https://"):
+        warnings.warn("Using a non-HTTPS server URL", stacklevel=2)
     bundle_path = Path(args.bundle)
     with open(bundle_path, "r", encoding="utf-8") as fh:
         bundle_data = fh.read()

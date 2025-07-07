@@ -20,8 +20,8 @@ def test_cloud_client_submit() -> None:
 
     transport = httpx.MockTransport(handler)
     client = CloudClient(
-        "http://s",
-        client=httpx.Client(base_url="http://s", transport=transport),
+        "https://s",
+        client=httpx.Client(base_url="https://s", transport=transport),
     )
     jid = client.submit("bundle", {"a": 1})
     assert jid == "jid"
@@ -35,8 +35,8 @@ def test_cloud_client_submit_error() -> None:
 
     transport = httpx.MockTransport(handler)
     client = CloudClient(
-        "http://s",
-        client=httpx.Client(base_url="http://s", transport=transport),
+        "https://s",
+        client=httpx.Client(base_url="https://s", transport=transport),
     )
     with pytest.raises(RuntimeError, match="Failed to submit job"):
         client.submit("bundle", {"a": 1})
@@ -68,9 +68,9 @@ def test_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
             pass
 
     monkeypatch.setattr("genecoder.cloud.CloudClient", DummyClient)
-    args = argparse.Namespace(bundle=str(bundle), server="http://s", token=None)
+    args = argparse.Namespace(bundle=str(bundle), server="https://s", token=None)
     cloud_cli._handle_submit(args)
     assert calls["job_type"] == "bundle"
     assert "archive" in cast(dict[str, object], calls["payload"])
-    assert calls["base_url"] == "http://s"
+    assert calls["base_url"] == "https://s"
     assert calls["token"] is None

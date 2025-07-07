@@ -7,7 +7,7 @@ jobs to a queue exposed by a web service.
 ```python
 from genecoder.cloud import CloudClient
 
-with CloudClient("http://worker:8000", token="TOKEN") as client:
+with CloudClient("https://worker:8000", token="TOKEN") as client:
     job = client.submit("bundle", {"archive": "<base64 data>"})
     print(job)
 ```
@@ -17,7 +17,7 @@ with CloudClient("http://worker:8000", token="TOKEN") as client:
 Bundles can be packaged and uploaded using the `genecoder cloud submit` command:
 
 ```bash
-genecoder cloud submit bundle.yaml --server http://worker:8000 --token TOKEN
+genecoder cloud submit bundle.yaml --server https://worker:8000 --token TOKEN
 ```
 
 The command creates a ZIP archive containing the bundle file and any input files
