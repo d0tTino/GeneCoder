@@ -1,20 +1,22 @@
 name: Deploy Docs
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'src/**'
-      - 'web/**'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'src/**'
-      - 'web/**'
+    push:
+      branches: [ main ]
+      paths:
+        - 'docs/**'
+        - 'mkdocs.yml'
+        - 'README.md'
+        - 'src/**'
+        - 'web/**'
+    pull_request:
+      branches: [ main ]
+      paths:
+        - 'docs/**'
+        - 'mkdocs.yml'
+        - 'README.md'
+        - 'src/**'
+        - 'web/**'
   workflow_dispatch: {}
 
 concurrency:
@@ -41,6 +43,10 @@ jobs:
           key: ${{ hashFiles('docs/requirements.txt') }}
       - name: Install documentation requirements
         run: pip install -r docs/requirements.txt
+      - name: Install pre-commit
+        run: pip install pre-commit
+      - name: Check Markdown links
+        run: pre-commit run markdown-link-check --files README.md $(git ls-files "docs/**/*.md")
       - name: Build docs
         run: mkdocs build --strict
       - name: Upload PDF

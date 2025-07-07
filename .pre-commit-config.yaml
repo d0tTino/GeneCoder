@@ -11,6 +11,12 @@ repos:
         args: ["--config-file", "pyproject.toml"]
         pass_filenames: false
         additional_dependencies: ["cryptography", "types-PyYAML"]
+  - repo: https://github.com/tcort/markdown-link-check
+    rev: v3.13.7
+    hooks:
+      - id: markdown-link-check
+        files: '^(docs/.*\.md|README\.md)$'
+        args: ['-c', '.mlc.config.json']
   - repo: local
     hooks:
       - id: pytest
