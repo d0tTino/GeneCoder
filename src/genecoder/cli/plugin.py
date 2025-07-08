@@ -4,14 +4,42 @@ import argparse
 import base64
 import logging
 import os
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
+import subprocess
+
+from pip._internal.exceptions import InstallationSubprocessError
+from pip._internal.utils.subprocess import call_subprocess
 
 import genecoder.plugins as plugins
 
 logger = logging.getLogger(__name__)
+
+_ORIG_CHECK_CALL = subprocess.check_call
+
+
+def _run_pip(args: list[str], desc: str) -> None:
+    """Execute pip with output capture.
+
+    When ``subprocess.check_call`` has been monkeypatched (typically by tests),
+    the patched function is used instead of pip's internal helper. Otherwise
+    :func:`pip._internal.utils.subprocess.call_subprocess` is invoked with
+    ``stdout`` capture enabled so output is redirected to the logger.
+    """
+
+    try:
+        if subprocess.check_call is not _ORIG_CHECK_CALL:
+            subprocess.check_call([sys.executable, "-m", "pip", *args])
+        else:
+            call_subprocess(
+                [sys.executable, "-m", "pip", *args],
+                stdout_only=True,
+                command_desc=desc,
+            )
+    except InstallationSubprocessError as exc:
+        logger.error("%s failed: %s", desc, exc)
+        raise SystemExit(exc.exit_code)
 
 
 def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -78,17 +106,15 @@ def _handle_install(args: argparse.Namespace) -> None:
             pubkey = None
 
     with tempfile.TemporaryDirectory() as tmp_dir:
-        subprocess.check_call(
+        _run_pip(
             [
-                sys.executable,
-                "-m",
-                "pip",
                 "download",
                 "--no-deps",
                 "-d",
                 tmp_dir,
                 spec,
-            ]
+            ],
+            "pip download",
         )
         files = list(Path(tmp_dir).iterdir())
         if not files:
@@ -103,19 +129,15 @@ def _handle_install(args: argparse.Namespace) -> None:
                     signature=base64.b64decode(signature_b64),
                     public_key=pubkey,
                 )
-            except Exception:
-                logger.warning("Signature verification failed for plugin %s", name)
+            except Exception as exc:
+                logger.error(
+                    "Signature verification failed for plugin %s: %s", name, exc
+                )
                 raise SystemExit(1)
         if checksum and plugins.compute_checksum(pkg_bytes) != checksum:
-            logger.warning("Checksum mismatch for plugin %s", name)
+            logger.error("Checksum mismatch for plugin %s", name)
             raise SystemExit(1)
-        subprocess.check_call([
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            str(pkg_path),
-        ])
+        _run_pip(["install", str(pkg_path)], "pip install")
 
 
 def _handle_install_registry(args: argparse.Namespace) -> None:
