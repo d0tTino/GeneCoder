@@ -3,8 +3,8 @@ import logging
 
 from typing import Callable
 
-import httpx
 import pytest
+httpx = pytest.importorskip("httpx")
 
 import genecoder.plugins as plugins
 from genecoder.security import compute_checksum

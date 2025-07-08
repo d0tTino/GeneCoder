@@ -1,10 +1,9 @@
 import argparse
 import base64
 import sys
-import json
 from pathlib import Path
 import pytest
-import httpx
+httpx = pytest.importorskip("httpx")
 
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
