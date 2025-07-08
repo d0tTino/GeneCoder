@@ -172,3 +172,19 @@ Install registry packages with:
 ```bash
 genecoder plugin install-registry
 ```
+
+### Web Server Environment Variables
+
+Several environment variables control optional behaviour of the FastAPI server:
+
+- `GENECODER_REDIS_URL` – URL to a Redis instance used for request rate
+  limiting. When set, the server initializes `fastapi-limiter` with this Redis
+  backend and enforces a basic limit of 5 requests per second on chunk upload
+  and download endpoints. If unset, no rate limiting is applied.
+- `GENECODER_RATINGS_PATH` – file path for storing plugin rating information.
+  Ratings submitted via the `/plugins/rate` endpoint are loaded from and written
+  back to this JSON file on server shutdown, letting ratings persist between
+  restarts.
+- `GENECODER_CORS_ORIGINS` – comma-separated list of allowed origins for
+  Cross-Origin Resource Sharing (CORS). The default `*` permits requests from any
+  origin. Restrict this variable to limit which web clients may call the API.
