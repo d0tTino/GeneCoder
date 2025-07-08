@@ -67,7 +67,7 @@ to catch missing terms in pull requests.
 Unit tests use `pytest`. Install the pinned dependencies and run:
 
 ```bash
-poetry install --with gui,web --no-interaction
+poetry install --with gui,web,dev --no-interaction
 poetry run pytest -q
 ```
 

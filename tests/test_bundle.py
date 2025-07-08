@@ -2,7 +2,9 @@ import json
 import hashlib
 from pathlib import Path
 from tests.test_cli import run_cli_command
-import yaml
+import pytest
+
+yaml = pytest.importorskip("yaml")
 
 
 def test_bundle_run(tmp_path: Path) -> None:

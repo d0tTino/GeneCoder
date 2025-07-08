@@ -10,6 +10,8 @@ import uuid
 import zipfile
 from pathlib import Path
 
+from typing import Any
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -28,7 +30,7 @@ def verify_token(
         raise HTTPException(status_code=401, detail="Invalid or missing token")
 
 
-@app.on_event("startup")
+@app.on_event("startup")  # type: ignore[misc]
 def _startup() -> None:
     global API_TOKEN
     load_plugins()
@@ -37,8 +39,8 @@ def _startup() -> None:
         print(f"Generated API token: {API_TOKEN}")
 
 
-@app.post("/jobs")
-def submit_job(payload: dict, _token: None = Depends(verify_token)) -> dict[str, str]:
+@app.post("/jobs")  # type: ignore[misc]
+def submit_job(payload: dict[str, Any], _token: None = Depends(verify_token)) -> dict[str, str]:
     if payload.get("type") != "bundle":
         raise HTTPException(status_code=400, detail="Unsupported job type")
     body = payload.get("payload")
