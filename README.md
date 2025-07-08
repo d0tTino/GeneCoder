@@ -65,7 +65,7 @@ GeneCoder now uses a single `poetry.lock` across Linux, macOS and Windows.
 Previous OS-specific lock files have been removed and the unified lock file
 should be used on all platforms.
 
-### Optional Extras for Full Test Suite
+### Extras Required for the Full Test Suite
 
 Install the following extras to enable all optional features exercised by the
 test suite:
@@ -91,6 +91,11 @@ poetry install --with gui,web,dev \
   --extras raptorq --extras framed --extras dnaformer \
   --extras deepdna --no-interaction
 ```
+
+Installing all extras downloads many large packages such as Flet and
+framework backends. Expect the installation to consume around **2&nbsp;GB** of
+disk space and take roughly **10&nbsp;minutes** on a typical broadband
+connection.
 
 
 Desktop packages are available on the [releases page](https://github.com/d0tTino/GeneCoder/releases).

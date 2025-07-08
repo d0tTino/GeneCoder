@@ -25,6 +25,37 @@ poetry install --with gui,web,dnaformer --no-interaction
 The `gui` extras install Flet, Matplotlib and `flet-webview` while the `web`
 extras pull in FastAPI, Uvicorn (with the `standard` extras) and HTTPX.
 
+## Extras Required for the Full Test Suite
+
+Install all extras needed to exercise the complete test suite. This table lists
+the optional groups and what they provide:
+
+| Extras        | Provides                                        |
+|---------------|-------------------------------------------------|
+| `gui`         | Flet GUI and helix viewer dependencies          |
+| `web`         | FastAPI server and HTTPX client                 |
+| `dev`         | Pytest, Ruff, MyPy and Playwright tools         |
+| `ldpc`        | Low-density parity-check codes                  |
+| `fountain`    | Fountain code support                           |
+| `bch`         | BCH error-correcting codes                      |
+| `raptorq`     | RaptorQ FEC algorithms                          |
+| `framed`      | FrameD C++ backend                              |
+| `dnaformer`   | DNAformer AI codec                              |
+| `deepdna`     | DeepDNA FEC plugin                              |
+
+Install every group required for development and testing with:
+
+```bash
+poetry install --with gui,web,dev \
+  --extras ldpc --extras fountain --extras bch \
+  --extras raptorq --extras framed --extras dnaformer \
+  --extras deepdna --no-interaction
+```
+
+These packages are quite large (Flet and the various FEC backends in
+particular). Installing all of them uses roughly **2&nbsp;GB** of disk space and
+takes about **10&nbsp;minutes** on a typical broadband connection.
+
 ## Editable install with pip
 
 If you prefer `pip`, ensure you are using **Python 3.11+** and install the
