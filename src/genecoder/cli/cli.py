@@ -92,13 +92,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "GeneCoder: Encode and decode data into simulated DNA sequences. "
-            "For educational simulations only; see the README's Disclaimer."
-        )
+            "For educational simulations only; see the README's Disclaimer. "
+            "For a quick demo see docs/vertical_slice.md."
+        ),
+        usage="%(prog)s [-h] [--version] [-v] [-q] COMMAND ...",
+        formatter_class=lambda prog: argparse.HelpFormatter(prog, width=79),
     )
     parser.add_argument("--version", action="version", version=f"GeneCoder {__version__}")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase output verbosity (can be used multiple times).")
     parser.add_argument("-q", "--quiet", action="count", default=0, help="Decrease output verbosity (can be used multiple times).")
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
     encode.register_subcommand(subparsers)
     decode.register_subcommand(subparsers)
