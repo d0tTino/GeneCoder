@@ -48,6 +48,19 @@ INFO:     Uvicorn running on http://127.0.0.1:8000
 
 Open that address in your browser to confirm the server is reachable.
 
+### Automated Shell Script
+
+For Linux, macOS and other Unix-like systems a portable shell version of the
+demo script is provided:
+
+```bash
+bash scripts/vertical_slice.sh
+```
+
+It performs the same actions as the Windows script: upgrading ``pip``,
+installing optional extras, running the smoke tests, launching the Flet GUI and
+then starting the FastAPI server.
+
 ## CLI Smoke Test
 
 Ensure the command line interface is available and the test suite passes. On
