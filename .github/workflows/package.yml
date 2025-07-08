@@ -27,12 +27,7 @@ jobs:
       - name: Select lock file
         id: lockfile_pkg
         run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            echo "file=poetry.lock.win" >> "$GITHUB_OUTPUT"
-          else
-            echo "file=poetry.lock.linux" >> "$GITHUB_OUTPUT"
-          fi
-          cp "${{ steps.lockfile_pkg.outputs.file }}" poetry.lock
+          echo "file=poetry.lock" >> "$GITHUB_OUTPUT"
       - name: Cache Poetry
         uses: actions/cache@v3
         with:
