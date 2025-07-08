@@ -6,12 +6,8 @@ import pytest
 from pathlib import Path
 from tests.test_cli import run_cli_command
 
-from genecoder.cli import (
-    build_encoding_options,
-    build_decoding_options,
-    run_encoding_pipeline,
-    run_decoding_pipeline,
-)
+from genecoder.cli.options import build_encoding_options, build_decoding_options
+from genecoder.cli import run_encoding_pipeline, run_decoding_pipeline
 from genecoder.encoders import encode_base4_direct
 from genecoder.formats import to_fasta
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T

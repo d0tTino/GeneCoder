@@ -18,6 +18,7 @@ from genecoder.formats import from_fasta
 from genecoder.utils import get_alphabet_maps
 from ..options import DecodingOptions
 from .common import run_tasks
+from .options import build_decoding_options
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from typing import Callable, Tuple, cast
 
@@ -48,18 +49,6 @@ def _get_header_filename(file_path: str) -> str | None:
     except OSError:
         logger.debug("Could not read header from %s", file_path)
     return None
-
-
-
-def build_decoding_options(args: argparse.Namespace) -> DecodingOptions:
-    return DecodingOptions(
-        method=args.method,
-        check_parity=args.check_parity,
-        k_value=args.k_value,
-        parity_rule=args.parity_rule,
-        alphabet=getattr(args, "alphabet", "base4"),
-    )
-
 
 def run_decoding_pipeline(
     sequence: str, header: str, options: DecodingOptions, input_file_name: str

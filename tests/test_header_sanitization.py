@@ -1,5 +1,6 @@
 import argparse
-from genecoder.cli.encode import run_encoding_pipeline, build_encoding_options
+from genecoder.cli.encode import run_encoding_pipeline
+from genecoder.cli.options import build_encoding_options
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 
 

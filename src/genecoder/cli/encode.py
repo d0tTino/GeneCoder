@@ -9,6 +9,7 @@ import logging
 import os
 from ..options import EncodingOptions
 from pathlib import Path
+from .options import build_encoding_options
 from genecoder.metrics import increment as increment_metric
 
 from genecoder.manifest import generate_manifest
@@ -49,27 +50,6 @@ def _ensure_security_loaded() -> None:
         compute_checksum = _chk
 
 logger = logging.getLogger(__name__)
-
-
-
-def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
-    if not 0 <= args.gc_min <= 1 or not 0 <= args.gc_max <= 1:
-        raise ValueError("gc_min and gc_max must be between 0 and 1")
-    if args.gc_min > args.gc_max:
-        raise ValueError("gc_min cannot be greater than gc_max")
-
-    return EncodingOptions(
-        method=args.method,
-        add_parity=args.add_parity,
-        k_value=args.k_value,
-        parity_rule=args.parity_rule,
-        fec=args.fec,
-        gc_min=args.gc_min,
-        gc_max=args.gc_max,
-        max_homopolymer=args.max_homopolymer,
-        alphabet=getattr(args, "alphabet", "base4"),
-    )
-
 
 def run_encoding_pipeline(
     data: bytes, options: EncodingOptions, input_file_name: str

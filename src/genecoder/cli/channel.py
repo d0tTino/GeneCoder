@@ -16,6 +16,7 @@ from genecoder.simulators import SIMULATOR_REGISTRY, ChannelPipeline
 from genecoder.channels.base import BaseChannel
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
 from genecoder.error_simulation import introduce_errors
+from .options import ChannelOptions, build_channel_options
 
 logger = logging.getLogger(__name__)
 
@@ -165,37 +166,22 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
 
 
 def _handle_command(args: argparse.Namespace) -> None:
-    simulators = list(args.simulators)
-    constraints = {
-        "min_length": args.min_length,
-        "max_length": args.max_length,
-        "max_homopolymer": args.max_homopolymer,
-    }
-    if args.config:
-        cfg_sim, cfg_con = _load_config(args.config)
-        if cfg_sim:
-            simulators = cfg_sim
-        constraints.update(cfg_con)
-    prob_specified = any([args.sub_prob, args.ins_prob, args.del_prob])
-    if simulators and prob_specified:
-        logger.error("Probability options cannot be combined with --simulator or --config")
+    try:
+        opts: ChannelOptions = build_channel_options(args)
+    except ValueError as exc:
+        logger.error(str(exc))
         raise SystemExit(1)
-    if not simulators and not prob_specified:
-        logger.error("At least one simulator or probability option must be specified")
-        raise SystemExit(1)
-    if args.threads is not None and args.processes is not None:
-        logger.error("Cannot specify both --threads and --processes")
-        raise SystemExit(1)
+
     process_channel(
         args.input_file,
         args.output_file,
-        simulators,
-        constraints,
-        sub_prob=args.sub_prob,
-        ins_prob=args.ins_prob,
-        del_prob=args.del_prob,
-        seed=args.seed,
-        parallel=args.parallel,
-        threads=args.threads,
-        processes=args.processes,
+        opts.simulators,
+        opts.constraints,
+        sub_prob=opts.sub_prob,
+        ins_prob=opts.ins_prob,
+        del_prob=opts.del_prob,
+        seed=opts.seed,
+        parallel=opts.parallel,
+        threads=opts.threads,
+        processes=opts.processes,
     )
