@@ -162,6 +162,9 @@ jobs:
           .ruff_cache
         key: pre-commit-3.11-${{ hashFiles('.pre-commit-config.yaml') }}
 
+    - name: Install package for mypy
+      run: pip install .[dev]
+
     - name: Run mypy
       run: mypy --config-file mypy.ini --show-error-codes --no-error-summary
 
@@ -228,6 +231,9 @@ jobs:
 
     - name: Run ruff
       run: ruff check .
+
+    - name: Install package for mypy
+      run: pip install .[dev]
 
     - name: Run mypy
       run: mypy --config-file mypy.ini --show-error-codes --no-error-summary

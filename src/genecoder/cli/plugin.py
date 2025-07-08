@@ -9,7 +9,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from genecoder import plugins
+import genecoder.plugins as plugins
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ def _handle_install(args: argparse.Namespace) -> None:
         pkg_bytes = pkg_path.read_bytes()
         if signature_b64 and pubkey is not None:
             try:
-                plugins.compute_checksum(
+                plugins.compute_checksum(  # type: ignore[attr-defined]
                     pkg_bytes,
                     signature=base64.b64decode(signature_b64),
                     public_key=pubkey,
@@ -106,7 +106,7 @@ def _handle_install(args: argparse.Namespace) -> None:
             except Exception:
                 logger.warning("Signature verification failed for plugin %s", name)
                 raise SystemExit(1)
-        if checksum and plugins.compute_checksum(pkg_bytes) != checksum:
+        if checksum and plugins.compute_checksum(pkg_bytes) != checksum:  # type: ignore[attr-defined]
             logger.warning("Checksum mismatch for plugin %s", name)
             raise SystemExit(1)
         subprocess.check_call([

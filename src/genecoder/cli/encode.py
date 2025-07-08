@@ -25,7 +25,7 @@ from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
 from .common import run_tasks
-from typing import Callable
+from typing import Callable, cast
 
 _COMPLEMENT_MAP = str.maketrans("ACGTacgt", "TGCAtgca")
 
@@ -119,12 +119,16 @@ def run_encoding_pipeline(
     if options.method == "base4_direct":
         if should_add_parity and options.k_value <= 0:
             raise ValueError("Parity k-value must be positive.")
-        raw_dna = encode_base4_direct(
-            current_input,
-            add_parity=should_add_parity,
-            k_value=options.k_value,
-            parity_rule=options.parity_rule,
-            encode_map=encode_map,
+        raw_dna = cast(
+            str,
+            encode_base4_direct(
+                current_input,
+                add_parity=should_add_parity,
+                k_value=options.k_value,
+                parity_rule=options.parity_rule,
+                encode_map=encode_map,
+                stream=False,
+            ),
         )
         if should_add_parity:
             header_parts.extend(
