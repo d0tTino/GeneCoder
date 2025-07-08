@@ -85,14 +85,8 @@ jobs:
       id: lockfile
       shell: bash
       run: |
-        if [ "${RUNNER_OS}" = "Windows" ]; then
-          file=poetry.lock.win
-        else
-          # macOS uses the Linux lockfile
-          file=poetry.lock.linux
-        fi
+        file=poetry.lock
         echo "file=$file" >> "$GITHUB_OUTPUT"
-        cp "$file" poetry.lock
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -201,14 +195,8 @@ jobs:
       id: lockfile_build
       shell: bash
       run: |
-        if [ "${RUNNER_OS}" = "Windows" ]; then
-          file=poetry.lock.win
-        else
-          # macOS uses the Linux lockfile
-          file=poetry.lock.linux
-        fi
+        file=poetry.lock
         echo "file=$file" >> "$GITHUB_OUTPUT"
-        cp "$file" poetry.lock
 
     - name: Set up Python
       uses: actions/setup-python@v5

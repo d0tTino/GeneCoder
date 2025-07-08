@@ -61,6 +61,10 @@ Poetry's ``--extras`` flag:
 poetry install --extras dnaformer --extras framed --no-interaction
 ```
 
+GeneCoder now uses a single `poetry.lock` across Linux, macOS and Windows.
+Previous OS-specific lock files have been removed and the unified lock file
+should be used on all platforms.
+
 ### Optional Extras for Full Test Suite
 
 Install the following extras to enable all optional features exercised by the
