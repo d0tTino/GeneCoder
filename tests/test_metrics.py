@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from tests.test_cli import run_cli_command
 
-fastapi = pytest.importorskip("fastapi")
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 
