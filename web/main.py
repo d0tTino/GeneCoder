@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 import os
 import json
 import hashlib
@@ -39,7 +38,7 @@ from genecoder.report import (
     decode_to_html,
 )
 from genecoder.metrics import get_metrics
-from typing import cast
+from typing import Any, cast
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 import redis.asyncio as redis
@@ -349,9 +348,13 @@ async def dashboard_metrics(
     buf.close()
     try:
 
-        orig_bytes, _ = decode_base4_direct(seq)
+        orig_bytes, orig_indices = cast(
+            tuple[bytes, list[int]], decode_base4_direct(seq)
+        )
         corrupted = introduce_errors(seq, substitution_prob=0.05)
-        dec_bytes, _ = decode_base4_direct(corrupted)
+        dec_bytes, dec_indices = cast(
+            tuple[bytes, list[int]], decode_base4_direct(corrupted)
+        )
         ber = bit_error_rate(orig_bytes, dec_bytes)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -455,8 +458,10 @@ async def design_fix(req: DesignRequest) -> dict[str, object]:
 
 @app.post("/report")
 async def report(req: ReportRequest) -> dict[str, str]:
+    result: EncodeResult | DecodeResult
+    text: str
     if req.type == "encode":
-        result = EncodeResult(**req.data)
+        result = EncodeResult(**cast(dict[str, Any], req.data))
         if req.format == "markdown":
             text = encode_to_markdown(result)
         else:
@@ -467,7 +472,7 @@ async def report(req: ReportRequest) -> dict[str, str]:
             data["decoded_bytes"] = base64.b64decode(
                 cast(str, data["decoded_bytes"])
             )
-        result = DecodeResult(**data)
+        result = DecodeResult(**cast(dict[str, Any], data))
         if req.format == "markdown":
             text = decode_to_markdown(result)
         else:
