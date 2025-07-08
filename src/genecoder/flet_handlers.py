@@ -14,6 +14,7 @@ import flet as ft
 COLORS = getattr(ft, "colors", getattr(ft, "Colors", None)) or ft.Colors
 
 from .app_helpers import perform_decoding
+import base64
 from .constraint_fixer import fix_sequence
 from .flet_helpers import parse_int_input
 from .gc_constrained_encoder import calculate_gc_content
@@ -22,7 +23,14 @@ from .options import EncodeOptions
 from .utils import get_max_homopolymer_length
 from .synthesis import SynthesisConstraints
 from .cli.encode import reverse_complement
-from .formats import to_fasta
+from .formats import to_fasta, from_fasta
+from .plotting import (
+    prepare_nucleotide_frequency_data,
+    generate_nucleotide_frequency_plot,
+    calculate_windowed_gc_content,
+    identify_homopolymer_regions,
+    generate_sequence_analysis_plot,
+)
 from . import perform_encoding
 from .flet_ws import ws_clients
 
@@ -259,6 +267,81 @@ def make_encode_handler(
             page.update()
 
     return encode_data
+
+
+def make_fix_handler(
+    *,
+    page: ft.Page,
+    encode_hidden_sequence: ft.Text,
+    encode_hidden_fasta_content: ft.Text,
+    encode_dna_snippet_text: ft.TextField,
+    fixed_dna_snippet_text: ft.TextField,
+    fixed_metrics_text: ft.Text,
+    nucleotide_freq_image: ft.Image,
+    sequence_analysis_plot_image: ft.Image,
+    window_size_input: ft.TextField,
+    step_size_input: ft.TextField,
+    min_homopolymer_input: ft.TextField,
+    mirror_checkbox: ft.Checkbox,
+    refresh_helix_view: Callable[[], None],
+) -> Callable[[ft.ControlEvent], Awaitable[None]]:
+    """Create the asynchronous fix event handler."""
+
+    async def fix_sequence_live(_: ft.ControlEvent) -> None:
+        seq = encode_hidden_sequence.value
+        if not seq:
+            fixed_metrics_text.value = "No sequence available to fix."
+            fixed_dna_snippet_text.value = ""
+            page.update()
+            return
+
+        constraints = SynthesisConstraints()
+        fixed = fix_sequence(
+            seq,
+            target_gc_min=0.4,
+            target_gc_max=0.6,
+            max_homopolymer=constraints.max_homopolymer,
+        )
+
+        encode_hidden_sequence.value = fixed
+        encode_dna_snippet_text.value = fixed[:200]
+        fixed_dna_snippet_text.value = fixed[:200]
+
+        parsed = from_fasta(encode_hidden_fasta_content.value)
+        if parsed:
+            header = parsed[0][0]
+            new_fasta = to_fasta(fixed, header, line_width=80)
+            if mirror_checkbox.value:
+                rc_header = header + " mirror=rc"
+                rc_seq = reverse_complement(fixed)
+                new_fasta += to_fasta(rc_seq, rc_header, line_width=80)
+            encode_hidden_fasta_content.value = new_fasta
+
+        gc_val = calculate_gc_content(fixed)
+        hp_len = get_max_homopolymer_length(fixed)
+        fixed_metrics_text.value = f"Fixed GC {gc_val:.2%}, max HP {hp_len}"
+
+        counts = prepare_nucleotide_frequency_data(fixed)
+        buf = generate_nucleotide_frequency_plot(counts)
+        nucleotide_freq_image.src_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        buf.close()
+
+        w_size = parse_int_input(window_size_input.value, 50)
+        step = parse_int_input(step_size_input.value, 10)
+        min_hp = parse_int_input(min_homopolymer_input.value, 4)
+        gc_data = calculate_windowed_gc_content(fixed, w_size, step)
+        hp_data = identify_homopolymer_regions(fixed, min_hp)
+        if (gc_data and gc_data[0]) or hp_data:
+            buf = generate_sequence_analysis_plot(gc_data, hp_data, len(fixed))
+            sequence_analysis_plot_image.src_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+            buf.close()
+        else:
+            sequence_analysis_plot_image.src_base64 = None
+
+        refresh_helix_view()
+        page.update()
+
+    return fix_sequence_live
 
 
 def make_decode_handler(

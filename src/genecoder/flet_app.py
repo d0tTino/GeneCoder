@@ -25,6 +25,7 @@ from genecoder.flet_ws import ws_clients  # noqa: F401 - start server on import
 from genecoder.flet_handlers import (
     make_decode_handler,
     make_encode_handler,
+    make_fix_handler,
     decoded_bytes_to_save,
 )
 
@@ -39,10 +40,6 @@ from genecoder.glossary_tooltips import (
     wrap_glossary_terms,
     glossary_modal_text,
 )
-from genecoder.gc_constrained_encoder import calculate_gc_content
-from genecoder.utils import get_max_homopolymer_length
-from genecoder.synthesis import SynthesisConstraints
-from genecoder.constraint_fixer import fix_sequence
 
 
 logger = logging.getLogger(__name__)
@@ -308,7 +305,7 @@ def main(page: ft.Page) -> None:
 
     encode_status_text: ft.Text = ft.Text("", selectable=True)
     fix_suggestion_text: ft.Text = ft.Text("", selectable=True)
-    fix_button: ft.ElevatedButton = ft.ElevatedButton("Fix Sequence")
+    fix_button: ft.ElevatedButton = ft.ElevatedButton("Fix my sequence")
     fixed_dna_snippet_text: ft.TextField = ft.TextField(
         label="Fixed DNA Snippet (first 200 chars)",
         read_only=True,
@@ -461,27 +458,21 @@ def main(page: ft.Page) -> None:
         refresh_helix_view=refresh_helix_view,
     )
 
-    async def apply_fix(_: ft.ControlEvent) -> None:
-        seq = encode_hidden_sequence.value
-        if not seq:
-            fixed_metrics_text.value = "No sequence available to fix."
-            fixed_dna_snippet_text.value = ""
-            page.update()
-            return
-        constraints = SynthesisConstraints()
-        fixed = fix_sequence(
-            seq,
-            target_gc_min=0.4,
-            target_gc_max=0.6,
-            max_homopolymer=constraints.max_homopolymer,
-        )
-        fixed_dna_snippet_text.value = fixed[:200]
-        gc_val = calculate_gc_content(fixed)
-        hp_len = get_max_homopolymer_length(fixed)
-        fixed_metrics_text.value = f"Fixed GC {gc_val:.2%}, max HP {hp_len}"
-        page.update()
-
-    fix_button.on_click = apply_fix
+    fix_button.on_click = make_fix_handler(
+        page=page,
+        encode_hidden_sequence=encode_hidden_sequence,
+        encode_hidden_fasta_content=encode_hidden_fasta_content,
+        encode_dna_snippet_text=encode_dna_snippet_text,
+        fixed_dna_snippet_text=fixed_dna_snippet_text,
+        fixed_metrics_text=fixed_metrics_text,
+        nucleotide_freq_image=nucleotide_freq_image,
+        sequence_analysis_plot_image=sequence_analysis_plot_image,
+        window_size_input=window_size_input,
+        step_size_input=step_size_input,
+        min_homopolymer_input=min_homopolymer_input,
+        mirror_checkbox=mirror_checkbox,
+        refresh_helix_view=refresh_helix_view,
+    )
 
     async def on_encode_save_file_result(e: ft.FilePickerResultEvent) -> None:  # Made async for consistency, though not strictly needed here
 
