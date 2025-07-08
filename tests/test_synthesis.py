@@ -12,7 +12,7 @@ from pathlib import Path as SysPath
 PROJECT_ROOT = SysPath(__file__).parent.parent
 
 
-def run_cli_command(command_args: list[str], env=None) -> subprocess.CompletedProcess:
+def run_cli_command(command_args: list[str], env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     if env is None:
         env = os.environ.copy()
         src_path = PROJECT_ROOT / "src"
@@ -21,22 +21,22 @@ def run_cli_command(command_args: list[str], env=None) -> subprocess.CompletedPr
     return subprocess.run(full_command, capture_output=True, text=True, env=env, cwd=PROJECT_ROOT)
 
 
-def test_validate_sequence_pass():
+def test_validate_sequence_pass() -> None:
     constraints = SynthesisConstraints(min_length=5, max_length=10, max_homopolymer=2)
     assert validate_sequence("ACGTAC", constraints)
 
 
-def test_validate_sequence_fail_length():
+def test_validate_sequence_fail_length() -> None:
     constraints = SynthesisConstraints(min_length=5, max_length=10, max_homopolymer=2)
     assert not validate_sequence("AC", constraints)
 
 
-def test_validate_sequence_fail_homopolymer():
+def test_validate_sequence_fail_homopolymer() -> None:
     constraints = SynthesisConstraints(min_length=5, max_length=10, max_homopolymer=2)
     assert not validate_sequence("AAACCC", constraints)
 
 
-def test_export_csv_and_analysis_warnings(tmp_path: Path):
+def test_export_csv_and_analysis_warnings(tmp_path: Path) -> None:
     # Create input files
     f1 = tmp_path / "a.txt"
     f1.write_text("hello")
