@@ -9,6 +9,7 @@ import logging
 import os
 from ..options import EncodingOptions
 from pathlib import Path
+from genecoder.metrics import increment as increment_metric
 
 from genecoder.manifest import generate_manifest
 from genecoder.encoders import (
@@ -629,4 +630,6 @@ def _handle_command(args: argparse.Namespace) -> None:
             writer.writerow(["Name", "Sequence"])
             writer.writerows(csv_rows)
         logger.info(f"CSV order file written to {args.export_csv}")
+
+    increment_metric("encode_runs")
 
