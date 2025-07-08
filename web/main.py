@@ -38,6 +38,7 @@ from genecoder.report import (
     encode_to_html,
     decode_to_html,
 )
+from genecoder.metrics import get_metrics
 from typing import cast
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
@@ -560,3 +561,9 @@ async def rate_plugin(req: PluginRatingRequest) -> dict[str, float]:
     plugins.PLUGIN_CATALOG.setdefault(req.name, {}).update({"stars": avg})
     _save_plugin_ratings()
     return {"average": avg}
+
+
+@app.get("/metrics")
+async def metrics() -> dict[str, int]:
+    """Return encode and bundle usage metrics."""
+    return get_metrics()
