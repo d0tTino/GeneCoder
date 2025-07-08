@@ -8,6 +8,8 @@ httpx = pytest.importorskip("httpx")
 
 import genecoder.plugins as plugins
 from genecoder.security import compute_checksum
+import base64
+from pathlib import Path
 
 
 class DummyResponse:
@@ -36,10 +38,11 @@ def test_registry_install(monkeypatch):
             pkg_b = b"BBB"
             c1 = compute_checksum(pkg_a)
             c2 = compute_checksum(pkg_b)
+            sig = base64.b64encode(b"sig").decode()
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkgA.whl\n    checksum: {c1}\n"
-                f"  - spec: https://example.com/pkgB.whl\n    checksum: {c2}"
+                f"  - spec: https://example.com/pkgA.whl\n    checksum: {c1}\n    signature: {sig}\n"
+                f"  - spec: https://example.com/pkgB.whl\n    checksum: {c2}\n    signature: {sig}"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkgA.whl":
@@ -48,11 +51,25 @@ def test_registry_install(monkeypatch):
             return DummyResponse(b"BBB")
         raise AssertionError(url)
 
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
     monkeypatch.setenv(
         "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
     )
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    orig_compute = plugins.compute_checksum
+
+    def fake_compute(
+        data: bytes, *, signature: bytes | None = None, public_key: bytes | None = None
+    ) -> str:
+        if signature is not None:
+            assert signature == b"sig"
+            assert public_key == b"PUB"
+        return orig_compute(data)
+
+    monkeypatch.setattr(plugins, "compute_checksum", fake_compute)
 
     plugins.install_registry_plugins()
 
@@ -70,20 +87,29 @@ def test_registry_install_failure(monkeypatch, caplog):
         if url == "https://example.com/plugins.yaml":
             pkg = b"CCC"
             c1 = compute_checksum(pkg)
+            sig = base64.b64encode(b"sig").decode()
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkgC.whl\n    checksum: {c1}"
+                f"  - spec: https://example.com/pkgC.whl\n    checksum: {c1}\n    signature: {sig}"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkgC.whl":
             return DummyResponse(b"CCC")
         raise AssertionError(url)
 
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
     monkeypatch.setenv(
         "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
     )
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(
+        plugins,
+        "compute_checksum",
+        lambda d, *, signature=None, public_key=None: compute_checksum(d),
+    )
 
     with caplog.at_level(logging.WARNING):
         plugins.install_registry_plugins()
@@ -120,20 +146,29 @@ def test_registry_checksum_mismatch(monkeypatch, caplog):
     def fake_urlopen(url):
         if url == "https://example.com/plugins.yaml":
             wrong = compute_checksum(b"WRONG")
+            sig = base64.b64encode(b"sig").decode()
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkgD.whl\n    checksum: {wrong}"
+                f"  - spec: https://example.com/pkgD.whl\n    checksum: {wrong}\n    signature: {sig}"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkgD.whl":
             return DummyResponse(b"DDD")
         raise AssertionError(url)
 
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
     monkeypatch.setenv(
         "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
     )
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(
+        plugins,
+        "compute_checksum",
+        lambda d, *, signature=None, public_key=None: compute_checksum(d),
+    )
 
     with caplog.at_level(logging.WARNING):
         plugins.install_registry_plugins()
@@ -156,21 +191,29 @@ def test_registry_checksum_validation(monkeypatch):
 
     def fake_urlopen(url):
         if url == "https://example.com/plugins.yaml":
+            sig = base64.b64encode(b"sig").decode()
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkgE.whl\n    checksum: {expected}"
+                f"  - spec: https://example.com/pkgE.whl\n    checksum: {expected}\n    signature: {sig}"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkgE.whl":
             return DummyResponse(pkg)
         raise AssertionError(url)
 
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
     monkeypatch.setenv(
         "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
     )
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
-    monkeypatch.setattr(plugins, "compute_checksum", fake_compute_checksum)
+    monkeypatch.setattr(
+        plugins,
+        "compute_checksum",
+        lambda d, *, signature=None, public_key=None: fake_compute_checksum(d),
+    )
 
     plugins.install_registry_plugins()
 
@@ -195,9 +238,10 @@ def test_registry_install_via_httpx(monkeypatch: pytest.MonkeyPatch) -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/plugins.yaml":
+            sig = base64.b64encode(b"sig").decode()
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n    signature: {sig}"
             )
             return httpx.Response(200, text=data)
         elif request.url.path == "/pkg.whl":
@@ -207,13 +251,21 @@ def test_registry_install_via_httpx(monkeypatch: pytest.MonkeyPatch) -> None:
     client = httpx.Client(transport=httpx.MockTransport(handler))
     installs: list[list[str]] = []
 
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
     monkeypatch.setenv(
         "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
     )
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
     monkeypatch.setattr(
         plugins.urllib.request, "urlopen", _urlopen_via_httpx(client)
     )
     monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+    monkeypatch.setattr(
+        plugins,
+        "compute_checksum",
+        lambda d, *, signature=None, public_key=None: compute_checksum(d),
+    )
 
     plugins.install_registry_plugins()
 
@@ -235,9 +287,10 @@ def test_registry_install_via_httpx_checksum_mismatch(
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/plugins.yaml":
+            sig = base64.b64encode(b"sig").decode()
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {wrong}"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {wrong}\n    signature: {sig}"
             )
             return httpx.Response(200, text=data)
         elif request.url.path == "/pkg.whl":
@@ -247,13 +300,21 @@ def test_registry_install_via_httpx_checksum_mismatch(
     client = httpx.Client(transport=httpx.MockTransport(handler))
     installs: list[list[str]] = []
 
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
     monkeypatch.setenv(
         "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
     )
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
     monkeypatch.setattr(
         plugins.urllib.request, "urlopen", _urlopen_via_httpx(client)
     )
     monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+    monkeypatch.setattr(
+        plugins,
+        "compute_checksum",
+        lambda d, *, signature=None, public_key=None: compute_checksum(d),
+    )
 
     with caplog.at_level(logging.WARNING):
         plugins.install_registry_plugins()

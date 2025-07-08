@@ -10,6 +10,8 @@ import urllib.request
 from urllib.parse import urlparse
 import importlib
 import hashlib
+import base64
+from pathlib import Path
 
 _yaml: Any
 try:  # pragma: no cover - import is trivial
@@ -73,6 +75,15 @@ def _install_registry_plugins(url: str) -> None:
         logger.warning("YAML support unavailable, skipping plugin registry %s", url)
         return
 
+    key_path = os.getenv("GENECODER_PLUGIN_PUBLIC_KEY")
+    pubkey: bytes | None = None
+    if key_path:
+        try:
+            pubkey = Path(key_path).read_bytes()
+        except Exception:  # pragma: no cover - filesystem error path
+            logger.warning("Failed to read public key %s", key_path)
+            pubkey = None
+
     if urlparse(url).scheme != "https":
         logger.warning("Insecure plugin registry URL %s", url)
         return
@@ -90,6 +101,15 @@ def _install_registry_plugins(url: str) -> None:
                 entry.get("spec") or entry.get("package") or entry.get("url") or ""
             )
             checksum = str(entry.get("checksum", ""))
+            sig_b64 = entry.get("signature")
+            if not isinstance(sig_b64, str):
+                logger.warning("Missing signature for plugin entry %s", entry)
+                continue
+            try:
+                signature = base64.b64decode(sig_b64)
+            except Exception:
+                logger.warning("Invalid signature for plugin entry %s", entry)
+                continue
         else:
             logger.warning("Missing checksum for plugin entry %s", entry)
             continue
@@ -110,7 +130,15 @@ def _install_registry_plugins(url: str) -> None:
             logger.warning("Failed to download plugin %s: %s", spec, exc)
             continue
 
-        if compute_checksum(pkg_bytes) != checksum:
+        if pubkey is None:
+            logger.warning("No public key configured for signed plugin %s", spec)
+            continue
+        try:
+            digest = compute_checksum(pkg_bytes, signature=signature, public_key=pubkey)
+        except Exception as exc:
+            logger.warning("Invalid signature for plugin %s: %s", spec, exc)
+            continue
+        if digest != checksum:
             logger.warning("Checksum mismatch for plugin %s", spec)
             continue
 

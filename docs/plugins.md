@@ -129,15 +129,20 @@ The registry file must contain:
 packages:
   - spec: genecoder-fancy-plugin>=1.0
     checksum: abcdef123456...
+    signature: BASE64_SIG
   - spec: git+https://example.com/user/custom.git
     checksum: 0123456789ab...
+    signature: ANOTHER_SIG
 ```
 
-Only HTTPS URLs (or ``file://`` for local testing) are accepted. Each package is
-installed only if the checksum matches; otherwise installation is aborted and a
-warning is logged. The checksum check merely confirms that the package was not
-altered in transit; it does **not** guarantee the plugin is safe. Always use
-registries from trusted sources and review plugins before installing them.
+Set ``GENECODER_PLUGIN_PUBLIC_KEY`` to the path of the PEM encoded public key
+used to verify these signatures. Registry entries without a valid ``signature``
+field are ignored. Only HTTPS URLs (or ``file://`` for local testing) are
+accepted. Each package is installed only if the signature verifies and the
+checksum matches; otherwise installation is aborted and a warning is logged. The
+checksum check merely confirms that the package was not altered in transit; it
+does **not** guarantee the plugin is safe. Always use registries from trusted
+sources and review plugins before installing them.
 
 ## Plugin Marketplace
 
