@@ -1,0 +1,92 @@
+import os
+from pathlib import Path
+
+import pytest
+from genecoder.security import compute_checksum
+
+from tests.test_cli import run_cli_command
+
+
+class DummyResponse:
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+
+    def __enter__(self) -> "DummyResponse":
+        return self
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
+
+    def read(self) -> bytes:
+        return self._data
+
+
+@pytest.mark.usefixtures("tmp_path")
+def test_cli_catalog_list_and_install(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    pkg = b"PKG"
+    checksum = compute_checksum(pkg)
+    catalog = (
+        "plugins:\n  - name: plug\n    version: '0.1'\n    url: https://example.com/pkg.whl\n    description: Example\n    checksum: "
+        + checksum
+    ).encode()
+
+    patch_dir = tmp_path / "patch"
+    patch_dir.mkdir()
+    installed = tmp_path / "installed"
+    site_py = patch_dir / "sitecustomize.py"
+    site_py.write_text(
+        f"""
+import sys
+from pathlib import Path
+import genecoder.plugins as plugins
+import genecoder.cli.plugin as plugin_cli
+
+pkg = {pkg!r}
+catalog = {catalog!r}
+
+class _R:
+    def __init__(self, data):
+        self._data = data
+    def __enter__(self):
+        return self
+    def __exit__(self, *exc):
+        return False
+    def read(self):
+        return self._data
+
+def fake_urlopen(url):
+    if url == 'https://example.com/catalog.yaml':
+        return _R(catalog)
+    if url == 'https://example.com/pkg.whl':
+        return _R(pkg)
+    raise AssertionError(url)
+plugins.urllib.request.urlopen = fake_urlopen
+
+def fake_check_call(cmd):
+    if cmd[:4] == [sys.executable, '-m', 'pip', 'download']:
+        dest = cmd[cmd.index('-d') + 1]
+        Path(dest).mkdir(parents=True, exist_ok=True)
+        (Path(dest) / 'plug.whl').write_bytes(pkg)
+    elif cmd[:4] == [sys.executable, '-m', 'pip', 'install']:
+        Path('{installed}',).write_text('ok')
+    else:
+        raise AssertionError(cmd)
+plugin_cli.subprocess.check_call = fake_check_call
+plugin_cli.plugins.entry_points = lambda group=None: []
+"""
+    )
+
+    env = os.environ.copy()
+    env["GENECODER_PLUGIN_CATALOG_URL"] = "https://example.com/catalog.yaml"
+    root = Path(__file__).resolve().parents[1]
+    src = root / "src"
+    env["PYTHONPATH"] = (
+        f"{patch_dir}{os.pathsep}{src}" + os.pathsep + env.get("PYTHONPATH", "")
+    )
+
+    result = run_cli_command(["plugin", "list"], env=env)
+    assert "plug" in result.stdout
+
+    result = run_cli_command(["plugin", "install", "plug"], env=env)
+    assert result.returncode == 0
+    assert (tmp_path / "installed").is_file()

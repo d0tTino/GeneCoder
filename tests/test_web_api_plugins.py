@@ -1,9 +1,11 @@
 import argparse
 import base64
+import json
 import sys
 from pathlib import Path
 import pytest
 httpx = pytest.importorskip("httpx")
+pytest.importorskip("fastapi_limiter")
 
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
@@ -252,3 +254,33 @@ def test_install_invalid_signature(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
         m.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key_path))
         r = client.post("/plugins/install", headers=AUTH_HEADERS, json={"name": "signed"})
     assert r.status_code == 400
+
+
+def test_rate_plugin_invalid() -> None:
+    """Ratings outside 1-5 are rejected."""
+
+    r = client.post("/plugins/rate", json={"name": "demo", "rating": 0})
+    assert r.status_code == 400
+    r = client.post("/plugins/rate", json={"name": "demo", "rating": 6})
+    assert r.status_code == 400
+
+
+def test_rate_plugin_persistence(tmp_path: Path) -> None:
+    """Ratings are persisted and update the catalog."""
+
+    main.PLUGIN_RATINGS.clear()
+    path = tmp_path / "ratings.json"
+    main.RATINGS_PATH = str(path)
+    plugins.PLUGIN_CATALOG["demo"] = {}
+    r = client.post("/plugins/rate", json={"name": "demo", "rating": 5})
+    assert r.status_code == 200
+    assert r.json()["average"] == 5
+    data = json.loads(path.read_text())
+    assert data == {"demo": [5]}
+    assert plugins.PLUGIN_CATALOG["demo"]["stars"] == 5
+    r = client.post("/plugins/rate", json={"name": "demo", "rating": 3})
+    assert r.status_code == 200
+    assert r.json()["average"] == 4
+    data = json.loads(path.read_text())
+    assert data == {"demo": [5, 3]}
+    assert plugins.PLUGIN_CATALOG["demo"]["stars"] == 4

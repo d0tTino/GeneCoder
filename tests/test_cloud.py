@@ -136,6 +136,7 @@ def test_async_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     assert calls["token"] is None
 
 fastapi = pytest.importorskip("fastapi")
+from fastapi.testclient import TestClient
 from genecoder.cloud import worker
 
 
@@ -210,4 +211,79 @@ def test_worker_integration_async(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         assert Path(called["config"]).name == "b.yaml"
 
     asyncio.run(_run())
+
+
+def test_worker_submit_requires_token(tmp_path: Path) -> None:
+    """Job submissions without a token are rejected."""
+
+    worker.API_TOKEN = "tok"
+    client = TestClient(worker.app)
+    bundle_file = tmp_path / "b.yaml"
+    bundle_file.write_text("encode:\n  input_files: []\n")
+    archive_b64 = _build_archive(bundle_file)
+    r = client.post("/jobs", json={"type": "bundle", "payload": {"archive": archive_b64}})
+    assert r.status_code == 401
+
+
+def test_worker_submit_invalid_type() -> None:
+    """Unsupported job types return 400."""
+
+    worker.API_TOKEN = "tok"
+    client = TestClient(worker.app)
+    r = client.post(
+        "/jobs",
+        headers={"Authorization": "Bearer tok"},
+        json={"type": "bogus", "payload": {}},
+    )
+    assert r.status_code == 400
+
+
+def test_worker_submit_missing_archive() -> None:
+    """Missing archive field returns 400."""
+
+    worker.API_TOKEN = "tok"
+    client = TestClient(worker.app)
+    r = client.post(
+        "/jobs",
+        headers={"Authorization": "Bearer tok"},
+        json={"type": "bundle", "payload": {}},
+    )
+    assert r.status_code == 400
+
+
+def test_worker_submit_invalid_archive() -> None:
+    """Invalid archive data returns 400."""
+
+    worker.API_TOKEN = "tok"
+    client = TestClient(worker.app)
+    r = client.post(
+        "/jobs",
+        headers={"Authorization": "Bearer tok"},
+        json={"type": "bundle", "payload": {"archive": "foo"}},
+    )
+    assert r.status_code == 400
+
+
+def test_worker_submit_job(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Valid job submissions invoke the bundle handler."""
+
+    worker.API_TOKEN = "tok"
+    called: dict[str, object] = {}
+
+    def dummy(args: argparse.Namespace) -> None:
+        called["config"] = args.config
+
+    monkeypatch.setattr(worker.bundle_cli, "_handle_run", dummy)
+    bundle_file = tmp_path / "b.yaml"
+    bundle_file.write_text("encode:\n  input_files: []\n")
+    archive_b64 = _build_archive(bundle_file)
+    client = TestClient(worker.app)
+    r = client.post(
+        "/jobs",
+        headers={"Authorization": "Bearer tok"},
+        json={"type": "bundle", "payload": {"archive": archive_b64}},
+    )
+    assert r.status_code == 200
+    assert Path(called["config"]).name == "b.yaml"
+    assert r.json()["job_id"]
 
