@@ -7,6 +7,8 @@ import pytest
 from tests.test_cli import run_cli_command
 from src.genecoder.cli.channel import _handle_command
 
+yaml = pytest.importorskip("yaml")
+
 
 def create_fasta(path: Path, seq: str = "ACGT", header: str = "seq") -> None:
     from src.genecoder.formats import to_fasta
