@@ -3,9 +3,9 @@ import json
 from pathlib import Path
 from typing import cast
 
-import httpx
-import asyncio
 import pytest
+httpx = pytest.importorskip("httpx")
+import asyncio
 
 from genecoder.cloud import CloudClient, AsyncCloudClient
 from genecoder.cli import cloud as cloud_cli

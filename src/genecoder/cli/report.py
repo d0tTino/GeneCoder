@@ -35,6 +35,7 @@ def _handle_command(args: argparse.Namespace) -> None:
     with open(args.input_json, "r") as fh:
         data = json.load(fh)
 
+    result: EncodeResult | DecodeResult
     if args.type == "encode":
         result = EncodeResult(**data)
         if args.format == "markdown":

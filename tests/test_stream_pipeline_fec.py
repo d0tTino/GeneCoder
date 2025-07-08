@@ -88,13 +88,14 @@ def test_stream_pipeline_large_file_roundtrip(
         infos.append(info)
         return encoded, info
 
-    dna_chunks = list(
-        stream_encode(
+    dna_chunks = [
+        chunk
+        for _, chunk in stream_encode(
             _chunk_reader(str(bin_path), chunk_size),
             encode_base4_direct,
             fec_encode=fec_enc,
         )
-    )
+    ]
 
     def decode_direct(dna: str) -> bytes:
         return decode_base4_direct(dna)[0]
@@ -103,8 +104,8 @@ def test_stream_pipeline_large_file_roundtrip(
         info = infos.pop(0)
         return decode_fn(chunk, info)
 
-    decoded_chunks = list(
-        stream_decode(dna_chunks, decode_direct, fec_decode=fec_dec)
-    )
+    decoded_chunks = [
+        chunk for _, chunk in stream_decode(dna_chunks, decode_direct, fec_decode=fec_dec)
+    ]
 
     assert b"".join(decoded_chunks) == data

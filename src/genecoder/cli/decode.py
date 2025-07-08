@@ -19,7 +19,7 @@ from genecoder.utils import get_alphabet_maps
 from ..options import DecodingOptions
 from .common import run_tasks
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
-from typing import Callable
+from typing import Callable, Tuple, cast
 
 # Delay importing heavy security module until needed
 decrypt_data: Callable[..., bytes] | None = None
@@ -92,12 +92,16 @@ def run_decoding_pipeline(
     if options.method == "base4_direct":
         if should_check_parity and options.k_value <= 0:
             raise ValueError("Parity k-value must be positive for DNA-level parity.")
-        binary_data, parity_errors = decode_base4_direct(
-            dna_for_primary,
-            check_parity=should_check_parity,
-            k_value=options.k_value,
-            parity_rule=options.parity_rule,
-            decode_map=decode_map,
+        binary_data, parity_errors = cast(
+            Tuple[bytes, list[int]],
+            decode_base4_direct(
+                dna_for_primary,
+                check_parity=should_check_parity,
+                k_value=options.k_value,
+                parity_rule=options.parity_rule,
+                decode_map=decode_map,
+                stream=False,
+            ),
         )
     elif options.method == "gc_balanced":
         if should_check_parity:

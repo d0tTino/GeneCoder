@@ -2,13 +2,12 @@ import asyncio
 import types
 
 import pytest
+ft = pytest.importorskip("flet")
 
 from genecoder.flet_handlers import (
     make_encode_handler,
     make_decode_handler,
 )
-
-ft = pytest.importorskip("flet")
 
 
 class DummyPage:
