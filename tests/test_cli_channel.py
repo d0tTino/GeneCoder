@@ -164,3 +164,74 @@ def test_handle_command_threads_processes_error(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         _handle_command(args)
 
+
+@pytest.mark.parametrize(
+    "parallel,threads,processes",
+    [
+        (True, None, None),
+        (True, 2, None),
+        (True, None, 2),
+        (False, 2, None),
+        (False, None, 2),
+    ],
+)
+def test_channel_cli_parallel_variants(
+    tmp_path: Path, parallel: bool, threads: int | None, processes: int | None
+) -> None:
+    input_fasta = tmp_path / "seq.fasta"
+    create_fasta(input_fasta)
+
+    env = os.environ.copy()
+    from pathlib import Path as _Path
+    src_path = _Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    baseline = tmp_path / "baseline.fasta"
+    base_cmd = [
+        "channel",
+        "--input-file",
+        str(input_fasta),
+        "--output-file",
+        str(baseline),
+        "--simulator",
+        "simple",
+        "--min-length",
+        "1",
+    ]
+    result_base = run_cli_command(base_cmd, env=env)
+    assert result_base.returncode == 0, result_base.stderr
+    from src.genecoder.formats import from_fasta
+
+    expected_seq = from_fasta(baseline.read_text())[0][1]
+
+    out = tmp_path / f"out_{parallel}_{threads}_{processes}.fasta"
+    cmd = [
+        "channel",
+        "--input-file",
+        str(input_fasta),
+        "--output-file",
+        str(out),
+        "--simulator",
+        "simple",
+        "--min-length",
+        "1",
+    ]
+    if parallel:
+        cmd.append("--parallel")
+    if threads is not None:
+        cmd.extend(["--threads", str(threads)])
+    if processes is not None:
+        cmd.extend(["--processes", str(processes)])
+
+    result = run_cli_command(cmd, env=env)
+    assert result.returncode == 0, result.stderr
+
+    seq = from_fasta(out.read_text())[0][1]
+    assert seq == expected_seq
+
+    manifest = tmp_path / f"out_{parallel}_{threads}_{processes}.manifest.json"
+    data = json.loads(manifest.read_text())
+    assert data["simulators"] == ["simple"]
+    assert data["metrics"]["length"] == len(seq)
+
