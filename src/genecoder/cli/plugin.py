@@ -66,6 +66,20 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     )
     reg_parser.set_defaults(func=_handle_install_registry)
 
+    rate_parser = plugin_sub.add_parser(
+        "rate", help="Submit a star rating for a plugin"
+    )
+    rate_parser.add_argument("name", help="Plugin name to rate")
+    rate_parser.add_argument("rating", type=int, help="Rating from 1-5")
+    rate_parser.add_argument(
+        "--server",
+        type=str,
+        default="https://localhost:8000",
+        help="GeneCoder web server URL",
+    )
+    rate_parser.add_argument("--token", type=str, help="Bearer token for authentication")
+    rate_parser.set_defaults(func=_handle_rate)
+
 
 def _handle_list(args: argparse.Namespace) -> None:
     if not plugins.PLUGIN_CATALOG:
@@ -142,4 +156,28 @@ def _handle_install(args: argparse.Namespace) -> None:
 
 def _handle_install_registry(args: argparse.Namespace) -> None:
     plugins.install_registry_plugins(args.url)
+
+
+def _handle_rate(args: argparse.Namespace) -> None:
+    import warnings
+    import httpx
+
+    if not 1 <= args.rating <= 5:
+        logger.error("Rating must be 1-5")
+        raise SystemExit(1)
+    if not args.server.startswith("https://"):
+        warnings.warn("Using a non-HTTPS server URL", stacklevel=2)
+    url = args.server.rstrip("/") + "/plugins/rate"
+    headers = {"Content-Type": "application/json"}
+    if args.token:
+        headers["Authorization"] = f"Bearer {args.token}"
+    try:
+        resp = httpx.post(url, json={"name": args.name, "rating": args.rating}, headers=headers)
+        resp.raise_for_status()
+    except httpx.HTTPError as exc:  # pragma: no cover - network error path
+        logger.error("Failed to submit rating: %s", exc)
+        raise SystemExit(1)
+    avg = resp.json().get("average")
+    if avg is not None:
+        print(avg)
 

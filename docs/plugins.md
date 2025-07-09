@@ -200,6 +200,18 @@ curl -X POST -H "Content-Type: application/json" \
 
 The response includes the updated average star count for the plugin.
 
+Ratings can also be retrieved via ``GET /plugins/rate``:
+
+```bash
+curl 'http://localhost:8000/plugins/rate?name=myplugin'
+```
+
+For convenience the CLI exposes a ``rate`` command:
+
+```bash
+genecoder plugin rate myplugin 5 --server https://localhost:8000
+```
+
 Always verify that catalog entries originate from reputable sources or trusted
 registries. A matching checksum only proves the downloaded file has not been
 corrupted or tampered with; it does not guarantee that the plugin's code is
