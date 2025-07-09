@@ -193,10 +193,12 @@ genecoder plugin install myplugin
 
 The ``/plugin-catalog`` web page lets you search and sort available plugins by
 name, description or rating. To submit feedback programmatically send a rating
-to the API:
+to the API. Both rating endpoints require an API token supplied in the
+``Authorization`` header:
 
 ```bash
 curl -X POST -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
   -d '{"name": "myplugin", "rating": 5}' http://localhost:8000/plugins/rate
 ```
 
@@ -205,7 +207,8 @@ The response includes the updated average star count for the plugin.
 Ratings can also be retrieved via ``GET /plugins/rate``:
 
 ```bash
-curl 'http://localhost:8000/plugins/rate?name=myplugin'
+curl -H "Authorization: Bearer <TOKEN>" \
+  'http://localhost:8000/plugins/rate?name=myplugin'
 ```
 
 For convenience the CLI exposes a ``rate`` command:

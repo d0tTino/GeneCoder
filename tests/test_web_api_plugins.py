@@ -4,8 +4,13 @@ import json
 import sys
 import concurrent.futures
 from pathlib import Path
+from typing import Callable, Literal
 import pytest
 httpx = pytest.importorskip("httpx")
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from httpx import Request, Response
 pytest.importorskip("fastapi_limiter")
 
 fastapi = pytest.importorskip("fastapi")
@@ -28,7 +33,7 @@ class DummyResponse:
     def __enter__(self) -> "DummyResponse":
         return self
 
-    def __exit__(self, *exc: object) -> bool:
+    def __exit__(self, *exc: object) -> Literal[False]:
         return False
 
     def read(self) -> bytes:
@@ -74,10 +79,10 @@ def test_install_signature_missing_key() -> None:
     sig_b64 = base64.b64encode(b"sig").decode()
     plugins.PLUGIN_CATALOG["signed"] = {"checksum": checksum, "signature": sig_b64}
 
-    def fake_check_call(cmd):
+    def fake_check_call(cmd: list[str]) -> None:
         raise AssertionError("pip should not run")
 
-    def fake_compute(*args, **kwargs):  # pragma: no cover - should not be called
+    def fake_compute(*args: object, **kwargs: object) -> str:  # pragma: no cover - should not be called
         raise AssertionError("compute_checksum should not run")
 
     with pytest.MonkeyPatch().context() as m:
@@ -93,7 +98,7 @@ def test_install_signature_failure() -> None:
     sig_b64 = base64.b64encode(b"sig").decode()
     plugins.PLUGIN_CATALOG["signed"] = {"checksum": checksum, "signature": sig_b64}
 
-    def fake_check_call(cmd):
+    def fake_check_call(cmd: list[str]) -> None:
         if cmd[:4] == [sys.executable, "-m", "pip", "download"]:
             dest = cmd[cmd.index("-d") + 1]
             Path(dest).mkdir(parents=True, exist_ok=True)
@@ -103,7 +108,7 @@ def test_install_signature_failure() -> None:
         else:
             raise AssertionError(cmd)
 
-    orig_compute = plugins.compute_checksum
+    orig_compute: Callable[[bytes], str] = plugins.compute_checksum
 
     def fake_compute(
         data: bytes, *, signature: bytes | None = None, public_key: bytes | None = None
@@ -122,7 +127,7 @@ def test_install_signature_failure() -> None:
     assert r.status_code == 400
 
 
-def test_install_signature_success(tmp_path) -> None:
+def test_install_signature_success(tmp_path: Path) -> None:
     pkg = b"PKG"
     checksum = plugins.compute_checksum(pkg)
     sig = base64.b64encode(b"valid").decode()
@@ -133,7 +138,7 @@ def test_install_signature_success(tmp_path) -> None:
 
     installs = []
 
-    def fake_check_call(cmd):
+    def fake_check_call(cmd: list[str]) -> None:
         if cmd[:4] == [sys.executable, "-m", "pip", "download"]:
             dest = cmd[cmd.index("-d") + 1]
             Path(dest).mkdir(parents=True, exist_ok=True)
@@ -143,7 +148,7 @@ def test_install_signature_success(tmp_path) -> None:
         else:
             raise AssertionError(cmd)
 
-    orig_compute = plugins.compute_checksum
+    orig_compute: Callable[[bytes], str] = plugins.compute_checksum
 
     def fake_compute(
         data: bytes, *, signature: bytes | None = None, public_key: bytes | None = None
@@ -164,10 +169,10 @@ def test_install_signature_success(tmp_path) -> None:
 
 def test_rate_plugin() -> None:
     main.PLUGIN_RATINGS.clear()
-    r = client.post('/plugins/rate', json={'name': 'demo', 'rating': 4})
+    r = client.post('/plugins/rate', headers=AUTH_HEADERS, json={'name': 'demo', 'rating': 4})
     assert r.status_code == 200
     assert r.json()['average'] == 4
-    r = client.post('/plugins/rate', json={'name': 'demo', 'rating': 2})
+    r = client.post('/plugins/rate', headers=AUTH_HEADERS, json={'name': 'demo', 'rating': 2})
     assert r.status_code == 200
     assert r.json()['average'] == 3
 
@@ -175,23 +180,23 @@ def test_rate_plugin() -> None:
 def test_get_plugin_rating() -> None:
     main.PLUGIN_RATINGS.clear()
     main.PLUGIN_RATINGS['demo'] = [3, 5]
-    r = client.get('/plugins/rate', params={'name': 'demo'})
+    r = client.get('/plugins/rate', headers=AUTH_HEADERS, params={'name': 'demo'})
     assert r.status_code == 200
     assert r.json()['average'] == 4
-    r = client.get('/plugins/rate', params={'name': 'missing'})
+    r = client.get('/plugins/rate', headers=AUTH_HEADERS, params={'name': 'missing'})
     assert r.status_code == 404
 
 
 def test_catalog_fetch_error(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
     """Failed catalog downloads return an empty list."""
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: Request) -> Response:
         raise httpx.ConnectError("offline", request=request)
 
     transport = httpx.MockTransport(handler)
 
     def fake_urlopen(url: str) -> DummyResponse:
-        request = httpx.Request("GET", url)
+        request = Request("GET", url)
         transport.handle_request(request)
         raise AssertionError("unreachable")
 
@@ -248,7 +253,7 @@ def test_install_invalid_signature(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
         else:
             raise AssertionError(cmd)
 
-    orig_compute = plugins.compute_checksum
+    orig_compute: Callable[[bytes], str] = plugins.compute_checksum
 
     def fake_compute(
         data: bytes,
@@ -271,9 +276,9 @@ def test_install_invalid_signature(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
 def test_rate_plugin_invalid() -> None:
     """Ratings outside 1-5 are rejected."""
 
-    r = client.post("/plugins/rate", json={"name": "demo", "rating": 0})
+    r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 0})
     assert r.status_code == 400
-    r = client.post("/plugins/rate", json={"name": "demo", "rating": 6})
+    r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 6})
     assert r.status_code == 400
 
 
@@ -284,13 +289,13 @@ def test_rate_plugin_persistence(tmp_path: Path) -> None:
     path = tmp_path / "ratings.json"
     main.RATINGS_PATH = str(path)
     plugins.PLUGIN_CATALOG["demo"] = {}
-    r = client.post("/plugins/rate", json={"name": "demo", "rating": 5})
+    r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 5})
     assert r.status_code == 200
     assert r.json()["average"] == 5
     data = json.loads(path.read_text())
     assert data == {"demo": [5]}
     assert plugins.PLUGIN_CATALOG["demo"]["stars"] == 5
-    r = client.post("/plugins/rate", json={"name": "demo", "rating": 3})
+    r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 3})
     assert r.status_code == 200
     assert r.json()["average"] == 4
     data = json.loads(path.read_text())
@@ -307,7 +312,7 @@ def test_concurrent_plugin_ratings(tmp_path: Path) -> None:
     plugins.PLUGIN_CATALOG["demo"] = {}
 
     def post_rating() -> None:
-        r = client.post("/plugins/rate", json={"name": "demo", "rating": 5})
+        r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 5})
         assert r.status_code == 200
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
@@ -329,7 +334,7 @@ def test_concurrent_ratings_file_valid(tmp_path: Path) -> None:
     plugins.PLUGIN_CATALOG["demo"] = {}
 
     def post_rating() -> None:
-        r = client.post("/plugins/rate", json={"name": "demo", "rating": 4})
+        r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 4})
         assert r.status_code == 200
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
