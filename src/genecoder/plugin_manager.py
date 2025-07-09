@@ -130,14 +130,18 @@ def _install_registry_plugins(url: str) -> None:
             logger.warning("Failed to download plugin %s: %s", spec, exc)
             continue
 
-        if pubkey is None:
-            logger.warning("No public key configured for signed plugin %s", spec)
-            continue
-        try:
-            digest = compute_checksum(pkg_bytes, signature=signature, public_key=pubkey)
-        except Exception as exc:
-            logger.warning("Invalid signature for plugin %s: %s", spec, exc)
-            continue
+        if signature is not None:
+            if pubkey is None:
+                logger.warning("No public key configured for signed plugin %s", spec)
+                continue
+            try:
+                digest = compute_checksum(pkg_bytes, signature=signature, public_key=pubkey)
+            except Exception as exc:
+                logger.warning("Invalid signature for plugin %s: %s", spec, exc)
+                continue
+        else:
+            digest = compute_checksum(pkg_bytes)
+
         if digest != checksum:
             logger.warning("Checksum mismatch for plugin %s", spec)
             continue
@@ -220,6 +224,7 @@ def _fetch_catalog(url: str) -> None:
             "url": str(entry.get("url", "")),
             "description": str(entry.get("description", "")),
             "checksum": str(entry.get("checksum", "")),
+            "signature": str(entry.get("signature", "")),
             "author": str(entry.get("author", "")),
             "stars": entry.get("stars", 0),
         }
