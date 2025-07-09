@@ -1,6 +1,7 @@
 import os
 import json
 import hashlib
+import fcntl
 import secrets
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.responses import HTMLResponse
@@ -77,7 +78,15 @@ def _save_plugin_ratings() -> None:
         return
     path = Path(RATINGS_PATH)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(PLUGIN_RATINGS), encoding="utf-8")
+    data = json.dumps(PLUGIN_RATINGS)
+    with path.open("w", encoding="utf-8") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        try:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
 
 
 def verify_token(

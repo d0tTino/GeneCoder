@@ -2,6 +2,7 @@ import argparse
 import base64
 import json
 import sys
+import concurrent.futures
 from pathlib import Path
 import pytest
 httpx = pytest.importorskip("httpx")
@@ -294,3 +295,24 @@ def test_rate_plugin_persistence(tmp_path: Path) -> None:
     data = json.loads(path.read_text())
     assert data == {"demo": [5, 3]}
     assert plugins.PLUGIN_CATALOG["demo"]["stars"] == 4
+
+
+def test_concurrent_plugin_ratings(tmp_path: Path) -> None:
+    """Concurrent rating requests produce a valid JSON file."""
+
+    main.PLUGIN_RATINGS.clear()
+    path = tmp_path / "ratings.json"
+    main.RATINGS_PATH = str(path)
+    plugins.PLUGIN_CATALOG["demo"] = {}
+
+    def post_rating() -> None:
+        r = client.post("/plugins/rate", json={"name": "demo", "rating": 5})
+        assert r.status_code == 200
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
+        futures = [ex.submit(post_rating) for _ in range(20)]
+        for f in futures:
+            f.result()
+
+    data = json.loads(path.read_text())
+    assert data == {"demo": [5] * 20}
