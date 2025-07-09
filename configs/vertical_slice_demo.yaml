@@ -1,0 +1,10 @@
+encode:
+  input_files:
+    - tests/data/vertical_slice.txt
+  method: base4_direct
+  fec: hamming_7_4
+simulate:
+  simulators:
+    - adv_nanopore
+decode:
+  method: base4_direct
