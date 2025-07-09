@@ -6,7 +6,7 @@ from genecoder.metrics import get_metrics
 
 
 def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    parser = subparsers.add_parser("stats", help="Show usage metrics")
+    parser = subparsers.add_parser("stats", help="Show usage metrics including simulation counts")
     parser.set_defaults(func=_handle_command)
 
 

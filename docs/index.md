@@ -22,5 +22,6 @@ For more details, explore the sections below.
 * [FEC Benchmarks](benchmarks.md) – Forward error correction examples and results.
 * [Technology Stack](technology_stack.md) – Overview of dependencies and tooling.
 * [Glossary](glossary.md) – Key terms used throughout the docs.
+* [Usage Metrics](metrics.md) – Track encode and simulation counts.
 * [Introductory Notebooks](../notebooks) – Encoding, channel simulation and decoding examples.
 * [Lesson Notebooks](../notebooks/lessons) – Step-by-step guides for encoding basics, FEC, simulation and analysis.

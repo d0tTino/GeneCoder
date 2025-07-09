@@ -5,6 +5,7 @@ import concurrent.futures
 import os
 
 from ..channels.base import BaseChannel
+from ..metrics import increment as increment_metric
 
 __all__ = ["ChannelPipeline"]
 
@@ -32,6 +33,7 @@ class ChannelPipeline(BaseChannel):
         if not parallel or len(self.channels) <= 1:
             for channel in self.channels:
                 sequence = channel.simulate(sequence)
+            increment_metric("oligos_simulated")
             return sequence
 
         if workers is None:
@@ -47,4 +49,5 @@ class ChannelPipeline(BaseChannel):
         with executor_cls(max_workers=workers) as executor:
             for channel in self.channels:
                 current = executor.submit(channel.simulate, current).result()
+        increment_metric("oligos_simulated")
         return current

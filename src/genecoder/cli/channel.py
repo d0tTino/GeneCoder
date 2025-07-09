@@ -16,6 +16,7 @@ from genecoder.simulators import SIMULATOR_REGISTRY, ChannelPipeline
 from genecoder.channels.base import BaseChannel
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
 from genecoder.error_simulation import introduce_errors
+from genecoder.metrics import increment as increment_metric
 from .options import ChannelOptions, build_channel_options
 
 logger = logging.getLogger(__name__)
@@ -108,6 +109,7 @@ def process_channel(
                 deletion_prob=del_prob,
                 rng=rng,
             )
+            increment_metric("oligos_simulated")
 
         if not validate_sequence(seq, synth):
             logger.error("Sequence violates synthesis constraints")
