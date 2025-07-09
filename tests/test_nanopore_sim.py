@@ -68,10 +68,12 @@ def test_parse_options_invalid(monkeypatch, caplog):
     assert any("Invalid" in r.message for r in caplog.records)
 
 
-def test_parse_options_unsafe(monkeypatch):
-    monkeypatch.setenv("GENECODER_D2SIM_OPTIONS", "foo;bar")
+@pytest.mark.parametrize("command", ["d2sim", "dnarsim", "squigulator"])
+def test_parse_options_unsafe(monkeypatch, command):
+    env_var = f"GENECODER_{command.upper()}_OPTIONS"
+    monkeypatch.setenv(env_var, "foo;bar")
     with pytest.raises(ValueError):
-        nanopore_sim._parse_env_options("d2sim")
+        nanopore_sim._parse_env_options(command)
 
 
 @pytest.mark.parametrize("name", ADAPTERS.keys())
