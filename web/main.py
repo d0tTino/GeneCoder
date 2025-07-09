@@ -567,7 +567,10 @@ async def install_plugin(
 
 
 @app.post("/plugins/rate")
-async def rate_plugin(req: PluginRatingRequest) -> dict[str, float]:
+async def rate_plugin(
+    req: PluginRatingRequest,
+    _: None = Depends(verify_token),
+) -> dict[str, float]:
     """Submit a rating for a plugin and return the new average."""
     if req.rating < 1 or req.rating > 5:
         raise HTTPException(status_code=400, detail="rating must be 1-5")
@@ -580,7 +583,10 @@ async def rate_plugin(req: PluginRatingRequest) -> dict[str, float]:
 
 
 @app.get("/plugins/rate")
-async def get_plugin_rating(name: str) -> dict[str, float]:
+async def get_plugin_rating(
+    name: str,
+    _: None = Depends(verify_token),
+) -> dict[str, float]:
     """Return the current average rating for ``name``."""
     ratings = PLUGIN_RATINGS.get(name)
     if not ratings:
@@ -592,4 +598,5 @@ async def get_plugin_rating(name: str) -> dict[str, float]:
 @app.get("/metrics")
 async def metrics() -> dict[str, int]:
     """Return encode, bundle and simulation usage metrics."""
-    return get_metrics()
+    data: dict[str, int] = get_metrics()
+    return data
