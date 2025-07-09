@@ -2,7 +2,7 @@ import logging
 from importlib.metadata import EntryPoint
 import pytest
 
-import genecoder.plugins as plugins
+import genecoder.plugin_manager as plugins
 
 
 def test_load_plugins_reports_failures(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:

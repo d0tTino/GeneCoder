@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-import genecoder.plugins as plugins
+import genecoder.plugin_manager as plugins
 from genecoder.cli import plugin as plugin_cli
 from genecoder.security import compute_checksum
 

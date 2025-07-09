@@ -30,7 +30,7 @@ from genecoder.flet_handlers import (
 )
 
 # Project module imports
-from genecoder.plugins import load_plugins
+from genecoder.plugin_manager import load_plugins
 from genecoder.helix_view import show_helix_ui
 from genecoder.formats import from_fasta
 from genecoder.cli.encode import reverse_complement

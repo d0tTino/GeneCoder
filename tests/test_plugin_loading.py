@@ -37,7 +37,7 @@ def test_example_plugins_registered(monkeypatch: pytest.MonkeyPatch) -> None:
     from importlib.metadata import EntryPoint
     from pathlib import Path
 
-    import genecoder.plugins as plugins
+    import genecoder.plugin_manager as plugins
 
     root = Path(__file__).resolve().parents[1] / "plugins-examples"
     monkeypatch.syspath_prepend(str(root / "example_codec"))

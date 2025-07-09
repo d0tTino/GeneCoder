@@ -12,7 +12,7 @@ import subprocess
 from pip._internal.exceptions import InstallationSubprocessError
 from pip._internal.utils.subprocess import call_subprocess
 
-import genecoder.plugins as plugins
+import genecoder.plugin_manager as plugins
 
 logger = logging.getLogger(__name__)
 

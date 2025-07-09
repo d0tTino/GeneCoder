@@ -6,7 +6,12 @@ from importlib import import_module
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
-from .plugins import register_codec, register_fec, register_simulator, _load_and_register
+from .plugin_manager import (
+    register_codec,
+    register_fec,
+    register_simulator,
+    _load_and_register,
+)
 
 
 def register_builtin_plugins() -> None:

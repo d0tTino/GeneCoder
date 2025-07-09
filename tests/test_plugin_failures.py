@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-import genecoder.plugins as plugins
+import genecoder.plugin_manager as plugins
 
 
 def _make_entry_points(mode: str, entries: list[EntryPoint | object]) -> Callable[..., object]:
