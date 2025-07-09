@@ -71,6 +71,15 @@ poetry install --with gui,web,dev --no-interaction
 poetry run pytest -q
 ```
 
+### Optional Test Dependencies
+
+Some integration tests use optional GUI and web components. Install these extras
+with:
+
+```bash
+poetry install --with gui,web --no-interaction
+```
+
 All code changes must pass `pre-commit` and the test suite. These checks are not
 required for documentation-only pull requests.
 
