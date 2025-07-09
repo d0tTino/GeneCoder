@@ -168,6 +168,16 @@ def test_rate_plugin() -> None:
     assert r.json()['average'] == 3
 
 
+def test_get_plugin_rating() -> None:
+    main.PLUGIN_RATINGS.clear()
+    main.PLUGIN_RATINGS['demo'] = [3, 5]
+    r = client.get('/plugins/rate', params={'name': 'demo'})
+    assert r.status_code == 200
+    assert r.json()['average'] == 4
+    r = client.get('/plugins/rate', params={'name': 'missing'})
+    assert r.status_code == 404
+
+
 def test_catalog_fetch_error(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
     """Failed catalog downloads return an empty list."""
 

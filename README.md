@@ -188,7 +188,7 @@ Several environment variables control optional behaviour of the FastAPI server:
 - `GENECODER_RATINGS_PATH` – file path for storing plugin rating information.
   Ratings submitted via the `/plugins/rate` endpoint are loaded from and written
   back to this JSON file on server shutdown, letting ratings persist between
-  restarts.
+  restarts. Ratings can be fetched with `GET /plugins/rate`.
 - `GENECODER_CORS_ORIGINS` – comma-separated list of allowed origins for
   Cross-Origin Resource Sharing (CORS). The default `*` permits requests from any
   origin. Restrict this variable to limit which web clients may call the API.

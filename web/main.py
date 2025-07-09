@@ -568,6 +568,16 @@ async def rate_plugin(req: PluginRatingRequest) -> dict[str, float]:
     return {"average": avg}
 
 
+@app.get("/plugins/rate")
+async def get_plugin_rating(name: str) -> dict[str, float]:
+    """Return the current average rating for ``name``."""
+    ratings = PLUGIN_RATINGS.get(name)
+    if not ratings:
+        raise HTTPException(status_code=404, detail="No ratings found")
+    avg = sum(ratings) / len(ratings)
+    return {"average": avg}
+
+
 @app.get("/metrics")
 async def metrics() -> dict[str, int]:
     """Return encode and bundle usage metrics."""
