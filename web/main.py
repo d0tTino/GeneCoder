@@ -43,6 +43,7 @@ from typing import Any, cast
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 import redis.asyncio as redis
+from . import plugin_catalog
 
 DNA_RE = re.compile(r"^[ACGT]+$")
 FILE_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -139,6 +140,9 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 # Mount the React-based helix viewer as a static directory
 helix_ui_dir = Path(__file__).parent / "helix-ui"
 app.mount("/helix-ui", StaticFiles(directory=helix_ui_dir), name="helix-ui")
+
+# REST API for managing plugin catalog entries
+app.include_router(plugin_catalog.router, prefix="/catalog")
 
 index_path = static_dir / "index.html"
 helix_index_path = helix_ui_dir / "dist" / "index.html"
