@@ -126,8 +126,12 @@ Install the project in editable mode with development tools:
 poetry install --with gui,web,dev --no-interaction
 ```
 
-You can also run `scripts/setup_test_env.sh` to install the optional GUI and web
-extras used by the test suite.
+You can also run the helper script to install the optional GUI and web extras
+required by the test suite:
+
+```bash
+scripts/setup_test_env.sh
+```
 
 ## OpenAI Testing Environment
 

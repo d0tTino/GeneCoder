@@ -80,6 +80,8 @@ with:
 poetry install --with gui,web --no-interaction
 ```
 
+You can also run `scripts/setup_test_env.sh` to install the same extras.
+
 All code changes must pass `pre-commit` and the test suite. These checks are not
 required for documentation-only pull requests.
 
