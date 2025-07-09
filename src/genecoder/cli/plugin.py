@@ -136,8 +136,10 @@ def _handle_install(args: argparse.Namespace) -> None:
             raise SystemExit(1)
         pkg_path = files[0]
         pkg_bytes = pkg_path.read_bytes()
-        digest = None
-        if signature_b64 and pubkey is not None:
+        if signature_b64:
+            if pubkey is None:
+                logger.error("Missing public key for signed plugin %s", name)
+                raise SystemExit(1)
             try:
                 digest = plugins.compute_checksum(
                     pkg_bytes,
