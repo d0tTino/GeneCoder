@@ -58,11 +58,12 @@ def test_cli_registry_install(monkeypatch: pytest.MonkeyPatch) -> None:
         argparse.Namespace(url="https://example.com/plugins.yaml")
     )
 
-    assert installs and installs[0][:4] == [
+    assert installs and installs[0][:5] == [
         sys.executable,
         "-m",
         "pip",
         "install",
+        "--require-hashes",
     ]
 
 
@@ -105,3 +106,50 @@ def test_cli_registry_install_failure(
         )
 
     assert "Failed to install plugin https://example.com/pkg.whl from registry" in caplog.text
+
+
+def test_cli_registry_signature_failure(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    pkg = b"PKG"
+    checksum = compute_checksum(pkg)
+    sig = base64.b64encode(b"sig").decode()
+
+    def fake_urlopen(url: str) -> DummyResponse:
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n    signature: {sig}"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkg.whl":
+            return DummyResponse(pkg)
+        raise AssertionError(url)
+
+    installs: list[list[str]] = []
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
+
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+
+    def fake_compute(
+        data: bytes,
+        *,
+        signature: bytes | None = None,
+        public_key: bytes | None = None,
+    ) -> str:
+        if signature is not None:
+            raise ValueError("bad sig")
+        return compute_checksum(data)
+
+    monkeypatch.setattr(plugins, "compute_checksum", fake_compute)
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
+
+    with caplog.at_level(logging.WARNING):
+        plugin_cli._handle_install_registry(
+            argparse.Namespace(url="https://example.com/plugins.yaml")
+        )
+
+    assert not installs
+    assert "Invalid signature for plugin https://example.com/pkg.whl" in caplog.text

@@ -27,6 +27,7 @@ class DummyResponse:
 
 
 def test_registry_install(monkeypatch):
+
     installs = []
 
     def fake_check_call(cmd):
@@ -73,9 +74,9 @@ def test_registry_install(monkeypatch):
 
     plugins.install_registry_plugins()
 
-    assert [cmd[:4] for cmd in installs] == [
-        [sys.executable, "-m", "pip", "install"],
-        [sys.executable, "-m", "pip", "install"],
+    assert [cmd[:5] for cmd in installs] == [
+        [sys.executable, "-m", "pip", "install", "--require-hashes"],
+        [sys.executable, "-m", "pip", "install", "--require-hashes"],
     ]
 
 
@@ -175,6 +176,50 @@ def test_registry_checksum_mismatch(monkeypatch, caplog):
 
     assert not installs
     assert "Checksum mismatch for plugin https://example.com/pkgD.whl" in caplog.text
+
+
+def test_registry_signature_failure(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    pkg = b"FFF"
+    checksum = compute_checksum(pkg)
+
+    def fake_urlopen(url: str) -> DummyResponse:
+        if url == "https://example.com/plugins.yaml":
+            sig = base64.b64encode(b"sig").decode()
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkgF.whl\n    checksum: {checksum}\n    signature: {sig}"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkgF.whl":
+            return DummyResponse(pkg)
+        raise AssertionError(url)
+
+    installs: list[list[str]] = []
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
+
+    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
+    monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+
+    def fake_compute(
+        data: bytes,
+        *,
+        signature: bytes | None = None,
+        public_key: bytes | None = None,
+    ) -> str:
+        if signature is not None:
+            raise ValueError("bad sig")
+        return compute_checksum(data)
+
+    monkeypatch.setattr(plugins, "compute_checksum", fake_compute)
+
+    with caplog.at_level(logging.WARNING):
+        plugins.install_registry_plugins()
+
+    assert not installs
+    assert "Invalid signature for plugin https://example.com/pkgF.whl" in caplog.text
 
 
 def test_registry_checksum_validation(monkeypatch):

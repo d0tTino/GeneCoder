@@ -143,20 +143,37 @@ def _install_registry_plugins(url: str) -> None:
             continue
 
         tmp_file = None
+        req_file = None
         try:
             suffix = os.path.splitext(urlparse(spec).path)[1]
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                 tmp.write(pkg_bytes)
                 tmp_file = tmp.name
-            subprocess.check_call([sys.executable, "-m", "pip", "install", tmp_file])
+
+            with tempfile.NamedTemporaryFile("w", delete=False) as req:
+                req.write(f"{tmp_file} --hash=sha256:{digest}\n")
+                req_file = req.name
+
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "--require-hashes",
+                    "-r",
+                    req_file,
+                ]
+            )
         except Exception as exc:  # pragma: no cover - install error path
             logger.warning("Failed to install plugin %s from registry: %s", spec, exc)
         finally:
-            if tmp_file:
-                try:
-                    os.unlink(tmp_file)
-                except Exception:
-                    pass
+            for path in (tmp_file, req_file):
+                if path:
+                    try:
+                        os.unlink(path)
+                    except Exception:
+                        pass
 
 
 def install_registry_plugins(url: str | None = None) -> None:
