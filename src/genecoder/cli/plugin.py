@@ -136,9 +136,10 @@ def _handle_install(args: argparse.Namespace) -> None:
             raise SystemExit(1)
         pkg_path = files[0]
         pkg_bytes = pkg_path.read_bytes()
+        digest = None
         if signature_b64 and pubkey is not None:
             try:
-                plugins.compute_checksum(
+                digest = plugins.compute_checksum(
                     pkg_bytes,
                     signature=base64.b64decode(signature_b64),
                     public_key=pubkey,
@@ -148,10 +149,17 @@ def _handle_install(args: argparse.Namespace) -> None:
                     "Signature verification failed for plugin %s: %s", name, exc
                 )
                 raise SystemExit(1)
-        if checksum and plugins.compute_checksum(pkg_bytes) != checksum:
+        else:
+            digest = plugins.compute_checksum(pkg_bytes)
+        if checksum and digest != checksum:
             logger.error("Checksum mismatch for plugin %s", name)
             raise SystemExit(1)
-        _run_pip(["install", str(pkg_path)], "pip install")
+        req_file = Path(tmp_dir) / "req.txt"
+        req_file.write_text(f"{pkg_path} --hash=sha256:{digest}\n")
+        _run_pip(
+            ["install", "--require-hashes", "-r", str(req_file)],
+            "pip install",
+        )
 
 
 def _handle_install_registry(args: argparse.Namespace) -> None:
