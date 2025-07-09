@@ -72,7 +72,11 @@ def _install_registry_plugins(url: str) -> None:
     """Install plugin packages listed in a YAML registry at ``url``."""
 
     if yaml is None:  # pragma: no cover - optional dependency missing
-        logger.warning("YAML support unavailable, skipping plugin registry %s", url)
+        logger.warning(
+            "YAML support unavailable, skipping plugin registry %s. "
+            "Install PyYAML to enable plugin catalogs.",
+            url,
+        )
         return
 
     key_path = os.getenv("GENECODER_PLUGIN_PUBLIC_KEY")
@@ -193,7 +197,11 @@ def _fetch_catalog(url: str) -> None:
     """Fetch plugin catalogue from ``url`` and store in ``PLUGIN_CATALOG``."""
 
     if yaml is None:  # pragma: no cover - optional dependency missing
-        logger.warning("YAML support unavailable, skipping plugin catalog %s", url)
+        logger.warning(
+            "YAML support unavailable, skipping plugin catalog %s. "
+            "Install PyYAML to enable plugin catalogs.",
+            url,
+        )
         return
 
     try:

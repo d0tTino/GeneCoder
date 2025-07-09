@@ -71,6 +71,18 @@ genecoder --version
 poetry run pytest -q
 ```
 
+## Bundle Workflow
+
+An example configuration file at `configs/vertical_slice_demo.yaml` demonstrates
+using a simulator and Hamming FEC. Run the bundle with:
+
+```bash
+genecoder bundle run configs/vertical_slice_demo.yaml --cache-dir runs
+```
+
+The `scripts/vertical_slice.sh` helper executes the same command automatically
+as part of the demo.
+
 ## Launch the GUI
 
 ```bash

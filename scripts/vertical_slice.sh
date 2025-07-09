@@ -16,6 +16,9 @@ echo "Running CLI smoke test..."
 genecoder --version
 poetry run pytest -q
 
+echo "Running bundle workflow..."
+genecoder bundle run configs/vertical_slice_demo.yaml --cache-dir runs
+
 echo "Launching the Flet GUI..."
 python -m genecoder.flet_app
 
