@@ -246,6 +246,29 @@ warning.
 Signed packages help detect tampering, but they do not make untrusted code safe.
 Always audit plugins and obtain public keys from verified sources.
 
+## Running the Plugin Catalog Service
+
+The web server exposes a small REST API for hosting plugin metadata. Set
+``GENECODER_CATALOG_PATH`` to the location of a JSON file before starting the
+FastAPI application:
+
+```bash
+export GENECODER_CATALOG_PATH=/tmp/catalog.json
+uvicorn web.main:app
+```
+
+Upload a plugin entry with a POST request including the name, version, checksum
+and optional signature:
+
+```bash
+curl -X POST -H "Authorization: Bearer <TOKEN>" \
+     -H "Content-Type: application/json" \
+     -d '{"name": "demo", "version": "1.0", "checksum": "abc", "signature": "sig"}' \
+     http://localhost:8000/catalog/plugins
+```
+
+List registered entries via ``GET /catalog/plugins``.
+
 ## Submitting to the Marketplace
 
 Signed plugin packages can be shared publicly by submitting them to the GeneCoder marketplace. After building a wheel and generating the detached signature, visit the marketplace dashboard and upload both files. The system verifies the signature and runs automated checks before listing the plugin in the public catalog.

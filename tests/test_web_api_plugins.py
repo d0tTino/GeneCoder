@@ -12,6 +12,7 @@ fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 import web.main as main
+from web import plugin_catalog
 import genecoder.plugin_manager as plugins
 from genecoder.cli import plugin as plugin_cli
 
@@ -340,3 +341,26 @@ def test_concurrent_ratings_file_valid(tmp_path: Path) -> None:
     data = json.loads(path.read_text())
     assert isinstance(data, dict)
     assert "demo" in data
+
+
+def test_plugin_catalog_crud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Uploading and listing catalog entries works and requires a token."""
+
+    monkeypatch.setattr(plugin_catalog, "CATALOG_PATH", str(tmp_path / "cat.json"), raising=False)
+    plugin_catalog.CATALOG.clear()
+
+    r = client.get("/catalog/plugins")
+    assert r.status_code == 200
+    assert r.json() == {"plugins": []}
+
+    payload = {"name": "demo", "version": "1.0", "checksum": "abc", "signature": "sig"}
+    r = client.post("/catalog/plugins", json=payload)
+    assert r.status_code == 401
+
+    r = client.post("/catalog/plugins", headers=AUTH_HEADERS, json=payload)
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok"
+
+    r2 = client.get("/catalog/plugins")
+    assert r2.status_code == 200
+    assert r2.json()["plugins"] == [payload]
