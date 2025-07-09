@@ -589,5 +589,5 @@ async def get_plugin_rating(name: str) -> dict[str, float]:
 
 @app.get("/metrics")
 async def metrics() -> dict[str, int]:
-    """Return encode and bundle usage metrics."""
+    """Return encode, bundle and simulation usage metrics."""
     return get_metrics()
