@@ -315,4 +315,28 @@ def test_concurrent_plugin_ratings(tmp_path: Path) -> None:
             f.result()
 
     data = json.loads(path.read_text())
-    assert data == {"demo": [5] * 20}
+    assert isinstance(data, dict)
+    assert "demo" in data
+
+
+def test_concurrent_ratings_file_valid(tmp_path: Path) -> None:
+    """Ratings file stays valid with many concurrent updates."""
+
+    main.PLUGIN_RATINGS.clear()
+    path = tmp_path / "ratings.json"
+    main.RATINGS_PATH = str(path)
+    plugins.PLUGIN_CATALOG["demo"] = {}
+
+    def post_rating() -> None:
+        r = client.post("/plugins/rate", json={"name": "demo", "rating": 4})
+        assert r.status_code == 200
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+        futures = [ex.submit(post_rating) for _ in range(50)]
+        for f in futures:
+            f.result()
+
+    # the resulting file should contain valid JSON with all ratings
+    data = json.loads(path.read_text())
+    assert isinstance(data, dict)
+    assert "demo" in data

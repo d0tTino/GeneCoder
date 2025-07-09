@@ -65,6 +65,7 @@ fastapi = ">=0.110"
 uvicorn = { version = "*", extras = ["standard"] }
 httpx = "<0.28"
 fastapi-limiter = "*"
+portalocker = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

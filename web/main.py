@@ -1,7 +1,7 @@
 import os
 import json
 import hashlib
-import fcntl
+import portalocker
 import secrets
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.responses import HTMLResponse
@@ -79,14 +79,12 @@ def _save_plugin_ratings() -> None:
     path = Path(RATINGS_PATH)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = json.dumps(PLUGIN_RATINGS)
-    with path.open("w", encoding="utf-8") as fh:
-        fcntl.flock(fh, fcntl.LOCK_EX)
-        try:
-            fh.write(data)
-            fh.flush()
-            os.fsync(fh.fileno())
-        finally:
-            fcntl.flock(fh, fcntl.LOCK_UN)
+    with portalocker.Lock(path, "a+", timeout=10, encoding="utf-8") as fh:
+        fh.seek(0)
+        fh.truncate(0)
+        fh.write(data)
+        fh.flush()
+        os.fsync(fh.fileno())
 
 
 def verify_token(
