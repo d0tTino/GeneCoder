@@ -13,7 +13,7 @@ _LAZY_ATTRS = {
     "compute_checksum",
 }
 
-from .plugins import (
+from .plugin_manager import (
     CODEC_REGISTRY,
     FEC_REGISTRY,
     load_plugins,

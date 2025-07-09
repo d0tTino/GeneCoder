@@ -16,7 +16,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from genecoder.cli import bundle as bundle_cli
-from genecoder.plugins import load_plugins
+from genecoder.plugin_manager import load_plugins
 
 API_TOKEN: str | None = os.getenv("GENECODER_API_TOKEN")
 security = HTTPBearer(auto_error=False)

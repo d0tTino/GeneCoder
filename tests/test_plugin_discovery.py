@@ -1,4 +1,4 @@
-import genecoder.plugins as plugins
+import genecoder.plugin_manager as plugins
 import plugins as builtin_plugins
 
 

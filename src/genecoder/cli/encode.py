@@ -21,7 +21,7 @@ from genecoder.encoders import (
 )
 from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import encode_data_with_hamming
-from genecoder.plugins import FEC_REGISTRY
+from genecoder.plugin_manager import FEC_REGISTRY
 from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T

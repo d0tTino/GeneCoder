@@ -38,7 +38,7 @@ def test_cli_catalog_list_and_install(monkeypatch: pytest.MonkeyPatch, tmp_path:
         f"""
 import sys
 from pathlib import Path
-import genecoder.plugins as plugins
+import genecoder.plugin_manager as plugins
 import genecoder.cli.plugin as plugin_cli
 
 pkg = {pkg!r}

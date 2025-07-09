@@ -12,7 +12,7 @@ fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 import web.main as main
-import genecoder.plugins as plugins
+import genecoder.plugin_manager as plugins
 from genecoder.cli import plugin as plugin_cli
 
 main.API_TOKEN = "test-token"

@@ -3,7 +3,7 @@ import logging
 import sys
 
 from genecoder import __version__
-from genecoder.plugins import load_plugins
+from genecoder.plugin_manager import load_plugins
 # simulators are imported lazily by subcommands that need them
 
 from typing import Any

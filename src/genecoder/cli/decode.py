@@ -12,7 +12,7 @@ from pathlib import Path
 from genecoder.encoders import decode_base4_direct, decode_gc_balanced, decode_triple_repeat
 from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import decode_data_with_hamming
-from genecoder.plugins import FEC_REGISTRY
+from genecoder.plugin_manager import FEC_REGISTRY
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.formats import from_fasta
 from genecoder.utils import get_alphabet_maps
