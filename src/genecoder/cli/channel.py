@@ -44,6 +44,8 @@ def _apply_simulators(
     parallel: bool = False,
     threads: int | None = None,
     processes: int | None = None,
+    mpi: bool = False,
+    mpi_workers: int | None = None,
 ) -> str:
     channels: list[BaseChannel] = []
     for name in simulators:
@@ -52,12 +54,13 @@ def _apply_simulators(
             raise SystemExit(1)
         channels.append(SIMULATOR_REGISTRY[name])
     pipeline = ChannelPipeline(channels)
-    workers = processes or threads
+    workers = mpi_workers or processes or threads
     result: str = pipeline.simulate(
         sequence,
-        parallel=parallel,
+        parallel=parallel or mpi,
         workers=workers,
         use_process_pool=processes is not None,
+        use_mpi=mpi,
     )
     for name in simulators:
         logger.info("Applied %s simulator", name)
@@ -77,6 +80,8 @@ def process_channel(
     parallel: bool = False,
     threads: int | None = None,
     processes: int | None = None,
+    mpi: bool = False,
+    mpi_workers: int | None = None,
 ) -> None:
     try:
         with open(input_file, "r", encoding="utf-8") as f:
@@ -99,6 +104,8 @@ def process_channel(
                 parallel=parallel,
                 threads=threads,
                 processes=processes,
+                mpi=mpi,
+                mpi_workers=mpi_workers,
             )
         else:
             rng = random.Random(seed)
@@ -164,6 +171,8 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     parser.add_argument("--parallel", action="store_true", help="Run channel steps in parallel")
     parser.add_argument("--threads", type=int, default=None, help="Number of worker threads")
     parser.add_argument("--processes", type=int, default=None, help="Use process pool with N workers")
+    parser.add_argument("--mpi", action="store_true", help="Use MPI for parallel execution")
+    parser.add_argument("--mpi-workers", type=int, default=None, help="Number of MPI workers")
     parser.set_defaults(func=_handle_command)
 
 
@@ -186,4 +195,6 @@ def _handle_command(args: argparse.Namespace) -> None:
         parallel=opts.parallel,
         threads=opts.threads,
         processes=opts.processes,
+        mpi=opts.mpi,
+        mpi_workers=opts.mpi_workers,
     )

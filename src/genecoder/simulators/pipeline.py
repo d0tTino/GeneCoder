@@ -27,8 +27,12 @@ class ChannelPipeline(BaseChannel):
         parallel: bool = False,
         workers: int | None = None,
         use_process_pool: bool = False,
+        use_mpi: bool = False,
     ) -> str:
         """Return ``sequence`` processed by each channel."""
+
+        if use_mpi:
+            parallel = True
 
         if not parallel or len(self.channels) <= 1:
             for channel in self.channels:
@@ -39,11 +43,18 @@ class ChannelPipeline(BaseChannel):
         if workers is None:
             workers = min(len(self.channels), os.cpu_count() or 1)
 
-        executor_cls = (
-            concurrent.futures.ProcessPoolExecutor
-            if use_process_pool
-            else concurrent.futures.ThreadPoolExecutor
-        )
+        if use_mpi:
+            try:
+                from mpi4py.futures import MPIPoolExecutor
+            except Exception as exc:  # pragma: no cover - optional dependency
+                raise RuntimeError("mpi4py is required for MPI execution") from exc
+            executor_cls = MPIPoolExecutor
+        else:
+            executor_cls = (
+                concurrent.futures.ProcessPoolExecutor
+                if use_process_pool
+                else concurrent.futures.ThreadPoolExecutor
+            )
 
         current = sequence
         with executor_cls(max_workers=workers) as executor:
