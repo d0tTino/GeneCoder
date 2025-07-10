@@ -67,3 +67,7 @@ data = b"hello world"
 encoded, info = encode_data_deepdna(data)
 decoded, _ = decode_data_deepdna(encoded, info)
 ```
+
+## Sequence Design Interface
+
+Browse to `/design` on the running server to access a small tool for validating and fixing short DNA sequences. Enter a sequence and click **Validate** to call `/design/validate`; the response shows whether the sequence is within the GC and homopolymer limits. Press **Fix** to invoke `/design/fix`, which returns an adjusted sequence that satisfies the constraints. The updated sequence and metrics are displayed underneath the buttons.
