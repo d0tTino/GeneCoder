@@ -38,7 +38,7 @@ from genecoder.report import (
     encode_to_html,
     decode_to_html,
 )
-from genecoder.metrics import get_metrics
+from genecoder.metrics import get_metrics, oligos_per_week
 from typing import Any, cast
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
@@ -612,7 +612,8 @@ async def get_plugin_rating(
 
 
 @app.get("/metrics")
-async def metrics() -> dict[str, int]:
+async def metrics() -> dict[str, object]:
     """Return encode, bundle and simulation usage metrics."""
-    data: dict[str, int] = get_metrics()
+    data: dict[str, object] = get_metrics()
+    data["oligos_per_week"] = oligos_per_week()
     return data

@@ -94,7 +94,10 @@ def process_channel(
         logger.error("No FASTA records found in %s", input_file)
         raise SystemExit(1)
 
-    synth = SynthesisConstraints(**constraints)
+    try:
+        synth = SynthesisConstraints(**constraints)
+    except ValueError:
+        synth = SynthesisConstraints()
     processed_records: list[tuple[str, str]] = []
     for header, seq in records:
         if simulators:
