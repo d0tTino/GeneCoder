@@ -96,6 +96,12 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
     _validate_simulator_prob_args(
         simulators, args.sub_prob, args.ins_prob, args.del_prob
     )
+    if args.min_length <= 0:
+        raise ValueError("min_length must be greater than 0")
+    if args.max_length <= 0:
+        raise ValueError("max_length must be greater than 0")
+    if args.min_length > args.max_length:
+        raise ValueError("min_length cannot be greater than max_length")
     if args.threads is not None and args.processes is not None:
         raise ValueError("Cannot specify both --threads and --processes")
     if args.mpi and (args.threads is not None or args.processes is not None):
