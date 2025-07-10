@@ -30,7 +30,7 @@ def verify_token(
         raise HTTPException(status_code=401, detail="Invalid or missing token")
 
 
-@app.on_event("startup")
+@app.on_event("startup")  # type: ignore[misc]
 def _startup() -> None:
     global API_TOKEN
     load_plugins()
@@ -39,7 +39,7 @@ def _startup() -> None:
         print(f"Generated API token: {API_TOKEN}")
 
 
-@app.post("/jobs")
+@app.post("/jobs")  # type: ignore[misc]
 def submit_job(payload: dict[str, Any], _token: None = Depends(verify_token)) -> dict[str, str]:
     if payload.get("type") != "bundle":
         raise HTTPException(status_code=400, detail="Unsupported job type")

@@ -22,6 +22,8 @@ class ChannelOptions:
     parallel: bool = False
     threads: int | None = None
     processes: int | None = None
+    mpi: bool = False
+    mpi_workers: int | None = None
 
 
 def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
@@ -82,6 +84,10 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         raise ValueError("At least one simulator or probability option must be specified")
     if args.threads is not None and args.processes is not None:
         raise ValueError("Cannot specify both --threads and --processes")
+    if args.mpi and (args.threads is not None or args.processes is not None):
+        raise ValueError("Cannot combine MPI with threads or processes")
+    if args.mpi_workers is not None and not args.mpi:
+        raise ValueError("--mpi-workers requires --mpi")
 
     return ChannelOptions(
         simulators=simulators,
@@ -93,4 +99,6 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         parallel=args.parallel,
         threads=args.threads,
         processes=args.processes,
+        mpi=args.mpi,
+        mpi_workers=args.mpi_workers,
     )
