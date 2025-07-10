@@ -15,6 +15,7 @@ pytest.importorskip("fastapi_limiter")
 
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
+import asyncio
 
 import web.main as main
 from web import plugin_catalog
@@ -24,6 +25,15 @@ from genecoder.cli import plugin as plugin_cli
 main.API_TOKEN = "test-token"
 client = TestClient(main.app)
 AUTH_HEADERS = {"Authorization": f"Bearer {main.API_TOKEN}"}
+
+
+def _request(method: str, url: str, **kwargs: object) -> httpx.Response:
+    async def _call() -> httpx.Response:
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+            return await ac.request(method, url, **kwargs)
+
+    return asyncio.run(_call())
 
 
 class DummyResponse:
@@ -169,10 +179,10 @@ def test_install_signature_success(tmp_path: Path) -> None:
 
 def test_rate_plugin() -> None:
     main.PLUGIN_RATINGS.clear()
-    r = client.post('/plugins/rate', headers=AUTH_HEADERS, json={'name': 'demo', 'rating': 4})
+    r = _request('POST', '/plugins/rate', headers=AUTH_HEADERS, json={'name': 'demo', 'rating': 4})
     assert r.status_code == 200
     assert r.json()['average'] == 4
-    r = client.post('/plugins/rate', headers=AUTH_HEADERS, json={'name': 'demo', 'rating': 2})
+    r = _request('POST', '/plugins/rate', headers=AUTH_HEADERS, json={'name': 'demo', 'rating': 2})
     assert r.status_code == 200
     assert r.json()['average'] == 3
 
@@ -180,10 +190,10 @@ def test_rate_plugin() -> None:
 def test_get_plugin_rating() -> None:
     main.PLUGIN_RATINGS.clear()
     main.PLUGIN_RATINGS['demo'] = [3, 5]
-    r = client.get('/plugins/rate', headers=AUTH_HEADERS, params={'name': 'demo'})
+    r = _request('GET', '/plugins/rate', headers=AUTH_HEADERS, params={'name': 'demo'})
     assert r.status_code == 200
     assert r.json()['average'] == 4
-    r = client.get('/plugins/rate', headers=AUTH_HEADERS, params={'name': 'missing'})
+    r = _request('GET', '/plugins/rate', headers=AUTH_HEADERS, params={'name': 'missing'})
     assert r.status_code == 404
 
 
@@ -276,9 +286,9 @@ def test_install_invalid_signature(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
 def test_rate_plugin_invalid() -> None:
     """Ratings outside 1-5 are rejected."""
 
-    r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 0})
+    r = _request("POST", "/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 0})
     assert r.status_code == 400
-    r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 6})
+    r = _request("POST", "/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 6})
     assert r.status_code == 400
 
 
@@ -289,13 +299,13 @@ def test_rate_plugin_persistence(tmp_path: Path) -> None:
     path = tmp_path / "ratings.json"
     main.RATINGS_PATH = str(path)
     plugins.PLUGIN_CATALOG["demo"] = {}
-    r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 5})
+    r = _request("POST", "/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 5})
     assert r.status_code == 200
     assert r.json()["average"] == 5
     data = json.loads(path.read_text())
     assert data == {"demo": [5]}
     assert plugins.PLUGIN_CATALOG["demo"]["stars"] == 5
-    r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 3})
+    r = _request("POST", "/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 3})
     assert r.status_code == 200
     assert r.json()["average"] == 4
     data = json.loads(path.read_text())
@@ -312,7 +322,7 @@ def test_concurrent_plugin_ratings(tmp_path: Path) -> None:
     plugins.PLUGIN_CATALOG["demo"] = {}
 
     def post_rating() -> None:
-        r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 5})
+        r = _request("POST", "/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 5})
         assert r.status_code == 200
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
@@ -334,7 +344,7 @@ def test_concurrent_ratings_file_valid(tmp_path: Path) -> None:
     plugins.PLUGIN_CATALOG["demo"] = {}
 
     def post_rating() -> None:
-        r = client.post("/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 4})
+        r = _request("POST", "/plugins/rate", headers=AUTH_HEADERS, json={"name": "demo", "rating": 4})
         assert r.status_code == 200
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
