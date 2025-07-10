@@ -113,13 +113,12 @@ def _install_registry_plugins(url: str) -> None:
             checksum = str(entry.get("checksum", ""))
             sig_b64 = entry.get("signature")
             if not isinstance(sig_b64, str):
-                logger.warning("Missing signature for plugin entry %s", entry)
-                continue
+                raise ValueError(f"Missing signature for plugin entry {entry}")
             try:
                 signature = base64.b64decode(sig_b64)
-            except Exception:
-                logger.warning("Invalid signature for plugin entry %s", entry)
-                continue
+            except Exception as exc:
+                raise ValueError(
+                    f"Invalid signature for plugin entry {entry}") from exc
         else:
             logger.warning("Missing checksum for plugin entry %s", entry)
             continue
@@ -143,13 +142,15 @@ def _install_registry_plugins(url: str) -> None:
         digest = compute_checksum(pkg_bytes)
         if signature is not None:
             if pubkey is None:
-                logger.warning("No public key configured for signed plugin %s", spec)
+                logger.warning(
+                    "No public key configured for signed plugin %s", spec
+                )
                 continue
             try:
                 verify_signature(pkg_bytes, signature, pubkey)
             except Exception as exc:
-                logger.warning("Invalid signature for plugin %s: %s", spec, exc)
-                continue
+                raise ValueError(
+                    f"Invalid signature for plugin {spec}: {exc}") from exc
 
         if digest != checksum:
             logger.warning("Checksum mismatch for plugin %s", spec)

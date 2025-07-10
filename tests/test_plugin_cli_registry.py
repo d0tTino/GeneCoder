@@ -149,7 +149,7 @@ def test_cli_registry_signature_failure(
     monkeypatch.setattr(plugins, "verify_signature", lambda d, s, k: (_ for _ in ()).throw(ValueError("bad sig")))
     monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.ERROR), pytest.raises(SystemExit):
         plugin_cli._handle_install_registry(
             argparse.Namespace(url="https://example.com/plugins.yaml")
         )
