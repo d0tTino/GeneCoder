@@ -37,3 +37,16 @@ docker run -p 8000:8000 -e GENECODER_API_TOKEN=TOKEN ghcr.io/d0ttino/genecoder \
 ```
 
 Replace `TOKEN` with a secret value and use the same token when submitting jobs.
+
+## Fetching Error Profiles
+
+GeneCoder can download example anonymized error profiles for use with simulators.
+Use the CLI to fetch a profile and store it in the local cache:
+
+```bash
+genecoder data fetch illumina_profile.json --url https://example.com/profiles
+```
+
+Profiles are saved under `~/.genecoder/data` by default. The location can be
+customized with the `--cache-dir` option or the `GENECODER_DATA_DIR`
+environment variable.
