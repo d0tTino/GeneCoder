@@ -9,7 +9,6 @@ import tempfile
 import urllib.request
 from urllib.parse import urlparse
 import importlib
-import hashlib
 import base64
 from pathlib import Path
 
@@ -55,17 +54,24 @@ def register_simulator(name: str, channel: BaseChannel) -> None:
 
 
 def _verify_catalog_signature(data: bytes, signature: str) -> bool:
-    """Return True if ``data`` matches ``signature``.
+    """Return ``True`` if ``signature`` verifies ``data`` using a public key."""
 
-    The default implementation uses a SHA256 hex digest. This is a minimal
-    check intended mainly for testing and does not provide real security.
-    """
+    key_path = os.getenv("GENECODER_CATALOG_PUBLIC_KEY")
+    if not key_path:
+        return False
 
     try:
-        digest = hashlib.sha256(data).hexdigest()
+        sig_bytes = base64.b64decode(signature)
+        pubkey = Path(key_path).read_bytes()
     except Exception:
         return False
-    return digest == signature
+
+    try:
+        compute_checksum(data, signature=sig_bytes, public_key=pubkey)
+    except Exception:
+        return False
+
+    return True
 
 
 def _install_registry_plugins(url: str) -> None:

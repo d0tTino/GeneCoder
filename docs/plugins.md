@@ -167,6 +167,12 @@ plugins:
     stars: 4.5
 ```
 
+If the catalog is signed the file should also include a top-level
+``signature`` field with the base64 encoded signature. Set
+``GENECODER_CATALOG_PUBLIC_KEY`` to the path of the PEM encoded public key used
+to verify the catalog. GeneCoder ignores catalogs whose signatures fail to
+verify.
+
 The URL may use HTTP(S) or point to a local file via ``file://``.
 
 JSON uses the same keys:
