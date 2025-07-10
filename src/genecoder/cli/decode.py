@@ -19,6 +19,12 @@ from genecoder.utils import get_alphabet_maps
 from ..options import DecodingOptions
 from .common import run_tasks
 from .options import build_decoding_options
+from .shared import (
+    add_io_args,
+    add_stream_args,
+    validate_chunk_size,
+    validate_output_paths,
+)
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from typing import Callable, Tuple, cast
 
@@ -291,23 +297,7 @@ def process_single_decode(
 
 def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = subparsers.add_parser("decode", help="Decode DNA sequences back to data.")
-    parser.add_argument(
-        "--input-files",
-        type=str,
-        nargs="+",
-        required=True,
-        help="Path(s) to the input DNA file(s) to decode (FASTA format expected).",
-    )
-    parser.add_argument(
-        "--output-file",
-        type=str,
-        help="Path to save the decoded data (for single input file).",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        help="Directory to save decoded files (for multiple inputs, or single if --output-file is not set).",
-    )
+    add_io_args(parser, command="decode")
     parser.add_argument(
         "--method",
         type=str,
@@ -358,22 +348,7 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         action="store_true",
         help="Validate checksum stored in the FASTA header.",
     )
-    parser.add_argument(
-        "--stream",
-        action="store_true",
-        help="Stream decode large files (base4_direct only).",
-    )
-    parser.add_argument(
-        "--chunk-size",
-        type=int,
-        default=1_000_000,
-        help="Chunk size in bytes for streaming (default: 1000000).",
-    )
-    parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="Resume a previous interrupted streaming decode.",
-    )
+    add_stream_args(parser)
     parser.add_argument(
         "--file-type",
         type=str,
@@ -412,9 +387,7 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
 
 
 def _handle_command(args: argparse.Namespace) -> None:
-    if args.chunk_size <= 0:
-        logger.error("Error: --chunk-size must be a positive integer.")
-        raise SystemExit(1)
+    validate_chunk_size(args)
     if getattr(args, "d2sim_options", None):
         os.environ["GENECODER_D2SIM_OPTIONS"] = args.d2sim_options
     if getattr(args, "dnarsim_options", None):
@@ -422,27 +395,12 @@ def _handle_command(args: argparse.Namespace) -> None:
     if getattr(args, "squigulator_options", None):
         os.environ["GENECODER_SQUIGULATOR_OPTIONS"] = args.squigulator_options
 
+    validate_output_paths(
+        args,
+        command="decoding",
+        header_getter=_get_header_filename,
+    )
     num_input_files = len(args.input_files)
-    if num_input_files > 1 and not args.output_dir and not getattr(args, "file_type", None):
-        logger.error(
-            "Error: --output-dir is required when providing multiple input files for decoding unless --file-type is used."
-        )
-        raise SystemExit(1)
-    if (
-        num_input_files == 1
-        and not args.output_file
-        and not args.output_dir
-        and not getattr(args, "file_type", None)
-        and _get_header_filename(args.input_files[0]) is None
-    ):
-        logger.error(
-            "Error: For single input file, either --output-file or --output-dir must be specified for decoding unless the file type can be inferred."
-        )
-        raise SystemExit(1)
-    if args.output_file and args.output_dir and num_input_files == 1:
-        logger.warning(
-            "Warning: Both --output-file and --output-dir provided for single input decode. Using --output-file."
-        )
 
     tasks = []
 

@@ -35,7 +35,7 @@ def _sim_args(input_file: Path, output_file: Path) -> argparse.Namespace:
         input_file=str(input_file),
         output_file=str(output_file),
         simulators=[],
-        constraints={"min_length": 0, "max_length": 1000, "max_homopolymer": 4},
+        constraints={"min_length": 1, "max_length": 1000, "max_homopolymer": 4},
         sub_prob=0.1,
         ins_prob=0.0,
         del_prob=0.0,

@@ -18,6 +18,7 @@ from genecoder.synthesis import SynthesisConstraints, validate_sequence
 from genecoder.error_simulation import introduce_errors
 from genecoder.metrics import metrics
 from .options import ChannelOptions, build_channel_options
+from .shared import add_single_io_args
 
 logger = logging.getLogger(__name__)
 
@@ -151,8 +152,7 @@ def process_channel(
 
 def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = subparsers.add_parser("channel", help="Combine simulators and synthesis constraints")
-    parser.add_argument("--input-file", required=True, type=str, help="Path to input FASTA")
-    parser.add_argument("--output-file", required=True, type=str, help="Path to output FASTA")
+    add_single_io_args(parser, input_help="Path to input FASTA", output_help="Path to output FASTA")
     parser.add_argument(
         "--simulator",
         dest="simulators",
