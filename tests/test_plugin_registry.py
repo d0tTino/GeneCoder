@@ -366,3 +366,26 @@ def test_registry_install_via_httpx_checksum_mismatch(
 
     assert not installs
     assert "Checksum mismatch for plugin https://example.com/pkg.whl" in caplog.text
+
+
+def test_catalog_signature_validation(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Catalog signatures are verified using the configured public key."""
+
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
+
+    sig_b64 = base64.b64encode(b"sig").decode()
+    calls: list[tuple[bytes, bytes, bytes]] = []
+
+    def fake_compute(
+        data: bytes, *, signature: bytes | None = None, public_key: bytes | None = None
+    ) -> str:
+        assert signature is not None and public_key is not None
+        calls.append((data, signature, public_key))
+        return compute_checksum(data)
+
+    monkeypatch.setenv("GENECODER_CATALOG_PUBLIC_KEY", str(key))
+    monkeypatch.setattr(plugins, "compute_checksum", fake_compute)
+
+    assert plugins._verify_catalog_signature(b"DATA", sig_b64)
+    assert calls == [(b"DATA", b"sig", b"PUB")]
