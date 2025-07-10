@@ -7,6 +7,7 @@ from tests.test_cli import run_cli_command
 
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
+from genecoder.metrics import Metrics
 
 
 def test_encode_increments_metrics(tmp_path: Path, monkeypatch) -> None:
@@ -32,6 +33,7 @@ def test_stats_cli(tmp_path: Path, monkeypatch) -> None:
     assert "encode_runs: 2" in out
     assert "bundle_runs: 1" in out
     assert "oligos_simulated: 3" in out
+    assert "oligos_per_week: {}" in out
 
 
 def test_metrics_endpoint(tmp_path: Path, monkeypatch) -> None:
@@ -49,6 +51,7 @@ def test_metrics_endpoint(tmp_path: Path, monkeypatch) -> None:
     assert r.status_code == 200
     assert r.json()["bundle_runs"] == 5
     assert r.json()["oligos_simulated"] == 2
+    assert r.json()["oligos_per_week"] == {}
 
 
 def test_pipeline_increments_metric(tmp_path: Path, monkeypatch) -> None:
@@ -61,6 +64,7 @@ def test_pipeline_increments_metric(tmp_path: Path, monkeypatch) -> None:
     pipeline.simulate("ACGT")
     data = json.loads(metrics_path.read_text())
     assert data["oligos_simulated"] == 1
+    assert len(data.get("oligos_simulated_ts", [])) == 1
 
 
 def test_channel_cli_increments_metric(tmp_path: Path, monkeypatch) -> None:
@@ -91,3 +95,21 @@ def test_channel_cli_increments_metric(tmp_path: Path, monkeypatch) -> None:
     assert res.returncode == 0, res.stderr
     data = json.loads(metrics_path.read_text())
     assert data["oligos_simulated"] == 2
+    assert len(data.get("oligos_simulated_ts", [])) == 2
+
+
+def test_oligos_per_week(tmp_path: Path) -> None:
+    metrics_path = tmp_path / "h.json"
+    data = {
+        "oligos_simulated": 3,
+        "oligos_simulated_ts": [
+            "2024-01-02T12:00:00+00:00",
+            "2024-01-03T12:00:00+00:00",
+            "2024-01-09T12:00:00+00:00",
+        ],
+    }
+    metrics_path.write_text(json.dumps(data))
+    m = Metrics(metrics_path)
+    counts = m.oligos_per_week()
+    assert counts["2024-W01"] == 2
+    assert counts["2024-W02"] == 1

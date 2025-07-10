@@ -5,8 +5,11 @@ GeneCoder records basic usage statistics in a `metrics.json` file located in `~/
 - `encode_runs` – times the `encode` command has been executed.
 - `bundle_runs` – number of `bundle run` workflows executed.
 - `oligos_simulated` – total sequences processed by channel simulations.
+- `oligos_simulated_ts` – timestamps of each simulated sequence used for weekly
+  aggregation.
 
 Display these values with `genecoder stats` or via the `/metrics` web API endpoint. Set the `GENECODER_METRICS_PATH` environment variable to use a custom file location.
+Weekly totals can be obtained using the `oligos_per_week` helper.
 
 ## Migration notes
 

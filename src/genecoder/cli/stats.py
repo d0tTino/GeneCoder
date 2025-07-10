@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from genecoder.metrics import get_metrics
+from genecoder.metrics import get_metrics, oligos_per_week
 
 
 def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -14,3 +14,5 @@ def _handle_command(_: argparse.Namespace) -> None:
     metrics = get_metrics()
     for k, v in metrics.items():
         print(f"{k}: {v}")
+    weeks = oligos_per_week()
+    print(f"oligos_per_week: {weeks}")
