@@ -3,10 +3,12 @@ from pathlib import Path
 
 import pytest
 
+from typing import Any
+
 from src.genecoder.cli.options import build_channel_options
 
 
-def _make_args(**kwargs) -> argparse.Namespace:
+def _make_args(**kwargs: Any) -> argparse.Namespace:
     defaults = dict(
         simulators=[],
         sub_prob=0.0,
@@ -57,4 +59,43 @@ def test_config_and_probabilities_error(tmp_path: Path) -> None:
     args = _make_args(config=str(cfg), sub_prob=0.1)
     with pytest.raises(ValueError, match="Probability options cannot"):
         build_channel_options(args)
+
+
+def test_threads_and_processes_conflict() -> None:
+    args = _make_args(simulators=["simple"], threads=2, processes=2)
+    with pytest.raises(ValueError, match="Cannot specify both --threads and --processes"):
+        build_channel_options(args)
+
+
+def test_mpi_and_threads_conflict() -> None:
+    args = _make_args(simulators=["simple"], mpi=True, threads=4)
+    with pytest.raises(ValueError, match="Cannot combine MPI with threads or processes"):
+        build_channel_options(args)
+
+
+def test_mpi_and_processes_conflict() -> None:
+    args = _make_args(simulators=["simple"], mpi=True, processes=3)
+    with pytest.raises(ValueError, match="Cannot combine MPI with threads or processes"):
+        build_channel_options(args)
+
+
+def test_mpi_workers_requires_mpi() -> None:
+    args = _make_args(simulators=["simple"], mpi_workers=4)
+    with pytest.raises(ValueError, match="--mpi-workers requires --mpi"):
+        build_channel_options(args)
+
+
+def test_config_missing_simulators_error(tmp_path: Path) -> None:
+    cfg = tmp_path / "cfg.yml"
+    cfg.write_text("constraints:\n  max_length: 200\n")
+    args = _make_args(config=str(cfg))
+    with pytest.raises(ValueError, match="At least one simulator"):
+        build_channel_options(args)
+
+
+def test_mpi_options_ok() -> None:
+    args = _make_args(simulators=["simple"], mpi=True, mpi_workers=2)
+    opts = build_channel_options(args)
+    assert opts.mpi is True
+    assert opts.mpi_workers == 2
 
