@@ -56,6 +56,10 @@ def submit_job(payload: dict[str, Any], _token: None = Depends(verify_token)) ->
 
     with tempfile.TemporaryDirectory() as tmpdir:
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            for name in zf.namelist():
+                path = Path(name)
+                if path.is_absolute() or ".." in path.parts:
+                    raise HTTPException(status_code=400, detail="Invalid archive path")
             zf.extractall(tmpdir)
         tmp_path = Path(tmpdir)
         yaml_files = [p for p in tmp_path.iterdir() if p.suffix in {".yaml", ".yml"}]
