@@ -379,3 +379,23 @@ def test_plugin_catalog_crud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     r2 = client.get("/catalog/plugins")
     assert r2.status_code == 200
     assert r2.json()["plugins"] == [payload]
+
+
+def test_challenge_crud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(plugin_catalog, "CHALLENGE_PATH", str(tmp_path / "challenge.json"), raising=False)
+    plugin_catalog.CHALLENGE.clear()
+
+    r = client.get("/catalog/challenge")
+    assert r.status_code == 200
+    assert r.json() == {"entries": {}}
+
+    payload = {"name": "team", "points": 10}
+    r = client.post("/catalog/challenge", json=payload)
+    assert r.status_code == 401
+
+    r = client.post("/catalog/challenge", headers=AUTH_HEADERS, json=payload)
+    assert r.status_code == 200
+
+    r2 = client.get("/catalog/challenge")
+    assert r2.status_code == 200
+    assert r2.json()["entries"] == {"team": 10}

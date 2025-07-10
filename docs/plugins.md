@@ -272,6 +272,22 @@ curl -X POST -H "Authorization: Bearer <TOKEN>" \
 
 List registered entries via ``GET /catalog/plugins``.
 
+## Plugin Challenge Rankings
+
+Set ``GENECODER_CHALLENGE_PATH`` to a JSON file to persist challenge scores. Add
+points by sending a POST request with a participant name and the number of
+points earned:
+
+```bash
+curl -X POST -H "Authorization: Bearer <TOKEN>" \
+     -H "Content-Type: application/json" \
+     -d '{"name": "team1", "points": 5}' \
+     http://localhost:8000/catalog/challenge
+```
+
+Retrieve the current rankings via ``GET /catalog/challenge``. The ``/rankings``
+web page displays this data in a simple leaderboard.
+
 ## Submitting to the Marketplace
 
 Signed plugin packages can be shared publicly by submitting them to the GeneCoder marketplace. After building a wheel and generating the detached signature, visit the marketplace dashboard and upload both files. The system verifies the signature and runs automated checks before listing the plugin in the public catalog.
