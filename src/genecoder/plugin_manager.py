@@ -25,7 +25,7 @@ import logging
 import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
-from .security import compute_checksum
+from .plugin_security import compute_checksum, verify_signature
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ def _verify_catalog_signature(data: bytes, signature: str) -> bool:
         return False
 
     try:
-        compute_checksum(data, signature=sig_bytes, public_key=pubkey)
+        verify_signature(data, sig_bytes, pubkey)
     except Exception:
         return False
 
@@ -140,17 +140,16 @@ def _install_registry_plugins(url: str) -> None:
             logger.warning("Failed to download plugin %s: %s", spec, exc)
             continue
 
+        digest = compute_checksum(pkg_bytes)
         if signature is not None:
             if pubkey is None:
                 logger.warning("No public key configured for signed plugin %s", spec)
                 continue
             try:
-                digest = compute_checksum(pkg_bytes, signature=signature, public_key=pubkey)
+                verify_signature(pkg_bytes, signature, pubkey)
             except Exception as exc:
                 logger.warning("Invalid signature for plugin %s: %s", spec, exc)
                 continue
-        else:
-            digest = compute_checksum(pkg_bytes)
 
         if digest != checksum:
             logger.warning("Checksum mismatch for plugin %s", spec)

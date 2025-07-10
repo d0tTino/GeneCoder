@@ -7,7 +7,7 @@ import pytest
 httpx = pytest.importorskip("httpx")
 
 import genecoder.plugin_manager as plugins
-from genecoder.security import compute_checksum
+from genecoder.plugin_security import compute_checksum
 import base64
 from pathlib import Path
 
