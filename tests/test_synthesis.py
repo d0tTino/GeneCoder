@@ -2,6 +2,7 @@ from pathlib import Path
 
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
 from genecoder.formats import to_fasta
+import pytest
 
 
 import os
@@ -34,6 +35,21 @@ def test_validate_sequence_fail_length() -> None:
 def test_validate_sequence_fail_homopolymer() -> None:
     constraints = SynthesisConstraints(min_length=5, max_length=10, max_homopolymer=2)
     assert not validate_sequence("AAACCC", constraints)
+
+
+def test_constraints_invalid_min_length() -> None:
+    with pytest.raises(ValueError):
+        SynthesisConstraints(min_length=0, max_length=10)
+
+
+def test_constraints_invalid_max_length() -> None:
+    with pytest.raises(ValueError):
+        SynthesisConstraints(min_length=5, max_length=0)
+
+
+def test_constraints_min_gt_max() -> None:
+    with pytest.raises(ValueError):
+        SynthesisConstraints(min_length=10, max_length=5)
 
 
 def test_export_csv_and_analysis_warnings(tmp_path: Path) -> None:

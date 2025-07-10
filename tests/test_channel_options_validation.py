@@ -99,3 +99,21 @@ def test_mpi_options_ok() -> None:
     assert opts.mpi is True
     assert opts.mpi_workers == 2
 
+
+def test_min_length_invalid() -> None:
+    args = _make_args(simulators=["simple"], min_length=0)
+    with pytest.raises(ValueError, match="min_length"):
+        build_channel_options(args)
+
+
+def test_max_length_invalid() -> None:
+    args = _make_args(simulators=["simple"], max_length=0)
+    with pytest.raises(ValueError, match="max_length"):
+        build_channel_options(args)
+
+
+def test_min_length_greater_than_max() -> None:
+    args = _make_args(simulators=["simple"], min_length=10, max_length=5)
+    with pytest.raises(ValueError, match="min_length cannot be greater"):
+        build_channel_options(args)
+
