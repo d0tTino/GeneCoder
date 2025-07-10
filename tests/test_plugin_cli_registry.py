@@ -8,7 +8,7 @@ import pytest
 
 import genecoder.plugin_manager as plugins
 from genecoder.cli import plugin as plugin_cli
-from genecoder.security import compute_checksum
+from genecoder.plugin_security import compute_checksum
 
 
 class DummyResponse:
@@ -52,6 +52,7 @@ def test_cli_registry_install(monkeypatch: pytest.MonkeyPatch) -> None:
         "compute_checksum",
         lambda d, *, signature=None, public_key=None: compute_checksum(d),
     )
+    monkeypatch.setattr(plugins, "verify_signature", lambda d, s, k: None)
     monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
 
     plugin_cli._handle_install_registry(
@@ -98,6 +99,7 @@ def test_cli_registry_install_failure(
         "compute_checksum",
         lambda d, *, signature=None, public_key=None: compute_checksum(d),
     )
+    monkeypatch.setattr(plugins, "verify_signature", lambda d, s, k: None)
     monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
 
     with caplog.at_level(logging.WARNING):
@@ -144,6 +146,7 @@ def test_cli_registry_signature_failure(
         return compute_checksum(data)
 
     monkeypatch.setattr(plugins, "compute_checksum", fake_compute)
+    monkeypatch.setattr(plugins, "verify_signature", lambda d, s, k: (_ for _ in ()).throw(ValueError("bad sig")))
     monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
 
     with caplog.at_level(logging.WARNING):
@@ -182,6 +185,7 @@ def test_cli_registry_checksum_mismatch(monkeypatch: pytest.MonkeyPatch, caplog:
         "compute_checksum",
         lambda d, *, signature=None, public_key=None: compute_checksum(d),
     )
+    monkeypatch.setattr(plugins, "verify_signature", lambda d, s, k: None)
     monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
 
     with caplog.at_level(logging.WARNING):

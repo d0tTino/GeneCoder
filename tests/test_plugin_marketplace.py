@@ -8,7 +8,7 @@ import pytest
 
 import genecoder.plugin_manager as plugins
 from genecoder.cli import plugin as plugin_cli
-from genecoder.security import compute_checksum
+from genecoder.plugin_security import compute_checksum
 
 
 class DummyResponse:

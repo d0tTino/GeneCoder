@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import pytest
-from genecoder.security import compute_checksum
+from genecoder.plugin_security import compute_checksum
 
 from tests.test_cli import run_cli_command
 
