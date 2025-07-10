@@ -10,10 +10,10 @@ if TYPE_CHECKING:
     import deepdna
 else:  # pragma: no cover - optional dependency
     try:
-        import deepdna  # type: ignore
+        import deepdna
         _HAS_DEEPDNA = True
     except Exception:  # pragma: no cover - missing optional dependency
-        deepdna = None  # type: ignore
+        deepdna = None
         _HAS_DEEPDNA = False
 
 
