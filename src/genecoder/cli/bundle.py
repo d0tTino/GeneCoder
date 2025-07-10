@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import cli as cli_module
-from genecoder.metrics import increment as increment_metric
+from genecoder.metrics import metrics
 
 _ALLOWED_CACHE: dict[str, set[str]] | None = None
 
@@ -183,4 +183,4 @@ def _handle_run(args: argparse.Namespace) -> None:
     if args.export_archive:
         _create_archive(run_dir, Path(args.export_archive), config_hash)
 
-    increment_metric("bundle_runs")
+    metrics.increment("bundle_runs")
