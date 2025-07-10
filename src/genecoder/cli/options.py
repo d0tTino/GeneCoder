@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Dict, Sequence
 
 from genecoder.options import EncodingOptions, DecodingOptions
 
@@ -24,6 +24,22 @@ class ChannelOptions:
     processes: int | None = None
     mpi: bool = False
     mpi_workers: int | None = None
+
+
+def _validate_simulator_prob_args(
+    simulators: Sequence[str], sub_prob: float, ins_prob: float, del_prob: float
+) -> None:
+    """Ensure that simulator and probability arguments are valid."""
+
+    prob_specified = any([sub_prob, ins_prob, del_prob])
+    if simulators and prob_specified:
+        raise ValueError(
+            "Probability options cannot be combined with --simulator or --config"
+        )
+    if not simulators and not prob_specified:
+        raise ValueError(
+            "At least one simulator or probability option must be specified"
+        )
 
 
 def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
@@ -77,11 +93,9 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
             simulators = cfg_sim
         constraints.update(cfg_con)
 
-    prob_specified = any([args.sub_prob, args.ins_prob, args.del_prob])
-    if simulators and prob_specified:
-        raise ValueError("Probability options cannot be combined with --simulator or --config")
-    if not simulators and not prob_specified:
-        raise ValueError("At least one simulator or probability option must be specified")
+    _validate_simulator_prob_args(
+        simulators, args.sub_prob, args.ins_prob, args.del_prob
+    )
     if args.threads is not None and args.processes is not None:
         raise ValueError("Cannot specify both --threads and --processes")
     if args.mpi and (args.threads is not None or args.processes is not None):
