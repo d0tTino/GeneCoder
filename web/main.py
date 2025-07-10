@@ -73,19 +73,23 @@ def _load_plugin_ratings() -> None:
         }
 
 
-def _save_plugin_ratings() -> None:
+async def _save_plugin_ratings() -> None:
     """Persist plugin ratings to ``RATINGS_PATH`` if configured."""
     if not RATINGS_PATH:
         return
     path = Path(RATINGS_PATH)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = json.dumps(PLUGIN_RATINGS)
-    with portalocker.Lock(path, "a+", timeout=10, encoding="utf-8") as fh:
-        fh.seek(0)
-        fh.truncate(0)
-        fh.write(data)
-        fh.flush()
-        os.fsync(fh.fileno())
+
+    def _write() -> None:
+        with portalocker.Lock(path, "a+", timeout=10, encoding="utf-8") as fh:
+            fh.seek(0)
+            fh.truncate(0)
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+
+    await asyncio.to_thread(_write)
 
 
 def verify_token(
@@ -117,7 +121,7 @@ async def _startup() -> None:
 
 @app.on_event("shutdown")
 async def _shutdown() -> None:
-    _save_plugin_ratings()
+    await _save_plugin_ratings()
     if FastAPILimiter.redis:
         await FastAPILimiter.close()
 
@@ -511,12 +515,14 @@ async def upload_chunk(
     base_dir.mkdir(parents=True, exist_ok=True)
     chunk_bytes = base64.b64decode(req.data.encode("utf-8"), validate=True)
     chunk_path = base_dir / f"{req.offset}.chunk"
-    with open(chunk_path, "wb") as f:
-        f.write(chunk_bytes)
+    await asyncio.to_thread(chunk_path.write_bytes, chunk_bytes)
     manifest_path = base_dir / "upload.manifest"
     h = hashlib.sha256(chunk_bytes).hexdigest()
-    with open(manifest_path, "a", encoding="utf-8") as mf:
-        mf.write(json.dumps({"offset": req.offset, "hash": h}) + "\n")
+    async def _append() -> None:
+        with open(manifest_path, "a", encoding="utf-8") as mf:
+            mf.write(json.dumps({"offset": req.offset, "hash": h}) + "\n")
+
+    await asyncio.to_thread(_append)
     return {"status": "ok", "hash": h}
 
 
@@ -534,7 +540,7 @@ async def download_chunk(
     chunk_path = get_temp_dir() / "chunks" / file_id / f"{offset}.chunk"
     if not chunk_path.is_file():
         raise HTTPException(status_code=404, detail="Chunk not found")
-    data = chunk_path.read_bytes()
+    data = await asyncio.to_thread(chunk_path.read_bytes)
     return {"offset": str(offset), "data": base64.b64encode(data).decode("utf-8")}
 
 
@@ -578,7 +584,7 @@ async def rate_plugin(
     ratings.append(req.rating)
     avg = sum(ratings) / len(ratings)
     plugins.PLUGIN_CATALOG.setdefault(req.name, {}).update({"stars": avg})
-    _save_plugin_ratings()
+    await _save_plugin_ratings()
     return {"average": avg}
 
 

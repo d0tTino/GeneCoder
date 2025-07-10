@@ -1,17 +1,23 @@
 import base64
+import asyncio
 import hashlib
 import json
 import pytest
+httpx = pytest.importorskip("httpx")
 
 pytest.importorskip("fastapi_limiter")
 
 fastapi = pytest.importorskip("fastapi")
-pytest.importorskip("httpx")
-from fastapi.testclient import TestClient
 
 import web.main as main
 
-client = TestClient(main.app)
+def _request(method: str, url: str, **kwargs: object) -> httpx.Response:
+    async def _call() -> httpx.Response:
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+            return await ac.request(method, url, **kwargs)
+
+    return asyncio.run(_call())
 
 
 from pathlib import Path
@@ -27,7 +33,7 @@ def test_chunk_upload_and_download(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         "offset": 1,
         "data": base64.b64encode(data).decode(),
     }
-    r = client.post("/upload-chunk", json=payload)
+    r = _request("POST", "/upload-chunk", json=payload)
     assert r.status_code == 200
     expected_hash = hashlib.sha256(data).hexdigest()
     assert r.json()["hash"] == expected_hash
@@ -40,7 +46,7 @@ def test_chunk_upload_and_download(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     manifest = manifest_path.read_text().splitlines()
     assert manifest == [json.dumps({"offset": 1, "hash": expected_hash})]
 
-    r2 = client.get("/download-chunk", params={"file_id": "file1", "offset": 1})
+    r2 = _request("GET", "/download-chunk", params={"file_id": "file1", "offset": 1})
     assert r2.status_code == 200
     assert base64.b64decode(r2.json()["data"]) == data
 
@@ -60,10 +66,11 @@ def test_rate_limiter_requires_token(monkeypatch: pytest.MonkeyPatch, tmp_path: 
         "offset": 0,
         "data": base64.b64encode(b"data").decode(),
     }
-    r = client.post("/upload-chunk", json=payload)
+    r = _request("POST", "/upload-chunk", json=payload)
     assert r.status_code == 401
 
-    r2 = client.post(
+    r2 = _request(
+        "POST",
         "/upload-chunk",
         json=payload,
         headers={"Authorization": "Bearer t"},
@@ -76,14 +83,14 @@ def test_upload_chunk_missing_field(tmp_path, monkeypatch):
     monkeypatch.setenv("GENECODER_TMP", str(tmp_path))
     main.FastAPILimiter.redis = None
     payload = {"offset": 0, "data": base64.b64encode(b"d").decode()}
-    r = client.post("/upload-chunk", json=payload)
+    r = _request("POST", "/upload-chunk", json=payload)
     assert r.status_code == 422
 
 
 def test_download_chunk_not_found(monkeypatch, tmp_path):
     monkeypatch.setenv("GENECODER_TMP", str(tmp_path))
     main.FastAPILimiter.redis = None
-    r = client.get("/download-chunk", params={"file_id": "missing", "offset": 1})
+    r = _request("GET", "/download-chunk", params={"file_id": "missing", "offset": 1})
     assert r.status_code == 404
 
 
@@ -108,7 +115,7 @@ def test_invalid_file_ids_rejected_upload(monkeypatch: pytest.MonkeyPatch, tmp_p
         "offset": 0,
         "data": base64.b64encode(b"x").decode(),
     }
-    r = client.post("/upload-chunk", json=payload)
+    r = _request("POST", "/upload-chunk", json=payload)
     assert r.status_code == 400
 
 
@@ -128,5 +135,5 @@ def test_invalid_file_ids_rejected_upload(monkeypatch: pytest.MonkeyPatch, tmp_p
 def test_invalid_file_ids_rejected_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, bad_id: str) -> None:
     monkeypatch.setenv("GENECODER_TMP", str(tmp_path))
     main.FastAPILimiter.redis = None
-    r = client.get("/download-chunk", params={"file_id": bad_id, "offset": 0})
+    r = _request("GET", "/download-chunk", params={"file_id": bad_id, "offset": 0})
     assert r.status_code == 400
