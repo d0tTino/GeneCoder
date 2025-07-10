@@ -68,6 +68,80 @@ def test_cloud_client_submit_error() -> None:
         client.submit("bundle", {"a": 1})
 
 
+def test_cloud_client_invalid_token() -> None:
+    """Submitting with an invalid token raises an error."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers.get("Authorization") == "Bearer bad"
+        return httpx.Response(401)
+
+    transport = httpx.MockTransport(handler)
+    client = CloudClient(
+        "https://s",
+        token="bad",
+        client=httpx.Client(base_url="https://s", transport=transport),
+    )
+    with pytest.raises(RuntimeError, match="Failed to submit job"):
+        client.submit("bundle", {"a": 1})
+
+
+def test_async_cloud_client_invalid_token() -> None:
+    """Async client handles invalid tokens."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers.get("Authorization") == "Bearer bad"
+        return httpx.Response(401)
+
+    transport = httpx.MockTransport(handler)
+
+    async def _run() -> None:
+        client = AsyncCloudClient(
+            "https://s",
+            token="bad",
+            client=httpx.AsyncClient(base_url="https://s", transport=transport),
+        )
+        with pytest.raises(RuntimeError, match="Failed to submit job"):
+            await client.submit("bundle", {"a": 1})
+        await client.close()
+
+    asyncio.run(_run())
+
+
+def test_cloud_client_bad_payload() -> None:
+    """Invalid JSON responses raise ``ValueError``."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"foo": "bar"})
+
+    transport = httpx.MockTransport(handler)
+    client = CloudClient(
+        "https://s",
+        client=httpx.Client(base_url="https://s", transport=transport),
+    )
+    with pytest.raises(ValueError, match="Invalid response from server"):
+        client.submit("bundle", {"a": 1})
+
+
+def test_async_cloud_client_bad_payload() -> None:
+    """Async client errors on invalid JSON responses."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"foo": "bar"})
+
+    transport = httpx.MockTransport(handler)
+
+    async def _run() -> None:
+        client = AsyncCloudClient(
+            "https://s",
+            client=httpx.AsyncClient(base_url="https://s", transport=transport),
+        )
+        with pytest.raises(ValueError, match="Invalid response from server"):
+            await client.submit("bundle", {"a": 1})
+        await client.close()
+
+    asyncio.run(_run())
+
+
 def test_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     bundle = tmp_path / "b.yaml"
     bundle.write_text("encode:\n  input_files: []\n")
@@ -222,6 +296,22 @@ def test_worker_submit_requires_token(tmp_path: Path) -> None:
     bundle_file.write_text("encode:\n  input_files: []\n")
     archive_b64 = _build_archive(bundle_file)
     r = client.post("/jobs", json={"type": "bundle", "payload": {"archive": archive_b64}})
+    assert r.status_code == 401
+
+
+def test_worker_submit_invalid_token(tmp_path: Path) -> None:
+    """Job submissions with a bad token are rejected."""
+
+    worker.API_TOKEN = "tok"
+    client = TestClient(worker.app)
+    bundle_file = tmp_path / "b.yaml"
+    bundle_file.write_text("encode:\n  input_files: []\n")
+    archive_b64 = _build_archive(bundle_file)
+    r = client.post(
+        "/jobs",
+        headers={"Authorization": "Bearer bad"},
+        json={"type": "bundle", "payload": {"archive": archive_b64}},
+    )
     assert r.status_code == 401
 
 
