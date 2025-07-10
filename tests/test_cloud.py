@@ -1,4 +1,5 @@
 import argparse
+import base64
 import json
 import tempfile
 from pathlib import Path
@@ -100,6 +101,40 @@ def test_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     assert "archive" in cast(dict[str, object], calls["payload"])
     assert calls["base_url"] == "https://s"
     assert calls["token"] is None
+
+
+def test_cloud_submit_archive_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    archive = tmp_path / "b.tar.gz"
+    archive.write_bytes(b"data")
+
+    calls: dict[str, object] = {}
+
+    class DummyClient:
+        def __init__(self, base_url: str, token: str | None = None, client: object | None = None) -> None:
+            calls["base_url"] = base_url
+            calls["token"] = token
+
+        def submit(self, job_type: str, payload: dict[str, object]) -> str:
+            calls["job_type"] = job_type
+            calls["payload"] = payload
+            return "jid"
+
+        def close(self) -> None:
+            pass
+
+        def __enter__(self) -> "DummyClient":
+            return self
+
+        def __exit__(self, exc_type: BaseException | None, exc: BaseException | None, tb: object | None) -> None:
+            pass
+
+    monkeypatch.setattr("genecoder.cloud.CloudClient", DummyClient)
+    args = argparse.Namespace(bundle=None, archive=str(archive), server="https://s", token=None)
+    cloud_cli._handle_submit(args)
+    assert calls["job_type"] == "bundle"
+    assert calls["base_url"] == "https://s"
+    assert calls["token"] is None
+    assert base64.b64decode(calls["payload"]["archive"]) == archive.read_bytes()
 
 
 def test_async_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
