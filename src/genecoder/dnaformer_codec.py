@@ -10,10 +10,10 @@ if TYPE_CHECKING:
     import dnaformer
 else:  # pragma: no cover - optional dependency
     try:
-        import dnaformer  # type: ignore
+        import dnaformer
         _HAS_DNAFORMER = True
     except Exception:  # pragma: no cover - missing optional dependency
-        dnaformer = None  # type: ignore
+        dnaformer = None
         _HAS_DNAFORMER = False
 
 

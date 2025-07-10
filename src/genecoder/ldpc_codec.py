@@ -24,12 +24,12 @@ else:
             _HAS_PYLDPC = False
         import importlib.util
         if importlib.util.find_spec("numpy") is None:  # pragma: no cover
-            np = None  # type: ignore
+            np = None
         else:
-            import numpy as np  # type: ignore
+            import numpy as np
     except Exception:  # pragma: no cover - missing optional dependency
-        make_ldpc = decode = utils = None  # type: ignore
-        np = None  # type: ignore
+        make_ldpc = decode = utils = None
+        np = None
         _HAS_PYLDPC = False
 
 

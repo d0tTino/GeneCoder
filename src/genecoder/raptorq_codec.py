@@ -12,11 +12,11 @@ if TYPE_CHECKING:
 
 else:  # pragma: no cover - optional dependency
     try:
-        import raptorq  # type: ignore
+        import raptorq
         try:
-            from raptorq import raptorq as _rq  # type: ignore
+            from raptorq import raptorq as _rq
         except Exception:
-            _rq = raptorq  # type: ignore
+            _rq = raptorq
         if hasattr(_rq, "Encoder") and hasattr(_rq, "Decoder"):
             try:
                 enc = _rq.Encoder.with_defaults(b"t", 1)
@@ -33,8 +33,8 @@ else:  # pragma: no cover - optional dependency
         else:
             _HAS_RAPTORQ = False
     except Exception:  # pragma: no cover - missing optional dependency
-        raptorq = None  # type: ignore
-        _rq = None  # type: ignore
+        raptorq = None
+        _rq = None
         _HAS_RAPTORQ = False
 
 

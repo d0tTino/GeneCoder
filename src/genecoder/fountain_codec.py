@@ -13,7 +13,7 @@ else:
         from pyfinite import ffield
         _HAS_PYFINITE = True
     except Exception:  # pragma: no cover - missing optional dependency
-        ffield = None  # type: ignore
+        ffield = None
         _HAS_PYFINITE = False
 
 
