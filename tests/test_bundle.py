@@ -162,3 +162,41 @@ def test_bundle_export_archive_cached(tmp_path: Path) -> None:
 
     with tarfile.open(first_archive, "r:gz") as t1, tarfile.open(second_archive, "r:gz") as t2:
         assert sorted(t1.getnames()) == sorted(t2.getnames())
+
+
+def test_bundle_archive_metadata(tmp_path: Path) -> None:
+    inp = tmp_path / "meta.txt"
+    inp.write_text("meta")
+    cfg = {
+        "encode": {"input_files": [str(inp)], "method": "base4_direct"},
+        "decode": {"method": "base4_direct"},
+    }
+    cfg_path = tmp_path / "meta.yml"
+    cfg_path.write_text(yaml.safe_dump(cfg))
+    archive = tmp_path / "out.tar.gz"
+
+    res = run_cli_command(
+        [
+            "bundle",
+            "run",
+            str(cfg_path),
+            "--cache-dir",
+            str(tmp_path / "runs"),
+            "--export-archive",
+            str(archive),
+            "--author",
+            "Alice",
+            "--description",
+            "Test run",
+        ]
+    )
+    assert res.returncode == 0, res.stderr
+
+    import tarfile
+    import json
+
+    with tarfile.open(archive, "r:gz") as tf:
+        summary_name = [n for n in tf.getnames() if n.endswith("summary.json")][0]
+        data = json.loads(tf.extractfile(summary_name).read().decode())
+    assert data.get("author") == "Alice"
+    assert data.get("description") == "Test run"

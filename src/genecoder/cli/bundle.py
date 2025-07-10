@@ -55,6 +55,16 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         type=str,
         help="Path to write a tar.gz archive of the run directory",
     )
+    run_parser.add_argument(
+        "--author",
+        type=str,
+        help="Author name to include in summary.json",
+    )
+    run_parser.add_argument(
+        "--description",
+        type=str,
+        help="Description to include in summary.json",
+    )
     run_parser.set_defaults(func=_handle_run)
 
 
@@ -95,13 +105,23 @@ def _run_cli(args_list: list[str]) -> None:
             raise
 
 
-def _create_archive(run_dir: Path, archive_path: Path, config_hash: str) -> None:
+def _create_archive(
+    run_dir: Path,
+    archive_path: Path,
+    config_hash: str,
+    author: str | None = None,
+    description: str | None = None,
+) -> None:
     """Create a gzipped tar archive of ``run_dir`` with a summary manifest."""
     summary = {
         "config_hash": config_hash,
         "timestamp": run_dir.name,
         "files": [str(p.relative_to(run_dir)) for p in run_dir.rglob("*") if p.is_file()],
     }
+    if author is not None:
+        summary["author"] = author
+    if description is not None:
+        summary["description"] = description
     summary_path = run_dir / "summary.json"
     with open(summary_path, "w", encoding="utf-8") as fh:
         json.dump(summary, fh, indent=2)
@@ -136,7 +156,13 @@ def _handle_run(args: argparse.Namespace) -> None:
         if args.export_archive:
             run_dirs = sorted(hash_dir.iterdir())
             if run_dirs:
-                _create_archive(run_dirs[-1], Path(args.export_archive), config_hash)
+                _create_archive(
+                    run_dirs[-1],
+                    Path(args.export_archive),
+                    config_hash,
+                    args.author,
+                    args.description,
+                )
         return
 
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
@@ -181,6 +207,12 @@ def _handle_run(args: argparse.Namespace) -> None:
 
     logger.info("Bundle output written to %s", run_dir)
     if args.export_archive:
-        _create_archive(run_dir, Path(args.export_archive), config_hash)
+        _create_archive(
+            run_dir,
+            Path(args.export_archive),
+            config_hash,
+            args.author,
+            args.description,
+        )
 
     metrics.increment("bundle_runs")
