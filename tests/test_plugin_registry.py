@@ -215,11 +215,10 @@ def test_registry_signature_failure(monkeypatch: pytest.MonkeyPatch, caplog: pyt
 
     monkeypatch.setattr(plugins, "compute_checksum", fake_compute)
 
-    with caplog.at_level(logging.WARNING):
+    with pytest.raises(ValueError):
         plugins.install_registry_plugins()
 
     assert not installs
-    assert "Invalid signature for plugin https://example.com/pkgF.whl" in caplog.text
 
 
 def test_registry_checksum_validation(monkeypatch):

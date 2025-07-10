@@ -212,3 +212,58 @@ def test_catalog_invalid_signature(monkeypatch, caplog):
     assert "Invalid catalog signature" in caplog.text
     assert plugins.PLUGIN_CATALOG == {}
 
+
+def test_registry_missing_signature(monkeypatch: pytest.MonkeyPatch) -> None:
+    pkg = b"PKG"
+    checksum = compute_checksum(pkg)
+
+    def fake_urlopen(url: str) -> DummyResponse:
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkg.whl":
+            return DummyResponse(pkg)
+        raise AssertionError(url)
+
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
+
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
+
+    with pytest.raises(ValueError):
+        plugins.install_registry_plugins("https://example.com/plugins.yaml")
+
+
+def test_registry_signature_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    pkg = b"PKG"
+    checksum = compute_checksum(pkg)
+    sig = base64.b64encode(b"sig").decode()
+
+    def fake_urlopen(url: str) -> DummyResponse:
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n    signature: {sig}"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkg.whl":
+            return DummyResponse(pkg)
+        raise AssertionError(url)
+
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
+
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+    monkeypatch.setattr(
+        plugins, "verify_signature", lambda d, s, k: (_ for _ in ()).throw(ValueError("bad")))
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
+
+    with pytest.raises(ValueError):
+        plugins.install_registry_plugins("https://example.com/plugins.yaml")
+

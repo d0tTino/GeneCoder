@@ -165,7 +165,11 @@ def _handle_install(args: argparse.Namespace) -> None:
 
 
 def _handle_install_registry(args: argparse.Namespace) -> None:
-    plugins.install_registry_plugins(args.url)
+    try:
+        plugins.install_registry_plugins(args.url)
+    except ValueError as exc:
+        logger.error(str(exc))
+        raise SystemExit(1)
 
 
 def _handle_rate(args: argparse.Namespace) -> None:
