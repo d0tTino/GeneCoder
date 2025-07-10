@@ -358,6 +358,41 @@ def test_concurrent_ratings_file_valid(tmp_path: Path) -> None:
     assert "demo" in data
 
 
+def test_concurrent_ratings_average(tmp_path: Path) -> None:
+    """Concurrent ratings produce the correct average."""
+
+    main.PLUGIN_RATINGS.clear()
+    path = tmp_path / "ratings.json"
+    main.RATINGS_PATH = str(path)
+    plugins.PLUGIN_CATALOG["demo"] = {}
+
+    ratings = [5] * 5 + [1] * 5
+
+    def post_rating(val: int) -> None:
+        r = _request(
+            "POST",
+            "/plugins/rate",
+            headers=AUTH_HEADERS,
+            json={"name": "demo", "rating": val},
+        )
+        assert r.status_code == 200
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+        futures = [ex.submit(post_rating, v) for v in ratings]
+        for f in futures:
+            f.result()
+
+    data = json.loads(path.read_text())
+    assert isinstance(data, dict)
+    assert "demo" in data
+    assert len(data["demo"]) == len(ratings)
+    assert sum(data["demo"]) / len(data["demo"]) == pytest.approx(3)
+
+    r = _request("GET", "/plugins/rate", headers=AUTH_HEADERS, params={"name": "demo"})
+    assert r.status_code == 200
+    assert r.json()["average"] == pytest.approx(3)
+
+
 def test_plugin_catalog_crud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Uploading and listing catalog entries works and requires a token."""
 
