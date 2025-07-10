@@ -189,6 +189,10 @@ Install registry packages with:
 genecoder plugin install-registry
 ```
 
+For details on submitting scores to the plugin challenge and viewing the
+leaderboard interface see
+[docs/plugins.md#challenge-scoreboard](docs/plugins.md#challenge-scoreboard).
+
 ### Web Server Environment Variables
 
 Several environment variables control optional behaviour of the FastAPI server:

@@ -291,3 +291,14 @@ web page displays this data in a simple leaderboard.
 ## Submitting to the Marketplace
 
 Signed plugin packages can be shared publicly by submitting them to the GeneCoder marketplace. After building a wheel and generating the detached signature, visit the marketplace dashboard and upload both files. The system verifies the signature and runs automated checks before listing the plugin in the public catalog.
+
+## Challenge Scoreboard
+
+The web interface includes a simple leaderboard served from ``scoreboard.html``.
+Scores are stored in the JSON file indicated by ``GENECODER_CHALLENGE_PATH`` and
+retrieved via ``GET /catalog/challenge``. Post new points with the same
+``/catalog/challenge`` endpoint shown above. Start the server and open
+``http://localhost:8000/rankings`` to view the scoreboard. When the React build
+is available the server serves ``dist/scoreboard.html``; otherwise it falls back
+to ``helix-ui/scoreboard.html``. The page fetches the latest rankings and
+updates automatically as submissions arrive.
