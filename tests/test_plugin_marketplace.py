@@ -28,9 +28,12 @@ class DummyResponse:
 def test_catalog_list_and_install(monkeypatch, capsys):
     pkg = b"PKG"
     h = compute_checksum(pkg)
+    sig = base64.b64encode(b"sig").decode()
     catalog = (
         "plugins:\n  - name: plug\n    version: '0.1'\n    url: plug==0.1\n    description: Example\n    checksum: "
         + h
+        + "\n    signature: "
+        + sig
     ).encode()
 
     def fake_urlopen(url):
@@ -50,14 +53,24 @@ def test_catalog_list_and_install(monkeypatch, capsys):
         else:
             raise AssertionError(cmd)
 
-    def fake_compute_checksum(data: bytes) -> str:
+    def fake_compute_checksum(
+        data: bytes,
+        *,
+        signature: bytes | None = None,
+        public_key: bytes | None = None,
+    ) -> str:
         calls.append(data)
         return compute_checksum(data)
 
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
+
     monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins, "compute_checksum", fake_compute_checksum)
+    monkeypatch.setattr(plugins, "verify_signature", lambda d, s, k: None)
     monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
 
     plugins.load_plugins()
@@ -75,9 +88,12 @@ def test_catalog_list_and_install(monkeypatch, capsys):
 def test_install_checksum_mismatch(monkeypatch, caplog):
     pkg = b"PKG"
     wrong = compute_checksum(b"WRONG")
+    sig = base64.b64encode(b"sig").decode()
     catalog = (
         "plugins:\n  - name: plug\n    version: '0.1'\n    url: plug==0.1\n    checksum: "
         + wrong
+        + "\n    signature: "
+        + sig
     ).encode()
 
     def fake_urlopen(url):
@@ -96,10 +112,20 @@ def test_install_checksum_mismatch(monkeypatch, caplog):
         else:
             raise AssertionError(cmd)
 
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
+
     monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
+    monkeypatch.setattr(plugins, "verify_signature", lambda d, s, k: None)
+    monkeypatch.setattr(
+        plugins,
+        "compute_checksum",
+        lambda d, *, signature=None, public_key=None: compute_checksum(d),
+    )
 
     plugins.load_plugins()
 

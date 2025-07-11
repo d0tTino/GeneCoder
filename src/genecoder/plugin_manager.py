@@ -370,6 +370,9 @@ def load_local_plugins() -> list[str]:
     return failures
 
 
+_initialized = False
+
+
 def load_plugins() -> None:
     """Load built-in, entry point and local plugins and fetch catalog entries."""
 
@@ -379,3 +382,16 @@ def load_plugins() -> None:
     failures.extend(load_local_plugins())
     if failures:
         logger.warning("Failed to import plugins: %s", ", ".join(failures))
+
+
+def init_plugins() -> None:
+    """Initialize plugins once with error handling."""
+
+    global _initialized
+    if _initialized:
+        return
+    try:
+        load_plugins()
+    except Exception as exc:  # pragma: no cover - unexpected error path
+        logger.warning("Failed to load plugins: %s", exc)
+    _initialized = True

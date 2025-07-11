@@ -16,6 +16,7 @@ _LAZY_ATTRS = {
 from .plugin_manager import (
     CODEC_REGISTRY,
     FEC_REGISTRY,
+    init_plugins,
     load_plugins,
     install_registry_plugins,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "FEC_REGISTRY",
     "SIMULATOR_REGISTRY",
     "simulate_reads",
+    "init_plugins",
     "load_plugins",
     "install_registry_plugins",
     "encrypt_data",
