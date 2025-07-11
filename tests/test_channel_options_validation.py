@@ -106,8 +106,20 @@ def test_min_length_invalid() -> None:
         build_channel_options(args)
 
 
+def test_min_length_negative() -> None:
+    args = _make_args(simulators=["simple"], min_length=-1)
+    with pytest.raises(ValueError, match="min_length"):
+        build_channel_options(args)
+
+
 def test_max_length_invalid() -> None:
     args = _make_args(simulators=["simple"], max_length=0)
+    with pytest.raises(ValueError, match="max_length"):
+        build_channel_options(args)
+
+
+def test_max_length_negative() -> None:
+    args = _make_args(simulators=["simple"], max_length=-1)
     with pytest.raises(ValueError, match="max_length"):
         build_channel_options(args)
 

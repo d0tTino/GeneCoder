@@ -42,9 +42,19 @@ def test_constraints_invalid_min_length() -> None:
         SynthesisConstraints(min_length=0, max_length=10)
 
 
+def test_constraints_negative_min_length() -> None:
+    with pytest.raises(ValueError):
+        SynthesisConstraints(min_length=-1, max_length=10)
+
+
 def test_constraints_invalid_max_length() -> None:
     with pytest.raises(ValueError):
         SynthesisConstraints(min_length=5, max_length=0)
+
+
+def test_constraints_negative_max_length() -> None:
+    with pytest.raises(ValueError):
+        SynthesisConstraints(min_length=5, max_length=-1)
 
 
 def test_constraints_min_gt_max() -> None:
