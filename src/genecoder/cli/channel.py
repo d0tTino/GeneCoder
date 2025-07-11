@@ -13,6 +13,7 @@ from typing import Sequence
 
 from genecoder.formats import from_fasta, to_fasta
 from genecoder.simulators import SIMULATOR_REGISTRY, ChannelPipeline
+from genecoder.channel_config import ChannelConfig
 from genecoder.channels.base import BaseChannel
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
 from genecoder.error_simulation import introduce_errors
@@ -42,11 +43,7 @@ def _apply_simulators(
     sequence: str,
     simulators: Sequence[str],
     *,
-    parallel: bool = False,
-    threads: int | None = None,
-    processes: int | None = None,
-    mpi: bool = False,
-    mpi_workers: int | None = None,
+    config: ChannelConfig,
 ) -> str:
     channels: list[BaseChannel] = []
     for name in simulators:
@@ -55,14 +52,7 @@ def _apply_simulators(
             raise SystemExit(1)
         channels.append(SIMULATOR_REGISTRY[name])
     pipeline = ChannelPipeline(channels)
-    workers = mpi_workers or processes or threads
-    result: str = pipeline.simulate(
-        sequence,
-        parallel=parallel or mpi,
-        workers=workers,
-        use_process_pool=processes is not None,
-        use_mpi=mpi,
-    )
+    result: str = pipeline.simulate(sequence, config=config)
     for name in simulators:
         logger.info("Applied %s simulator", name)
     return result
@@ -78,11 +68,7 @@ def process_channel(
     ins_prob: float = 0.0,
     del_prob: float = 0.0,
     seed: int | None = None,
-    parallel: bool = False,
-    threads: int | None = None,
-    processes: int | None = None,
-    mpi: bool = False,
-    mpi_workers: int | None = None,
+    config: ChannelConfig | None = None,
 ) -> None:
     try:
         with open(input_file, "r", encoding="utf-8") as f:
@@ -102,14 +88,11 @@ def process_channel(
     processed_records: list[tuple[str, str]] = []
     for header, seq in records:
         if simulators:
+            cfg = config or ChannelConfig()
             seq = _apply_simulators(
                 seq,
                 simulators,
-                parallel=parallel,
-                threads=threads,
-                processes=processes,
-                mpi=mpi,
-                mpi_workers=mpi_workers,
+                config=cfg,
             )
         else:
             rng = random.Random(seed)
@@ -186,6 +169,12 @@ def _handle_command(args: argparse.Namespace) -> None:
         logger.error(str(exc))
         raise SystemExit(1)
 
+    cfg = ChannelConfig(
+        parallel=opts.parallel or opts.mpi,
+        workers=opts.mpi_workers or opts.processes or opts.threads,
+        use_process_pool=opts.processes is not None,
+        use_mpi=opts.mpi,
+    )
     process_channel(
         args.input_file,
         args.output_file,
@@ -195,9 +184,5 @@ def _handle_command(args: argparse.Namespace) -> None:
         ins_prob=opts.ins_prob,
         del_prob=opts.del_prob,
         seed=opts.seed,
-        parallel=opts.parallel,
-        threads=opts.threads,
-        processes=opts.processes,
-        mpi=opts.mpi,
-        mpi_workers=opts.mpi_workers,
+        config=cfg,
     )

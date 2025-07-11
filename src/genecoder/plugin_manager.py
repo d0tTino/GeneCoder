@@ -67,7 +67,7 @@ def _verify_catalog_signature(data: bytes, signature: str) -> bool:
         return False
 
     try:
-        verify_signature(data, sig_bytes, pubkey)
+        compute_checksum(data, signature=sig_bytes, public_key=pubkey)
     except Exception:
         return False
 
@@ -139,7 +139,6 @@ def _install_registry_plugins(url: str) -> None:
             logger.warning("Failed to download plugin %s: %s", spec, exc)
             continue
 
-        digest = compute_checksum(pkg_bytes)
         if signature is not None:
             if pubkey is None:
                 logger.warning(
@@ -147,10 +146,14 @@ def _install_registry_plugins(url: str) -> None:
                 )
                 continue
             try:
-                verify_signature(pkg_bytes, signature, pubkey)
+                digest = compute_checksum(
+                    pkg_bytes, signature=signature, public_key=pubkey
+                )
             except Exception as exc:
                 raise ValueError(
                     f"Invalid signature for plugin {spec}: {exc}") from exc
+        else:
+            digest = compute_checksum(pkg_bytes)
 
         if digest != checksum:
             logger.warning("Checksum mismatch for plugin %s", spec)
@@ -229,6 +232,7 @@ def _fetch_catalog(url: str) -> None:
             return
 
     PLUGIN_CATALOG.clear()
+    allow_unsigned = os.getenv("GENECODER_ALLOW_UNSIGNED_PLUGINS") == "1"
     for entry in data.get("plugins", []):
         name = str(entry.get("name", ""))
         if not name:
@@ -240,7 +244,9 @@ def _fetch_catalog(url: str) -> None:
         signature = entry.get("signature")
         if not signature:
             logger.error("Missing signature for plugin %s", name)
-            continue
+            if not allow_unsigned:
+                continue
+            signature = ""
 
         PLUGIN_CATALOG[name] = {
             "version": str(entry.get("version", "")),

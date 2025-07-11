@@ -44,6 +44,7 @@ def test_cli_catalog_list_and_install(monkeypatch: pytest.MonkeyPatch, tmp_path:
 import sys
 import os
 from pathlib import Path
+import os
 import genecoder.plugin_manager as plugins
 import genecoder.cli.plugin as plugin_cli
 
@@ -84,6 +85,7 @@ plugin_cli.plugins.compute_checksum = lambda d, *, signature=None, public_key=No
 plugin_cli.plugins.verify_signature = lambda d, s, k: None
 Path('{pub_key}').write_text('PUB')
 os.environ['GENECODER_PLUGIN_PUBLIC_KEY'] = '{pub_key}'
+
 """
     )
 

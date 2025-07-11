@@ -1,5 +1,6 @@
 import pytest
 from genecoder.channel_sim import Channel
+from genecoder.channel_config import ChannelConfig
 from genecoder.simulators.pipeline import ChannelPipeline
 
 pytest.importorskip("mpi4py")
@@ -14,10 +15,6 @@ def test_mpi_pipeline_deterministic(monkeypatch):
     pipeline = ChannelPipeline([Channel(0.1), Channel(0.2)])
     seq = "ACGTACGTACGT"
     serial = pipeline.simulate(seq)
-    mpi_result = pipeline.simulate(
-        seq,
-        parallel=True,
-        workers=2,
-        use_mpi=True,
-    )
+    cfg = ChannelConfig(parallel=True, workers=2, use_mpi=True)
+    mpi_result = pipeline.simulate(seq, config=cfg)
     assert serial == mpi_result

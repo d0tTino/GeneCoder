@@ -67,6 +67,7 @@ def test_catalog_list_and_install(monkeypatch, capsys):
 
     monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
     monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
+
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins, "compute_checksum", fake_compute_checksum)
@@ -117,6 +118,7 @@ def test_install_checksum_mismatch(monkeypatch, caplog):
 
     monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
     monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
+
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
