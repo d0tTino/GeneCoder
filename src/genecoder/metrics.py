@@ -3,7 +3,9 @@ import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TextIO, cast
+
+import portalocker
 
 __all__ = [
     "Metrics",
@@ -21,22 +23,46 @@ def _get_metrics_path() -> Path:
     return Path.home() / ".genecoder" / "metrics.json"
 
 
-def _load(path: Path) -> dict[str, object]:
+def _load(path: Path, fh: TextIO | None = None) -> dict[str, object]:
+    """Load metrics from ``path`` with optional file handle ``fh``."""
+    if fh is not None:
+        fh.seek(0)
+        content = fh.read()
+        if content:
+            try:
+                data = json.loads(content)
+                if isinstance(data, dict):
+                    return data
+            except Exception:
+                pass
+        return {}
+
     if path.is_file():
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                return data
+            with portalocker.Lock(path, "r", timeout=10, encoding="utf-8") as f:
+                return _load(path, f)
         except Exception:
             pass
     return {}
 
 
-def _save(path: Path, metrics: dict[str, object]) -> None:
+def _save(path: Path, metrics: dict[str, object], fh: TextIO | None = None) -> None:
+    """Persist ``metrics`` to ``path`` using optional open file handle ``fh``."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(metrics), encoding="utf-8")
-    os.replace(tmp, path)
+    data = json.dumps(metrics)
+
+    def _write(handle: TextIO) -> None:
+        handle.seek(0)
+        handle.truncate(0)
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+    if fh is not None:
+        _write(fh)
+    else:
+        with portalocker.Lock(path, "a+", timeout=10, encoding="utf-8") as f:
+            _write(f)
 
 
 class Metrics:
@@ -53,29 +79,34 @@ class Metrics:
 
     def increment(self, key: str) -> None:
         with self._lock:
-            metrics = _load(self.path)
-            current = metrics.get(key, 0)
-            if not isinstance(current, int):
-                current = 0
-            metrics[key] = current + 1
+            with portalocker.Lock(self.path, "a+", timeout=10, encoding="utf-8") as fh:
+                metrics = _load(self.path, fh)
+                current = metrics.get(key, 0)
+                if not isinstance(current, int):
+                    current = 0
+                metrics[key] = current + 1
 
-            if key == "oligos_simulated":
-                ts_obj: Any = metrics.get("oligos_simulated_ts", [])
-                ts_list = cast(list[str], ts_obj) if isinstance(ts_obj, list) else []
-                ts_list.append(datetime.now(timezone.utc).isoformat())
-                metrics["oligos_simulated_ts"] = ts_list
-            _save(self.path, metrics)
+                if key == "oligos_simulated":
+                    ts_obj: Any = metrics.get("oligos_simulated_ts", [])
+                    ts_list = cast(list[str], ts_obj) if isinstance(ts_obj, list) else []
+                    ts_list.append(datetime.now(timezone.utc).isoformat())
+                    metrics["oligos_simulated_ts"] = ts_list
+                _save(self.path, metrics, fh)
 
     def get_metrics(self) -> dict[str, object]:
         with self._lock:
-            return _load(self.path)
+            if self.path.is_file():
+                with portalocker.Lock(self.path, "r", timeout=10, encoding="utf-8") as fh:
+                    return _load(self.path, fh)
+            return {}
 
     def oligos_per_week(self) -> dict[str, int]:
         with self._lock:
-            data = _load(self.path)
-            ts_list = data.get("oligos_simulated_ts", [])
-            if not isinstance(ts_list, list):
-                ts_list = []
+            with portalocker.Lock(self.path, "r", timeout=10, encoding="utf-8") as fh:
+                data = _load(self.path, fh)
+                ts_list = data.get("oligos_simulated_ts", [])
+                if not isinstance(ts_list, list):
+                    ts_list = []
 
         counts: dict[str, int] = {}
         for ts in ts_list:
