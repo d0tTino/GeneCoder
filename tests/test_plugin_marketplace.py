@@ -213,6 +213,68 @@ def test_catalog_invalid_signature(monkeypatch, caplog):
     assert plugins.PLUGIN_CATALOG == {}
 
 
+def test_catalog_missing_checksum(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    """Entries without a checksum are ignored."""
+
+    catalog = (
+        "plugins:\n"
+        "  - name: plug\n"
+        "    version: '0.1'\n"
+        "    url: plug==0.1\n"
+        "    signature: deadbeef"
+    ).encode()
+
+    def fake_urlopen(url: str) -> DummyResponse:
+        assert url == "https://example.com/catalog.yaml"
+        return DummyResponse(catalog)
+
+    monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
+
+    with caplog.at_level("ERROR"):
+        plugins.load_plugins()
+
+    assert "Missing checksum for plugin plug" in caplog.text
+    assert "plug" not in plugins.PLUGIN_CATALOG
+
+    with caplog.at_level("ERROR"), pytest.raises(SystemExit):
+        plugin_cli._handle_install(argparse.Namespace(name="plug"))
+    assert "Unknown plugin: plug" in caplog.text
+
+
+def test_catalog_missing_signature(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    """Entries without a signature are ignored."""
+
+    pkg = b"PKG"
+    checksum = compute_checksum(pkg)
+    catalog = (
+        "plugins:\n"
+        "  - name: plug\n"
+        "    version: '0.1'\n"
+        "    url: plug==0.1\n"
+        f"    checksum: {checksum}"
+    ).encode()
+
+    def fake_urlopen(url: str) -> DummyResponse:
+        assert url == "https://example.com/catalog.yaml"
+        return DummyResponse(catalog)
+
+    monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
+
+    with caplog.at_level("ERROR"):
+        plugins.load_plugins()
+
+    assert "Missing signature for plugin plug" in caplog.text
+    assert "plug" not in plugins.PLUGIN_CATALOG
+
+    with caplog.at_level("ERROR"), pytest.raises(SystemExit):
+        plugin_cli._handle_install(argparse.Namespace(name="plug"))
+    assert "Unknown plugin: plug" in caplog.text
+
+
 def test_registry_missing_signature(monkeypatch: pytest.MonkeyPatch) -> None:
     pkg = b"PKG"
     checksum = compute_checksum(pkg)
