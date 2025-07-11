@@ -233,12 +233,21 @@ def _fetch_catalog(url: str) -> None:
         name = str(entry.get("name", ""))
         if not name:
             continue
+        checksum = entry.get("checksum")
+        if not checksum:
+            logger.error("Missing checksum for plugin %s", name)
+            continue
+        signature = entry.get("signature")
+        if not signature:
+            logger.error("Missing signature for plugin %s", name)
+            continue
+
         PLUGIN_CATALOG[name] = {
             "version": str(entry.get("version", "")),
             "url": str(entry.get("url", "")),
             "description": str(entry.get("description", "")),
-            "checksum": str(entry.get("checksum", "")),
-            "signature": str(entry.get("signature", "")),
+            "checksum": str(checksum),
+            "signature": str(signature),
             "author": str(entry.get("author", "")),
             "stars": entry.get("stars", 0),
         }

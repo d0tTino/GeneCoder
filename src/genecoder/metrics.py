@@ -3,6 +3,7 @@ import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, cast
 
 __all__ = [
     "Metrics",
@@ -57,10 +58,10 @@ class Metrics:
             if not isinstance(current, int):
                 current = 0
             metrics[key] = current + 1
+
             if key == "oligos_simulated":
-                ts_list = metrics.get("oligos_simulated_ts", [])
-                if not isinstance(ts_list, list):
-                    ts_list = []
+                ts_obj: Any = metrics.get("oligos_simulated_ts", [])
+                ts_list = cast(list[str], ts_obj) if isinstance(ts_obj, list) else []
                 ts_list.append(datetime.now(timezone.utc).isoformat())
                 metrics["oligos_simulated_ts"] = ts_list
             _save(self.path, metrics)
@@ -75,6 +76,7 @@ class Metrics:
             ts_list = data.get("oligos_simulated_ts", [])
             if not isinstance(ts_list, list):
                 ts_list = []
+
         counts: dict[str, int] = {}
         for ts in ts_list:
             try:
