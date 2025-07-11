@@ -12,7 +12,16 @@ def generate_slurm_script(
     partition: str | None = None,
     output: str | None = None,
 ) -> str:
-    """Return a simple Slurm batch script."""
+    """Return a simple Slurm batch script.
+
+    ``command`` must not contain newlines or shell metacharacters such as
+    ``;``, ``&&`` or ``|``. This prevents accidental command injection when the
+    script is written to disk.
+    """
+    if any(c in command for c in "\n\r"):
+        raise ValueError("command must not contain newlines")
+    if re.search(r"[;&|<>`$]", command):
+        raise ValueError("command contains unsafe characters")
     lines = ["#!/bin/bash", f"#SBATCH --job-name={job_name}"]
     lines.append(f"#SBATCH --output={output or '%x-%j.out'}")
     if partition:
