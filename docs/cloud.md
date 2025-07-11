@@ -38,6 +38,38 @@ docker run -p 8000:8000 -e GENECODER_API_TOKEN=TOKEN ghcr.io/d0ttino/genecoder \
 
 Replace `TOKEN` with a secret value and use the same token when submitting jobs.
 
+## HPC Submission
+
+Jobs can also be dispatched directly to a Slurm cluster. Provide a command that
+will be executed on the compute node and optional Slurm parameters:
+
+```python
+from genecoder.cloud import CloudClient
+
+with CloudClient("unused") as client:
+    jid = client.submit(
+        "hpc",
+        {
+            "command": "genecoder bundle run bundle.yaml --cache-dir runs",
+            "job_name": "gc-run",
+            "time": "00:30:00",
+            "partition": "compute",
+        },
+    )
+    print(jid)
+```
+
+Equivalent settings can be expressed in YAML:
+
+```yaml
+job:
+  type: hpc
+  command: genecoder bundle run bundle.yaml --cache-dir runs
+  job_name: gc-run
+  time: 00:30:00
+  partition: compute
+```
+
 ## Fetching Error Profiles
 
 GeneCoder can download example anonymized error profiles for use with simulators.
