@@ -20,6 +20,7 @@ from .plugin_manager import (
     install_registry_plugins,
 )
 from .simulators import SIMULATOR_REGISTRY, simulate_reads
+from .channel_config import ChannelConfig
 from .cloud import CloudClient
 
 
@@ -33,6 +34,7 @@ __all__ = [
     "simulate_reads",
     "load_plugins",
     "install_registry_plugins",
+    "ChannelConfig",
     "encrypt_data",
     "decrypt_data",
     "compute_checksum",
