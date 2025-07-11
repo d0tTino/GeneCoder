@@ -19,6 +19,24 @@ class CloudClient:
         self._client = client or httpx.Client(base_url=self.base_url)
 
     def submit(self, job_type: str, payload: dict[str, Any]) -> str:
+        if job_type == "hpc":
+            from .hpc import generate_slurm_script, submit_slurm_job
+
+            if "script" in payload and isinstance(payload["script"], str):
+                script = payload["script"]
+            else:
+                command = payload.get("command")
+                if not isinstance(command, str):
+                    raise ValueError("command is required for hpc jobs")
+                script = generate_slurm_script(
+                    command,
+                    job_name=payload.get("job_name", "genecoder"),
+                    time=payload.get("time", "01:00:00"),
+                    partition=payload.get("partition"),
+                    output=payload.get("output"),
+                )
+            return submit_slurm_job(script)
+
         headers = {}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
