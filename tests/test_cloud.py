@@ -412,3 +412,75 @@ def test_worker_submit_job(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     assert Path(called["config"]).name == "b.yaml"
     assert r.json()["job_id"]
 
+
+def _build_symlink_zip() -> str:
+    import base64
+    import io
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zi = zipfile.ZipInfo("link")
+        zi.create_system = 3
+        zi.external_attr = 0o120777 << 16
+        zf.writestr(zi, "target")
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def _build_bad_path_zip() -> str:
+    import base64
+    import io
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("../bad.yaml", "data")
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def _build_large_zip() -> str:
+    import base64
+    import io
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("big.bin", b"\0" * (101 * 1024 * 1024))
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def test_worker_rejects_symlink() -> None:
+    worker.API_TOKEN = "tok"
+    client = TestClient(worker.app)
+    archive_b64 = _build_symlink_zip()
+    r = client.post(
+        "/jobs",
+        headers={"Authorization": "Bearer tok"},
+        json={"type": "bundle", "payload": {"archive": archive_b64}},
+    )
+    assert r.status_code == 400
+
+
+def test_worker_rejects_bad_path() -> None:
+    worker.API_TOKEN = "tok"
+    client = TestClient(worker.app)
+    archive_b64 = _build_bad_path_zip()
+    r = client.post(
+        "/jobs",
+        headers={"Authorization": "Bearer tok"},
+        json={"type": "bundle", "payload": {"archive": archive_b64}},
+    )
+    assert r.status_code == 400
+
+
+def test_worker_rejects_large_file() -> None:
+    worker.API_TOKEN = "tok"
+    client = TestClient(worker.app)
+    archive_b64 = _build_large_zip()
+    r = client.post(
+        "/jobs",
+        headers={"Authorization": "Bearer tok"},
+        json={"type": "bundle", "payload": {"archive": archive_b64}},
+    )
+    assert r.status_code == 400
+

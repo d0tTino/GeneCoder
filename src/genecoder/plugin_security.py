@@ -5,9 +5,14 @@ from __future__ import annotations
 from .security import compute_checksum as _compute_checksum
 
 
-def compute_checksum(data: bytes) -> str:
+def compute_checksum(
+    data: bytes,
+    *,
+    signature: bytes | None = None,
+    public_key: bytes | None = None,
+) -> str:
     """Return the SHA256 checksum of *data*."""
-    return _compute_checksum(data)
+    return _compute_checksum(data, signature=signature, public_key=public_key)
 
 
 def verify_signature(data: bytes, signature: bytes, public_key: bytes) -> None:
