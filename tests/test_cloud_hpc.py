@@ -14,6 +14,12 @@ def test_generate_slurm_script() -> None:
     assert "echo hi" in script
 
 
+@pytest.mark.parametrize("cmd", ["echo hi && rm -rf /", "echo hi; rm -rf /", "bad\ncmd"])
+def test_generate_slurm_script_rejects_bad(cmd: str) -> None:
+    with pytest.raises(ValueError):
+        generate_slurm_script(cmd)
+
+
 def test_submit_slurm_job(monkeypatch: pytest.MonkeyPatch) -> None:
     called = {}
 
