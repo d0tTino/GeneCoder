@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import base64
 
 import pytest
 from genecoder.plugin_security import compute_checksum
@@ -25,18 +26,23 @@ class DummyResponse:
 def test_cli_catalog_list_and_install(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     pkg = b"PKG"
     checksum = compute_checksum(pkg)
+    sig = base64.b64encode(b"sig").decode()
     catalog = (
         "plugins:\n  - name: plug\n    version: '0.1'\n    url: https://example.com/pkg.whl\n    description: Example\n    checksum: "
         + checksum
+        + "\n    signature: "
+        + sig
     ).encode()
 
     patch_dir = tmp_path / "patch"
     patch_dir.mkdir()
     installed = tmp_path / "installed"
+    pub_key = patch_dir / "pub.pem"
     site_py = patch_dir / "sitecustomize.py"
     site_py.write_text(
         f"""
 import sys
+import os
 from pathlib import Path
 import os
 import genecoder.plugin_manager as plugins
@@ -74,7 +80,12 @@ def fake_check_call(cmd):
         raise AssertionError(cmd)
 plugin_cli.subprocess.check_call = fake_check_call
 plugin_cli.plugins.entry_points = lambda group=None: []
-os.environ["GENECODER_ALLOW_UNSIGNED_PLUGINS"] = "1"
+from genecoder.plugin_security import compute_checksum as _cc
+plugin_cli.plugins.compute_checksum = lambda d, *, signature=None, public_key=None: _cc(d)
+plugin_cli.plugins.verify_signature = lambda d, s, k: None
+Path('{pub_key}').write_text('PUB')
+os.environ['GENECODER_PLUGIN_PUBLIC_KEY'] = '{pub_key}'
+
 """
     )
 

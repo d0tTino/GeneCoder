@@ -3,7 +3,7 @@ import logging
 import sys
 
 from genecoder import __version__
-from genecoder.plugin_manager import load_plugins
+from genecoder.plugin_manager import init_plugins
 # simulators are imported lazily by subcommands that need them
 
 from typing import Any
@@ -90,7 +90,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # Load plugins here so that dynamically registered codecs, FEC backends and
     # simulators are available during subcommand registration.
-    load_plugins()
+    init_plugins()
 
     parser = argparse.ArgumentParser(
         description=(

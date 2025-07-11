@@ -17,7 +17,7 @@ import re
 
 from genecoder.options import EncodeOptions
 from genecoder import perform_encoding, perform_decoding
-from genecoder.plugins import load_plugins
+from genecoder.plugin_manager import init_plugins
 from genecoder import plugins
 from genecoder.cli import plugin as plugin_cli
 import argparse
@@ -107,7 +107,7 @@ REDIS_URL = os.getenv("GENECODER_REDIS_URL")
 @app.on_event("startup")
 async def _startup() -> None:
     global API_TOKEN
-    load_plugins()
+    init_plugins()
     _load_plugin_ratings()
     if API_TOKEN is None:
         API_TOKEN = secrets.token_urlsafe(16)
