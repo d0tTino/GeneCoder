@@ -161,6 +161,10 @@ plugin_index_path = helix_ui_dir / "dist" / "plugins.html"
 if not plugin_index_path.is_file():
     plugin_index_path = helix_ui_dir / "plugins.html"
 
+marketplace_index_path = helix_ui_dir / "dist" / "marketplace.html"
+if not marketplace_index_path.is_file():
+    marketplace_index_path = helix_ui_dir / "marketplace.html"
+
 scoreboard_index_path = helix_ui_dir / "dist" / "scoreboard.html"
 if not scoreboard_index_path.is_file():
     scoreboard_index_path = helix_ui_dir / "scoreboard.html"
@@ -190,6 +194,12 @@ async def dashboard() -> str:
 async def plugin_catalog_page() -> str:
     """Return the React-based plugin catalog interface."""
     return plugin_index_path.read_text(encoding="utf-8")
+
+
+@app.get("/marketplace", response_class=HTMLResponse)
+async def marketplace_page() -> str:
+    """Return the React-based marketplace interface."""
+    return marketplace_index_path.read_text(encoding="utf-8")
 
 
 @app.get("/rankings", response_class=HTMLResponse)

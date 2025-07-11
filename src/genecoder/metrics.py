@@ -53,7 +53,10 @@ class Metrics:
     def increment(self, key: str) -> None:
         with self._lock:
             metrics = _load(self.path)
-            metrics[key] = metrics.get(key, 0) + 1
+            current = metrics.get(key, 0)
+            if not isinstance(current, int):
+                current = 0
+            metrics[key] = current + 1
             if key == "oligos_simulated":
                 ts_list = metrics.get("oligos_simulated_ts", [])
                 if not isinstance(ts_list, list):
@@ -70,6 +73,8 @@ class Metrics:
         with self._lock:
             data = _load(self.path)
             ts_list = data.get("oligos_simulated_ts", [])
+            if not isinstance(ts_list, list):
+                ts_list = []
         counts: dict[str, int] = {}
         for ts in ts_list:
             try:
