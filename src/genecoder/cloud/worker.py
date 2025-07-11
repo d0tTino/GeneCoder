@@ -5,6 +5,7 @@ import base64
 import io
 import os
 import secrets
+import stat
 import tempfile
 import uuid
 import zipfile
@@ -21,6 +22,7 @@ from genecoder.plugin_manager import load_plugins
 API_TOKEN: str | None = os.getenv("GENECODER_API_TOKEN")
 security = HTTPBearer(auto_error=False)
 app = FastAPI(title="GeneCoder Worker")
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB limit for extracted files
 
 
 def verify_token(
@@ -30,7 +32,7 @@ def verify_token(
         raise HTTPException(status_code=401, detail="Invalid or missing token")
 
 
-@app.on_event("startup")  # type: ignore[misc]
+@app.on_event("startup")
 def _startup() -> None:
     global API_TOKEN
     load_plugins()
@@ -39,7 +41,7 @@ def _startup() -> None:
         print(f"Generated API token: {API_TOKEN}")
 
 
-@app.post("/jobs")  # type: ignore[misc]
+@app.post("/jobs")
 def submit_job(payload: dict[str, Any], _token: None = Depends(verify_token)) -> dict[str, str]:
     if payload.get("type") != "bundle":
         raise HTTPException(status_code=400, detail="Unsupported job type")
@@ -56,9 +58,18 @@ def submit_job(payload: dict[str, Any], _token: None = Depends(verify_token)) ->
 
     with tempfile.TemporaryDirectory() as tmpdir:
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            for name in zf.namelist():
-                path = Path(name)
+            for info in zf.infolist():
+                path = Path(os.path.normpath(info.filename))
                 if path.is_absolute() or ".." in path.parts:
+                    raise HTTPException(status_code=400, detail="Invalid archive path")
+                is_symlink = False
+                if hasattr(info, "is_symlink"):
+                    is_symlink = info.is_symlink()
+                else:
+                    is_symlink = ((info.external_attr >> 16) & 0o170000) == stat.S_IFLNK
+                if is_symlink:
+                    raise HTTPException(status_code=400, detail="Invalid archive path")
+                if info.file_size > MAX_FILE_SIZE:
                     raise HTTPException(status_code=400, detail="Invalid archive path")
             zf.extractall(tmpdir)
         tmp_path = Path(tmpdir)
