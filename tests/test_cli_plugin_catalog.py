@@ -38,6 +38,7 @@ def test_cli_catalog_list_and_install(monkeypatch: pytest.MonkeyPatch, tmp_path:
         f"""
 import sys
 from pathlib import Path
+import os
 import genecoder.plugin_manager as plugins
 import genecoder.cli.plugin as plugin_cli
 
@@ -73,6 +74,7 @@ def fake_check_call(cmd):
         raise AssertionError(cmd)
 plugin_cli.subprocess.check_call = fake_check_call
 plugin_cli.plugins.entry_points = lambda group=None: []
+os.environ["GENECODER_ALLOW_UNSIGNED_PLUGINS"] = "1"
 """
     )
 

@@ -55,6 +55,7 @@ def test_catalog_list_and_install(monkeypatch, capsys):
         return compute_checksum(data)
 
     monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
+    monkeypatch.setenv("GENECODER_ALLOW_UNSIGNED_PLUGINS", "1")
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins, "compute_checksum", fake_compute_checksum)
@@ -97,6 +98,7 @@ def test_install_checksum_mismatch(monkeypatch, caplog):
             raise AssertionError(cmd)
 
     monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
+    monkeypatch.setenv("GENECODER_ALLOW_UNSIGNED_PLUGINS", "1")
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])

@@ -6,6 +6,7 @@ import os
 
 from ..channels.base import BaseChannel
 from ..metrics import metrics
+from ..channel_config import ChannelConfig
 
 __all__ = ["ChannelPipeline"]
 
@@ -24,12 +25,17 @@ class ChannelPipeline(BaseChannel):
         self,
         sequence: str,
         *,
-        parallel: bool = False,
-        workers: int | None = None,
-        use_process_pool: bool = False,
-        use_mpi: bool = False,
+        config: ChannelConfig | None = None,
     ) -> str:
         """Return ``sequence`` processed by each channel."""
+
+        if config is None:
+            config = ChannelConfig()
+
+        parallel = config.parallel or config.use_mpi
+        workers = config.workers
+        use_process_pool = config.use_process_pool
+        use_mpi = config.use_mpi
 
         if use_mpi:
             parallel = True
