@@ -426,12 +426,18 @@ def _homopolymer_lengths(seq: str) -> list[int]:
     return lengths
 
 
+def _gc_array(seq: str) -> list[int]:
+    """Return ``1`` for G/C bases and ``0`` for A/T per position."""
+
+    return [1 if base in "GC" else 0 for base in seq.upper()]
+
+
 @app.post("/dashboard/plot-data")
 async def dashboard_plot_data(
     req: PlotDataRequest,
     _: None = Depends(verify_token),
 ) -> dict[str, object]:
-    """Return windowed GC content and homopolymer lengths."""
+    """Return arrays for GC presence and homopolymer lengths."""
 
     seq = req.dna_sequence
     if not DNA_RE.fullmatch(seq):
@@ -440,11 +446,13 @@ async def dashboard_plot_data(
         seq, req.window_size, req.step_size
     )
     hp_lengths = _homopolymer_lengths(seq)
+    gc_array = _gc_array(seq)
 
     return {
         "gc_positions": starts,
         "gc_values": gc_values,
-        "hp_lengths": hp_lengths,
+        "gc_array": gc_array,
+        "hp_array": hp_lengths,
     }
 
 
@@ -538,7 +546,7 @@ async def upload_chunk(
     await asyncio.to_thread(chunk_path.write_bytes, chunk_bytes)
     manifest_path = base_dir / "upload.manifest"
     h = hashlib.sha256(chunk_bytes).hexdigest()
-    async def _append() -> None:
+    def _append() -> None:
         with open(manifest_path, "a", encoding="utf-8") as mf:
             mf.write(json.dumps({"offset": req.offset, "hash": h}) + "\n")
 

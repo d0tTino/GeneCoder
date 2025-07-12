@@ -66,11 +66,7 @@ export default function Dashboard() {
           <p>Error Rate: {(data.error_rate * 100).toFixed(2)}%</p>
           <img src={`data:image/png;base64,${data.plot}`} style={{ maxWidth: '100%' }} />
           {plotData && (
-            <Heatmaps
-              gcPositions={plotData.gc_positions}
-              gcValues={plotData.gc_values}
-              hpLengths={plotData.hp_lengths}
-            />
+            <Heatmaps gcArray={plotData.gc_array} hpArray={plotData.hp_array} />
           )}
           {deepdna && (
             <div>
