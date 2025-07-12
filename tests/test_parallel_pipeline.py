@@ -55,3 +55,25 @@ def test_parallel_pipeline_concurrent(tmp_path: Path) -> None:
     assert parallel_time < serial_time * 0.75
 
 
+def test_parallel_pipeline_multi_channel_concurrent(tmp_path: Path) -> None:
+    """Ensure more than two channels run concurrently when parallel=True."""
+    pipeline = ChannelPipeline([
+        _DelayChannel(0.1),
+        _DelayChannel(0.1),
+        _DelayChannel(0.1),
+    ])
+    os.environ["GENECODER_METRICS_PATH"] = str(tmp_path / "m.json")
+    seq = "AAAA"
+
+    start = time.perf_counter()
+    pipeline.simulate(seq)
+    serial_time = time.perf_counter() - start
+
+    cfg = ChannelConfig(parallel=True, workers=3)
+    start = time.perf_counter()
+    pipeline.simulate(seq, config=cfg)
+    parallel_time = time.perf_counter() - start
+
+    assert parallel_time < serial_time * 0.6
+
+

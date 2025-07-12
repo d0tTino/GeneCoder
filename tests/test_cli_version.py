@@ -25,7 +25,15 @@ def test_cli_version(tmp_path: Path):
 
     subprocess.run([str(pip_path), "install", "-U", "pip", "setuptools", "wheel"], check=True)
     subprocess.run(
-        [str(pip_path), "install", "matplotlib", "flet>=0.28,<0.29", "reedsolo", "cryptography"],
+        [
+            str(pip_path),
+            "install",
+            "matplotlib",
+            "flet>=0.28,<0.29",
+            "reedsolo",
+            "cryptography",
+            "portalocker",
+        ],
         check=True,
     )
 

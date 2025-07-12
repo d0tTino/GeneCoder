@@ -67,7 +67,14 @@ class ChannelPipeline(BaseChannel):
             )
 
         with executor_cls(max_workers=workers) as executor:
-            results = list(executor.map(_run_channel, [sequence] * len(self.channels), self.channels))
+            # submit all simulations before waiting on results so that they can
+            # run concurrently regardless of executor implementation
+            futures = [
+                executor.submit(_run_channel, sequence, channel)
+                for channel in self.channels
+            ]
+
+            results = [f.result() for f in futures]
 
         for res in results:
             sequence = res
