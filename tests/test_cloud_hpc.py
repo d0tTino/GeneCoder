@@ -1,4 +1,5 @@
 import pytest
+import subprocess
 
 from genecoder.cloud.hpc import generate_slurm_script, submit_slurm_job
 from genecoder.cloud import CloudClient
@@ -14,7 +15,16 @@ def test_generate_slurm_script() -> None:
     assert "echo hi" in script
 
 
-@pytest.mark.parametrize("cmd", ["echo hi && rm -rf /", "echo hi; rm -rf /", "bad\ncmd"])
+@pytest.mark.parametrize(
+    "cmd",
+    [
+        "echo hi && rm -rf /",
+        "echo hi; rm -rf /",
+        "bad\ncmd",
+        "echo hi | wc",
+        "echo hi > out.txt",
+    ],
+)
 def test_generate_slurm_script_rejects_bad(cmd: str) -> None:
     with pytest.raises(ValueError):
         generate_slurm_script(cmd)
@@ -35,6 +45,27 @@ def test_submit_slurm_job(monkeypatch: pytest.MonkeyPatch) -> None:
     assert jid == "123"
     assert called["cmd"] == ["sbatch"]
     assert called["input"] == "script"
+
+
+def test_submit_slurm_job_parse_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run(cmd, *, input=None, text=None, capture_output=None, check=None):
+        class P:
+            stdout = "Job submitted"
+
+        return P()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    with pytest.raises(RuntimeError, match="Failed to parse sbatch output"):
+        submit_slurm_job("script")
+
+
+def test_submit_slurm_job_run_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run(cmd, *, input=None, text=None, capture_output=None, check=None):
+        raise subprocess.CalledProcessError(1, cmd)
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    with pytest.raises(subprocess.CalledProcessError):
+        submit_slurm_job("script")
 
 
 def test_cloud_client_hpc(monkeypatch: pytest.MonkeyPatch) -> None:
