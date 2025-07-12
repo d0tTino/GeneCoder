@@ -117,6 +117,8 @@ packages and then run the installer. Example:
 export GENECODER_PLUGIN_REGISTRY_URL=https://example.com/registry.yaml
 ```
 
+PyYAML is required to parse registry files; install it with ``pip install PyYAML`` if it's not already available.
+
 Then install the packages with:
 
 ```bash
@@ -136,8 +138,9 @@ packages:
 ```
 
 Set ``GENECODER_PLUGIN_PUBLIC_KEY`` to the path of the PEM encoded public key
-used to verify these signatures. Registry entries without a valid ``signature``
-field are ignored. Only HTTPS URLs (or ``file://`` for local testing) are
+used to verify these signatures. Each registry entry **must** include a
+``signature``. Installation aborts with an error if the signature is missing or
+fails verification. Only HTTPS URLs (or ``file://`` for local testing) are
 accepted. Each package is installed only if the signature verifies and the
 checksum matches; installation uses ``pip install --require-hashes`` so the
 downloaded file must match the expected SHA256 digest; otherwise installation
