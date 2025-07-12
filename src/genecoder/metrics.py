@@ -79,6 +79,7 @@ class Metrics:
 
     def increment(self, key: str) -> None:
         with self._lock:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
             with portalocker.Lock(self.path, "a+", timeout=10, encoding="utf-8") as fh:
                 metrics = _load(self.path, fh)
                 current = metrics.get(key, 0)

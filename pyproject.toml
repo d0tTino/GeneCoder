@@ -44,6 +44,7 @@ reedsolo = "*"
 cryptography = "^45.0.4"
 pyyaml = "*"
 types-PyYAML = "*"
+portalocker = "*"
 numpy = {version = ">=2.2,<2.3", optional = true}
 pyldpc = {version = ">=0.7.6,<0.7.7", optional = true}
 pyfinite = {version = ">=1.9,<2.0", optional = true}
@@ -67,7 +68,6 @@ fastapi = ">=0.110"
 uvicorn = { version = "*", extras = ["standard"] }
 httpx = "<0.28"
 fastapi-limiter = "*"
-portalocker = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
