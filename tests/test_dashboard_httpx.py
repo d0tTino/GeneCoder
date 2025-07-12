@@ -71,9 +71,9 @@ def test_dashboard_plot_data_valid_sequence() -> None:
         )
     assert resp.status_code == 200
     data = resp.json()
-    assert set(data) >= {"gc_positions", "gc_values", "hp_lengths"}
-    assert data["gc_positions"] == [0, 10, 20, 30, 40, 50]
-    assert all(value == 0.5 for value in data["gc_values"])
-    assert len(data["hp_lengths"]) == len(seq)
-    assert all(length == 1 for length in data["hp_lengths"])
+    assert set(data) >= {"gc_array", "hp_array"}
+    assert data["gc_array"][:4] == [0, 1, 1, 0]
+    assert len(data["gc_array"]) == len(seq)
+    assert len(data["hp_array"]) == len(seq)
+    assert all(length == 1 for length in data["hp_array"])
 

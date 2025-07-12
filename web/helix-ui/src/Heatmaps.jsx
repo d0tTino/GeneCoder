@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-export default function Heatmaps({ gcPositions, gcValues, hpLengths }) {
+export default function Heatmaps({ gcArray, hpArray }) {
   const canvasRef = useRef(null);
   const width = 600;
   const rowHeight = 40;
@@ -13,27 +13,34 @@ export default function Heatmaps({ gcPositions, gcValues, hpLengths }) {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, width, totalHeight);
 
-    // GC content heatmap
-    if (gcPositions && gcValues && gcValues.length > 0) {
-      const barWidth = width / gcValues.length;
-      for (let i = 0; i < gcValues.length; i++) {
-        const intensity = gcValues[i];
-        ctx.fillStyle = `rgba(0,0,255,${intensity})`;
-        ctx.fillRect(i * barWidth, 0, barWidth, rowHeight);
+    const drawRibbon = (values, yOffset, color) => {
+      if (!values || values.length === 0) return;
+      const barWidth = width / values.length;
+      ctx.beginPath();
+      ctx.moveTo(0, yOffset + rowHeight);
+      for (let i = 0; i < values.length; i++) {
+        const y = yOffset + rowHeight - values[i] * rowHeight;
+        ctx.lineTo(i * barWidth, y);
       }
+      ctx.lineTo(width, yOffset + rowHeight);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+    };
+
+    if (gcArray && gcArray.length > 0) {
+      drawRibbon(gcArray, 0, 'rgba(0,0,255,0.3)');
     }
 
-    // Homopolymer length heatmap
-    if (hpLengths && hpLengths.length > 0) {
-      const maxHp = Math.max(...hpLengths, 1);
-      const barWidth = width / hpLengths.length;
-      for (let i = 0; i < hpLengths.length; i++) {
-        const intensity = hpLengths[i] / maxHp;
-        ctx.fillStyle = `rgba(255,0,0,${intensity})`;
-        ctx.fillRect(i * barWidth, rowHeight + 4, barWidth, rowHeight);
-      }
+    if (hpArray && hpArray.length > 0) {
+      const maxHp = Math.max(...hpArray, 1);
+      drawRibbon(
+        hpArray.map((x) => x / maxHp),
+        rowHeight + 4,
+        'rgba(255,0,0,0.3)'
+      );
     }
-  }, [gcPositions, gcValues, hpLengths]);
+  }, [gcArray, hpArray]);
 
   return (
     <div style={{ width }}>
