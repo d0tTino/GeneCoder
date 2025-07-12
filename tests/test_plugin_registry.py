@@ -4,6 +4,7 @@ import logging
 from typing import Callable
 
 import pytest
+
 httpx = pytest.importorskip("httpx")
 
 import genecoder.plugin_manager as plugins
@@ -27,7 +28,6 @@ class DummyResponse:
 
 
 def test_registry_install(monkeypatch):
-
     installs = []
 
     def fake_check_call(cmd):
@@ -178,7 +178,9 @@ def test_registry_checksum_mismatch(monkeypatch, caplog):
     assert "Checksum mismatch for plugin https://example.com/pkgD.whl" in caplog.text
 
 
-def test_registry_signature_failure(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+def test_registry_signature_failure(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     pkg = b"FFF"
     checksum = compute_checksum(pkg)
 
@@ -198,7 +200,9 @@ def test_registry_signature_failure(monkeypatch: pytest.MonkeyPatch, caplog: pyt
     key = Path("/tmp/pub.pem")
     key.write_text("PUB")
 
-    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
+    monkeypatch.setenv(
+        "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
+    )
     monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
@@ -215,10 +219,78 @@ def test_registry_signature_failure(monkeypatch: pytest.MonkeyPatch, caplog: pyt
 
     monkeypatch.setattr(plugins, "compute_checksum", fake_compute)
 
-    with pytest.raises(ValueError):
-        plugins.install_registry_plugins()
+    with pytest.raises(ValueError, match="Invalid signature"):
+        with caplog.at_level(logging.ERROR):
+            plugins.install_registry_plugins()
 
     assert not installs
+    assert "Invalid signature for plugin https://example.com/pkgF.whl" in caplog.text
+
+
+def test_registry_missing_signature_error(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    pkg = b"GGG"
+    checksum = compute_checksum(pkg)
+
+    def fake_urlopen(url: str) -> DummyResponse:
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkgG.whl\n    checksum: {checksum}\n"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkgG.whl":
+            return DummyResponse(pkg)
+        raise AssertionError(url)
+
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
+    monkeypatch.setenv(
+        "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
+    )
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(ValueError, match="Missing signature"):
+        with caplog.at_level(logging.ERROR):
+            plugins.install_registry_plugins()
+
+    assert "Missing signature for plugin entry" in caplog.text
+
+
+def test_registry_invalid_signature_format(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    pkg = b"HHH"
+    checksum = compute_checksum(pkg)
+
+    def fake_urlopen(url: str) -> DummyResponse:
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkgH.whl\n    checksum: {checksum}\n    signature: not_base64"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkgH.whl":
+            return DummyResponse(pkg)
+        raise AssertionError(url)
+
+    key = Path("/tmp/pub.pem")
+    key.write_text("PUB")
+    monkeypatch.setenv(
+        "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
+    )
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(ValueError, match="Invalid signature"):
+        with caplog.at_level(logging.ERROR):
+            plugins.install_registry_plugins()
+
+    assert "Invalid signature for plugin entry" in caplog.text
 
 
 def test_registry_checksum_validation(monkeypatch):
@@ -301,9 +373,7 @@ def test_registry_install_via_httpx(monkeypatch: pytest.MonkeyPatch) -> None:
         "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
     )
     monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
-    monkeypatch.setattr(
-        plugins.urllib.request, "urlopen", _urlopen_via_httpx(client)
-    )
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", _urlopen_via_httpx(client))
     monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
     monkeypatch.setattr(
         plugins,
@@ -350,9 +420,7 @@ def test_registry_install_via_httpx_checksum_mismatch(
         "GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml"
     )
     monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
-    monkeypatch.setattr(
-        plugins.urllib.request, "urlopen", _urlopen_via_httpx(client)
-    )
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", _urlopen_via_httpx(client))
     monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
     monkeypatch.setattr(
         plugins,

@@ -25,7 +25,7 @@ import logging
 import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
-from .plugin_security import compute_checksum, verify_signature
+from .plugin_security import compute_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def _verify_catalog_signature(data: bytes, signature: str) -> bool:
         return False
 
     try:
-        sig_bytes = base64.b64decode(signature)
+        sig_bytes = base64.b64decode(signature, validate=True)
         pubkey = Path(key_path).read_bytes()
     except Exception:
         return False
@@ -113,12 +113,15 @@ def _install_registry_plugins(url: str) -> None:
             checksum = str(entry.get("checksum", ""))
             sig_b64 = entry.get("signature")
             if not isinstance(sig_b64, str):
-                raise ValueError(f"Missing signature for plugin entry {entry}")
+                msg = f"Missing signature for plugin entry {entry}"
+                logger.error(msg)
+                raise ValueError(msg)
             try:
-                signature = base64.b64decode(sig_b64)
+                signature = base64.b64decode(sig_b64, validate=True)
             except Exception as exc:
-                raise ValueError(
-                    f"Invalid signature for plugin entry {entry}") from exc
+                msg = f"Invalid signature for plugin entry {entry}"
+                logger.error(msg)
+                raise ValueError(msg) from exc
         else:
             logger.warning("Missing checksum for plugin entry %s", entry)
             continue
@@ -141,17 +144,16 @@ def _install_registry_plugins(url: str) -> None:
 
         if signature is not None:
             if pubkey is None:
-                logger.warning(
-                    "No public key configured for signed plugin %s", spec
-                )
+                logger.warning("No public key configured for signed plugin %s", spec)
                 continue
             try:
                 digest = compute_checksum(
                     pkg_bytes, signature=signature, public_key=pubkey
                 )
             except Exception as exc:
-                raise ValueError(
-                    f"Invalid signature for plugin {spec}: {exc}") from exc
+                msg = f"Invalid signature for plugin {spec}: {exc}"
+                logger.error(msg)
+                raise ValueError(msg) from exc
         else:
             digest = compute_checksum(pkg_bytes)
 
