@@ -8,29 +8,30 @@ import tarfile
 from datetime import datetime
 from pathlib import Path
 
+from dataclasses import dataclass, fields, asdict
+
 from . import cli as cli_module
 from genecoder.metrics import metrics
 
-_ALLOWED_CACHE: dict[str, set[str]] | None = None
 
+@dataclass
+class ChannelArgs:
+    """Subset of channel options used by bundle configs."""
 
-def _get_allowed(command: str) -> set[str]:
-    global _ALLOWED_CACHE
-    if _ALLOWED_CACHE is None:
-        parser = cli_module.build_parser()
-        subparsers = next(
-            a for a in parser._actions if isinstance(a, argparse._SubParsersAction)
-        )
-        _ALLOWED_CACHE = {}
-        for name in ("encode", "channel", "decode"):
-            sub = subparsers.choices[name]
-            allowed = {
-                act.dest
-                for act in sub._actions
-                if act.option_strings and act.dest != "help"
-            }
-            _ALLOWED_CACHE[name] = allowed
-    return _ALLOWED_CACHE[command]
+    simulators: list[str] | None = None
+    config: str | None = None
+    sub_prob: float | None = None
+    ins_prob: float | None = None
+    del_prob: float | None = None
+    seed: int | None = None
+    min_length: int | None = None
+    max_length: int | None = None
+    max_homopolymer: int | None = None
+    parallel: bool = False
+    threads: int | None = None
+    processes: int | None = None
+    mpi: bool = False
+    mpi_workers: int | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +69,36 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     run_parser.set_defaults(func=_handle_run)
 
 
-def _normalize_args(prefix: str, opts: dict[str, object]) -> list[str]:
+def _channel_args(opts: dict[str, object]) -> list[str]:
+    if not isinstance(opts, dict):
+        raise TypeError("simulate section must be a mapping")
+
+    field_names = {f.name for f in fields(ChannelArgs)}
+    unknown = set(opts) - field_names
+    if unknown:
+        raise ValueError(f"Unknown channel options: {', '.join(sorted(unknown))}")
+
+    args = ["channel"]
+    data = ChannelArgs(**opts)
+    for key, value in asdict(data).items():
+        if value is None:
+            continue
+        opt = f"--{key.replace('_', '-')}"
+        if isinstance(value, bool):
+            if value:
+                args.append(opt)
+        elif isinstance(value, list):
+            for v in value:
+                args.extend([opt, str(v)])
+        else:
+            args.extend([opt, str(value)])
+    return args
+
+
+def _simple_args(prefix: str, opts: dict[str, object], allowed: set[str]) -> list[str]:
     if not isinstance(opts, dict):
         raise TypeError(f"{prefix} section must be a mapping")
 
-    allowed = _get_allowed(prefix)
     unknown = set(opts) - allowed
     if unknown:
         raise ValueError(f"Unknown {prefix} options: {', '.join(sorted(unknown))}")
@@ -88,12 +114,8 @@ def _normalize_args(prefix: str, opts: dict[str, object]) -> list[str]:
         elif isinstance(value, list):
             args.append(opt)
             args.extend([str(v) for v in value])
-        elif isinstance(value, (int, float, str)):
-            args.extend([opt, str(value)])
         else:
-            raise TypeError(
-                f"Invalid type for {prefix}.{key}: {type(value).__name__}"
-            )
+            args.extend([opt, str(value)])
     return args
 
 
@@ -176,7 +198,7 @@ def _handle_run(args: argparse.Namespace) -> None:
     enc_cfg = config.get("encode", {})
     if not isinstance(enc_cfg, dict):
         raise TypeError("encode section must be a mapping")
-    enc_args = _normalize_args("encode", enc_cfg)
+    enc_args = _simple_args("encode", enc_cfg, {"input_files", "method"})
     enc_args += ["--output-dir", str(encoded_dir)]
     _run_cli(enc_args)
 
@@ -187,7 +209,7 @@ def _handle_run(args: argparse.Namespace) -> None:
         raise TypeError("simulate section must be a mapping")
     if sim_cfg:
         simulated_dir.mkdir(parents=True, exist_ok=True)
-        sim_args_common = _normalize_args("channel", sim_cfg)
+        sim_args_common = _channel_args(sim_cfg)
         new_inputs = []
         for f in input_files:
             out_f = simulated_dir / f.name
@@ -200,7 +222,7 @@ def _handle_run(args: argparse.Namespace) -> None:
     if dec_cfg is not None and not isinstance(dec_cfg, dict):
         raise TypeError("decode section must be a mapping")
     if dec_cfg:
-        dec_args = _normalize_args("decode", dec_cfg)
+        dec_args = _simple_args("decode", dec_cfg, {"method"})
         dec_args += ["--input-files"] + [str(p) for p in input_files]
         dec_args += ["--output-dir", str(decoded_dir)]
         _run_cli(dec_args)
