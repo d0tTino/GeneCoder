@@ -4,6 +4,10 @@ from typing import Iterable, List
 import concurrent.futures
 import os
 
+
+def _run_channel(sequence: str, channel: BaseChannel) -> str:
+    return channel.simulate(sequence)
+
 from ..channels.base import BaseChannel
 from ..metrics import metrics
 from ..channel_config import ChannelConfig
@@ -62,9 +66,11 @@ class ChannelPipeline(BaseChannel):
                 else concurrent.futures.ThreadPoolExecutor
             )
 
-        current = sequence
         with executor_cls(max_workers=workers) as executor:
-            for channel in self.channels:
-                current = executor.submit(channel.simulate, current).result()
+            results = list(executor.map(_run_channel, [sequence] * len(self.channels), self.channels))
+
+        for res in results:
+            sequence = res
+
         metrics.increment("oligos_simulated")
-        return current
+        return sequence

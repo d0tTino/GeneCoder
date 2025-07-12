@@ -3,7 +3,7 @@ import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TextIO, cast
+from typing import Any, IO, cast
 
 import portalocker
 
@@ -23,7 +23,7 @@ def _get_metrics_path() -> Path:
     return Path.home() / ".genecoder" / "metrics.json"
 
 
-def _load(path: Path, fh: TextIO | None = None) -> dict[str, object]:
+def _load(path: Path, fh: IO[str] | None = None) -> dict[str, object]:
     """Load metrics from ``path`` with optional file handle ``fh``."""
     if fh is not None:
         fh.seek(0)
@@ -46,12 +46,12 @@ def _load(path: Path, fh: TextIO | None = None) -> dict[str, object]:
     return {}
 
 
-def _save(path: Path, metrics: dict[str, object], fh: TextIO | None = None) -> None:
+def _save(path: Path, metrics: dict[str, object], fh: IO[str] | None = None) -> None:
     """Persist ``metrics`` to ``path`` using optional open file handle ``fh``."""
     path.parent.mkdir(parents=True, exist_ok=True)
     data = json.dumps(metrics)
 
-    def _write(handle: TextIO) -> None:
+    def _write(handle: IO[str]) -> None:
         handle.seek(0)
         handle.truncate(0)
         handle.write(data)
