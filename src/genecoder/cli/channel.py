@@ -154,7 +154,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     parser.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
     parser.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
     parser.add_argument("--max-homopolymer", type=int, default=4, help="Maximum homopolymer")
-    parser.add_argument("--parallel", action="store_true", help="Run channel steps in parallel")
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Run channel steps concurrently",
+    )
     parser.add_argument("--threads", type=int, default=None, help="Number of worker threads")
     parser.add_argument("--processes", type=int, default=None, help="Use process pool with N workers")
     parser.add_argument("--mpi", action="store_true", help="Use MPI for parallel execution")
