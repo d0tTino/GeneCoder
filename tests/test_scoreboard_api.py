@@ -36,3 +36,18 @@ def test_challenge_persistence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     r2 = client.get("/catalog/challenge")
     assert r2.status_code == 200
     assert r2.json()["entries"] == {"team": 7}
+
+
+def test_challenge_accumulates_points(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(plugin_catalog, "CHALLENGE_PATH", str(tmp_path / "c.json"), raising=False)
+    plugin_catalog.CHALLENGE.clear()
+
+    payload = {"name": "team", "points": 2}
+    r = client.post("/catalog/challenge", headers=AUTH_HEADERS, json=payload)
+    assert r.status_code == 200
+
+    payload2 = {"name": "team", "points": 3}
+    r = client.post("/catalog/challenge", headers=AUTH_HEADERS, json=payload2)
+    assert r.status_code == 200
+
+    assert plugin_catalog.CHALLENGE["team"] == 5

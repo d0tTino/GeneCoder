@@ -310,4 +310,6 @@ retrieved via ``GET /catalog/challenge``. Post new points with the same
 ``http://localhost:8000/rankings`` to view the scoreboard. When the React build
 is available the server serves ``dist/scoreboard.html``; otherwise it falls back
 to ``helix-ui/scoreboard.html``. The page fetches the latest rankings and
-updates automatically as submissions arrive.
+updates automatically as submissions arrive. The page also provides a form to
+submit scores directly by entering a participant name, point value and API
+token.
