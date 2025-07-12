@@ -2,13 +2,10 @@ from __future__ import annotations
 
 import argparse
 import base64
-import io
 import os
 import secrets
-import stat
 import tempfile
 import uuid
-import zipfile
 from pathlib import Path
 
 from typing import Any
@@ -18,6 +15,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from genecoder.cli import bundle as bundle_cli
 from genecoder.plugin_manager import load_plugins
+from genecoder.cloud.utils import extract_zip_safely
 
 API_TOKEN: str | None = os.getenv("GENECODER_API_TOKEN")
 security = HTTPBearer(auto_error=False)
@@ -32,7 +30,7 @@ def verify_token(
         raise HTTPException(status_code=401, detail="Invalid or missing token")
 
 
-@app.on_event("startup")
+@app.on_event("startup")  # type: ignore[misc]
 def _startup() -> None:
     global API_TOKEN
     load_plugins()
@@ -41,7 +39,7 @@ def _startup() -> None:
         print(f"Generated API token: {API_TOKEN}")
 
 
-@app.post("/jobs")
+@app.post("/jobs")  # type: ignore[misc]
 def submit_job(payload: dict[str, Any], _token: None = Depends(verify_token)) -> dict[str, str]:
     if payload.get("type") != "bundle":
         raise HTTPException(status_code=400, detail="Unsupported job type")
@@ -57,21 +55,12 @@ def submit_job(payload: dict[str, Any], _token: None = Depends(verify_token)) ->
         raise HTTPException(status_code=400, detail="Invalid archive") from exc
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            for info in zf.infolist():
-                path = Path(os.path.normpath(info.filename))
-                if path.is_absolute() or ".." in path.parts:
-                    raise HTTPException(status_code=400, detail="Invalid archive path")
-                is_symlink = False
-                if hasattr(info, "is_symlink"):
-                    is_symlink = info.is_symlink()
-                else:
-                    is_symlink = ((info.external_attr >> 16) & 0o170000) == stat.S_IFLNK
-                if is_symlink:
-                    raise HTTPException(status_code=400, detail="Invalid archive path")
-                if info.file_size > MAX_FILE_SIZE:
-                    raise HTTPException(status_code=400, detail="Invalid archive path")
-            zf.extractall(tmpdir)
+        try:
+            extract_zip_safely(data, tmpdir, max_file_size=MAX_FILE_SIZE)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail="Invalid archive path"
+            ) from exc
         tmp_path = Path(tmpdir)
         yaml_files = [p for p in tmp_path.iterdir() if p.suffix in {".yaml", ".yml"}]
         if not yaml_files:
