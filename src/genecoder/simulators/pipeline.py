@@ -67,17 +67,17 @@ class ChannelPipeline(BaseChannel):
             )
 
         with executor_cls(max_workers=workers) as executor:
-            # submit all simulations before waiting on results so that they can
-            # run concurrently regardless of executor implementation
-            futures = [
-                executor.submit(_run_channel, sequence, channel)
-                for channel in self.channels
-            ]
+            fut: concurrent.futures.Future[str] | None = None
+            for channel in self.channels:
+                if fut is None:
+                    fut = executor.submit(_run_channel, sequence, channel)
+                else:
+                    fut = executor.submit(
+                        lambda f=fut, ch=channel: _run_channel(f.result(), ch)
+                    )
 
-            results = [f.result() for f in futures]
-
-        for res in results:
-            sequence = res
+            if fut is not None:
+                sequence = fut.result()
 
         metrics.increment("oligos_simulated")
         return sequence

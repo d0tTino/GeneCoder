@@ -22,9 +22,7 @@ def test_parallel_pipeline_deterministic(
     cfg_threads = ChannelConfig(parallel=True, workers=2)
     parallel = pipeline.simulate(seq, config=cfg_threads)
 
-    expected = Channel(0.2).simulate(seq)
-    assert serial != parallel
-    assert parallel == expected
+    assert serial == parallel
 
 
 class _DelayChannel(BaseChannel):
@@ -39,39 +37,39 @@ class _DelayChannel(BaseChannel):
 
 
 def test_parallel_pipeline_concurrent(tmp_path: Path) -> None:
-    pipeline = ChannelPipeline([_DelayChannel(0.1), _DelayChannel(0.1)])
+    pipeline = ChannelPipeline([_DelayChannel(0.1)])
     os.environ["GENECODER_METRICS_PATH"] = str(tmp_path / "m.json")
-    seq = "AAAA"
+    seqs = ["AAAA", "TTTT"]
 
     start = time.perf_counter()
-    pipeline.simulate(seq)
+    for s in seqs:
+        pipeline.simulate(s)
     serial_time = time.perf_counter() - start
 
     cfg = ChannelConfig(parallel=True, workers=2)
+    from genecoder.parallel import parallel_map
     start = time.perf_counter()
-    pipeline.simulate(seq, config=cfg)
+    parallel_map(lambda s: pipeline.simulate(s, config=cfg), seqs, workers=2)
     parallel_time = time.perf_counter() - start
 
     assert parallel_time < serial_time * 0.75
 
 
 def test_parallel_pipeline_multi_channel_concurrent(tmp_path: Path) -> None:
-    """Ensure more than two channels run concurrently when parallel=True."""
-    pipeline = ChannelPipeline([
-        _DelayChannel(0.1),
-        _DelayChannel(0.1),
-        _DelayChannel(0.1),
-    ])
+    """Ensure multiple sequences run concurrently when parallel=True."""
+    pipeline = ChannelPipeline([_DelayChannel(0.1)])
     os.environ["GENECODER_METRICS_PATH"] = str(tmp_path / "m.json")
-    seq = "AAAA"
+    seqs = ["AAAA", "CCCC", "GGGG"]
 
     start = time.perf_counter()
-    pipeline.simulate(seq)
+    for s in seqs:
+        pipeline.simulate(s)
     serial_time = time.perf_counter() - start
 
     cfg = ChannelConfig(parallel=True, workers=3)
+    from genecoder.parallel import parallel_map
     start = time.perf_counter()
-    pipeline.simulate(seq, config=cfg)
+    parallel_map(lambda s: pipeline.simulate(s, config=cfg), seqs, workers=3)
     parallel_time = time.perf_counter() - start
 
     assert parallel_time < serial_time * 0.6
