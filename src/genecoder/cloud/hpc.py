@@ -22,6 +22,13 @@ def generate_slurm_script(
         raise ValueError("command must not contain newlines")
     if re.search(r"[;&|<>`$]", command):
         raise ValueError("command contains unsafe characters")
+
+    allowed = re.compile(r"^[A-Za-z0-9_-]+$")
+    if not allowed.fullmatch(job_name):
+        raise ValueError("job_name contains invalid characters")
+    if partition is not None and not allowed.fullmatch(partition):
+        raise ValueError("partition contains invalid characters")
+
     lines = ["#!/bin/bash", f"#SBATCH --job-name={job_name}"]
     lines.append(f"#SBATCH --output={output or '%x-%j.out'}")
     if partition:
