@@ -524,7 +524,9 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     parser.set_defaults(func=_handle_command)
 
 
-def _handle_command(args: argparse.Namespace) -> None:
+def encode_files(args: argparse.Namespace) -> list[tuple[str, str]]:
+    """Encode files according to ``args`` and return CSV rows."""
+
     validate_chunk_size(args)
     validate_output_paths(
         args,
@@ -558,7 +560,9 @@ def _handle_command(args: argparse.Namespace) -> None:
             continue
         tasks.append((input_file_path, output_file_path, args))
 
-    results = run_tasks(tasks, process_single_encode, description="encoding", collect_results=True)
+    results = run_tasks(
+        tasks, process_single_encode, description="encoding", collect_results=True
+    )
     if args.export_csv:
         csv_rows.extend([res for res in results if res])
 
@@ -571,4 +575,9 @@ def _handle_command(args: argparse.Namespace) -> None:
         logger.info(f"CSV order file written to {args.export_csv}")
 
     metrics.increment("encode_runs")
+    return results
+
+
+def _handle_command(args: argparse.Namespace) -> None:
+    encode_files(args)
 

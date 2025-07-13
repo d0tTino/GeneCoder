@@ -142,6 +142,12 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
 
 
 def _handle_command(args: argparse.Namespace) -> None:
+    analyze_files(args)
+
+
+def analyze_files(args: argparse.Namespace) -> None:
+    """Analyze all input files specified in ``args``."""
+
     for input_file_path in args.input_files:
         process_single_analyze(input_file_path, args)
 

@@ -167,6 +167,12 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
 
 
 def _handle_command(args: argparse.Namespace) -> None:
+    run_channel(args)
+
+
+def run_channel(args: argparse.Namespace) -> None:
+    """Run the channel command using ``args``."""
+
     try:
         opts: ChannelOptions = build_channel_options(args)
     except ValueError as exc:

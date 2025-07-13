@@ -386,7 +386,9 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     parser.set_defaults(func=_handle_command)
 
 
-def _handle_command(args: argparse.Namespace) -> None:
+def decode_files(args: argparse.Namespace) -> None:
+    """Decode files specified in ``args``."""
+
     validate_chunk_size(args)
     if getattr(args, "d2sim_options", None):
         os.environ["GENECODER_D2SIM_OPTIONS"] = args.d2sim_options
@@ -430,7 +432,9 @@ def _handle_command(args: argparse.Namespace) -> None:
                 base = Path(header_name).stem
             else:
                 base = Path(input_file_path).stem
-            ext = f".{args.file_type}" if getattr(args, "file_type", None) else (Path(header_name).suffix if header_name else ".bin")
+            ext = (
+                f".{args.file_type}" if getattr(args, "file_type", None) else (Path(header_name).suffix if header_name else ".bin")
+            )
             output_file_path = os.path.join(base_dir, f"{base}{ext}")
 
         base_output = output_file_path
@@ -443,4 +447,8 @@ def _handle_command(args: argparse.Namespace) -> None:
         tasks.append((input_file_path, output_file_path, args))
 
     run_tasks(tasks, process_single_decode, description="decoding")
+
+
+def _handle_command(args: argparse.Namespace) -> None:
+    decode_files(args)
 
