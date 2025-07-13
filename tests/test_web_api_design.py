@@ -64,3 +64,21 @@ def test_design_fix_gc_extreme() -> None:
     data = r.json()
     assert data["gc_content"] >= 0.75
     assert get_max_homopolymer_length(data["sequence"]) <= 3
+
+
+def test_design_validate_invalid_chars() -> None:
+    payload = {"sequence": "ACGX"}
+    r = client.post("/design/validate", json=payload)
+    assert r.status_code == 400
+
+
+def test_design_validate_empty_sequence() -> None:
+    payload = {"sequence": ""}
+    r = client.post("/design/validate", json=payload)
+    assert r.status_code == 400
+
+
+def test_design_fix_invalid_sequence() -> None:
+    payload = {"sequence": "1234"}
+    r = client.post("/design/fix", json=payload)
+    assert r.status_code == 400
