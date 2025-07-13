@@ -11,8 +11,14 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
 
 
 def _handle_command(_: argparse.Namespace) -> None:
-    metrics = get_metrics()
-    for k, v in metrics.items():
+    data = collect_stats()
+    for k, v in data.items():
         print(f"{k}: {v}")
-    weeks = oligos_per_week()
-    print(f"oligos_per_week: {weeks}")
+
+
+def collect_stats() -> dict[str, object]:
+    """Return current usage metrics."""
+
+    data = get_metrics()
+    data["oligos_per_week"] = oligos_per_week()
+    return data

@@ -1,9 +1,9 @@
 import argparse
 import pytest
-import subprocess
 import os
-import sys
 import tempfile
+import io
+import contextlib
 from pathlib import Path
 from genecoder.utils import get_temp_dir
 from src.genecoder.formats import to_fasta, from_fasta
@@ -27,25 +27,35 @@ def small_fasta_file(temp_dir: Path) -> Path:
     fasta_path.write_text(to_fasta("ATGCATGC", "seq1"))
     return fasta_path
 
-def run_cli_command(command_args: list[str], env=None) -> subprocess.CompletedProcess:
-    """Helper function to run CLI commands."""
+class _Result:
+    def __init__(self, code: int, out: str, err: str) -> None:
+        self.returncode = code
+        self.stdout = out
+        self.stderr = err
+
+
+def run_cli_command(command_args: list[str], env=None) -> _Result:
+    """Invoke CLI main with arguments and capture output."""
+
+    from genecoder.cli.cli import main
     if env is None:
         env = os.environ.copy()
-        # Ensure PYTHONPATH includes the project root so genecoder.cli can be found
-        src_path = PROJECT_ROOT / "src"
-        env['PYTHONPATH'] = str(src_path) + os.pathsep + env.get('PYTHONPATH', '')
 
-    # Construct the command
-    # Using python -m genecoder.cli is generally more robust for module resolution
-    full_command = [sys.executable, "-m", "genecoder.cli"] + command_args
-    
-    return subprocess.run(
-        full_command,
-        capture_output=True,
-        text=True,
-        env=env,
-        cwd=PROJECT_ROOT # Run from project root
-    )
+    saved_env = os.environ.copy()
+    os.environ.update(env)
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    code = 0
+    try:
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            main(command_args)
+    except SystemExit as exc:
+        code = exc.code if isinstance(exc.code, int) else 1
+    finally:
+        os.environ.clear()
+        os.environ.update(saved_env)
+
+    return _Result(code, stdout.getvalue(), stderr.getvalue())
 
 # --- Test Scenarios for Batch Encoding ---
 
