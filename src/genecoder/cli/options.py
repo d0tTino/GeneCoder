@@ -24,6 +24,7 @@ class ChannelOptions:
     processes: int | None = None
     mpi: bool = False
     mpi_workers: int | None = None
+    batch_workers: int | None = None
 
 
 def _validate_simulator_prob_args(
@@ -108,6 +109,8 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         raise ValueError("Cannot combine MPI with threads or processes")
     if args.mpi_workers is not None and not args.mpi:
         raise ValueError("--mpi-workers requires --mpi")
+    if args.batch_workers is not None and args.batch_workers <= 0:
+        raise ValueError("batch_workers must be greater than 0")
 
     return ChannelOptions(
         simulators=simulators,
@@ -121,4 +124,5 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         processes=args.processes,
         mpi=args.mpi,
         mpi_workers=args.mpi_workers,
+        batch_workers=args.batch_workers,
     )
