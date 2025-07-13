@@ -30,6 +30,18 @@ def test_generate_slurm_script_rejects_bad(cmd: str) -> None:
         generate_slurm_script(cmd)
 
 
+@pytest.mark.parametrize("job_name", ["bad name", "bad/name", "bad!", "foo$"])
+def test_generate_slurm_script_bad_job_name(job_name: str) -> None:
+    with pytest.raises(ValueError):
+        generate_slurm_script("echo hi", job_name=job_name)
+
+
+@pytest.mark.parametrize("partition", ["bad part", "bad/part", "bad!", "foo$"])
+def test_generate_slurm_script_bad_partition(partition: str) -> None:
+    with pytest.raises(ValueError):
+        generate_slurm_script("echo hi", partition=partition)
+
+
 def test_submit_slurm_job(monkeypatch: pytest.MonkeyPatch) -> None:
     called = {}
 
