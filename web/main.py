@@ -470,6 +470,8 @@ async def design_validate(req: DesignRequest) -> dict[str, object]:
     """Validate a sequence against GC and homopolymer constraints."""
 
     seq = req.sequence.upper()
+    if not seq or not DNA_RE.fullmatch(seq):
+        raise HTTPException(status_code=400, detail="Invalid DNA sequence")
     gc_val = calculate_gc_content(seq)
     max_hp = get_max_homopolymer_length(seq)
     valid = req.gc_min <= gc_val <= req.gc_max and max_hp <= req.max_homopolymer
@@ -484,8 +486,12 @@ async def design_validate(req: DesignRequest) -> dict[str, object]:
 async def design_fix(req: DesignRequest) -> dict[str, object]:
     """Return a sequence adjusted to satisfy constraints."""
 
+    seq = req.sequence.upper()
+    if not seq or not DNA_RE.fullmatch(seq):
+        raise HTTPException(status_code=400, detail="Invalid DNA sequence")
+
     fixed = constraint_fixer.fix_sequence(
-        req.sequence,
+        seq,
         target_gc_min=req.gc_min,
         target_gc_max=req.gc_max,
         max_homopolymer=req.max_homopolymer,
