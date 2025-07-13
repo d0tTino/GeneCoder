@@ -201,6 +201,15 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --output-file channel.fasta --config config.yml
    ```
 
+   The command processes each FASTA record through a pipeline of steps. Use
+   ``--batch-workers`` to run multiple records in parallel:
+
+   ```bash
+   genecoder channel --input-file encoded.fasta \
+       --output-file channel.fasta --config config.yml \
+       --batch-workers 4
+   ```
+
 14. **AI-assisted decoding**
 
    Install the optional `dnaformer` extras to enable a machine learning model

@@ -20,6 +20,7 @@ def _make_args(**kwargs: Any) -> argparse.Namespace:
         processes=None,
         mpi=False,
         mpi_workers=None,
+        batch_workers=None,
         config=None,
         min_length=1,
         max_length=300,
@@ -127,5 +128,11 @@ def test_max_length_negative() -> None:
 def test_min_length_greater_than_max() -> None:
     args = _make_args(simulators=["simple"], min_length=10, max_length=5)
     with pytest.raises(ValueError, match="min_length cannot be greater"):
+        build_channel_options(args)
+
+
+def test_batch_workers_invalid() -> None:
+    args = _make_args(simulators=["simple"], batch_workers=0)
+    with pytest.raises(ValueError, match="batch_workers"):
         build_channel_options(args)
 

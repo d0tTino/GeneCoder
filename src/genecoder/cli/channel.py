@@ -18,6 +18,7 @@ from genecoder.channels.base import BaseChannel
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
 from genecoder.error_simulation import introduce_errors
 from genecoder.metrics import metrics
+from genecoder.parallel import parallel_map
 from .options import ChannelOptions, build_channel_options
 from .shared import add_single_io_args
 
@@ -69,6 +70,7 @@ def process_channel(
     del_prob: float = 0.0,
     seed: int | None = None,
     config: ChannelConfig | None = None,
+    batch_workers: int | None = None,
 ) -> None:
     try:
         with open(input_file, "r", encoding="utf-8") as f:
@@ -85,17 +87,16 @@ def process_channel(
         synth = SynthesisConstraints(**constraints)
     except ValueError:
         synth = SynthesisConstraints()
-    processed_records: list[tuple[str, str]] = []
-    for header, seq in records:
+    headers = [h for h, _ in records]
+    sequences = [s for _, s in records]
+
+    def _process(item: tuple[int, str]) -> str:
+        idx, seq = item
         if simulators:
             cfg = config or ChannelConfig()
-            seq = _apply_simulators(
-                seq,
-                simulators,
-                config=cfg,
-            )
+            seq = _apply_simulators(seq, simulators, config=cfg)
         else:
-            rng = random.Random(seed)
+            rng = random.Random(seed + idx if seed is not None else None)
             seq = introduce_errors(
                 seq,
                 substitution_prob=sub_prob,
@@ -104,12 +105,21 @@ def process_channel(
                 rng=rng,
             )
             metrics.increment("oligos_simulated")
-
         if not validate_sequence(seq, synth):
-            logger.error("Sequence violates synthesis constraints")
-            raise SystemExit(1)
+            raise ValueError("Sequence violates synthesis constraints")
         logger.info("Sequence satisfies synthesis constraints")
-        processed_records.append((header, seq))
+        return seq
+
+    if batch_workers and len(sequences) > 1:
+        processed_seqs = parallel_map(
+            _process,
+            list(enumerate(sequences)),
+            workers=batch_workers,
+        )
+    else:
+        processed_seqs = [_process(p) for p in enumerate(sequences)]
+
+    processed_records = list(zip(headers, processed_seqs))
 
     fasta_out = "".join(
         to_fasta(seq, header, line_width=80) for header, seq in processed_records
@@ -163,6 +173,12 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     parser.add_argument("--processes", type=int, default=None, help="Use process pool with N workers")
     parser.add_argument("--mpi", action="store_true", help="Use MPI for parallel execution")
     parser.add_argument("--mpi-workers", type=int, default=None, help="Number of MPI workers")
+    parser.add_argument(
+        "--batch-workers",
+        type=int,
+        default=None,
+        help="Process sequences in parallel using N workers",
+    )
     parser.set_defaults(func=_handle_command)
 
 
@@ -189,4 +205,5 @@ def _handle_command(args: argparse.Namespace) -> None:
         del_prob=opts.del_prob,
         seed=opts.seed,
         config=cfg,
+        batch_workers=opts.batch_workers,
     )
