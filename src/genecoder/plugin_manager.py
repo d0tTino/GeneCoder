@@ -25,7 +25,7 @@ import logging
 import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
-from .plugin_security import compute_checksum
+from .plugin_security import compute_checksum, verify_signature  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
