@@ -143,6 +143,76 @@ def test_async_cloud_client_bad_payload() -> None:
     asyncio.run(_run())
 
 
+def test_cloud_client_network_error() -> None:
+    """Network failures raise ``RuntimeError``."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("offline", request=request)
+
+    transport = httpx.MockTransport(handler)
+    client = CloudClient(
+        "https://s",
+        client=httpx.Client(base_url="https://s", transport=transport),
+    )
+    with pytest.raises(RuntimeError, match="Failed to submit job"):
+        client.submit("bundle", {"a": 1})
+
+
+def test_async_cloud_client_network_error() -> None:
+    """Async network failures raise ``RuntimeError``."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("offline", request=request)
+
+    transport = httpx.MockTransport(handler)
+
+    async def _run() -> None:
+        client = AsyncCloudClient(
+            "https://s",
+            client=httpx.AsyncClient(base_url="https://s", transport=transport),
+        )
+        with pytest.raises(RuntimeError, match="Failed to submit job"):
+            await client.submit("bundle", {"a": 1})
+        await client.close()
+
+    asyncio.run(_run())
+
+
+def test_cloud_client_invalid_json() -> None:
+    """Malformed JSON responses raise ``ValueError``."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"{bad json}")
+
+    transport = httpx.MockTransport(handler)
+    client = CloudClient(
+        "https://s",
+        client=httpx.Client(base_url="https://s", transport=transport),
+    )
+    with pytest.raises(ValueError):
+        client.submit("bundle", {"a": 1})
+
+
+def test_async_cloud_client_invalid_json() -> None:
+    """Async client errors on malformed JSON."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"{bad json}")
+
+    transport = httpx.MockTransport(handler)
+
+    async def _run() -> None:
+        client = AsyncCloudClient(
+            "https://s",
+            client=httpx.AsyncClient(base_url="https://s", transport=transport),
+        )
+        with pytest.raises(ValueError):
+            await client.submit("bundle", {"a": 1})
+        await client.close()
+
+    asyncio.run(_run())
+
+
 def test_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     bundle = tmp_path / "b.yaml"
     bundle.write_text("encode:\n  input_files: []\n")
