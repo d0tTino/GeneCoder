@@ -22,3 +22,25 @@ genecoder cloud submit --archive output.tar.gz --server https://worker:8000 --to
 ```
 
 This is equivalent to supplying a bundle YAML file directly, but avoids rebuilding the archive when the workflow has already been run locally.
+
+## Server-side metrics
+
+When bundles are processed on a GeneCoder server, each encoded file writes a
+``*.manifest.json`` file capturing metrics like DNA length and bits per
+nucleotide. The server aggregates these manifests under the directory specified
+by the ``GENECODER_BUNDLE_DIR`` environment variable (default ``bundle_runs``).
+
+Aggregated values are available through the ``/bundle-metrics`` endpoint:
+
+```bash
+$ curl http://localhost:8000/bundle-metrics
+{
+  "files": 12,
+  "total_original_size": 12345,
+  "total_dna_length": 45678,
+  "avg_bits_per_nt": 1.23
+}
+```
+
+The React component in ``web/helix-ui`` displays these metrics graphically after
+running ``npm run build`` and opening ``dashboard.html``.
