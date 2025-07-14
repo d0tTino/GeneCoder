@@ -23,7 +23,7 @@ genecoder cloud submit bundle.yaml --server https://worker:8000 --token TOKEN
 The command creates a ZIP archive containing the bundle file and any input files
 listed under the `encode.input_files` section. The archive is Base64 encoded and
 sent to the remote worker's `/jobs` endpoint. The returned job ID is printed to
-stdout.
+stdout and the command waits until the job completes by polling `/jobs/{id}`.
 
 ## Running the Worker
 
@@ -37,6 +37,8 @@ docker run -p 8000:8000 -e GENECODER_API_TOKEN=TOKEN ghcr.io/d0ttino/genecoder \
 ```
 
 Replace `TOKEN` with a secret value and use the same token when submitting jobs.
+Uploaded archives are stored under ``GENECODER_JOB_DIR`` (default ``worker_jobs``)
+and can be queried via ``GET /jobs/{id}`` to check progress.
 
 ## HPC Submission
 

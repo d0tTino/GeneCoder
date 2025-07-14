@@ -4,6 +4,7 @@ import argparse
 import base64
 import tempfile
 import zipfile
+import time
 from pathlib import Path
 
 
@@ -48,8 +49,9 @@ def _handle_submit(args: argparse.Namespace) -> None:
     if not args.server.startswith("https://"):
         warnings.warn("Using a non-HTTPS server URL", stacklevel=2)
 
-    if args.archive:
-        archive_b64 = base64.b64encode(Path(args.archive).read_bytes()).decode("utf-8")
+    archive = getattr(args, "archive", None)
+    if archive:
+        archive_b64 = base64.b64encode(Path(archive).read_bytes()).decode("utf-8")
     else:
         if args.bundle is None:
             raise ValueError("bundle file is required if --archive is not provided")
@@ -72,9 +74,19 @@ def _handle_submit(args: argparse.Namespace) -> None:
             async with AsyncCloudClient(args.server, args.token) as client:
                 jid = await client.submit("bundle", {"archive": archive_b64})
                 print(jid)
+                while True:
+                    info = await client.get_job(jid)
+                    if info.get("status") in {"completed", "failed"}:
+                        break
+                    await asyncio.sleep(1)
 
         asyncio.run(_run())
     else:
         with CloudClient(args.server, args.token) as client:
             job_id = client.submit("bundle", {"archive": archive_b64})
-        print(job_id)
+            print(job_id)
+            while True:
+                info = client.get_job(job_id)
+                if info.get("status") in {"completed", "failed"}:
+                    break
+                time.sleep(1)
