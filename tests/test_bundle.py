@@ -200,3 +200,18 @@ def test_bundle_archive_metadata(tmp_path: Path) -> None:
         data = json.loads(tf.extractfile(summary_name).read().decode())
     assert data.get("author") == "Alice"
     assert data.get("description") == "Test run"
+
+
+def test_bundle_bad_yaml(tmp_path: Path) -> None:
+    """Malformed YAML config aborts the run."""
+    cfg = tmp_path / "bad.yml"
+    cfg.write_text("encode: [oops")
+    res = run_cli_command([
+        "bundle",
+        "run",
+        str(cfg),
+        "--cache-dir",
+        str(tmp_path / "runs"),
+    ])
+    assert res.returncode != 0
+    assert "Invalid YAML" in res.stderr
