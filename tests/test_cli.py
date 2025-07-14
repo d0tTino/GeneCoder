@@ -1,10 +1,13 @@
 import argparse
-import pytest
-import os
-import tempfile
+import importlib
 import io
+import os
+import sys
+import tempfile
 import contextlib
 from pathlib import Path
+import urllib.request
+import pytest
 from genecoder.utils import get_temp_dir
 from src.genecoder.formats import to_fasta, from_fasta
 from src.genecoder.cli.encode import reverse_complement, process_single_encode
@@ -37,12 +40,34 @@ class _Result:
 def run_cli_command(command_args: list[str], env=None) -> _Result:
     """Invoke CLI main with arguments and capture output."""
 
-    from genecoder.cli.cli import main
     if env is None:
         env = os.environ.copy()
 
     saved_env = os.environ.copy()
+    saved_path = sys.path[:]
     os.environ.update(env)
+
+    import importlib as _importlib
+    import genecoder.plugin_manager as _pm
+    import genecoder.cli.plugin as _plugin_cli
+
+    _pm._initialized = False
+    _orig_urlopen = urllib.request.urlopen
+    _orig_checksum = _pm.compute_checksum
+
+    if "PYTHONPATH" in env:
+        for path in env["PYTHONPATH"].split(os.pathsep):
+            if path and path not in sys.path:
+                sys.path.insert(0, path)
+                sc = Path(path) / "sitecustomize.py"
+                if sc.exists():
+                    spec = importlib.util.spec_from_file_location("sitecustomize", sc)
+                    assert spec and spec.loader
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+
+    from genecoder.cli.cli import main
+
     stdout = io.StringIO()
     stderr = io.StringIO()
     code = 0
@@ -51,9 +76,17 @@ def run_cli_command(command_args: list[str], env=None) -> _Result:
             main(command_args)
     except SystemExit as exc:
         code = exc.code if isinstance(exc.code, int) else 1
+    except Exception as exc:  # pragma: no cover - CLI error path
+        code = 1
+        print(str(exc), file=stderr)
     finally:
         os.environ.clear()
         os.environ.update(saved_env)
+        sys.path[:] = saved_path
+        _importlib.reload(_plugin_cli)
+        urllib.request.urlopen = _orig_urlopen
+        _pm.urllib.request.urlopen = _orig_urlopen
+        _pm.compute_checksum = _orig_checksum
 
     return _Result(code, stdout.getvalue(), stderr.getvalue())
 

@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Callable, Mapping, Any
 
 
 def register(
@@ -9,7 +9,7 @@ def register(
     def encode(data: bytes) -> bytes:
         return data
 
-    def decode(encoded: bytes, info: Any | None = None) -> bytes:
+    def decode(encoded: bytes, info: Mapping[str, Any] | None = None) -> bytes:
         return encoded
 
     register_fec("example", encode, decode)

@@ -10,7 +10,7 @@ class CloudClient:
         self,
         base_url: str,
         token: str | None = None,
-        client: Any | None = None,
+        client: object | None = None,
     ) -> None:
         import httpx
 
@@ -94,7 +94,7 @@ class AsyncCloudClient:
         self,
         base_url: str,
         token: str | None = None,
-        client: Any | None = None,
+        client: object | None = None,
     ) -> None:
         import httpx
 

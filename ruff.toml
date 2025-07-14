@@ -1,5 +1,5 @@
 line-length = 88
 
 [lint]
-extend-select = []
+extend-select = ["F401", "ANN401"]
 extend-ignore = ["E402"]

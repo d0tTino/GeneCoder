@@ -12,7 +12,7 @@ REQUIRED_ENCODING_KEYS: set[str] = {"method"}
 
 def generate_manifest(
     file_name: str | os.PathLike[str],
-    encoding_params: Any,
+    encoding_params: Mapping[str, Any] | object,
     metrics: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Return a manifest dictionary for an encoded file.

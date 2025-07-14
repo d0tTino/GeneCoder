@@ -46,10 +46,9 @@ __all__ = [
 ]
 
 
-from typing import Any
 
 
-def __getattr__(name: str) -> Any:
+def __getattr__(name: str) -> object:
     if name in {"encrypt_data", "decrypt_data", "compute_checksum"}:
         from .security import decrypt_data, encrypt_data, compute_checksum
         globals().update({

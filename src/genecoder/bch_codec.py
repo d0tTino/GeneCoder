@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Tuple, TYPE_CHECKING
+from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
 _HAS_BCHLIB = False
 
@@ -40,7 +40,7 @@ def encode_data_bch(data: bytes, m: int = 8, t: int = 4) -> Tuple[bytes, Any]:
     return data + ecc, {"m": m, "t": t}
 
 
-def decode_data_bch(encoded: bytes, info: Any) -> Tuple[bytes, int]:
+def decode_data_bch(encoded: bytes, info: Mapping[str, int]) -> Tuple[bytes, int]:
     """Decode BCH encoded ``encoded`` bytes using ``info`` from encoding."""
     _require_bchlib()
     assert bchlib is not None
@@ -56,6 +56,15 @@ def decode_data_bch(encoded: bytes, info: Any) -> Tuple[bytes, int]:
 from typing import Callable
 
 
-def register(register_fec: Callable[[str, Callable[[bytes], Tuple[bytes, Any]], Callable[[bytes, Any], Tuple[bytes, int]]], None]) -> None:
+def register(
+    register_fec: Callable[
+        [
+            str,
+            Callable[[bytes], Tuple[bytes, Mapping[str, int]]],
+            Callable[[bytes, Mapping[str, int]], Tuple[bytes, int]],
+        ],
+        None,
+    ]
+) -> None:
     """Register this module's FEC backend."""
     register_fec("bch", encode_data_bch, decode_data_bch)

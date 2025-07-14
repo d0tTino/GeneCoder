@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Tuple, TYPE_CHECKING
+from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
 _HAS_PYLDPC = False
 
@@ -68,7 +68,7 @@ def encode_data_ldpc(data: bytes) -> Tuple[bytes, Any]:
     return np.packbits(codeword).tobytes(), {"H": H, "n_bits": bits.size}
 
 
-def decode_data_ldpc(encoded: bytes, info: Any) -> Tuple[bytes, int]:
+def decode_data_ldpc(encoded: bytes, info: Mapping[str, Any]) -> Tuple[bytes, int]:
     """Decode LDPC encoded ``encoded`` bytes using ``info`` from encoding."""
     _require_pyldpc()
     global np
@@ -87,6 +87,15 @@ def decode_data_ldpc(encoded: bytes, info: Any) -> Tuple[bytes, int]:
 from typing import Callable
 
 
-def register(register_fec: Callable[[str, Callable[[bytes], tuple[bytes, Any]], Callable[[bytes, Any], tuple[bytes, int]]], None]) -> None:
+def register(
+    register_fec: Callable[
+        [
+            str,
+            Callable[[bytes], tuple[bytes, Mapping[str, Any]]],
+            Callable[[bytes, Mapping[str, Any]], tuple[bytes, int]],
+        ],
+        None,
+    ]
+) -> None:
     """Register this module's FEC backend."""
     register_fec("ldpc", encode_data_ldpc, decode_data_ldpc)
