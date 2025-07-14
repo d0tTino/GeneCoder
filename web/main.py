@@ -39,6 +39,7 @@ from genecoder.report import (
     decode_to_html,
 )
 from genecoder.metrics import get_metrics, oligos_per_week
+from genecoder.bundle_metrics import aggregate_metrics
 from typing import Any, cast
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
@@ -53,6 +54,7 @@ CORS_ORIGINS = os.getenv("GENECODER_CORS_ORIGINS", "*")
 security = HTTPBearer(auto_error=False)
 PLUGIN_RATINGS: dict[str, list[int]] = {}
 RATINGS_PATH = os.getenv("GENECODER_RATINGS_PATH")
+BUNDLE_DIR = Path(os.getenv("GENECODER_BUNDLE_DIR", "bundle_runs"))
 
 
 def _load_plugin_ratings() -> None:
@@ -115,7 +117,7 @@ async def _startup() -> None:
     if REDIS_URL:
         r = redis.from_url(
             REDIS_URL, encoding="utf-8", decode_responses=True
-        )  # type: ignore[no-untyped-call]
+        )
         await FastAPILimiter.init(r)
 
 
@@ -641,3 +643,9 @@ async def metrics() -> dict[str, object]:
     data: dict[str, object] = get_metrics()
     data["oligos_per_week"] = oligos_per_week()
     return data
+
+
+@app.get("/bundle-metrics")
+async def bundle_metrics_endpoint() -> dict[str, object]:
+    """Return aggregated metrics for bundle manifests."""
+    return aggregate_metrics(BUNDLE_DIR)
