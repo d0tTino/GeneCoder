@@ -56,6 +56,23 @@ class CloudClient:
             raise ValueError("Invalid response from server")
         return job_id
 
+    def get_job(self, job_id: str) -> dict[str, Any]:
+        headers = {}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        import httpx
+
+        try:
+            resp = self._client.get(f"/jobs/{job_id}", headers=headers)
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:  # pragma: no cover - network errors
+            raise RuntimeError(f"Failed to fetch job: {exc}") from exc
+
+        data = resp.json()
+        if not isinstance(data, dict):
+            raise ValueError("Invalid response from server")
+        return data
+
     def close(self) -> None:
         self._client.close()
 
@@ -104,6 +121,23 @@ class AsyncCloudClient:
         if not isinstance(job_id, str):
             raise ValueError("Invalid response from server")
         return job_id
+
+    async def get_job(self, job_id: str) -> dict[str, Any]:
+        headers = {}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        import httpx
+
+        try:
+            resp = await self._client.get(f"/jobs/{job_id}", headers=headers)
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:  # pragma: no cover - network errors
+            raise RuntimeError(f"Failed to fetch job: {exc}") from exc
+
+        data = resp.json()
+        if not isinstance(data, dict):
+            raise ValueError("Invalid response from server")
+        return data
 
     async def close(self) -> None:
         await self._client.aclose()

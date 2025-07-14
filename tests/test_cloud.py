@@ -154,10 +154,17 @@ def test_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
             calls["base_url"] = base_url
             calls["token"] = token
 
+
         def submit(self, job_type: str, payload: dict[str, object]) -> str:
             calls["job_type"] = job_type
             calls["payload"] = payload
             return "jid"
+
+        def get_job(self, job_id: str) -> dict[str, str]:
+            assert job_id == "jid"
+            calls["polled"] = True
+            return {"status": "completed"}
+
 
         def close(self) -> None:
             pass
@@ -175,6 +182,7 @@ def test_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     assert "archive" in cast(dict[str, object], calls["payload"])
     assert calls["base_url"] == "https://s"
     assert calls["token"] is None
+    assert calls.get("polled") is True
 
 
 def test_cloud_submit_archive_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -192,6 +200,10 @@ def test_cloud_submit_archive_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
             calls["job_type"] = job_type
             calls["payload"] = payload
             return "jid"
+        def get_job(self, job_id: str) -> dict[str, str]:
+            assert job_id == "jid"
+            calls["polled"] = True
+            return {"status": "completed"}
 
         def close(self) -> None:
             pass
@@ -209,6 +221,7 @@ def test_cloud_submit_archive_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     assert calls["base_url"] == "https://s"
     assert calls["token"] is None
     assert base64.b64decode(calls["payload"]["archive"]) == archive.read_bytes()
+    assert calls.get("polled") is True
 
 
 def test_async_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -227,6 +240,11 @@ def test_async_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
             calls["payload"] = payload
             return "jid"
 
+        async def get_job(self, job_id: str) -> dict[str, str]:
+            assert job_id == "jid"
+            calls["polled"] = True
+            return {"status": "completed"}
+
         async def close(self) -> None:
             pass
 
@@ -243,6 +261,7 @@ def test_async_cloud_submit_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     assert "archive" in cast(dict[str, object], calls["payload"])
     assert calls["base_url"] == "https://s"
     assert calls["token"] is None
+    assert calls.get("polled") is True
 
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
@@ -483,4 +502,29 @@ def test_worker_rejects_large_file() -> None:
         json={"type": "bundle", "payload": {"archive": archive_b64}},
     )
     assert r.status_code == 400
+
+
+def test_worker_job_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    worker.API_TOKEN = "tok"
+    monkeypatch.setattr(worker, "JOB_DIR", tmp_path)
+    called: dict[str, object] = {}
+
+    def dummy(args: argparse.Namespace) -> None:
+        called["config"] = args.config
+
+    monkeypatch.setattr(worker.bundle_cli, "_handle_run", dummy)
+    bundle_file = tmp_path / "b.yaml"
+    bundle_file.write_text("encode:\n  input_files: []\n")
+    archive_b64 = _build_archive(bundle_file)
+    client = TestClient(worker.app)
+    r = client.post(
+        "/jobs",
+        headers={"Authorization": "Bearer tok"},
+        json={"type": "bundle", "payload": {"archive": archive_b64}},
+    )
+    assert r.status_code == 200
+    job_id = r.json()["job_id"]
+    status_r = client.get(f"/jobs/{job_id}", headers={"Authorization": "Bearer tok"})
+    assert status_r.json()["status"] == "completed"
+    assert (tmp_path / job_id / "archive.zip").is_file()
 
