@@ -1,14 +1,14 @@
 import importlib
 import importlib.util
 import sys
-from typing import Any, Optional
+from typing import Optional
 import pytest
 
 
 def _simulate_missing(module: str, missing: str, monkeypatch: pytest.MonkeyPatch) -> None:
     real_find_spec = importlib.util.find_spec
 
-    def fake_find_spec(name: str, *args: Any, **kwargs: Any) -> Optional[object]:
+    def fake_find_spec(name: str, *args: object, **kwargs: object) -> Optional[object]:
         if name == missing:
             return None
         return real_find_spec(name, *args, **kwargs)

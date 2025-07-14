@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Tuple, TYPE_CHECKING
+from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
 _HAS_FRAMED = False
 
@@ -54,7 +54,7 @@ def encode_data_framed(data: bytes) -> Tuple[bytes, Any]:
     return encoded, {}
 
 
-def decode_data_framed(encoded: bytes, info: Any) -> Tuple[bytes, int]:
+def decode_data_framed(encoded: bytes, info: Mapping[str, Any]) -> Tuple[bytes, int]:
     """Decode bytes produced by :func:`encode_data_framed`."""
 
     _require_framed()
@@ -72,7 +72,11 @@ from typing import Callable
 
 def register(
     register_fec: Callable[
-        [str, Callable[[bytes], Tuple[bytes, Any]], Callable[[bytes, Any], Tuple[bytes, int]]],
+        [
+            str,
+            Callable[[bytes], Tuple[bytes, Mapping[str, Any]]],
+            Callable[[bytes, Mapping[str, Any]], Tuple[bytes, int]],
+        ],
         None,
     ]
 ) -> None:

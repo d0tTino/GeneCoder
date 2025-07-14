@@ -21,7 +21,9 @@ import logging
 import webbrowser
 from typing import Optional
 
-from genecoder.flet_ws import ws_clients  # noqa: F401 - start server on import
+from genecoder import flet_ws
+
+flet_ws.start_server()
 from genecoder.flet_handlers import (
     make_decode_handler,
     make_encode_handler,

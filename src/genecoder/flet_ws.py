@@ -1,15 +1,18 @@
 import asyncio
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING, Set
 
 try:
     import websockets
+    if TYPE_CHECKING:  # pragma: no cover - type hints only
+        from websockets.legacy.server import WebSocketServerProtocol
 except Exception:  # pragma: no cover - optional dependency
     websockets = None
+    WebSocketServerProtocol = Any
 
 logger = logging.getLogger(__name__)
 
-ws_clients: set[Any] = set()
+ws_clients: Set[WebSocketServerProtocol] = set()
 
 
 def start_server() -> None:
@@ -18,7 +21,7 @@ def start_server() -> None:
     if not websockets:
         return
 
-    async def _ws_handler(websocket: Any) -> None:
+    async def _ws_handler(websocket: WebSocketServerProtocol) -> None:
         ws_clients.add(websocket)
         try:
             async for _ in websocket:

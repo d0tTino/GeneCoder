@@ -25,13 +25,16 @@ import logging
 import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
-from .plugin_security import compute_checksum, verify_signature  # noqa: F401
+from .plugin_security import compute_checksum, verify_signature as _verify_signature
 
 logger = logging.getLogger(__name__)
 
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
+
+# re-export for tests
+verify_signature = _verify_signature
 
 
 def register_codec(

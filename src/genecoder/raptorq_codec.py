@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Tuple, TYPE_CHECKING
+from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
 _HAS_RAPTORQ = False
 
@@ -63,7 +63,7 @@ def encode_data_raptorq(data: bytes, symbol_size: int = 8) -> Tuple[bytes, Any]:
     return encoded, {"symbol_size": symbol_size, "orig_len": len(data)}
 
 
-def decode_data_raptorq(encoded: bytes, info: Any) -> Tuple[bytes, int]:
+def decode_data_raptorq(encoded: bytes, info: Mapping[str, int]) -> Tuple[bytes, int]:
     """Decode RaptorQ encoded ``encoded`` bytes using ``info`` from encoding."""
     _require_raptorq()
     assert _rq is not None
@@ -89,6 +89,15 @@ def decode_data_raptorq(encoded: bytes, info: Any) -> Tuple[bytes, int]:
 from typing import Callable
 
 
-def register(register_fec: Callable[[str, Callable[[bytes], Tuple[bytes, Any]], Callable[[bytes, Any], Tuple[bytes, int]]], None]) -> None:
+def register(
+    register_fec: Callable[
+        [
+            str,
+            Callable[[bytes], Tuple[bytes, Mapping[str, int]]],
+            Callable[[bytes, Mapping[str, int]], Tuple[bytes, int]],
+        ],
+        None,
+    ]
+) -> None:
     """Register this module's FEC backend."""
     register_fec("raptorq", encode_data_raptorq, decode_data_raptorq)

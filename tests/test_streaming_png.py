@@ -1,12 +1,11 @@
 import os
 import time
 from pathlib import Path
-from typing import Any
 
 from genecoder.streaming import stream_encode_file, stream_decode_file
 
 
-def test_streaming_png_roundtrip(tmp_path: Path, record_property: Any) -> None:
+def test_streaming_png_roundtrip(tmp_path: Path, record_property: object) -> None:
     chunk_size = 1_048_576  # 1 MB
     total_size = chunk_size * 10
     png_data = b"\x89PNG\r\n\x1a\n" + os.urandom(total_size - 8)

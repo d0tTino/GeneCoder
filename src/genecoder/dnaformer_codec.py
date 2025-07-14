@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Tuple, TYPE_CHECKING
+from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
 _HAS_DNAFORMER = False
 
@@ -34,7 +34,9 @@ def encode_data_dnaformer(data: bytes, model_name: str = "dnaformer-small") -> T
     return encoded, {"model_name": model_name}
 
 
-def decode_data_dnaformer(encoded: bytes, info: Any) -> Tuple[bytes, int]:
+def decode_data_dnaformer(
+    encoded: bytes, info: Mapping[str, str]
+) -> Tuple[bytes, int]:
     """Decode DNAformer encoded ``encoded`` bytes using ``info`` from encoding."""
     _require_dnaformer()
     assert dnaformer is not None
@@ -46,6 +48,15 @@ def decode_data_dnaformer(encoded: bytes, info: Any) -> Tuple[bytes, int]:
 from typing import Callable
 
 
-def register(register_fec: Callable[[str, Callable[[bytes], Tuple[bytes, Any]], Callable[[bytes, Any], Tuple[bytes, int]]], None]) -> None:
+def register(
+    register_fec: Callable[
+        [
+            str,
+            Callable[[bytes], Tuple[bytes, Mapping[str, str]]],
+            Callable[[bytes, Mapping[str, str]], Tuple[bytes, int]],
+        ],
+        None,
+    ]
+) -> None:
     """Register this module's FEC backend."""
     register_fec("dnaformer", encode_data_dnaformer, decode_data_dnaformer)

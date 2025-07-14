@@ -3,12 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from typing import Any
 
 from src.genecoder.cli.options import build_channel_options
 
 
-def _make_args(**kwargs: Any) -> argparse.Namespace:
+def _make_args(**kwargs: object) -> argparse.Namespace:
     defaults = dict(
         simulators=[],
         sub_prob=0.0,

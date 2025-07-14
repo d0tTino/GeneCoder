@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Tuple, TYPE_CHECKING
+from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
 _HAS_DEEPDNA = False
 
@@ -34,7 +34,7 @@ def encode_data_deepdna(data: bytes, model_name: str = "deepdna-small") -> Tuple
     return encoded, {"model_name": model_name}
 
 
-def decode_data_deepdna(encoded: bytes, info: Any) -> Tuple[bytes, int]:
+def decode_data_deepdna(encoded: bytes, info: Mapping[str, str]) -> Tuple[bytes, int]:
     """Decode DeepDNA encoded ``encoded`` bytes using ``info`` from encoding."""
     _require_deepdna()
     assert deepdna is not None
@@ -46,6 +46,15 @@ def decode_data_deepdna(encoded: bytes, info: Any) -> Tuple[bytes, int]:
 from typing import Callable
 
 
-def register(register_fec: Callable[[str, Callable[[bytes], Tuple[bytes, Any]], Callable[[bytes, Any], Tuple[bytes, int]]], None]) -> None:
+def register(
+    register_fec: Callable[
+        [
+            str,
+            Callable[[bytes], Tuple[bytes, Mapping[str, str]]],
+            Callable[[bytes, Mapping[str, str]], Tuple[bytes, int]],
+        ],
+        None,
+    ]
+) -> None:
     """Register this module's FEC backend."""
     register_fec("deepdna", encode_data_deepdna, decode_data_deepdna)

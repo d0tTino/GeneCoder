@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Tuple, TYPE_CHECKING
+from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
 _HAS_PYFINITE = False
 
@@ -44,7 +44,9 @@ def encode_data_fountain(data: bytes, chunk_size: int = 4) -> Tuple[bytes, Any]:
     return encoded, info
 
 
-def decode_data_fountain(encoded: bytes, info: Any) -> Tuple[bytes, int]:
+def decode_data_fountain(
+    encoded: bytes, info: Mapping[str, int]
+) -> Tuple[bytes, int]:
     """Decode data encoded by :func:`encode_data_fountain`. Parity is ignored."""
     _require_pyfinite()
     chunk_size = info["chunk_size"]
@@ -59,6 +61,15 @@ def decode_data_fountain(encoded: bytes, info: Any) -> Tuple[bytes, int]:
 from typing import Callable
 
 
-def register(register_fec: Callable[[str, Callable[[bytes], tuple[bytes, Any]], Callable[[bytes, Any], tuple[bytes, int]]], None]) -> None:
+def register(
+    register_fec: Callable[
+        [
+            str,
+            Callable[[bytes], tuple[bytes, Mapping[str, int]]],
+            Callable[[bytes, Mapping[str, int]], tuple[bytes, int]],
+        ],
+        None,
+    ]
+) -> None:
     """Register this module's FEC backend."""
     register_fec("fountain", encode_data_fountain, decode_data_fountain)
