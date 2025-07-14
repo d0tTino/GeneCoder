@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import logging
 import os
 import sys
@@ -13,6 +12,7 @@ from pip._internal.exceptions import InstallationSubprocessError
 from pip._internal.utils.subprocess import call_subprocess
 
 import genecoder.plugin_manager as plugins
+from genecoder.plugin_checks import decode_signature, verify_package
 
 logger = logging.getLogger(__name__)
 
@@ -141,20 +141,25 @@ def _handle_install(args: argparse.Namespace) -> None:
                 logger.error("Missing public key for signed plugin %s", name)
                 raise SystemExit(1)
             try:
-                digest = plugins.compute_checksum(
-                    pkg_bytes,
-                    signature=base64.b64decode(signature_b64),
-                    public_key=pubkey,
-                )
-            except Exception as exc:
-                logger.error(
-                    "Signature verification failed for plugin %s: %s", name, exc
-                )
+                sig_bytes = decode_signature(signature_b64)
+            except ValueError:
+                logger.error("Invalid signature for plugin %s", name)
                 raise SystemExit(1)
         else:
-            digest = plugins.compute_checksum(pkg_bytes)
-        if checksum and digest != checksum:
-            logger.error("Checksum mismatch for plugin %s", name)
+            sig_bytes = None
+        try:
+            digest = verify_package(
+                pkg_bytes,
+                checksum=checksum,
+                signature=sig_bytes,
+                public_key=pubkey,
+                compute_fn=plugins.compute_checksum,
+            )
+        except ValueError as exc:
+            if str(exc) == "Checksum mismatch":
+                logger.error("Checksum mismatch for plugin %s", name)
+            else:
+                logger.error("Signature verification failed for plugin %s: %s", name, exc)
             raise SystemExit(1)
         req_file = Path(tmp_dir) / "req.txt"
         req_file.write_text(f"{pkg_path} --hash=sha256:{digest}\n")
