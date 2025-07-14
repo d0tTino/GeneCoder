@@ -26,6 +26,7 @@ import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
 from .plugin_security import compute_checksum, verify_signature  # noqa: F401
+from .plugin_checks import decode_signature, verify_package
 
 logger = logging.getLogger(__name__)
 
@@ -117,8 +118,8 @@ def _install_registry_plugins(url: str) -> None:
                 logger.error(msg)
                 raise ValueError(msg)
             try:
-                signature = base64.b64decode(sig_b64, validate=True)
-            except Exception as exc:
+                signature = decode_signature(sig_b64)
+            except ValueError as exc:
                 msg = f"Invalid signature for plugin entry {entry}"
                 logger.error(msg)
                 raise ValueError(msg) from exc
@@ -142,24 +143,21 @@ def _install_registry_plugins(url: str) -> None:
             logger.warning("Failed to download plugin %s: %s", spec, exc)
             continue
 
-        if signature is not None:
-            if pubkey is None:
-                logger.warning("No public key configured for signed plugin %s", spec)
+        try:
+            digest = verify_package(
+                pkg_bytes,
+                checksum=checksum,
+                signature=signature,
+                public_key=pubkey,
+                compute_fn=compute_checksum,
+            )
+        except ValueError as exc:
+            if str(exc) == "Checksum mismatch":
+                logger.warning("Checksum mismatch for plugin %s", spec)
                 continue
-            try:
-                digest = compute_checksum(
-                    pkg_bytes, signature=signature, public_key=pubkey
-                )
-            except Exception as exc:
-                msg = f"Invalid signature for plugin {spec}: {exc}"
-                logger.error(msg)
-                raise ValueError(msg) from exc
-        else:
-            digest = compute_checksum(pkg_bytes)
-
-        if digest != checksum:
-            logger.warning("Checksum mismatch for plugin %s", spec)
-            continue
+            msg = f"Invalid signature for plugin {spec}: {exc}"
+            logger.error(msg)
+            raise ValueError(msg) from exc
 
         tmp_file = None
         req_file = None
