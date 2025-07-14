@@ -28,7 +28,10 @@ logger = logging.getLogger(__name__)
 def _load_config(path: str) -> tuple[list[str], dict[str, int]]:
     import yaml
     with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f) or {}
+        try:
+            data = yaml.safe_load(f) or {}
+        except yaml.YAMLError as exc:  # pragma: no cover - invalid YAML path
+            raise ValueError(f"Invalid YAML in {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ValueError("Config file must map keys to values")
     sim = data.get("simulators", [])

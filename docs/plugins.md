@@ -68,6 +68,10 @@ simulator and a small package plugin using the `genecoder.plugins`
 group. Install any of these packages with `pip install` to experiment
 with custom extensions locally.
 
+Run `scripts/scaffold_plugin.sh <name>` to create a new plugin project. The
+generated template registers an entry point and includes a README with
+instructions on signing the distribution.
+
 ## Developing a Plugin Step by Step
 
 1. Copy `src/plugins/reverse_codec.py` as a starting point.
