@@ -157,7 +157,11 @@ def _handle_run(args: argparse.Namespace) -> None:
     import yaml
 
     with open(args.config, "r", encoding="utf-8") as fh:
-        config = yaml.safe_load(fh) or {}
+        try:
+            config = yaml.safe_load(fh) or {}
+        except yaml.YAMLError as exc:  # pragma: no cover - invalid YAML path
+            logger.error("Invalid YAML in %s: %s", args.config, exc)
+            raise SystemExit(1)
 
     if not isinstance(config, dict):
         raise TypeError("Top level YAML must be a mapping")

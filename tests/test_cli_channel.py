@@ -235,3 +235,61 @@ def test_channel_cli_parallel_variants(
     assert data["simulators"] == ["simple"]
     assert data["metrics"]["length"] == len(seq)
 
+
+def test_channel_cli_bad_yaml(tmp_path: Path) -> None:
+    """Malformed YAML configuration results in an error."""
+    input_fasta = tmp_path / "in_bad.fasta"
+    create_fasta(input_fasta)
+    cfg = tmp_path / "bad.yml"
+    cfg.write_text("simulators: [simple")
+
+    env = os.environ.copy()
+    from pathlib import Path as _Path
+    src_path = _Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    result = run_cli_command(
+        [
+            "channel",
+            "--input-file",
+            str(input_fasta),
+            "--output-file",
+            str(tmp_path / "out_bad.fasta"),
+            "--config",
+            str(cfg),
+        ],
+        env=env,
+    )
+    assert result.returncode != 0
+    assert "Invalid YAML" in result.stderr
+
+
+def test_channel_cli_wrong_type(tmp_path: Path) -> None:
+    """Wrong data types in YAML config are rejected."""
+    input_fasta = tmp_path / "in_type.fasta"
+    create_fasta(input_fasta)
+    cfg = tmp_path / "type.yml"
+    cfg.write_text("simulators: 1\n")
+
+    env = os.environ.copy()
+    from pathlib import Path as _Path
+    src_path = _Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    result = run_cli_command(
+        [
+            "channel",
+            "--input-file",
+            str(input_fasta),
+            "--output-file",
+            str(tmp_path / "out_type.fasta"),
+            "--config",
+            str(cfg),
+        ],
+        env=env,
+    )
+    assert result.returncode != 0
+    assert "'simulators' must be a list" in result.stderr
+
