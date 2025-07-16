@@ -1,0 +1,28 @@
+# Example channel configuration combining sequencing simulators
+# with synthesis constraints. The same structure can be saved as JSON.
+
+synthesis:
+  min_length: 25
+  max_length: 300
+  max_homopolymer: 4
+
+simulators:
+  - name: illumina
+    substitution_rate: 0.001
+    insertion_rate: 0.0001
+    deletion_rate: 0.0001
+    coverage: 1
+    read_length: 150
+  - name: adv_nanopore
+    substitution_rate: 0.02
+    insertion_rate: 0.04
+    deletion_rate: 0.04
+    homopolymer_factor: 2.0
+    coverage: 1
+    read_length: 500
+
+pipeline:
+  parallel: false
+  workers: null
+  use_process_pool: false
+  use_mpi: false

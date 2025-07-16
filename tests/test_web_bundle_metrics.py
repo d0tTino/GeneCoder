@@ -12,7 +12,7 @@ fastapi = pytest.importorskip("fastapi")
 import web.main as main
 
 
-def _request(method: str, url: str, **kwargs: Any) -> httpx.Response:
+def _request(method: str, url: str, **kwargs: Any) -> httpx.Response:  # noqa: ANN401
     async def _call() -> httpx.Response:
         transport = httpx.ASGITransport(app=main.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:

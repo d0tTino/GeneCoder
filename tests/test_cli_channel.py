@@ -55,7 +55,7 @@ def test_channel_cli_yaml(tmp_path: Path) -> None:
     create_fasta(input_fasta)
     config = tmp_path / "cfg.yml"
     config.write_text(
-        """simulators:\n  - simple\nconstraints:\n  min_length: 1\n  max_length: 10\n  max_homopolymer: 5\n"""
+        """simulators:\n  - name: simple\nsynthesis:\n  min_length: 1\n  max_length: 10\n  max_homopolymer: 5\n"""
     )
     output_fasta = tmp_path / "out2.fasta"
     env = os.environ.copy()

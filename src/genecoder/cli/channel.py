@@ -8,7 +8,7 @@ import logging
 import os
 import random
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, Dict, Any
 
 
 from genecoder.formats import from_fasta, to_fasta
@@ -25,39 +25,77 @@ from .shared import add_single_io_args
 logger = logging.getLogger(__name__)
 
 
-def _load_config(path: str) -> tuple[list[str], dict[str, int]]:
+def _load_config(
+    path: str,
+) -> tuple[list[tuple[str, Dict[str, Any]]], dict[str, int], ChannelConfig]:
     import yaml
+
     with open(path, "r", encoding="utf-8") as f:
         try:
             data = yaml.safe_load(f) or {}
         except yaml.YAMLError as exc:  # pragma: no cover - invalid YAML path
             raise ValueError(f"Invalid YAML in {path}: {exc}") from exc
+
     if not isinstance(data, dict):
         raise ValueError("Config file must map keys to values")
-    sim = data.get("simulators", [])
-    if not isinstance(sim, Sequence):
+
+    sim_section = data.get("simulators", [])
+    if not isinstance(sim_section, Sequence):
         raise ValueError("'simulators' must be a list")
-    constraints = data.get("constraints", {})
-    if not isinstance(constraints, dict):
-        raise ValueError("'constraints' must be a mapping")
-    return list(sim), {k: int(v) for k, v in constraints.items()}
+
+    simulators: list[tuple[str, Dict[str, Any]]] = []
+    for item in sim_section:
+        if isinstance(item, str):
+            simulators.append((item, {}))
+        elif isinstance(item, dict):
+            name = item.get("name")
+            if not isinstance(name, str):
+                raise ValueError("Simulator mapping must contain a string 'name'")
+            params = {k: v for k, v in item.items() if k != "name"}
+            simulators.append((name, params))
+        else:
+            raise ValueError("Each simulator must be a string or mapping")
+
+    synth_section = data.get("synthesis", data.get("constraints", {}))
+    if not isinstance(synth_section, dict):
+        raise ValueError("'synthesis' must be a mapping")
+
+    pipeline = data.get("pipeline", {})
+    if not isinstance(pipeline, dict):
+        raise ValueError("'pipeline' must be a mapping")
+
+    cfg = ChannelConfig(
+        parallel=bool(pipeline.get("parallel", False)),
+        workers=pipeline.get("workers"),
+        use_process_pool=bool(pipeline.get("use_process_pool", False)),
+        use_mpi=bool(pipeline.get("use_mpi", False)),
+    )
+
+    return simulators, {k: int(v) for k, v in synth_section.items()}, cfg
 
 
 def _apply_simulators(
     sequence: str,
-    simulators: Sequence[str],
+    simulators: Sequence[tuple[str, Dict[str, Any]]],
     *,
     config: ChannelConfig,
 ) -> str:
     channels: list[BaseChannel] = []
-    for name in simulators:
+    for name, params in simulators:
         if name not in SIMULATOR_REGISTRY:
             logger.error("Unknown simulator: %s", name)
             raise SystemExit(1)
-        channels.append(SIMULATOR_REGISTRY[name])
+        channel = SIMULATOR_REGISTRY[name]
+        if params:
+            try:
+                channel = type(channel)(**params)
+            except Exception as exc:
+                logger.error("Invalid parameters for %s: %s", name, exc)
+                raise SystemExit(1)
+        channels.append(channel)
     pipeline = ChannelPipeline(channels)
     result: str = pipeline.simulate(sequence, config=config)
-    for name in simulators:
+    for name, _ in simulators:
         logger.info("Applied %s simulator", name)
     return result
 
@@ -65,7 +103,7 @@ def _apply_simulators(
 def process_channel(
     input_file: str,
     output_file: str,
-    simulators: Sequence[str],
+    simulators: Sequence[tuple[str, Dict[str, Any]]],
     constraints: dict[str, int],
     *,
     sub_prob: float = 0.0,
@@ -134,7 +172,7 @@ def process_channel(
     total_len = sum(len(seq) for _, seq in processed_records)
     manifest = {
         "file": os.path.basename(Path(input_file).as_posix()),
-        "simulators": list(simulators),
+        "simulators": [name for name, _ in simulators],
         "probabilities": {
             "sub_prob": sub_prob,
             "ins_prob": ins_prob,
@@ -159,7 +197,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         default=[],
         help="Simulator to apply (can be repeated)",
     )
-    parser.add_argument("--config", type=str, help="YAML config defining simulators and constraints")
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="YAML/JSON config defining simulators, synthesis and pipeline",
+    )
     parser.add_argument("--sub-prob", type=float, default=0.0, help="Substitution probability per nucleotide")
     parser.add_argument("--ins-prob", type=float, default=0.0, help="Insertion probability after each nucleotide")
     parser.add_argument("--del-prob", type=float, default=0.0, help="Deletion probability per nucleotide")
@@ -204,10 +246,14 @@ def run_channel(args: argparse.Namespace) -> None:
         use_process_pool=opts.processes is not None,
         use_mpi=opts.mpi,
     )
+    simulators = opts.simulator_specs
+    if simulators is None:
+        simulators = [(name, {}) for name in opts.simulators]
+
     process_channel(
         args.input_file,
         args.output_file,
-        opts.simulators,
+        simulators,
         opts.constraints,
         sub_prob=opts.sub_prob,
         ins_prob=opts.ins_prob,

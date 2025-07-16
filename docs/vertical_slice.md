@@ -83,6 +83,17 @@ genecoder bundle run configs/vertical_slice_demo.yaml --cache-dir runs
 The `scripts/vertical_slice.sh` helper executes the same command automatically
 as part of the demo.
 
+## Channel Configuration
+
+A unified configuration describing sequencing simulators and synthesis
+constraints is provided at `configs/channel_demo.yaml`.
+Apply the channel step using:
+
+```bash
+genecoder channel --config configs/channel_demo.yaml \
+  --input-file encoded/message.fasta --output-file simulated.fasta
+```
+
 ## Launch the GUI
 
 ```bash
