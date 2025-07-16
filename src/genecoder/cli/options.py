@@ -25,6 +25,7 @@ class ChannelOptions:
     mpi: bool = False
     mpi_workers: int | None = None
     batch_workers: int | None = None
+    simulator_specs: list[tuple[str, dict[str, object]]] | None = None
 
 
 def _validate_simulator_prob_args(
@@ -88,11 +89,22 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         "max_homopolymer": args.max_homopolymer,
     }
 
+    sim_specs: list[tuple[str, dict[str, object]]] | None = None
     if args.config:
-        cfg_sim, cfg_con = _load_config(args.config)
+        cfg_sim, cfg_con, cfg_pipeline = _load_config(args.config)
         if cfg_sim:
-            simulators = cfg_sim
+            sim_specs = cfg_sim
+            simulators = [name for name, _ in cfg_sim]
         constraints.update(cfg_con)
+        if not args.parallel and cfg_pipeline.parallel:
+            args.parallel = True
+        if args.threads is None and args.processes is None and args.mpi_workers is None:
+            if cfg_pipeline.workers is not None:
+                args.threads = cfg_pipeline.workers
+        if cfg_pipeline.use_process_pool:
+            args.processes = args.threads
+        if cfg_pipeline.use_mpi:
+            args.mpi = True
 
     _validate_simulator_prob_args(
         simulators, args.sub_prob, args.ins_prob, args.del_prob
@@ -125,4 +137,5 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         mpi=args.mpi,
         mpi_workers=args.mpi_workers,
         batch_workers=args.batch_workers,
+        simulator_specs=sim_specs,
     )

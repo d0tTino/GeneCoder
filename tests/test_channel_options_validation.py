@@ -55,7 +55,7 @@ def test_no_simulators_or_probabilities_error() -> None:
 
 def test_config_and_probabilities_error(tmp_path: Path) -> None:
     cfg = tmp_path / "cfg.yml"
-    cfg.write_text("simulators:\n  - simple\n")
+    cfg.write_text("simulators:\n  - name: simple\n")
     args = _make_args(config=str(cfg), sub_prob=0.1)
     with pytest.raises(ValueError, match="Probability options cannot"):
         build_channel_options(args)
@@ -87,7 +87,7 @@ def test_mpi_workers_requires_mpi() -> None:
 
 def test_config_missing_simulators_error(tmp_path: Path) -> None:
     cfg = tmp_path / "cfg.yml"
-    cfg.write_text("constraints:\n  max_length: 200\n")
+    cfg.write_text("synthesis:\n  max_length: 200\n")
     args = _make_args(config=str(cfg))
     with pytest.raises(ValueError, match="At least one simulator"):
         build_channel_options(args)
