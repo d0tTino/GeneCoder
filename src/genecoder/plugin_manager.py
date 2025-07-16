@@ -26,6 +26,7 @@ import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
 from .plugin_security import compute_checksum, verify_signature as _verify_signature
+from .plugin_checks import decode_signature, verify_package
 
 
 logger = logging.getLogger(__name__)
