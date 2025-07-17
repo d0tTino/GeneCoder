@@ -17,6 +17,7 @@ CATALOG_PATH = os.getenv("GENECODER_CATALOG_PATH")
 CHALLENGE_PATH = os.getenv("GENECODER_CHALLENGE_PATH")
 CATALOG: List[Dict[str, Optional[str]]] = []
 CHALLENGE: Dict[str, int] = {}
+PLUGIN_RATINGS: Dict[str, List[int]] = {}
 
 
 class PluginMetadata(BaseModel):
@@ -31,8 +32,13 @@ class ChallengeEntry(BaseModel):
     points: int
 
 
+class RatingRequest(BaseModel):
+    name: str
+    rating: int
+
+
 def _load_catalog() -> None:
-    global CATALOG
+    global CATALOG, PLUGIN_RATINGS
     if not CATALOG_PATH:
         return
     path = Path(CATALOG_PATH)
@@ -50,10 +56,23 @@ def _load_catalog() -> None:
                 "version": str(item.get("version", "")),
                 "checksum": str(item.get("checksum", "")),
                 "signature": item.get("signature"),
+                **({"stars": float(item.get("stars", 0))} if "stars" in item else {}),
             }
             for item in items
             if item.get("name")
         ]
+
+    ratings = data.get("ratings", {})
+    if isinstance(ratings, dict):
+        PLUGIN_RATINGS = {
+            str(k): [int(x) for x in v if isinstance(x, int)]
+            for k, v in ratings.items()
+            if isinstance(v, list)
+        }
+    for entry in CATALOG:
+        r = PLUGIN_RATINGS.get(entry["name"])
+        if r:
+            entry["stars"] = sum(r) / len(r)
 
 
 def _load_challenge() -> None:
@@ -77,7 +96,7 @@ def _save_catalog() -> None:
         return
     path = Path(CATALOG_PATH)
     path.parent.mkdir(parents=True, exist_ok=True)
-    data = json.dumps({"plugins": CATALOG})
+    data = json.dumps({"plugins": CATALOG, "ratings": PLUGIN_RATINGS})
     with portalocker.Lock(path, "a+", timeout=10, encoding="utf-8") as fh:
         fh.seek(0)
         fh.truncate(0)
@@ -135,6 +154,35 @@ def add_plugin(
     CATALOG.append(meta.dict())
     _save_catalog()
     return {"status": "ok"}
+
+
+@router.post("/plugins/rate")
+def rate_plugin(
+    req: RatingRequest,
+    _: None = Depends(_verify_token),
+) -> Dict[str, float]:
+    if req.rating < 1 or req.rating > 5:
+        raise HTTPException(status_code=400, detail="rating must be 1-5")
+    if not any(item["name"] == req.name for item in CATALOG):
+        raise HTTPException(status_code=404, detail="Plugin not found")
+    ratings = PLUGIN_RATINGS.setdefault(req.name, [])
+    ratings.append(req.rating)
+    avg = sum(ratings) / len(ratings)
+    for item in CATALOG:
+        if item["name"] == req.name:
+            item["stars"] = avg
+            break
+    _save_catalog()
+    return {"average": avg}
+
+
+@router.get("/plugins/rate")
+def get_plugin_rating(name: str) -> Dict[str, float]:
+    ratings = PLUGIN_RATINGS.get(name)
+    if not ratings:
+        raise HTTPException(status_code=404, detail="No ratings found")
+    avg = sum(ratings) / len(ratings)
+    return {"average": avg}
 
 
 @router.get("/challenge")

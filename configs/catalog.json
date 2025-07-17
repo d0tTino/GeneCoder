@@ -1,0 +1,14 @@
+{
+  "plugins": [
+    {
+      "name": "example",
+      "version": "1.0",
+      "checksum": "abc123",
+      "signature": null,
+      "stars": 4.5
+    }
+  ],
+  "ratings": {
+    "example": [5,4]
+  }
+}
