@@ -1,7 +1,7 @@
 import asyncio
 import json
 from pathlib import Path
-from typing import Any
+
 
 import httpx
 import pytest
@@ -12,7 +12,7 @@ fastapi = pytest.importorskip("fastapi")
 import web.main as main
 
 
-def _request(method: str, url: str, **kwargs: Any) -> httpx.Response:  # noqa: ANN401
+def _request(method: str, url: str, **kwargs: object) -> httpx.Response:
     async def _call() -> httpx.Response:
         transport = httpx.ASGITransport(app=main.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
