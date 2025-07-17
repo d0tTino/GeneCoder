@@ -1,8 +1,10 @@
 import pytest
 import subprocess
+from pathlib import Path
 
 from genecoder.cloud.hpc import generate_slurm_script, submit_slurm_job
 from genecoder.cloud import CloudClient
+from tests.test_cli import run_cli_command
 
 
 def test_generate_slurm_script() -> None:
@@ -110,3 +112,34 @@ def test_cloud_client_hpc(monkeypatch: pytest.MonkeyPatch) -> None:
     assert generated["job_name"] == "job"
     assert generated["time"] == "00:05:00"
     assert generated["script"] == "script"
+
+
+def test_cloud_cli_hpc(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    pytest.importorskip("yaml")
+    cfg = tmp_path / "job.yml"
+    cfg.write_text(
+        """command: echo hi
+job_name: cli
+"""
+    )
+
+    called: dict[str, str] = {}
+
+    def fake_generate(command: str, **kwargs) -> str:
+        called["command"] = command
+        called.update(kwargs)
+        return "script"
+
+    def fake_submit(script: str) -> str:
+        called["script"] = script
+        return "99"
+
+    monkeypatch.setattr("genecoder.cloud.hpc.generate_slurm_script", fake_generate)
+    monkeypatch.setattr("genecoder.cloud.hpc.submit_slurm_job", fake_submit)
+
+    result = run_cli_command(["cloud", "submit", "--hpc-config", str(cfg)])
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "99"
+    assert called["command"] == "echo hi"
+    assert called["job_name"] == "cli"
+    assert called["script"] == "script"
