@@ -72,6 +72,12 @@ job:
   partition: compute
 ```
 
+Use the CLI to submit such a file directly via Slurm:
+
+```bash
+genecoder cloud submit --hpc-config job.yaml
+```
+
 ## Fetching Error Profiles
 
 GeneCoder can download example anonymized error profiles for use with simulators.

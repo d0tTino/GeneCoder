@@ -3,10 +3,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-import httpx
 import pytest
 
-pytest.importorskip("httpx")
+httpx = pytest.importorskip("httpx")
 fastapi = pytest.importorskip("fastapi")
 
 import web.main as main

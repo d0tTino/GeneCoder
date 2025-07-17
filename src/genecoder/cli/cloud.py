@@ -37,6 +37,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         action="store_true",
         help="Use asynchronous submission",
     )
+    submit.add_argument(
+        "--hpc-config",
+        type=str,
+        help="YAML file describing an HPC job to run via Slurm",
+    )
     submit.set_defaults(func=_handle_submit)
 
 
@@ -45,6 +50,27 @@ def _handle_submit(args: argparse.Namespace) -> None:
     import yaml
     import asyncio
     from genecoder.cloud import CloudClient, AsyncCloudClient
+
+    hpc_cfg = getattr(args, "hpc_config", None)
+    if hpc_cfg:
+        payload = yaml.safe_load(Path(hpc_cfg).read_text()) or {}
+        from genecoder.cloud.hpc import generate_slurm_script, submit_slurm_job
+
+        script = payload.get("script")
+        if not isinstance(script, str):
+            command = payload.get("command")
+            if not isinstance(command, str):
+                raise ValueError("command is required for HPC job")
+            script = generate_slurm_script(
+                command,
+                job_name=payload.get("job_name", "genecoder"),
+                time=payload.get("time", "01:00:00"),
+                partition=payload.get("partition"),
+                output=payload.get("output"),
+            )
+        jid = submit_slurm_job(script)
+        print(jid)
+        return
 
     if not args.server.startswith("https://"):
         warnings.warn("Using a non-HTTPS server URL", stacklevel=2)
