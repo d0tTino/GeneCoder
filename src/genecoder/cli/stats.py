@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from genecoder.metrics import get_metrics, oligos_per_week
-from typing import TypeAlias, cast
+from typing import TypeAlias
 
 
 def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:

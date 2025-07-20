@@ -181,3 +181,4 @@ requirements.lock
 # Node.js artifacts
 web/helix-ui/node_modules/
 web/helix-ui/package-lock.json
+worker_jobs/
