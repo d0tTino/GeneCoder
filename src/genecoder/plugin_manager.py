@@ -236,7 +236,6 @@ def _fetch_catalog(url: str) -> None:
             return
 
     PLUGIN_CATALOG.clear()
-    allow_unsigned = os.getenv("GENECODER_ALLOW_UNSIGNED_PLUGINS") == "1"
     for entry in data.get("plugins", []):
         name = str(entry.get("name", ""))
         if not name:
@@ -247,10 +246,8 @@ def _fetch_catalog(url: str) -> None:
             continue
         signature = entry.get("signature")
         if not signature:
-            logger.error("Missing signature for plugin %s", name)
-            if not allow_unsigned:
-                continue
-            signature = ""
+            logger.error("Plugin %s missing required signature", name)
+            continue
 
         PLUGIN_CATALOG[name] = {
             "version": str(entry.get("version", "")),

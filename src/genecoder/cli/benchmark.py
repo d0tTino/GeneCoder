@@ -4,6 +4,7 @@ import argparse
 import csv
 import io
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -60,7 +61,11 @@ def _handle_fec(args: argparse.Namespace) -> None:
     ]
     for r in args.redundancy:
         cmd.extend(["--redundancy", str(r)])
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(Path(__file__).resolve().parents[3] / "src"), env.get("PYTHONPATH", "")] 
+    )
+    proc = subprocess.run(cmd, capture_output=True, text=True, env=env)
     if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
         raise SystemExit(proc.returncode)
