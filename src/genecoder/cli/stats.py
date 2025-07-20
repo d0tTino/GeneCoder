@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from genecoder.metrics import get_metrics, oligos_per_week
-from typing import TypeAlias
+from typing import TypeAlias, cast
 
 
 def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -23,7 +23,6 @@ StatsData: TypeAlias = dict[str, int | list[str] | dict[str, int]]
 def collect_stats() -> StatsData:
     """Return current usage metrics."""
 
-    data: dict[str, object] = get_metrics()
-
+    data = cast(StatsData, get_metrics())
     data["oligos_per_week"] = oligos_per_week()
     return data
