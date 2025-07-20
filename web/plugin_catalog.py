@@ -9,6 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 import web.main as main
+from genecoder import plugin_manager as plugins
 
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
@@ -39,40 +40,7 @@ class RatingRequest(BaseModel):
 
 def _load_catalog() -> None:
     global CATALOG, PLUGIN_RATINGS
-    if not CATALOG_PATH:
-        return
-    path = Path(CATALOG_PATH)
-    if not path.is_file():
-        return
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return
-    items = data.get("plugins", [])
-    if isinstance(items, list):
-        CATALOG = [
-            {
-                "name": str(item.get("name", "")),
-                "version": str(item.get("version", "")),
-                "checksum": str(item.get("checksum", "")),
-                "signature": item.get("signature"),
-                **({"stars": float(item.get("stars", 0))} if "stars" in item else {}),
-            }
-            for item in items
-            if item.get("name")
-        ]
-
-    ratings = data.get("ratings", {})
-    if isinstance(ratings, dict):
-        PLUGIN_RATINGS = {
-            str(k): [int(x) for x in v if isinstance(x, int)]
-            for k, v in ratings.items()
-            if isinstance(v, list)
-        }
-    for entry in CATALOG:
-        r = PLUGIN_RATINGS.get(entry["name"])
-        if r:
-            entry["stars"] = sum(r) / len(r)
+    CATALOG, PLUGIN_RATINGS = plugins.load_catalog(CATALOG_PATH)
 
 
 def _load_challenge() -> None:
@@ -92,17 +60,7 @@ def _load_challenge() -> None:
 
 
 def _save_catalog() -> None:
-    if not CATALOG_PATH:
-        return
-    path = Path(CATALOG_PATH)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    data = json.dumps({"plugins": CATALOG, "ratings": PLUGIN_RATINGS})
-    with portalocker.Lock(path, "a+", timeout=10, encoding="utf-8") as fh:
-        fh.seek(0)
-        fh.truncate(0)
-        fh.write(data)
-        fh.flush()
-        os.fsync(fh.fileno())
+    plugins.save_catalog(CATALOG_PATH, CATALOG, PLUGIN_RATINGS)
 
 
 def _save_challenge() -> None:
@@ -161,17 +119,12 @@ def rate_plugin(
     req: RatingRequest,
     _: None = Depends(_verify_token),
 ) -> Dict[str, float]:
-    if req.rating < 1 or req.rating > 5:
-        raise HTTPException(status_code=400, detail="rating must be 1-5")
-    if not any(item["name"] == req.name for item in CATALOG):
-        raise HTTPException(status_code=404, detail="Plugin not found")
-    ratings = PLUGIN_RATINGS.setdefault(req.name, [])
-    ratings.append(req.rating)
-    avg = sum(ratings) / len(ratings)
-    for item in CATALOG:
-        if item["name"] == req.name:
-            item["stars"] = avg
-            break
+    try:
+        avg = plugins.rate_plugin(CATALOG, PLUGIN_RATINGS, req.name, req.rating)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Plugin not found") from exc
     _save_catalog()
     return {"average": avg}
 

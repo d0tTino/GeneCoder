@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Any, Iterable
+from typing import Callable, Dict, Any, Iterable, Optional
 from types import ModuleType
 import os
 import sys
@@ -11,6 +11,8 @@ from urllib.parse import urlparse
 import importlib
 import base64
 from pathlib import Path
+import json
+import portalocker
 
 _yaml: Any
 try:  # pragma: no cover - import is trivial
@@ -77,6 +79,95 @@ def _verify_catalog_signature(data: bytes, signature: str) -> bool:
         return False
 
     return True
+
+
+def load_catalog(
+    path: Optional[str],
+) -> tuple[list[dict[str, Any]], dict[str, list[int]]]:
+    """Return catalog and rating data from ``path``."""
+
+    if not path:
+        return [], {}
+    file_path = Path(path)
+    if not file_path.is_file():
+        return [], {}
+    try:
+        data = json.loads(file_path.read_text(encoding="utf-8"))
+    except Exception:
+        return [], {}
+
+    catalog: list[dict[str, Any]] = []
+    ratings: dict[str, list[int]] = {}
+    items = data.get("plugins", [])
+    if isinstance(items, list):
+        catalog = [
+            {
+                "name": str(item.get("name", "")),
+                "version": str(item.get("version", "")),
+                "checksum": str(item.get("checksum", "")),
+                "signature": item.get("signature"),
+                **({"stars": float(item.get("stars", 0))} if "stars" in item else {}),
+            }
+            for item in items
+            if item.get("name")
+        ]
+
+    rating_data = data.get("ratings", {})
+    if isinstance(rating_data, dict):
+        ratings = {
+            str(k): [int(x) for x in v if isinstance(x, int)]
+            for k, v in rating_data.items()
+            if isinstance(v, list)
+        }
+
+    for entry in catalog:
+        r = ratings.get(entry["name"])
+        if r:
+            entry["stars"] = sum(r) / len(r)
+
+    return catalog, ratings
+
+
+def save_catalog(
+    path: Optional[str],
+    catalog: list[dict[str, Any]],
+    ratings: dict[str, list[int]],
+) -> None:
+    """Persist ``catalog`` and ``ratings`` to ``path``."""
+
+    if not path:
+        return
+    file_path = Path(path)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    data = json.dumps({"plugins": catalog, "ratings": ratings})
+    with portalocker.Lock(file_path, "a+", timeout=10, encoding="utf-8") as fh:
+        fh.seek(0)
+        fh.truncate(0)
+        fh.write(data)
+        fh.flush()
+        os.fsync(fh.fileno())
+
+
+def rate_plugin(
+    catalog: list[dict[str, Any]],
+    ratings: dict[str, list[int]],
+    name: str,
+    rating: int,
+) -> float:
+    """Add ``rating`` for ``name`` and return the new average."""
+
+    if rating < 1 or rating > 5:
+        raise ValueError("rating must be 1-5")
+    if not any(item["name"] == name for item in catalog):
+        raise KeyError("Plugin not found")
+    rating_list = ratings.setdefault(name, [])
+    rating_list.append(rating)
+    avg = sum(rating_list) / len(rating_list)
+    for item in catalog:
+        if item["name"] == name:
+            item["stars"] = avg
+            break
+    return avg
 
 
 def _install_registry_plugins(url: str) -> None:
