@@ -94,6 +94,75 @@ def _handle_list(args: argparse.Namespace) -> None:
         print(display)
 
 
+def download_plugin_bytes(name: str) -> tuple[str, bytes]:
+    """Return ``(filename, bytes)`` for plugin ``name`` after verification."""
+
+    meta = plugins.PLUGIN_CATALOG.get(name)
+    if not meta:
+        logger.error("Unknown plugin: %s", name)
+        raise SystemExit(1)
+
+    spec = meta.get("url") or name
+    version = meta.get("version")
+    if version and not meta.get("url"):
+        spec = f"{name}=={version}"
+    checksum = meta.get("checksum")
+    signature_b64 = meta.get("signature")
+    pubkey: bytes | None = None
+
+    key_path = os.getenv("GENECODER_PLUGIN_PUBLIC_KEY")
+    if signature_b64:
+        if not key_path:
+            logger.error("Missing public key for signed plugin %s", name)
+            raise SystemExit(1)
+        try:
+            pubkey = Path(key_path).read_bytes()
+        except Exception:
+            logger.warning("Failed to read public key %s", key_path)
+            pubkey = None
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        _run_pip(
+            ["download", "--no-deps", "-d", tmp_dir, spec],
+            "pip download",
+        )
+        files = list(Path(tmp_dir).iterdir())
+        if not files:
+            logger.error("No package downloaded for plugin %s", name)
+            raise SystemExit(1)
+        pkg_path = files[0]
+        pkg_bytes = pkg_path.read_bytes()
+
+        if signature_b64:
+            if pubkey is None:
+                logger.error("Missing public key for signed plugin %s", name)
+                raise SystemExit(1)
+            try:
+                sig_bytes = decode_signature(signature_b64)
+            except ValueError:
+                logger.error("Invalid signature for plugin %s", name)
+                raise SystemExit(1)
+        else:
+            sig_bytes = None
+
+        try:
+            verify_package(
+                pkg_bytes,
+                checksum=checksum,
+                signature=sig_bytes,
+                public_key=pubkey,
+                compute_fn=plugins.compute_checksum,
+            )
+        except ValueError as exc:
+            if str(exc) == "Checksum mismatch":
+                logger.error("Checksum mismatch for plugin %s", name)
+            else:
+                logger.error("Signature verification failed for plugin %s: %s", name, exc)
+            raise SystemExit(1)
+
+        return pkg_path.name, pkg_bytes
+
+
 def _handle_install(args: argparse.Namespace) -> None:
     name = args.name
     meta = plugins.PLUGIN_CATALOG.get(name)

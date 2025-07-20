@@ -637,6 +637,36 @@ async def get_plugin_rating(
     return {"average": avg}
 
 
+@app.get("/plugins/search")
+async def search_plugins(
+    q: str | None = None,
+    min_stars: float | None = None,
+) -> dict[str, list[dict[str, object]]]:
+    """Return plugins matching ``q`` and ``min_stars``."""
+
+    results: list[dict[str, object]] = []
+    query = (q or "").lower()
+    for name, meta in plugins.PLUGIN_CATALOG.items():
+        if query and query not in name.lower() and query not in str(meta.get("description", "")).lower():
+            continue
+        if min_stars is not None and float(meta.get("stars", 0)) < float(min_stars):
+            continue
+        results.append({"name": name, **meta})
+    return {"plugins": results}
+
+
+@app.get("/plugins/download")
+async def download_plugin(name: str) -> Response:
+    """Download the plugin package for ``name``."""
+
+    try:
+        fname, data = await asyncio.to_thread(plugin_cli.download_plugin_bytes, name)
+    except SystemExit as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    headers = {"Content-Disposition": f"attachment; filename={fname}"}
+    return Response(content=data, media_type="application/octet-stream", headers=headers)
+
+
 @app.get("/metrics")
 async def metrics() -> dict[str, object]:
     """Return encode, bundle and simulation usage metrics."""

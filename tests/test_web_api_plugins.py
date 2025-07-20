@@ -434,3 +434,40 @@ def test_challenge_crud(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     r2 = client.get("/catalog/challenge")
     assert r2.status_code == 200
     assert r2.json()["entries"] == {"team": 10}
+
+
+def test_search_plugins() -> None:
+    plugins.PLUGIN_CATALOG.clear()
+    plugins.PLUGIN_CATALOG["alpha"] = {"description": "Alpha", "stars": 5}
+    plugins.PLUGIN_CATALOG["beta"] = {"description": "Beta", "stars": 3}
+
+    r = client.get("/plugins/search", params={"q": "alp"})
+    assert r.status_code == 200
+    names = [p["name"] for p in r.json()["plugins"]]
+    assert names == ["alpha"]
+
+    r = client.get("/plugins/search", params={"min_stars": 4})
+    assert r.status_code == 200
+    names = [p["name"] for p in r.json()["plugins"]]
+    assert names == ["alpha"]
+
+
+def test_download_plugin(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    pkg = b"PKG"
+    checksum = plugins.compute_checksum(pkg)
+    plugins.PLUGIN_CATALOG["demo"] = {"checksum": checksum}
+
+    def fake_check_call(cmd: list[str]) -> None:
+        if cmd[:4] == [sys.executable, "-m", "pip", "download"]:
+            dest = cmd[cmd.index("-d") + 1]
+            Path(dest).mkdir(parents=True, exist_ok=True)
+            (Path(dest) / "pkg.whl").write_bytes(pkg)
+        else:
+            raise AssertionError(cmd)
+
+    with monkeypatch.context() as m:
+        m.setattr(plugin_cli.subprocess, "check_call", fake_check_call)
+        r = client.get("/plugins/download", params={"name": "demo"})
+    assert r.status_code == 200
+    assert r.headers["content-disposition"].startswith("attachment")
+    assert r.content == pkg
