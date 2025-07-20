@@ -25,5 +25,6 @@ def collect_stats() -> StatsData:
 
     data: StatsData = cast(StatsData, get_metrics())
 
+
     data["oligos_per_week"] = oligos_per_week()
     return data

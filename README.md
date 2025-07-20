@@ -40,6 +40,12 @@ handle personal or medical DNA data.
    provided using the environment variables ``GENECODER_D2SIM_OPTIONS``,
    ``GENECODER_DNARSIM_OPTIONS`` and ``GENECODER_SQUIGULATOR_OPTIONS``.
 
+## Usage Metrics
+
+GeneCoder tracks how many oligos are simulated each ISO week. The aggregated
+count is stored as ``oligos_per_week`` and serves as the project's key usage
+metric. See [docs/metrics.md](docs/metrics.md) for more details.
+
 ## Quick Start
 
 GeneCoder requires **Python 3.11+** and uses

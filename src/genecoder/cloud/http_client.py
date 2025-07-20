@@ -6,6 +6,7 @@ from types import TracebackType
 import httpx
 
 
+
 class HTTPClient:
     """Thin wrapper around ``httpx.Client``."""
 
@@ -16,6 +17,7 @@ class HTTPClient:
         return self._client.post(*args, **kwargs)
 
     def get(self, *args: Any, **kwargs: Any) -> httpx.Response:  # noqa: ANN401
+
         return self._client.get(*args, **kwargs)
 
     def close(self) -> None:
@@ -26,6 +28,7 @@ class HTTPClient:
         return self
 
     def __exit__(self, exc_type: type | None, exc: BaseException | None, tb: TracebackType | None) -> None:  # pragma: no cover - passthrough
+
         self._client.__exit__(exc_type, exc, tb)
 
     def __getattr__(self, name: str) -> object:
@@ -42,6 +45,7 @@ class AsyncHTTPClient:
         return await self._client.post(*args, **kwargs)
 
     async def get(self, *args: Any, **kwargs: Any) -> httpx.Response:  # noqa: ANN401
+
         return await self._client.get(*args, **kwargs)
 
     async def aclose(self) -> None:
@@ -52,6 +56,7 @@ class AsyncHTTPClient:
         return self
 
     async def __aexit__(self, exc_type: type | None, exc: BaseException | None, tb: TracebackType | None) -> None:  # pragma: no cover - passthrough
+
         await self._client.__aexit__(exc_type, exc, tb)
 
     def __getattr__(self, name: str) -> object:

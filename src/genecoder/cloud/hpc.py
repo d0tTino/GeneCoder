@@ -43,9 +43,12 @@ def generate_slurm_script(
 
 def submit_slurm_job(script: str, sbatch: str = "sbatch") -> str:
     """Submit the script via ``sbatch`` and return the job ID."""
-    proc = subprocess.run(
-        [sbatch], input=script, text=True, capture_output=True, check=True
-    )
+    try:
+        proc = subprocess.run(
+            [sbatch], input=script, text=True, capture_output=True, check=True
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError("sbatch not found") from exc
     match = re.search(r"Submitted batch job (\d+)", proc.stdout)
     if not match:
         raise RuntimeError("Failed to parse sbatch output")

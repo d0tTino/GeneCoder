@@ -82,6 +82,15 @@ def test_submit_slurm_job_run_error(monkeypatch: pytest.MonkeyPatch) -> None:
         submit_slurm_job("script")
 
 
+def test_submit_slurm_job_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run(cmd, *, input=None, text=None, capture_output=None, check=None):
+        raise FileNotFoundError()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    with pytest.raises(RuntimeError, match="sbatch not found"):
+        submit_slurm_job("script")
+
+
 def test_cloud_client_hpc(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.importorskip("httpx")
     generated = {}
@@ -143,3 +152,17 @@ job_name: cli
     assert called["command"] == "echo hi"
     assert called["job_name"] == "cli"
     assert called["script"] == "script"
+
+
+@pytest.mark.parametrize(
+    "bad", ["echo hi && rm", "bad\ncmd"]
+)
+def test_cloud_cli_hpc_bad_script(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, bad: str
+) -> None:
+    pytest.importorskip("yaml")
+    cfg = tmp_path / "job.yml"
+    cfg.write_text(f'script: "{bad}"\n')
+
+    result = run_cli_command(["cloud", "submit", "--hpc-config", str(cfg)])
+    assert result.returncode != 0
