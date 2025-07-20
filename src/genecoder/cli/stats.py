@@ -23,6 +23,8 @@ StatsData: TypeAlias = dict[str, int | list[str] | dict[str, int]]
 def collect_stats() -> StatsData:
     """Return current usage metrics."""
 
-    data = cast(StatsData, get_metrics())
+    data: StatsData = cast(StatsData, get_metrics())
+
+
     data["oligos_per_week"] = oligos_per_week()
     return data

@@ -233,6 +233,25 @@ For convenience the CLI exposes a ``rate`` command:
 genecoder plugin rate myplugin 5 --server https://localhost:8000
 ```
 
+## Searching and Downloading Plugins
+
+Query the catalog through ``GET /plugins/search``. Provide a ``q`` parameter to
+search by name or description and ``min_stars`` to filter by rating. Example:
+
+```bash
+curl 'http://localhost:8000/plugins/search?q=codec&min_stars=4'
+```
+
+Download a package directly via ``GET /plugins/download``:
+
+```bash
+curl -o plugin.whl 'http://localhost:8000/plugins/download?name=myplugin'
+```
+
+The ``/plugin-catalog`` dashboard lets you browse search results and submit new
+plugins. Enter the plugin metadata and API token in the form at the bottom of
+the page to publish an entry.
+
 Always verify that catalog entries originate from reputable sources or trusted
 registries. A matching checksum only proves the downloaded file has not been
 corrupted or tampered with; it does not guarantee that the plugin's code is
