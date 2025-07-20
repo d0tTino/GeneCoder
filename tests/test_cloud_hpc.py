@@ -152,3 +152,17 @@ job_name: cli
     assert called["command"] == "echo hi"
     assert called["job_name"] == "cli"
     assert called["script"] == "script"
+
+
+@pytest.mark.parametrize(
+    "bad", ["echo hi && rm", "bad\ncmd"]
+)
+def test_cloud_cli_hpc_bad_script(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, bad: str
+) -> None:
+    pytest.importorskip("yaml")
+    cfg = tmp_path / "job.yml"
+    cfg.write_text(f'script: "{bad}"\n')
+
+    result = run_cli_command(["cloud", "submit", "--hpc-config", str(cfg)])
+    assert result.returncode != 0
