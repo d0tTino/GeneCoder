@@ -174,6 +174,9 @@ plugins:
     stars: 4.5
 ```
 
+Each plugin entry must include a ``checksum`` and ``signature`` field. Unsigned
+entries are ignored when the catalog is loaded.
+
 If the catalog is signed the file should also include a top-level
 ``signature`` field with the base64 encoded signature. Set
 ``GENECODER_CATALOG_PUBLIC_KEY`` to the path of the PEM encoded public key used
@@ -250,14 +253,13 @@ installation.
 
 ## Signed Plugin Packages
 
-For higher assurance you may sign plugin distributions with an RSA or ECDSA
-private key and publish the detached signature alongside the package. The
-catalog or registry entry should include the base64 encoded signature under the
-``signature`` field. Set the ``GENECODER_PLUGIN_PUBLIC_KEY`` environment
-variable to the path of the corresponding PEM encoded public key. During
-installation GeneCoder verifies the signature before falling back to the regular
-checksum check. A failed signature verification aborts the install and logs a
-warning.
+All plugin distributions **must** be signed with an RSA or ECDSA private key and
+the detached signature published alongside the package. The catalog or registry
+entry must include the base64 encoded signature under the ``signature`` field.
+Set the ``GENECODER_PLUGIN_PUBLIC_KEY`` environment variable to the path of the
+corresponding PEM encoded public key. GeneCoder refuses to install a plugin if
+the signature is missing or fails verification. The signature is checked before
+falling back to the regular checksum verification.
 
 Signed packages help detect tampering, but they do not make untrusted code safe.
 Always audit plugins and obtain public keys from verified sources.

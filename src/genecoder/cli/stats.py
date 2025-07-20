@@ -19,6 +19,6 @@ def _handle_command(_: argparse.Namespace) -> None:
 def collect_stats() -> dict[str, object]:
     """Return current usage metrics."""
 
-    data = get_metrics()
+    data: dict[str, object] = get_metrics()
     data["oligos_per_week"] = oligos_per_week()
     return data

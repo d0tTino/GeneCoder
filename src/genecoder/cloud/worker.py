@@ -9,7 +9,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from typing import Any
+from typing import Any, cast
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -115,7 +115,7 @@ def job_status(job_id: str, _token: None = Depends(verify_token)) -> dict[str, A
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Job not found")
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
     except Exception as exc:  # pragma: no cover - corrupt file
         raise HTTPException(status_code=500, detail="Corrupt status") from exc
 

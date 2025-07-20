@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 
 class CloudClient:
@@ -16,7 +16,7 @@ class CloudClient:
 
         self.base_url = base_url.rstrip("/")
         self.token = token
-        self._client = client or httpx.Client(base_url=self.base_url)
+        self._client = cast(Any, client) if client is not None else httpx.Client(base_url=self.base_url)
 
     def submit(self, job_type: str, payload: dict[str, Any]) -> str:
         if job_type == "hpc":
@@ -100,7 +100,9 @@ class AsyncCloudClient:
 
         self.base_url = base_url.rstrip("/")
         self.token = token
-        self._client = client or httpx.AsyncClient(base_url=self.base_url)
+        self._client = (
+            cast(Any, client) if client is not None else httpx.AsyncClient(base_url=self.base_url)
+        )
 
     async def submit(self, job_type: str, payload: dict[str, Any]) -> str:
         headers = {}

@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from dataclasses import dataclass, fields, asdict
+from typing import Any, Mapping, cast
 
 from . import cli as cli_module
 from genecoder.metrics import metrics
@@ -69,7 +70,7 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     run_parser.set_defaults(func=_handle_run)
 
 
-def _channel_args(opts: dict[str, object]) -> list[str]:
+def _channel_args(opts: Mapping[str, object]) -> list[str]:
     if not isinstance(opts, dict):
         raise TypeError("simulate section must be a mapping")
 
@@ -79,7 +80,7 @@ def _channel_args(opts: dict[str, object]) -> list[str]:
         raise ValueError(f"Unknown channel options: {', '.join(sorted(unknown))}")
 
     args = ["channel"]
-    data = ChannelArgs(**opts)
+    data = ChannelArgs(**cast(dict[str, Any], opts))
     for key, value in asdict(data).items():
         if value is None:
             continue

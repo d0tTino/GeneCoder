@@ -31,7 +31,7 @@ from .plotting import (
     identify_homopolymer_regions,
     generate_sequence_analysis_plot,
 )
-from . import perform_encoding
+from .app_helpers import perform_encoding, EncodeResult
 from .flet_ws import ws_clients
 
 logger = logging.getLogger(__name__)
@@ -141,7 +141,9 @@ def make_encode_handler(
                 return
 
             try:
-                result = await asyncio.to_thread(perform_encoding, input_data, options)
+                result: EncodeResult = await asyncio.to_thread(
+                    perform_encoding, input_data, options
+                )
             except ValueError as ex:
                 encode_status_text.value = f"Error: {ex}"
                 encode_status_text.color = COLORS.RED_ACCENT_700
@@ -193,13 +195,14 @@ def make_encode_handler(
                 encode_actual_gc_value.value = "N/A"
                 encode_actual_homopolymer_value.value = "N/A"
 
-            codeword_hist_image.src_base64 = result.plots.get("codeword_hist")
-            nucleotide_freq_image.src_base64 = result.plots.get("nucleotide_freq")
-            sequence_analysis_plot_image.src_base64 = result.plots.get(
+            plots = result.plots or {}
+            codeword_hist_image.src_base64 = plots.get("codeword_hist")
+            nucleotide_freq_image.src_base64 = plots.get("nucleotide_freq")
+            sequence_analysis_plot_image.src_base64 = plots.get(
                 "sequence_analysis"
             )
 
-            any_plot = any(result.plots.values())
+            any_plot = any(plots.values())
 
             if any_plot:
                 analysis_status_text.value = (

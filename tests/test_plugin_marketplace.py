@@ -295,7 +295,7 @@ def test_catalog_missing_signature(monkeypatch: pytest.MonkeyPatch, caplog: pyte
     with caplog.at_level("ERROR"):
         plugins.load_plugins()
 
-    assert "Missing signature for plugin plug" in caplog.text
+    assert "Plugin plug missing required signature" in caplog.text
     assert "plug" not in plugins.PLUGIN_CATALOG
 
     with caplog.at_level("ERROR"), pytest.raises(SystemExit):
