@@ -82,6 +82,15 @@ def test_submit_slurm_job_run_error(monkeypatch: pytest.MonkeyPatch) -> None:
         submit_slurm_job("script")
 
 
+def test_submit_slurm_job_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run(cmd, *, input=None, text=None, capture_output=None, check=None):
+        raise FileNotFoundError()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    with pytest.raises(RuntimeError, match="sbatch not found"):
+        submit_slurm_job("script")
+
+
 def test_cloud_client_hpc(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.importorskip("httpx")
     generated = {}
