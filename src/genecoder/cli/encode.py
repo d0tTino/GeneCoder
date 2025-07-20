@@ -524,7 +524,7 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     parser.set_defaults(func=_handle_command)
 
 
-def encode_files(args: argparse.Namespace) -> list[tuple[str, str]]:
+def encode_files(args: argparse.Namespace) -> list[tuple[str, str] | None]:
     """Encode files according to ``args`` and return CSV rows."""
 
     validate_chunk_size(args)

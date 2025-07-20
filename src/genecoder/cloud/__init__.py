@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import httpx
 
 
 class CloudClient:
@@ -10,7 +13,7 @@ class CloudClient:
         self,
         base_url: str,
         token: str | None = None,
-        client: object | None = None,
+        client: httpx.Client | None = None,
     ) -> None:
         import httpx
 
@@ -94,7 +97,7 @@ class AsyncCloudClient:
         self,
         base_url: str,
         token: str | None = None,
-        client: object | None = None,
+        client: httpx.AsyncClient | None = None,
     ) -> None:
         import httpx
 
