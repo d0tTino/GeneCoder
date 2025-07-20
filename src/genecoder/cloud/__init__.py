@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, cast, TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - for type checkers only
+    import httpx
 
 
 
