@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 
+
 class CloudClient:
     """Minimal REST client for submitting jobs to a remote worker."""
 
@@ -10,7 +11,7 @@ class CloudClient:
         self,
         base_url: str,
         token: str | None = None,
-        client: object | None = None,
+        client: httpx.Client | None = None,
     ) -> None:
         import httpx
 
@@ -94,7 +95,7 @@ class AsyncCloudClient:
         self,
         base_url: str,
         token: str | None = None,
-        client: object | None = None,
+        client: httpx.AsyncClient | None = None,
     ) -> None:
         import httpx
 
