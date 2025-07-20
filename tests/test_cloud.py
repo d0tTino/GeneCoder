@@ -7,6 +7,8 @@ from typing import cast
 
 import pytest
 httpx = pytest.importorskip("httpx")
+
+from genecoder.cloud.http_client import HTTPClient, AsyncHTTPClient
 import asyncio
 
 from genecoder.cloud import CloudClient, AsyncCloudClient
@@ -24,7 +26,7 @@ def test_cloud_client_submit() -> None:
     transport = httpx.MockTransport(handler)
     client = CloudClient(
         "https://s",
-        client=httpx.Client(base_url="https://s", transport=transport),
+        client=HTTPClient(base_url="https://s", transport=transport),
     )
     jid = client.submit("bundle", {"a": 1})
     assert jid == "jid"
@@ -45,7 +47,7 @@ def test_async_cloud_client_submit() -> None:
     async def _run() -> None:
         client = AsyncCloudClient(
             "https://s",
-            client=httpx.AsyncClient(base_url="https://s", transport=transport),
+            client=AsyncHTTPClient(base_url="https://s", transport=transport),
         )
         jid = await client.submit("bundle", {"a": 1})
         assert jid == "jid"
@@ -63,7 +65,7 @@ def test_cloud_client_submit_error() -> None:
     transport = httpx.MockTransport(handler)
     client = CloudClient(
         "https://s",
-        client=httpx.Client(base_url="https://s", transport=transport),
+        client=HTTPClient(base_url="https://s", transport=transport),
     )
     with pytest.raises(RuntimeError, match="Failed to submit job"):
         client.submit("bundle", {"a": 1})
@@ -80,7 +82,7 @@ def test_cloud_client_invalid_token() -> None:
     client = CloudClient(
         "https://s",
         token="bad",
-        client=httpx.Client(base_url="https://s", transport=transport),
+        client=HTTPClient(base_url="https://s", transport=transport),
     )
     with pytest.raises(RuntimeError, match="Failed to submit job"):
         client.submit("bundle", {"a": 1})
@@ -99,7 +101,7 @@ def test_async_cloud_client_invalid_token() -> None:
         client = AsyncCloudClient(
             "https://s",
             token="bad",
-            client=httpx.AsyncClient(base_url="https://s", transport=transport),
+            client=AsyncHTTPClient(base_url="https://s", transport=transport),
         )
         with pytest.raises(RuntimeError, match="Failed to submit job"):
             await client.submit("bundle", {"a": 1})
@@ -117,7 +119,7 @@ def test_cloud_client_bad_payload() -> None:
     transport = httpx.MockTransport(handler)
     client = CloudClient(
         "https://s",
-        client=httpx.Client(base_url="https://s", transport=transport),
+        client=HTTPClient(base_url="https://s", transport=transport),
     )
     with pytest.raises(ValueError, match="Invalid response from server"):
         client.submit("bundle", {"a": 1})
@@ -134,7 +136,7 @@ def test_async_cloud_client_bad_payload() -> None:
     async def _run() -> None:
         client = AsyncCloudClient(
             "https://s",
-            client=httpx.AsyncClient(base_url="https://s", transport=transport),
+            client=AsyncHTTPClient(base_url="https://s", transport=transport),
         )
         with pytest.raises(ValueError, match="Invalid response from server"):
             await client.submit("bundle", {"a": 1})
@@ -152,7 +154,7 @@ def test_cloud_client_network_error() -> None:
     transport = httpx.MockTransport(handler)
     client = CloudClient(
         "https://s",
-        client=httpx.Client(base_url="https://s", transport=transport),
+        client=HTTPClient(base_url="https://s", transport=transport),
     )
     with pytest.raises(RuntimeError, match="Failed to submit job"):
         client.submit("bundle", {"a": 1})
@@ -169,7 +171,7 @@ def test_async_cloud_client_network_error() -> None:
     async def _run() -> None:
         client = AsyncCloudClient(
             "https://s",
-            client=httpx.AsyncClient(base_url="https://s", transport=transport),
+            client=AsyncHTTPClient(base_url="https://s", transport=transport),
         )
         with pytest.raises(RuntimeError, match="Failed to submit job"):
             await client.submit("bundle", {"a": 1})
@@ -187,7 +189,7 @@ def test_cloud_client_invalid_json() -> None:
     transport = httpx.MockTransport(handler)
     client = CloudClient(
         "https://s",
-        client=httpx.Client(base_url="https://s", transport=transport),
+        client=HTTPClient(base_url="https://s", transport=transport),
     )
     with pytest.raises(ValueError):
         client.submit("bundle", {"a": 1})
@@ -204,7 +206,7 @@ def test_async_cloud_client_invalid_json() -> None:
     async def _run() -> None:
         client = AsyncCloudClient(
             "https://s",
-            client=httpx.AsyncClient(base_url="https://s", transport=transport),
+            client=AsyncHTTPClient(base_url="https://s", transport=transport),
         )
         with pytest.raises(ValueError):
             await client.submit("bundle", {"a": 1})
@@ -380,7 +382,7 @@ def test_worker_integration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
         )
 
     transport = httpx.MockTransport(handler)
-    http_client = httpx.Client(transport=transport, base_url="http://worker")
+    http_client = HTTPClient(transport=transport, base_url="http://worker")
     client = CloudClient("http://worker", token="tok", client=http_client)
     jid = client.submit("bundle", {"archive": archive_b64})
     http_client.close()
@@ -402,7 +404,7 @@ def test_worker_integration_async(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 
     async def _run() -> None:
         transport = httpx.ASGITransport(app=worker.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://worker") as ac_client:
+        async with AsyncHTTPClient(transport=transport, base_url="http://worker") as ac_client:
             async with AsyncCloudClient("http://worker", token="tok", client=ac_client) as ac:
                 jid = await ac.submit("bundle", {"archive": archive_b64})
                 assert jid
