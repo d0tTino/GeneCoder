@@ -1,6 +1,7 @@
 # Deployment Guide
 
 This guide summarizes how to build the React dashboard, start a cloud worker with Docker and submit jobs via the CLI.
+See [cloud_worker.md](cloud_worker.md) for a detailed explanation of the worker container and environment variables.
 
 ## Build the Dashboard
 
