@@ -2,6 +2,8 @@
 
 __version__ = "0.1.0"
 
+CloudClient = None
+
 _LAZY_ATTRS = {
     "EncodeOptions",
     "EncodeResult",
