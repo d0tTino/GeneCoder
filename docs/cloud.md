@@ -90,3 +90,10 @@ genecoder data fetch illumina_profile.json --url https://example.com/profiles
 Profiles are saved under `~/.genecoder/data` by default. The location can be
 customized with the `--cache-dir` option or the `GENECODER_DATA_DIR`
 environment variable.
+
+## Dashboard Heatmaps
+
+The built-in dashboard renders GC content and homopolymer length as heatmaps.
+Start the web server and open `http://localhost:8000/dashboard`. Paste a DNA
+sequence and click **Analyze** to see the new visualizations next to the
+sequence plot.
