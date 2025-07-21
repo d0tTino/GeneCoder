@@ -23,7 +23,13 @@ from .plugin_manager import (
 from .simulators import SIMULATOR_REGISTRY, simulate_reads
 from .channel_config import ChannelConfig
 from .pipeline import SequencePipeline
-from .cloud import CloudClient
+from typing import Any as _Any
+
+CloudClient: _Any
+try:  # pragma: no cover - optional cloud extras
+    from .cloud import CloudClient as CloudClient
+except Exception:  # pragma: no cover - missing httpx or dependencies
+    CloudClient = None
 
 
 
@@ -42,8 +48,10 @@ __all__ = [
     "encrypt_data",
     "decrypt_data",
     "compute_checksum",
-    "CloudClient",
 ]
+
+if CloudClient is not None:
+    __all__.append("CloudClient")
 
 
 

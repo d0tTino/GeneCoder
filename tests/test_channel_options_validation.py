@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 import pytest
+pytest.importorskip("yaml")
 
 
 from src.genecoder.cli.options import build_channel_options

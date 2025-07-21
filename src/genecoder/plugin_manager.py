@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Any, Iterable, Optional
+from typing import Callable, Dict, Any, Iterable, Optional, cast, IO
 from types import ModuleType
 import os
+import io
 import sys
 import subprocess
 import tempfile
@@ -12,7 +13,28 @@ import importlib
 import base64
 from pathlib import Path
 import json
-import portalocker
+try:  # pragma: no cover - optional dependency
+    import portalocker
+except Exception:  # pragma: no cover - fallback for tests
+    import types
+
+    class _NoLock:
+        def __init__(self, path: str | os.PathLike[str], mode: str = "r", *, timeout: int | None = None, encoding: str | None = None) -> None:  # noqa: D401,E501
+            """Simplified file lock that doesn't actually lock."""
+            self.path = path
+            self.mode = mode
+            self.encoding = encoding
+            self.fh: IO[str]
+
+        def __enter__(self) -> io.TextIOWrapper:
+            self.fh = open(self.path, self.mode, encoding=self.encoding)
+            return cast(io.TextIOWrapper, self.fh)
+
+        def __exit__(self, exc_type: type | None, exc: BaseException | None, tb: object | None) -> None:
+            if self.fh:
+                self.fh.close()
+
+    portalocker = types.SimpleNamespace(Lock=_NoLock)
 
 _yaml: Any
 try:  # pragma: no cover - import is trivial

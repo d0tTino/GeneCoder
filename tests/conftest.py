@@ -13,6 +13,8 @@ for path in (SRC_PATH, PROJECT_ROOT):
         sys.path.insert(0, path_str)
 
 
+
+
 @pytest.fixture
 def large_binary_file(tmp_path: Path) -> tuple[Path, bytes]:
     """Create a binary file larger than 5 MB and return its path and contents."""

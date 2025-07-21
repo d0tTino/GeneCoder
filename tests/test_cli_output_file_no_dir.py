@@ -1,6 +1,9 @@
 import os
 import subprocess
 import sys
+import pytest
+
+pytest.importorskip("portalocker")
 from pathlib import Path
 
 from tests.test_cli import PROJECT_ROOT

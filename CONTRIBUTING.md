@@ -80,6 +80,13 @@ with:
 poetry install --with gui,web --no-interaction
 ```
 
+To run **all** tests, including those covering optional codecs and machine
+learning models, install every extras group:
+
+```bash
+poetry install --with gui,web,dnaformer,deepdna,ldpc,fountain,raptorq,bch,framed --no-interaction
+```
+
 You can also run `scripts/setup_test_env.sh` to install the same extras.
 
 All code changes must pass `pre-commit` and the test suite. These checks are not

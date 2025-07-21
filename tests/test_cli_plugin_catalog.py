@@ -3,6 +3,8 @@ from pathlib import Path
 import base64
 
 import pytest
+pytest.importorskip("portalocker")
+pytest.importorskip("yaml")
 from genecoder.plugin_security import compute_checksum
 
 from tests.test_cli import run_cli_command
