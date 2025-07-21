@@ -10,8 +10,20 @@ For instructions on launching the GUI see the [usage guide](docs/usage.md#launch
 For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md).
 For deployment instructions including building the React dashboard and running the
 [cloud worker](docs/deployment.md) see the new guide.
-Introductory Jupyter notebooks with encoding and decoding examples are available in the [notebooks/](notebooks) directory.
-Step-by-step lesson notebooks covering encoding basics, FEC, simulators and analysis can be found in [notebooks/lessons](notebooks/lessons).
+
+## Introductory notebooks
+
+Introductory Jupyter notebooks with encoding and decoding examples are available in the [notebooks/](notebooks) directory. A small series of lessons covers the basics:
+
+- [1_encoding_basics.ipynb](notebooks/lessons/1_encoding_basics.ipynb) – introduction to encoding and decoding
+- [2_fec_basics.ipynb](notebooks/lessons/2_fec_basics.ipynb) – fundamentals of forward error correction
+- [3_running_simulators.ipynb](notebooks/lessons/3_running_simulators.ipynb) – running simple simulators
+
+Launch Jupyter with:
+
+```bash
+scripts/launch_jupyter.sh
+```
 
 GeneCoder's long-term goal is to provide an integrated research platform that
 bridges encoding algorithms with sequencing and synthesis simulations while
