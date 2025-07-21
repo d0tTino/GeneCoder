@@ -23,13 +23,11 @@ from .plugin_manager import (
 from .simulators import SIMULATOR_REGISTRY, simulate_reads
 from .channel_config import ChannelConfig
 from .pipeline import SequencePipeline
-from typing import Any as _Any
+try:  # optional dependency for cloud client
+    from .cloud import CloudClient
+except Exception:  # pragma: no cover - missing optional dependency
+    CloudClient = None  # type: ignore[misc,assignment]
 
-CloudClient: _Any
-try:  # pragma: no cover - optional cloud extras
-    from .cloud import CloudClient as CloudClient
-except Exception:  # pragma: no cover - missing httpx or dependencies
-    CloudClient = None
 
 
 
