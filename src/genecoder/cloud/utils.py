@@ -28,9 +28,9 @@ def extract_zip_safely(
             if path.is_absolute() or ".." in path.parts:
                 raise ValueError("Invalid archive path")
 
-            is_symlink = False
-            if getattr(info, "is_symlink", None):
-                is_symlink = info.is_symlink()  # type: ignore[attr-defined]
+            is_symlink_attr = getattr(info, "is_symlink", None)
+            if callable(is_symlink_attr):
+                is_symlink = is_symlink_attr()
             else:
                 is_symlink = ((info.external_attr >> 16) & 0o170000) == stat.S_IFLNK
             if is_symlink:

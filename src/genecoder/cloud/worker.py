@@ -9,7 +9,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from typing import Any, cast
+from typing import Any, TYPE_CHECKING, cast
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -21,6 +21,23 @@ from genecoder.cloud.utils import extract_zip_safely
 API_TOKEN: str | None = os.getenv("GENECODER_API_TOKEN")
 security = HTTPBearer(auto_error=False)
 app = FastAPI(title="GeneCoder Worker")
+
+if TYPE_CHECKING:  # pragma: no cover - used for type hints only
+    from typing import Callable
+
+    StartupDecorator = Callable[[Callable[[], None]], Callable[[], None]]
+    PostDecorator = Callable[[Callable[..., dict[str, str]]], Callable[..., dict[str, str]]]
+    GetDecorator = Callable[[Callable[..., dict[str, Any]]], Callable[..., dict[str, Any]]]
+else:
+    from typing import Callable, Any
+
+    StartupDecorator = Callable[[Callable[..., Any]], Callable[..., Any]]
+    PostDecorator = Callable[[Callable[..., Any]], Callable[..., Any]]
+    GetDecorator = Callable[[Callable[..., Any]], Callable[..., Any]]
+
+startup_event = cast(StartupDecorator, app.on_event("startup"))
+post_jobs = cast(PostDecorator, app.post("/jobs"))
+get_job_status_dec = cast(GetDecorator, app.get("/jobs/{job_id}"))
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB limit for extracted files
 JOB_DIR = Path(os.getenv("GENECODER_JOB_DIR", "worker_jobs"))
 
@@ -32,7 +49,7 @@ def verify_token(
         raise HTTPException(status_code=401, detail="Invalid or missing token")
 
 
-@app.on_event("startup")  # type: ignore[misc]
+@startup_event
 def _startup() -> None:
     global API_TOKEN
     load_plugins()
@@ -69,7 +86,7 @@ def _process_job(job_id: str) -> None:
             _write_status(job_path, {"status": "failed", "progress": 100})
 
 
-@app.post("/jobs")  # type: ignore[misc]
+@post_jobs
 def submit_job(
     payload: dict[str, Any],
     background_tasks: BackgroundTasks,
@@ -109,7 +126,7 @@ def submit_job(
     return {"job_id": job_id}
 
 
-@app.get("/jobs/{job_id}")  # type: ignore[misc]
+@get_job_status_dec
 def job_status(job_id: str, _token: None = Depends(verify_token)) -> dict[str, Any]:
     path = JOB_DIR / job_id / "status.json"
     if not path.is_file():

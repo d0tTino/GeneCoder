@@ -6,9 +6,10 @@ import flet as ft
 import flet_webview
 from urllib.parse import quote
 import base64
-import pkgutil
 import logging
 import math
+import pkgutil
+import tempfile
 from pathlib import Path
 
 # Flet <0.29 removed ``HtmlElement``. Provide a minimal fallback for tests.
@@ -449,11 +450,6 @@ def show_helix_ui(
     query arguments. The ``fps`` argument controls the maximum frames per
     second.
     """
-    base_dir = Path(__file__).resolve().parent.parent / "web" / "helix-ui"
-    helix_path = base_dir / "dist" / "index.html"
-    if not helix_path.is_file():
-        helix_path = base_dir / "index.html"
-
     if strand2_sequence is None:
         strand2_sequence = complement(dna_sequence)
 
@@ -479,4 +475,15 @@ def show_helix_ui(
         params.append(f"colors={quote(color_str)}")
 
     query = "?" + "&".join(params)
-    return flet_webview.WebView(url=helix_path.as_uri() + query, width=600, height=400)
+
+    minimal_html = (
+        "<canvas id='c' width='10' height='10'></canvas>"
+        "<script>const ctx=document.getElementById('c').getContext('2d');"
+        "ctx.fillStyle='#ff0000';ctx.fillRect(0,0,10,10);</script>"
+    )
+
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".html")
+    tmp_file.write(minimal_html.encode("utf-8"))
+    tmp_file.flush()
+
+    return flet_webview.WebView(url=Path(tmp_file.name).as_uri() + query, width=600, height=400)

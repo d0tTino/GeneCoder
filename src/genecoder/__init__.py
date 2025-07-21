@@ -11,6 +11,7 @@ _LAZY_ATTRS = {
     "encrypt_data",
     "decrypt_data",
     "compute_checksum",
+    "CloudClient",
 }
 
 from .plugin_manager import (
@@ -23,10 +24,6 @@ from .plugin_manager import (
 from .simulators import SIMULATOR_REGISTRY, simulate_reads
 from .channel_config import ChannelConfig
 from .pipeline import SequencePipeline
-try:  # optional dependency for cloud client
-    from .cloud import CloudClient
-except Exception:  # pragma: no cover - missing optional dependency
-    CloudClient = None  # type: ignore[misc,assignment]
 
 
 
@@ -72,6 +69,7 @@ def __getattr__(name: str) -> object:
             perform_decoding,
         )
         from .security import decrypt_data, encrypt_data, compute_checksum
+        from .cloud import CloudClient
         globals().update({
             "EncodeOptions": EncodeOptions,
             "EncodeResult": EncodeResult,
@@ -81,6 +79,7 @@ def __getattr__(name: str) -> object:
             "encrypt_data": encrypt_data,
             "decrypt_data": decrypt_data,
             "compute_checksum": compute_checksum,
+            "CloudClient": CloudClient,
         })
         return globals()[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

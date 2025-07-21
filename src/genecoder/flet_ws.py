@@ -1,13 +1,20 @@
 import asyncio
 import logging
-from typing import Any, TYPE_CHECKING, Set
+from types import ModuleType
+from typing import Any, TYPE_CHECKING, Set, cast
 
+_websockets: ModuleType | None
 try:
-    import websockets
-    if TYPE_CHECKING:  # pragma: no cover - type hints only
-        from websockets.legacy.server import WebSocketServerProtocol
+    import websockets as _ws
+    _websockets = _ws
 except Exception:  # pragma: no cover - optional dependency
-    websockets = None
+    _websockets = None
+
+websockets = _websockets
+
+if TYPE_CHECKING:  # pragma: no cover - type hints only
+    from websockets.legacy.server import WebSocketServerProtocol
+else:
     WebSocketServerProtocol = Any
 
 logger = logging.getLogger(__name__)
@@ -35,7 +42,7 @@ def start_server() -> None:
         except RuntimeError:
             logger.error("No running event loop; WebSocket server not started")
             return
-        loop.create_task(websockets.serve(_ws_handler, "localhost", 8765))
+        loop.create_task(cast(Any, websockets.serve(_ws_handler, "localhost", 8765)))
     except OSError as exc:  # pragma: no cover - depends on environment
         logger.error("Failed to start WebSocket server: %s", exc)
 

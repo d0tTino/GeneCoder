@@ -43,7 +43,6 @@ python = "^3.11"
 reedsolo = "*"
 cryptography = "^45.0.4"
 pyyaml = "*"
-types-PyYAML = "*"
 portalocker = "*"
 numpy = {version = ">=2.2,<2.3", optional = true}
 pyldpc = {version = ">=0.7.6,<0.7.7", optional = true}
@@ -55,7 +54,7 @@ matplotlib = {version = "*", optional = true}
 flet-webview = {version = "*", optional = true}
 fastapi = {version = ">=0.110", optional = true}
 uvicorn = { version = "*", extras = ["standard"], optional = true }
-httpx = {version = "<0.28", optional = true}
+httpx = "<0.28"
 deepdna = {version = "*", optional = true}
 
 [tool.poetry.group.gui.dependencies]
@@ -76,7 +75,7 @@ pytest-xdist = "*"
 pre-commit = "*"
 ruff = "*"
 mypy = "*"
-types-PyYAML = "*"
+types-PyYAML = ">=6.0,<7"
 numpy = ">=2.2,<2.3"
 pyldpc = ">=0.7.6,<0.7.7"
 pyfinite = ">=1.9,<2.0"
