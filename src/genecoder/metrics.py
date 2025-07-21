@@ -4,8 +4,28 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, IO, cast
+from types import ModuleType, TracebackType
 
-import portalocker
+try:  # pragma: no cover - optional dependency
+    import portalocker
+except Exception:  # pragma: no cover - missing optional dependency
+    class _DummyLock:
+        def __init__(self, path: str | os.PathLike[str], mode: str = "r", *, timeout: int | None = None, encoding: str | None = None) -> None:
+            self._f = open(path, mode, encoding=encoding)
+
+        def __enter__(self) -> IO[str]:
+            return self._f
+
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc: BaseException | None,
+            tb: TracebackType | None,
+        ) -> None:
+            self._f.close()
+
+    portalocker = ModuleType("portalocker")
+    portalocker.Lock = _DummyLock  # type: ignore[attr-defined]
 
 __all__ = [
     "Metrics",

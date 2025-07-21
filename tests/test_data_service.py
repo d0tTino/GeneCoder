@@ -18,7 +18,8 @@ def test_fetch_profile_download_and_cache(tmp_path: Path) -> None:
     # second call should use cache
     called = False
 
-    def fake_open(url: str):
+    def fake_open(url: str, *, timeout: int | None = None):
+        assert timeout == 30
         nonlocal called
         called = True
         raise RuntimeError("network call")
