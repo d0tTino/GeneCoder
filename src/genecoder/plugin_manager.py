@@ -27,7 +27,10 @@ import logging
 import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
-from .plugin_security import compute_checksum, verify_signature as _verify_signature
+from .plugin_security import (
+    compute_checksum as _compute_checksum,
+    verify_signature as _verify_signature,
+)
 from .plugin_checks import decode_signature, verify_package
 
 
@@ -39,6 +42,7 @@ PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
 # re-export for tests
 verify_signature = _verify_signature
+compute_checksum = _compute_checksum
 
 
 def register_codec(

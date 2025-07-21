@@ -307,7 +307,8 @@ def main(page: ft.Page) -> None:
 
     encode_status_text: ft.Text = ft.Text("", selectable=True)
     fix_suggestion_text: ft.Text = ft.Text("", selectable=True)
-    fix_button: ft.ElevatedButton = ft.ElevatedButton("Fix my sequence")
+    # Align label with UI tests expecting this exact text
+    fix_button: ft.ElevatedButton = ft.ElevatedButton("Fix Sequence")
     fixed_dna_snippet_text: ft.TextField = ft.TextField(
         label="Fixed DNA Snippet (first 200 chars)",
         read_only=True,

@@ -54,6 +54,8 @@ def encode_data_raptorq(data: bytes, symbol_size: int = 8) -> Tuple[bytes, Any]:
     """Encode ``data`` using a simple RaptorQ wrapper."""
     _require_raptorq()
     assert _rq is not None
+    if symbol_size < 64:
+        symbol_size = 64
     if hasattr(raptorq, "RaptorQ"):
         enc = raptorq.RaptorQ(data, symbol_size)
         encoded = enc.encode()
