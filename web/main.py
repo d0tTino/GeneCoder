@@ -434,6 +434,34 @@ def _gc_array(seq: str) -> list[int]:
     return [1 if base in "GC" else 0 for base in seq.upper()]
 
 
+class SequenceRequest(BaseModel):
+    """Simple DNA sequence request."""
+
+    dna_sequence: str
+
+
+@app.post("/gc-array")
+async def gc_array_endpoint(req: SequenceRequest) -> dict[str, list[int]]:
+    """Return ``1`` for G/C bases and ``0`` for A/T per position."""
+
+    seq = req.dna_sequence.upper()
+    if not DNA_RE.fullmatch(seq):
+        raise HTTPException(status_code=400, detail="Invalid DNA sequence")
+    return {"gc_array": _gc_array(seq)}
+
+
+@app.post("/homopolymer-array")
+async def homopolymer_array_endpoint(
+    req: SequenceRequest,
+) -> dict[str, list[int]]:
+    """Return the homopolymer length for each base."""
+
+    seq = req.dna_sequence.upper()
+    if not DNA_RE.fullmatch(seq):
+        raise HTTPException(status_code=400, detail="Invalid DNA sequence")
+    return {"hp_array": _homopolymer_lengths(seq)}
+
+
 @app.post("/dashboard/plot-data")
 async def dashboard_plot_data(
     req: PlotDataRequest,

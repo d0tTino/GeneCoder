@@ -220,48 +220,54 @@ def register_subcommand(
     apply_parser = channel_sub.add_parser(
         "apply", help="Apply simulators and synthesis constraints"
     )
+
     add_single_io_args(
         apply_parser,
         input_help="Path to input FASTA",
         output_help="Path to output FASTA",
     )
-    apply_parser.add_argument(
-        "--simulator",
-        dest="simulators",
-        action="append",
-        default=[],
-        help="Simulator to apply (can be repeated)",
-    )
-    apply_parser.add_argument(
-        "--config",
-        type=str,
-        help="YAML/JSON config defining simulators, synthesis and pipeline",
-    )
-    apply_parser.add_argument("--sub-prob", type=float, default=0.0, help="Substitution probability per nucleotide")
-    apply_parser.add_argument("--ins-prob", type=float, default=0.0, help="Insertion probability after each nucleotide")
-    apply_parser.add_argument("--del-prob", type=float, default=0.0, help="Deletion probability per nucleotide")
-    apply_parser.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output")
-    apply_parser.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
-    apply_parser.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
-    apply_parser.add_argument("--max-homopolymer", type=int, default=4, help="Maximum homopolymer")
-    apply_parser.add_argument(
-        "--parallel",
-        action="store_true",
-        help="Run channel steps concurrently",
-    )
-    apply_parser.add_argument("--threads", type=int, default=None, help="Number of worker threads")
-    apply_parser.add_argument("--processes", type=int, default=None, help="Use process pool with N workers")
-    apply_parser.add_argument("--mpi", action="store_true", help="Use MPI for parallel execution")
-    apply_parser.add_argument("--mpi-workers", type=int, default=None, help="Number of MPI workers")
-    apply_parser.add_argument(
-        "--batch-workers",
-        type=int,
-        default=None,
-        help="Process sequences in parallel using N workers",
-    )
-    apply_parser.set_defaults(func=_handle_command)
 
-    parser.set_defaults(channel_command="apply", func=_handle_command)
+    parser.add_argument("--input-file", type=str, help="Path to input FASTA")
+    parser.add_argument("--output-file", type=str, help="Path to output FASTA")
+
+    for target in (parser, apply_parser):
+        target.add_argument(
+            "--simulator",
+            dest="simulators",
+            action="append",
+            default=[],
+            help="Simulator to apply (can be repeated)",
+        )
+        target.add_argument(
+            "--config",
+            type=str,
+            help="YAML/JSON config defining simulators, synthesis and pipeline",
+        )
+        target.add_argument("--sub-prob", type=float, default=0.0, help="Substitution probability per nucleotide")
+        target.add_argument("--ins-prob", type=float, default=0.0, help="Insertion probability after each nucleotide")
+        target.add_argument("--del-prob", type=float, default=0.0, help="Deletion probability per nucleotide")
+        target.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output")
+        target.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
+        target.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
+        target.add_argument("--max-homopolymer", type=int, default=4, help="Maximum homopolymer")
+        target.add_argument(
+            "--parallel",
+            action="store_true",
+            help="Run channel steps concurrently",
+        )
+        target.add_argument("--threads", type=int, default=None, help="Number of worker threads")
+        target.add_argument("--processes", type=int, default=None, help="Use process pool with N workers")
+        target.add_argument("--mpi", action="store_true", help="Use MPI for parallel execution")
+        target.add_argument("--mpi-workers", type=int, default=None, help="Number of MPI workers")
+        target.add_argument(
+            "--batch-workers",
+            type=int,
+            default=None,
+            help="Process sequences in parallel using N workers",
+        )
+        target.set_defaults(func=_handle_command)
+
+    parser.set_defaults(channel_command="apply")
 
 
 def _handle_command(args: argparse.Namespace) -> None:
