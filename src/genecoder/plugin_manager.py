@@ -74,7 +74,7 @@ except Exception:  # pragma: no cover - optional dependency
         return result
 
     _yaml = ModuleType("yaml")
-    _yaml.safe_load = _simple_safe_load  # type: ignore[attr-defined]
+    _yaml.safe_load = _simple_safe_load
 
 yaml: Any | None = _yaml
 
@@ -93,6 +93,9 @@ logger = logging.getLogger(__name__)
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
+
+# Environment variable name for plugin catalog cache path
+CATALOG_CACHE_ENV = "GENECODER_CATALOG_CACHE"
 
 # re-export for tests
 verify_signature = _verify_signature
@@ -225,6 +228,51 @@ def rate_plugin(
             item["stars"] = avg
             break
     return avg
+
+
+def _catalog_cache_path(path: str | None = None) -> Path | None:
+    cache_env = path or os.getenv(CATALOG_CACHE_ENV)
+    if cache_env:
+        return Path(cache_env)
+    return None
+
+
+def load_catalog_cache(
+    path: str | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, list[int]]]:
+    """Load plugin catalog from cache ``path``."""
+    PLUGIN_CATALOG.clear()
+    cache_path = _catalog_cache_path(path)
+    if cache_path is None:
+        return [], {}
+    catalog, ratings = load_catalog(str(cache_path))
+    if not catalog:
+        return [], {}
+    for entry in catalog:
+        name = entry.get("name")
+        checksum = entry.get("checksum")
+        signature = entry.get("signature")
+        if not name or not checksum or not signature:
+            continue
+        PLUGIN_CATALOG[name] = {
+            "version": entry.get("version", ""),
+            "url": entry.get("url", ""),
+            "description": entry.get("description", ""),
+            "checksum": checksum,
+            "signature": signature,
+            "author": entry.get("author", ""),
+            "stars": entry.get("stars", 0),
+        }
+    return catalog, ratings
+
+
+def save_catalog_cache(path: str | None = None) -> None:
+    """Write ``PLUGIN_CATALOG`` to cache ``path``."""
+    cache_path = _catalog_cache_path(path)
+    if cache_path is None:
+        return
+    catalog = [{"name": name, **meta} for name, meta in PLUGIN_CATALOG.items()]
+    save_catalog(str(cache_path), catalog, {})
 
 
 def _install_registry_plugins(url: str) -> None:
@@ -451,12 +499,22 @@ def load_builtin_plugins() -> None:
         builtin.register_builtin_plugins()
 
 
-def fetch_plugin_catalog() -> None:
-    """Fetch plugin catalog from :envvar:`GENECODER_PLUGIN_CATALOG_URL`."""
+def fetch_plugin_catalog(*, use_cache: bool = True) -> None:
+    """Fetch plugin catalog using optional local cache."""
+
+    if use_cache:
+        catalog, _ = load_catalog_cache()
+        if catalog:
+            return
 
     catalog_url = os.getenv("GENECODER_PLUGIN_CATALOG_URL")
     if catalog_url:
         _fetch_catalog(catalog_url)
+        if use_cache:
+            try:
+                save_catalog_cache()
+            except Exception:
+                pass
     else:
         PLUGIN_CATALOG.clear()
 

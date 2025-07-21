@@ -83,6 +83,8 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
 
 def _handle_list(args: argparse.Namespace) -> None:
     if not plugins.PLUGIN_CATALOG:
+        plugins.fetch_plugin_catalog()
+    if not plugins.PLUGIN_CATALOG:
         logger.info("No plugin catalog available")
         return
     for name, meta in plugins.PLUGIN_CATALOG.items():
@@ -97,6 +99,8 @@ def _handle_list(args: argparse.Namespace) -> None:
 def download_plugin_bytes(name: str) -> tuple[str, bytes]:
     """Return ``(filename, bytes)`` for plugin ``name`` after verification."""
 
+    if not plugins.PLUGIN_CATALOG:
+        plugins.fetch_plugin_catalog()
     meta = plugins.PLUGIN_CATALOG.get(name)
     if not meta:
         logger.error("Unknown plugin: %s", name)
@@ -165,6 +169,8 @@ def download_plugin_bytes(name: str) -> tuple[str, bytes]:
 
 def _handle_install(args: argparse.Namespace) -> None:
     name = args.name
+    if not plugins.PLUGIN_CATALOG:
+        plugins.fetch_plugin_catalog()
     meta = plugins.PLUGIN_CATALOG.get(name)
     if not meta:
         logger.error("Unknown plugin: %s", name)
