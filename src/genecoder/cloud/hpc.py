@@ -3,6 +3,15 @@ from __future__ import annotations
 import re
 import subprocess
 
+_UNSAFE_RE = re.compile(r"[;&|<>`$(){}\[\]*?!~]")
+
+
+def _validate_safe(value: str, field: str) -> None:
+    if any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise ValueError(f"{field} contains control characters")
+    if _UNSAFE_RE.search(value):
+        raise ValueError(f"{field} contains unsafe characters")
+
 
 def generate_slurm_script(
     command: str,
@@ -14,20 +23,25 @@ def generate_slurm_script(
 ) -> str:
     """Return a simple Slurm batch script.
 
-    ``command`` must not contain newlines or shell metacharacters such as
-    ``;``, ``&&`` or ``|``. This prevents accidental command injection when the
-    script is written to disk.
+    ``command`` as well as ``job_name``, ``partition`` and ``output`` are
+    validated to ensure they do not contain control characters or common shell
+    metacharacters. This prevents accidental command injection when the script
+    is written to disk.
     """
     if any(c in command for c in "\n\r"):
         raise ValueError("command must not contain newlines")
-    if re.search(r"[;&|<>`$]", command):
-        raise ValueError("command contains unsafe characters")
+    _validate_safe(command, "command")
 
     allowed = re.compile(r"^[A-Za-z0-9_-]+$")
+    _validate_safe(job_name, "job_name")
     if not allowed.fullmatch(job_name):
         raise ValueError("job_name contains invalid characters")
-    if partition is not None and not allowed.fullmatch(partition):
-        raise ValueError("partition contains invalid characters")
+    if partition is not None:
+        _validate_safe(partition, "partition")
+        if not allowed.fullmatch(partition):
+            raise ValueError("partition contains invalid characters")
+    if output is not None:
+        _validate_safe(output, "output")
 
     lines = ["#!/bin/bash", f"#SBATCH --job-name={job_name}"]
     lines.append(f"#SBATCH --output={output or '%x-%j.out'}")
