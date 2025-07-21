@@ -1,6 +1,9 @@
 # Example channel configuration combining sequencing simulators
 # with synthesis constraints. The same structure can be saved as JSON.
 
+input: encoded/message.fasta
+output: simulated.fasta
+
 synthesis:
   min_length: 25
   max_length: 300
