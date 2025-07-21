@@ -113,3 +113,52 @@ def test_oligos_per_week(tmp_path: Path) -> None:
     counts = m.oligos_per_week()
     assert counts["2024-W01"] == 2
     assert counts["2024-W02"] == 1
+
+
+def test_oligos_per_week_multiple_weeks(tmp_path: Path) -> None:
+    metrics_path = tmp_path / "multi.json"
+    data = {
+        "oligos_simulated": 6,
+        "oligos_simulated_ts": [
+            "2024-01-02T12:00:00+00:00",
+            "2024-01-05T12:00:00+00:00",
+            "2024-01-09T12:00:00+00:00",
+            "2024-01-16T12:00:00+00:00",
+            "2024-01-17T12:00:00+00:00",
+            "2024-01-23T12:00:00+00:00",
+        ],
+    }
+    metrics_path.write_text(json.dumps(data))
+    m = Metrics(metrics_path)
+    counts = m.oligos_per_week()
+    assert counts["2024-W01"] == 2
+    assert counts["2024-W02"] == 1
+    assert counts["2024-W03"] == 2
+    assert counts["2024-W04"] == 1
+
+
+def test_stats_cli_weekly_counts(tmp_path: Path, monkeypatch) -> None:
+    metrics_path = tmp_path / "stats.json"
+    metrics_path.write_text(
+        json.dumps(
+            {
+                "encode_runs": 1,
+                "oligos_simulated": 6,
+                "oligos_simulated_ts": [
+                    "2024-01-02T12:00:00+00:00",
+                    "2024-01-05T12:00:00+00:00",
+                    "2024-01-09T12:00:00+00:00",
+                    "2024-01-16T12:00:00+00:00",
+                    "2024-01-17T12:00:00+00:00",
+                    "2024-01-23T12:00:00+00:00",
+                ],
+            }
+        )
+    )
+    monkeypatch.setenv("GENECODER_METRICS_PATH", str(metrics_path))
+    res = run_cli_command(["stats"])
+    assert res.returncode == 0
+    out = res.stdout.strip().splitlines()
+    weekly_line = [line for line in out if line.startswith("oligos_per_week:")][0]
+    assert "2024-W01" in weekly_line
+    assert "2024-W04" in weekly_line
