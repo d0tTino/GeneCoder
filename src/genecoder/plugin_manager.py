@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Any, Iterable, Optional
-from types import ModuleType
+from typing import Callable, Dict, Any, Iterable, Optional, IO
+from types import ModuleType, TracebackType
 import os
 import sys
 import subprocess
@@ -12,13 +12,70 @@ import importlib
 import base64
 from pathlib import Path
 import json
-import portalocker
+try:  # pragma: no cover - optional dependency
+    import portalocker
+except Exception:  # pragma: no cover - missing optional dependency
+    class _DummyLock:
+        def __init__(self, path: str | os.PathLike[str], mode: str = "r", *, timeout: int | None = None, encoding: str | None = None) -> None:  # noqa: D401 - simple stub
+            self._f = open(path, mode, encoding=encoding)
+
+        def __enter__(self) -> IO[Any]:
+            return self._f
+
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc: BaseException | None,
+            tb: TracebackType | None,
+        ) -> None:
+            self._f.close()
+
+    portalocker = ModuleType("portalocker")
+    portalocker.Lock = _DummyLock  # type: ignore[attr-defined]
 
 _yaml: Any
 try:  # pragma: no cover - import is trivial
     _yaml = importlib.import_module("yaml")
 except Exception:  # pragma: no cover - optional dependency
-    _yaml = None
+    def _simple_safe_load(data: str | bytes) -> dict[str, Any]:
+        text = data.decode() if isinstance(data, (bytes, bytearray)) else str(data)
+        result: dict[str, Any] = {}
+        current_list: list[dict[str, Any]] | None = None
+        current_item: dict[str, Any] | None = None
+
+        for raw in text.splitlines():
+            line = raw.rstrip()
+            if not line:
+                continue
+            if not line.startswith(" "):
+                key, _, val = line.partition(":")
+                key = key.strip()
+                val = val.strip().strip("'\"")
+                current_item = None
+                if not val:
+                    current_list = []
+                    result[key] = current_list
+                else:
+                    result[key] = val
+                continue
+            if line.lstrip().startswith("- "):
+                current_item = {}
+                if current_list is not None:
+                    current_list.append(current_item)
+                line = line.lstrip()[2:]
+                if line:
+                    k, _, v = line.partition(":")
+                    current_item[k.strip()] = v.strip().strip("'\"")
+                continue
+            if current_item is not None:
+                k, _, v = line.lstrip().partition(":")
+                current_item[k.strip()] = v.strip().strip("'\"")
+
+        return result
+
+    _yaml = ModuleType("yaml")
+    _yaml.safe_load = _simple_safe_load  # type: ignore[attr-defined]
+
 yaml: Any | None = _yaml
 
 from .channels.base import BaseChannel
@@ -195,7 +252,7 @@ def _install_registry_plugins(url: str) -> None:
         return
 
     try:
-        with urllib.request.urlopen(url) as response:
+        with urllib.request.urlopen(url, timeout=30) as response:
             data = yaml.safe_load(response.read()) or {}
     except Exception as exc:  # pragma: no cover - network error path
         logger.warning("Failed to fetch plugin registry %s: %s", url, exc)
@@ -232,7 +289,7 @@ def _install_registry_plugins(url: str) -> None:
             continue
 
         try:
-            with urllib.request.urlopen(spec) as resp:
+            with urllib.request.urlopen(spec, timeout=30) as resp:
                 pkg_bytes = resp.read()
         except Exception as exc:  # pragma: no cover - download error path
             logger.warning("Failed to download plugin %s: %s", spec, exc)
@@ -309,7 +366,7 @@ def _fetch_catalog(url: str) -> None:
         return
 
     try:
-        with urllib.request.urlopen(url) as response:
+        with urllib.request.urlopen(url, timeout=30) as response:
             raw = response.read()
         data = yaml.safe_load(raw) or {}
     except Exception as exc:  # pragma: no cover - network error path

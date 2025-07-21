@@ -205,7 +205,8 @@ def test_catalog_fetch_error(monkeypatch: pytest.MonkeyPatch, caplog: pytest.Log
 
     transport = httpx.MockTransport(handler)
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         request = Request("GET", url)
         transport.handle_request(request)
         raise AssertionError("unreachable")

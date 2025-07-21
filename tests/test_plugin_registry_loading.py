@@ -26,7 +26,8 @@ def test_load_plugins_with_signed_registry(monkeypatch: pytest.MonkeyPatch) -> N
     checksum = compute_checksum(pkg)
     sig = base64.b64encode(b"sig").decode()
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"

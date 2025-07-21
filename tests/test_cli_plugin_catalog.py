@@ -61,7 +61,8 @@ class _R:
     def read(self):
         return self._data
 
-def fake_urlopen(url):
+def fake_urlopen(url, *, timeout=None):
+    assert timeout == 30
     if url == 'https://example.com/catalog.yaml':
         return _R(catalog)
     if url == 'https://example.com/pkg.whl':
