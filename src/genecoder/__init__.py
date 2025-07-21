@@ -25,6 +25,15 @@ from .simulators import SIMULATOR_REGISTRY, simulate_reads
 from .channel_config import ChannelConfig
 from .pipeline import SequencePipeline
 
+from typing import Any
+
+CloudClient: Any
+try:  # pragma: no cover - optional dependency
+    from .cloud import CloudClient as RealCloudClient
+    CloudClient = RealCloudClient
+except Exception:  # pragma: no cover - missing optional dependency
+    CloudClient = None
+
 
 
 
@@ -69,7 +78,7 @@ def __getattr__(name: str) -> object:
             perform_decoding,
         )
         from .security import decrypt_data, encrypt_data, compute_checksum
-        from .cloud import CloudClient
+        from .cloud import CloudClient as _CloudClient
         globals().update({
             "EncodeOptions": EncodeOptions,
             "EncodeResult": EncodeResult,
@@ -79,7 +88,7 @@ def __getattr__(name: str) -> object:
             "encrypt_data": encrypt_data,
             "decrypt_data": decrypt_data,
             "compute_checksum": compute_checksum,
-            "CloudClient": CloudClient,
+            "CloudClient": _CloudClient,
         })
         return globals()[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

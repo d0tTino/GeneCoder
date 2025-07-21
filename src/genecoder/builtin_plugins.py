@@ -33,6 +33,14 @@ def register_builtin_plugins() -> None:
 
     _load_and_register(
         [
+            "genecoder.chamaeleo_codec",
+        ],
+        register_codec,
+        "builtin",
+    )
+
+    _load_and_register(
+        [
             "genecoder.reed_solomon_codec",
             "genecoder.ldpc_codec",
             "genecoder.fountain_codec",
@@ -53,6 +61,8 @@ def register_builtin_plugins() -> None:
             "genecoder.simulators.nanopore",
             "genecoder.simulators.illumina_profile",
             "genecoder.simulators.adv_nanopore",
+            "genecoder.simulators.insilicoseq",
+            "genecoder.simulators.desp",
             "genecoder.simulators.replication",
             "genecoder.simulators.transcription",
             "genecoder.simulators.translation",

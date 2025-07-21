@@ -56,6 +56,9 @@ fastapi = {version = ">=0.110", optional = true}
 uvicorn = { version = "*", extras = ["standard"], optional = true }
 httpx = "<0.28"
 deepdna = {version = "*", optional = true}
+chamaeleo = {version = "*", optional = true}
+desp = {version = "*", optional = true}
+insilicoseq = {version = "*", optional = true}
 
 [tool.poetry.group.gui.dependencies]
 flet = ">=0.28,<0.29"
@@ -119,6 +122,9 @@ fountain = ["pyfinite"]
 raptorq = ["raptorq", "numpy"]
 bch = ["bchlib"]
 deepdna = ["deepdna", "torch"]
+chamaeleo = ["chamaeleo"]
+desp = ["desp"]
+insilicoseq = ["insilicoseq"]
 
 gui = ["flet", "matplotlib", "flet-webview"]
 web = ["fastapi", "uvicorn", "httpx"]
