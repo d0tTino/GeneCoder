@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("httpx")
 from genecoder.cloud.utils import extract_zip_safely
 
 

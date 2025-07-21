@@ -196,19 +196,17 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
      max_homopolymer: 5
    ```
 
-   ```bash
-   genecoder channel --input-file encoded.fasta \
-       --output-file channel.fasta --config config.yml
-   ```
+```bash
+genecoder channel run config.yml
+```
 
-   The command processes each FASTA record through a pipeline of steps. Use
-   ``--batch-workers`` to run multiple records in parallel:
+   The command processes each FASTA record through a pipeline of steps. Set
+   ``batch_workers`` in the YAML configuration to run multiple records in
+   parallel:
 
-   ```bash
-   genecoder channel --input-file encoded.fasta \
-       --output-file channel.fasta --config config.yml \
-       --batch-workers 4
-   ```
+```bash
+genecoder channel run config.yml
+```
 
 14. **AI-assisted decoding**
 

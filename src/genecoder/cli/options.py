@@ -91,7 +91,7 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
 
     sim_specs: list[tuple[str, dict[str, object]]] | None = None
     if args.config:
-        cfg_sim, cfg_con, cfg_pipeline = _load_config(args.config)
+        cfg_sim, cfg_con, cfg_pipeline, _ = _load_config(args.config)
         if cfg_sim:
             sim_specs = cfg_sim
             simulators = [name for name, _ in cfg_sim]

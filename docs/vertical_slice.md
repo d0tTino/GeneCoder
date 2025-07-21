@@ -90,8 +90,7 @@ constraints is provided at `configs/channel_demo.yaml`.
 Apply the channel step using:
 
 ```bash
-genecoder channel --config configs/channel_demo.yaml \
-  --input-file encoded/message.fasta --output-file simulated.fasta
+genecoder channel run configs/channel_demo.yaml
 ```
 
 ## Launch the GUI
