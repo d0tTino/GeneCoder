@@ -30,7 +30,8 @@ def test_registry_invalid_signature(monkeypatch: pytest.MonkeyPatch, caplog: pyt
     checksum = compute_checksum(pkg)
     sig_b64 = base64.b64encode(b"sig").decode()
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"

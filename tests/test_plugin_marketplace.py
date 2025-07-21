@@ -3,6 +3,13 @@ import argparse
 from pathlib import Path
 import logging
 import base64
+import types
+import os
+
+# Provide a stub for portalocker if the real module is unavailable
+portalocker_stub = types.ModuleType("portalocker")
+portalocker_stub.Lock = lambda *a, **k: open(os.devnull, "w")  # type: ignore[attr-defined]
+sys.modules.setdefault("portalocker", portalocker_stub)
 import pytest
 
 
@@ -39,7 +46,8 @@ def test_catalog_list_and_install(monkeypatch, capsys):
         + sig
     ).encode()
 
-    def fake_urlopen(url):
+    def fake_urlopen(url, *, timeout=None):
+        assert timeout == 30
         assert url == "https://example.com/catalog.yaml"
         return DummyResponse(catalog)
 
@@ -100,7 +108,8 @@ def test_install_checksum_mismatch(monkeypatch, caplog):
         + sig
     ).encode()
 
-    def fake_urlopen(url):
+    def fake_urlopen(url, *, timeout=None):
+        assert timeout == 30
         assert url == "https://example.com/catalog.yaml"
         return DummyResponse(catalog)
 
@@ -155,7 +164,8 @@ def test_install_signature_mismatch(monkeypatch: pytest.MonkeyPatch, caplog: pyt
         f"    signature: {sig}"
     ).encode()
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         assert url == "https://example.com/catalog.yaml"
         return DummyResponse(catalog)
 
@@ -204,7 +214,8 @@ def test_install_signature_mismatch(monkeypatch: pytest.MonkeyPatch, caplog: pyt
 def test_catalog_network_error(monkeypatch, caplog):
     """Network failures fetching the catalog are logged as warnings."""
 
-    def fake_urlopen(url):
+    def fake_urlopen(url, *, timeout=None):
+        assert timeout == 30
         raise RuntimeError("offline")
 
     monkeypatch.setenv("GENECODER_PLUGIN_CATALOG_URL", "https://example.com/catalog.yaml")
@@ -226,7 +237,8 @@ def test_catalog_invalid_signature(monkeypatch, caplog):
     catalog = b"plugins:\n  - name: bad\n    version: '0.1'\n    url: bad==0.1\n    description: Bad\nsignature: wrong"
 
 
-    def fake_urlopen(url):
+    def fake_urlopen(url, *, timeout=None):
+        assert timeout == 30
         assert url == "https://example.com/catalog.yaml"
         return DummyResponse(catalog)
 
@@ -255,7 +267,8 @@ def test_catalog_missing_checksum(monkeypatch: pytest.MonkeyPatch, caplog: pytes
         "    signature: deadbeef"
     ).encode()
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         assert url == "https://example.com/catalog.yaml"
         return DummyResponse(catalog)
 
@@ -287,7 +300,8 @@ def test_catalog_missing_signature(monkeypatch: pytest.MonkeyPatch, caplog: pyte
         f"    checksum: {checksum}"
     ).encode()
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         assert url == "https://example.com/catalog.yaml"
         return DummyResponse(catalog)
 
@@ -310,7 +324,8 @@ def test_registry_missing_signature(monkeypatch: pytest.MonkeyPatch) -> None:
     pkg = b"PKG"
     checksum = compute_checksum(pkg)
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
@@ -337,7 +352,8 @@ def test_registry_signature_error(monkeypatch: pytest.MonkeyPatch) -> None:
     checksum = compute_checksum(pkg)
     sig = base64.b64encode(b"sig").decode()
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
