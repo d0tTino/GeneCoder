@@ -301,6 +301,17 @@ python -m genecoder.flet_app
 
 The GUI exposes encoding options, error correction choices and displays metrics and analysis plots.
 
+### Launching the Streamlit Dashboard
+
+The dashboard visualizes simulation output stored in a JSON file. Install the optional GUI extras and run:
+
+```bash
+poetry install --with gui --no-interaction
+genecoder dashboard results.json
+```
+
+The interface plots GC distribution, homopolymer runs and ECC success rates from the given file.
+
 ### Constraint Fix Suggestions
 
 Both the CLI `analyze` command and the GUI provide simple suggestions when a

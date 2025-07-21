@@ -61,6 +61,7 @@ deepdna = {version = "*", optional = true}
 flet = ">=0.28,<0.29"
 matplotlib = "*"
 flet-webview = "*"
+streamlit = "*"
 
 [tool.poetry.group.web.dependencies]
 fastapi = ">=0.110"
@@ -120,7 +121,7 @@ raptorq = ["raptorq", "numpy"]
 bch = ["bchlib"]
 deepdna = ["deepdna", "torch"]
 
-gui = ["flet", "matplotlib", "flet-webview"]
+gui = ["flet", "matplotlib", "flet-webview", "streamlit"]
 web = ["fastapi", "uvicorn", "httpx"]
 
 [build-system]
