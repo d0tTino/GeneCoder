@@ -14,6 +14,11 @@ _LAZY_ATTRS = {
     "CloudClient",
 }
 
+try:
+    from .cloud import CloudClient  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    CloudClient = None  # type: ignore
+
 from .plugin_manager import (
     CODEC_REGISTRY,
     FEC_REGISTRY,

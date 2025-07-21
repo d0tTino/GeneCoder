@@ -110,17 +110,46 @@ verify_signature = _verify_signature
 compute_checksum = _compute_checksum
 
 
+from .codecs import BaseCodec, BaseFEC
+
+
 def register_codec(
-    name: str, encode: Callable[..., Any], decode: Callable[..., Any]
+    name: str,
+    encode: Callable[..., Any] | BaseCodec | type[BaseCodec],
+    decode: Callable[..., Any] | None = None,
 ) -> None:
     """Register a codec implementation under ``name``."""
+
+    if isinstance(encode, BaseCodec):
+        CODEC_REGISTRY[name] = {"encode": encode.encode, "decode": encode.decode}
+        return
+    if isinstance(encode, type) and issubclass(encode, BaseCodec):
+        inst = encode()
+        CODEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
+        return
+
+    if decode is None:
+        raise TypeError("decode function required for legacy registration")
     CODEC_REGISTRY[name] = {"encode": encode, "decode": decode}
 
 
 def register_fec(
-    name: str, encode: Callable[..., Any], decode: Callable[..., Any]
+    name: str,
+    encode: Callable[..., Any] | BaseFEC | type[BaseFEC],
+    decode: Callable[..., Any] | None = None,
 ) -> None:
     """Register a FEC backend under ``name``."""
+
+    if isinstance(encode, BaseFEC):
+        FEC_REGISTRY[name] = {"encode": encode.encode, "decode": encode.decode}
+        return
+    if isinstance(encode, type) and issubclass(encode, BaseFEC):
+        inst = encode()
+        FEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
+        return
+
+    if decode is None:
+        raise TypeError("decode function required for legacy registration")
     FEC_REGISTRY[name] = {"encode": encode, "decode": decode}
 
 

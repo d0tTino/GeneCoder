@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
+from .codecs import BaseFEC
+
 _HAS_DEEPDNA = False
 
 if TYPE_CHECKING:
@@ -43,6 +45,16 @@ def decode_data_deepdna(encoded: bytes, info: Mapping[str, str]) -> Tuple[bytes,
     return decoded, 0
 
 
+class DeepDNAFEC(BaseFEC):
+    """DeepDNA FEC backend implementing :class:`BaseFEC`."""
+
+    def encode(self, data: bytes, /, *, model_name: str = "deepdna-small") -> Tuple[bytes, Mapping[str, str]]:
+        return encode_data_deepdna(data, model_name)
+
+    def decode(self, encoded: bytes, info: Mapping[str, str], /) -> Tuple[bytes, int]:
+        return decode_data_deepdna(encoded, info)
+
+
 from typing import Callable
 
 
@@ -57,4 +69,5 @@ def register(
     ]
 ) -> None:
     """Register this module's FEC backend."""
-    register_fec("deepdna", encode_data_deepdna, decode_data_deepdna)
+    register_fec("deepdna", DeepDNAFEC)
+

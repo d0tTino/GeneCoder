@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
+from .codecs import BaseFEC
+
 _HAS_PYLDPC = False
 
 if TYPE_CHECKING:
@@ -84,6 +86,16 @@ def decode_data_ldpc(encoded: bytes, info: Mapping[str, Any]) -> Tuple[bytes, in
     return np.packbits(data_bits).tobytes(), corrections
 
 
+class LdpcFEC(BaseFEC):
+    """LDPC FEC backend implementing :class:`BaseFEC`."""
+
+    def encode(self, data: bytes, /) -> Tuple[bytes, Mapping[str, Any]]:
+        return encode_data_ldpc(data)
+
+    def decode(self, encoded: bytes, info: Mapping[str, Any], /) -> Tuple[bytes, int]:
+        return decode_data_ldpc(encoded, info)
+
+
 from typing import Callable
 
 
@@ -98,4 +110,5 @@ def register(
     ]
 ) -> None:
     """Register this module's FEC backend."""
-    register_fec("ldpc", encode_data_ldpc, decode_data_ldpc)
+    register_fec("ldpc", LdpcFEC)
+

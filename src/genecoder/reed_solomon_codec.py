@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from typing import Tuple, TYPE_CHECKING
 
+from .codecs import BaseFEC
+
+
 _HAS_REEDSOLO: bool = False
 
 if TYPE_CHECKING:
@@ -86,9 +89,19 @@ def decode_data_rs(encoded: bytes, nsym: int) -> Tuple[bytes, int]:
     return bytes(decoded), len(err_pos)
 
 
+class ReedSolomonFEC(BaseFEC):
+    """Reed--Solomon FEC backend implementing :class:`BaseFEC`."""
+
+    def encode(self, data: bytes, /, *, nsym: int = 10) -> Tuple[bytes, int]:
+        return encode_data_rs(data, nsym)
+
+    def decode(self, encoded: bytes, info: int, /) -> Tuple[bytes, int]:
+        return decode_data_rs(encoded, info)
+
+
 from typing import Callable, Any
 
-
-def register(register_fec: Callable[[str, Callable[[bytes], tuple[bytes, Any]], Callable[[bytes, Any], tuple[bytes, int]]], None]) -> None:
+def register(register_fec: Callable[[str, Callable[..., object], Callable[..., object]], None]) -> None:
     """Register this module's FEC backend."""
-    register_fec("reed_solomon", encode_data_rs, decode_data_rs)
+    register_fec("reed_solomon", ReedSolomonFEC)
+

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
+from .codecs import BaseFEC
+
 _HAS_RAPTORQ = False
 
 if TYPE_CHECKING:
@@ -88,6 +90,16 @@ def decode_data_raptorq(encoded: bytes, info: Mapping[str, int]) -> Tuple[bytes,
     return data, 0
 
 
+class RaptorqFEC(BaseFEC):
+    """RaptorQ FEC backend implementing :class:`BaseFEC`."""
+
+    def encode(self, data: bytes, /, *, symbol_size: int = 8) -> Tuple[bytes, Mapping[str, int]]:
+        return encode_data_raptorq(data, symbol_size)
+
+    def decode(self, encoded: bytes, info: Mapping[str, int], /) -> Tuple[bytes, int]:
+        return decode_data_raptorq(encoded, info)
+
+
 from typing import Callable
 
 
@@ -102,4 +114,5 @@ def register(
     ]
 ) -> None:
     """Register this module's FEC backend."""
-    register_fec("raptorq", encode_data_raptorq, decode_data_raptorq)
+    register_fec("raptorq", RaptorqFEC)
+
