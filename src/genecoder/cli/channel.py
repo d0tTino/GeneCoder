@@ -27,7 +27,12 @@ logger = logging.getLogger(__name__)
 
 def _load_config(
     path: str,
-) -> tuple[list[tuple[str, Dict[str, Any]]], dict[str, int], ChannelConfig]:
+) -> tuple[
+    list[tuple[str, Dict[str, Any]]],
+    dict[str, int],
+    ChannelConfig,
+    dict[str, Any],
+]:
     import yaml
 
     with open(path, "r", encoding="utf-8") as f:
@@ -71,7 +76,17 @@ def _load_config(
         use_mpi=bool(pipeline.get("use_mpi", False)),
     )
 
-    return simulators, {k: int(v) for k, v in synth_section.items()}, cfg
+    extra = {
+        "input_file": data.get("input"),
+        "output_file": data.get("output"),
+        "sub_prob": float(data.get("sub_prob", 0.0) or 0.0),
+        "ins_prob": float(data.get("ins_prob", 0.0) or 0.0),
+        "del_prob": float(data.get("del_prob", 0.0) or 0.0),
+        "seed": data.get("seed"),
+        "batch_workers": data.get("batch_workers"),
+    }
+
+    return simulators, {k: int(v) for k, v in synth_section.items()}, cfg, extra
 
 
 def _apply_simulators(
@@ -187,44 +202,72 @@ def process_channel(
     logger.info("Manifest written to %s", manifest_path)
 
 
-def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    parser = subparsers.add_parser("channel", help="Combine simulators and synthesis constraints")
-    add_single_io_args(parser, input_help="Path to input FASTA", output_help="Path to output FASTA")
-    parser.add_argument(
-        "--simulator",
-        dest="simulators",
-        action="append",
-        default=[],
-        help="Simulator to apply (can be repeated)",
+def register_subcommand(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    parser = subparsers.add_parser(
+        "channel", help="Combine simulators and synthesis constraints"
     )
-    parser.add_argument(
-        "--config",
-        type=str,
-        help="YAML/JSON config defining simulators, synthesis and pipeline",
+
+    channel_sub = parser.add_subparsers(dest="channel_command")
+
+    run_parser = channel_sub.add_parser(
+        "run", help="Run channel pipeline from a YAML config"
     )
-    parser.add_argument("--sub-prob", type=float, default=0.0, help="Substitution probability per nucleotide")
-    parser.add_argument("--ins-prob", type=float, default=0.0, help="Insertion probability after each nucleotide")
-    parser.add_argument("--del-prob", type=float, default=0.0, help="Deletion probability per nucleotide")
-    parser.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output")
-    parser.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
-    parser.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
-    parser.add_argument("--max-homopolymer", type=int, default=4, help="Maximum homopolymer")
-    parser.add_argument(
-        "--parallel",
-        action="store_true",
-        help="Run channel steps concurrently",
+    run_parser.add_argument("config", type=str, help="Path to channel config")
+    run_parser.set_defaults(func=_handle_run)
+
+    apply_parser = channel_sub.add_parser(
+        "apply", help="Apply simulators and synthesis constraints"
     )
-    parser.add_argument("--threads", type=int, default=None, help="Number of worker threads")
-    parser.add_argument("--processes", type=int, default=None, help="Use process pool with N workers")
-    parser.add_argument("--mpi", action="store_true", help="Use MPI for parallel execution")
-    parser.add_argument("--mpi-workers", type=int, default=None, help="Number of MPI workers")
-    parser.add_argument(
-        "--batch-workers",
-        type=int,
-        default=None,
-        help="Process sequences in parallel using N workers",
+
+    add_single_io_args(
+        apply_parser,
+        input_help="Path to input FASTA",
+        output_help="Path to output FASTA",
     )
-    parser.set_defaults(func=_handle_command)
+
+    parser.add_argument("--input-file", type=str, help="Path to input FASTA")
+    parser.add_argument("--output-file", type=str, help="Path to output FASTA")
+
+    for target in (parser, apply_parser):
+        target.add_argument(
+            "--simulator",
+            dest="simulators",
+            action="append",
+            default=[],
+            help="Simulator to apply (can be repeated)",
+        )
+        target.add_argument(
+            "--config",
+            type=str,
+            help="YAML/JSON config defining simulators, synthesis and pipeline",
+        )
+        target.add_argument("--sub-prob", type=float, default=0.0, help="Substitution probability per nucleotide")
+        target.add_argument("--ins-prob", type=float, default=0.0, help="Insertion probability after each nucleotide")
+        target.add_argument("--del-prob", type=float, default=0.0, help="Deletion probability per nucleotide")
+        target.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output")
+        target.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
+        target.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
+        target.add_argument("--max-homopolymer", type=int, default=4, help="Maximum homopolymer")
+        target.add_argument(
+            "--parallel",
+            action="store_true",
+            help="Run channel steps concurrently",
+        )
+        target.add_argument("--threads", type=int, default=None, help="Number of worker threads")
+        target.add_argument("--processes", type=int, default=None, help="Use process pool with N workers")
+        target.add_argument("--mpi", action="store_true", help="Use MPI for parallel execution")
+        target.add_argument("--mpi-workers", type=int, default=None, help="Number of MPI workers")
+        target.add_argument(
+            "--batch-workers",
+            type=int,
+            default=None,
+            help="Process sequences in parallel using N workers",
+        )
+        target.set_defaults(func=_handle_command)
+
+    parser.set_defaults(channel_command="apply")
 
 
 def _handle_command(args: argparse.Namespace) -> None:
@@ -261,4 +304,31 @@ def run_channel(args: argparse.Namespace) -> None:
         seed=opts.seed,
         config=cfg,
         batch_workers=opts.batch_workers,
+    )
+
+
+def _handle_run(args: argparse.Namespace) -> None:
+    try:
+        simulators, constraints, cfg, extra = _load_config(args.config)
+    except Exception as exc:  # pragma: no cover - config error handling
+        logger.error(str(exc))
+        raise SystemExit(1)
+
+    input_file = extra.get("input_file")
+    output_file = extra.get("output_file")
+    if not input_file or not output_file:
+        logger.error("Config must define 'input' and 'output' paths")
+        raise SystemExit(1)
+
+    process_channel(
+        input_file,
+        output_file,
+        simulators,
+        constraints,
+        sub_prob=extra.get("sub_prob", 0.0),
+        ins_prob=extra.get("ins_prob", 0.0),
+        del_prob=extra.get("del_prob", 0.0),
+        seed=extra.get("seed"),
+        config=cfg,
+        batch_workers=extra.get("batch_workers"),
     )

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Any, Iterable, Optional
+from typing import Callable, Dict, Any, Iterable, Optional, cast, IO
 from types import ModuleType
+
 import os
+import io
 import sys
 import subprocess
 import tempfile
@@ -12,13 +14,73 @@ import importlib
 import base64
 from pathlib import Path
 import json
-import portalocker
+try:  # pragma: no cover - optional dependency
+    import portalocker
+except Exception:  # pragma: no cover - fallback for tests
+    import types
+
+    class _NoLock:
+        def __init__(self, path: str | os.PathLike[str], mode: str = "r", *, timeout: int | None = None, encoding: str | None = None) -> None:  # noqa: D401,E501
+            """Simplified file lock that doesn't actually lock."""
+            self.path = path
+            self.mode = mode
+            self.encoding = encoding
+            self.fh: IO[str]
+
+        def __enter__(self) -> io.TextIOWrapper:
+            self.fh = open(self.path, self.mode, encoding=self.encoding)
+            return cast(io.TextIOWrapper, self.fh)
+
+        def __exit__(self, exc_type: type | None, exc: BaseException | None, tb: object | None) -> None:
+            if self.fh:
+                self.fh.close()
+
+    portalocker = types.SimpleNamespace(Lock=_NoLock)
+
 
 _yaml: Any
 try:  # pragma: no cover - import is trivial
     _yaml = importlib.import_module("yaml")
 except Exception:  # pragma: no cover - optional dependency
-    _yaml = None
+    def _simple_safe_load(data: str | bytes) -> dict[str, Any]:
+        text = data.decode() if isinstance(data, (bytes, bytearray)) else str(data)
+        result: dict[str, Any] = {}
+        current_list: list[dict[str, Any]] | None = None
+        current_item: dict[str, Any] | None = None
+
+        for raw in text.splitlines():
+            line = raw.rstrip()
+            if not line:
+                continue
+            if not line.startswith(" "):
+                key, _, val = line.partition(":")
+                key = key.strip()
+                val = val.strip().strip("'\"")
+                current_item = None
+                if not val:
+                    current_list = []
+                    result[key] = current_list
+                else:
+                    result[key] = val
+                continue
+            if line.lstrip().startswith("- "):
+                current_item = {}
+                if current_list is not None:
+                    current_list.append(current_item)
+                line = line.lstrip()[2:]
+                if line:
+                    k, _, v = line.partition(":")
+                    current_item[k.strip()] = v.strip().strip("'\"")
+                continue
+            if current_item is not None:
+                k, _, v = line.lstrip().partition(":")
+                current_item[k.strip()] = v.strip().strip("'\"")
+
+        return result
+
+    _yaml = ModuleType("yaml")
+    _yaml.safe_load = _simple_safe_load
+
 yaml: Any | None = _yaml
 
 from .channels.base import BaseChannel
@@ -39,6 +101,9 @@ logger = logging.getLogger(__name__)
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
+
+# Environment variable name for plugin catalog cache path
+CATALOG_CACHE_ENV = "GENECODER_CATALOG_CACHE"
 
 # re-export for tests
 verify_signature = _verify_signature
@@ -174,6 +239,51 @@ def rate_plugin(
     return avg
 
 
+def _catalog_cache_path(path: str | None = None) -> Path | None:
+    cache_env = path or os.getenv(CATALOG_CACHE_ENV)
+    if cache_env:
+        return Path(cache_env)
+    return None
+
+
+def load_catalog_cache(
+    path: str | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, list[int]]]:
+    """Load plugin catalog from cache ``path``."""
+    PLUGIN_CATALOG.clear()
+    cache_path = _catalog_cache_path(path)
+    if cache_path is None:
+        return [], {}
+    catalog, ratings = load_catalog(str(cache_path))
+    if not catalog:
+        return [], {}
+    for entry in catalog:
+        name = entry.get("name")
+        checksum = entry.get("checksum")
+        signature = entry.get("signature")
+        if not name or not checksum or not signature:
+            continue
+        PLUGIN_CATALOG[name] = {
+            "version": entry.get("version", ""),
+            "url": entry.get("url", ""),
+            "description": entry.get("description", ""),
+            "checksum": checksum,
+            "signature": signature,
+            "author": entry.get("author", ""),
+            "stars": entry.get("stars", 0),
+        }
+    return catalog, ratings
+
+
+def save_catalog_cache(path: str | None = None) -> None:
+    """Write ``PLUGIN_CATALOG`` to cache ``path``."""
+    cache_path = _catalog_cache_path(path)
+    if cache_path is None:
+        return
+    catalog = [{"name": name, **meta} for name, meta in PLUGIN_CATALOG.items()]
+    save_catalog(str(cache_path), catalog, {})
+
+
 def _install_registry_plugins(url: str) -> None:
     """Install plugin packages listed in a YAML registry at ``url``."""
 
@@ -199,7 +309,7 @@ def _install_registry_plugins(url: str) -> None:
         return
 
     try:
-        with urllib.request.urlopen(url) as response:
+        with urllib.request.urlopen(url, timeout=30) as response:
             data = yaml.safe_load(response.read()) or {}
     except Exception as exc:  # pragma: no cover - network error path
         logger.warning("Failed to fetch plugin registry %s: %s", url, exc)
@@ -236,7 +346,7 @@ def _install_registry_plugins(url: str) -> None:
             continue
 
         try:
-            with urllib.request.urlopen(spec) as resp:
+            with urllib.request.urlopen(spec, timeout=30) as resp:
                 pkg_bytes = resp.read()
         except Exception as exc:  # pragma: no cover - download error path
             logger.warning("Failed to download plugin %s: %s", spec, exc)
@@ -313,7 +423,7 @@ def _fetch_catalog(url: str) -> None:
         return
 
     try:
-        with urllib.request.urlopen(url) as response:
+        with urllib.request.urlopen(url, timeout=30) as response:
             raw = response.read()
         data = yaml.safe_load(raw) or {}
     except Exception as exc:  # pragma: no cover - network error path
@@ -398,12 +508,22 @@ def load_builtin_plugins() -> None:
         builtin.register_builtin_plugins()
 
 
-def fetch_plugin_catalog() -> None:
-    """Fetch plugin catalog from :envvar:`GENECODER_PLUGIN_CATALOG_URL`."""
+def fetch_plugin_catalog(*, use_cache: bool = True) -> None:
+    """Fetch plugin catalog using optional local cache."""
+
+    if use_cache:
+        catalog, _ = load_catalog_cache()
+        if catalog:
+            return
 
     catalog_url = os.getenv("GENECODER_PLUGIN_CATALOG_URL")
     if catalog_url:
         _fetch_catalog(catalog_url)
+        if use_cache:
+            try:
+                save_catalog_cache()
+            except Exception:
+                pass
     else:
         PLUGIN_CATALOG.clear()
 

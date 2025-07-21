@@ -429,6 +429,7 @@ def test_channel_command_probabilities(temp_dir: Path, small_fasta_file: Path) -
     out_file = temp_dir / "corrupted.fasta"
     cmd_args = [
         "channel",
+        "apply",
         "--input-file",
         str(small_fasta_file),
         "--output-file",
@@ -453,6 +454,7 @@ def test_channel_missing_input(temp_dir: Path) -> None:
     out_file = temp_dir / "corrupted.fasta"
     cmd_args = [
         "channel",
+        "apply",
         "--input-file",
         str(temp_dir / "nofile.fasta"),
         "--output-file",
@@ -471,6 +473,7 @@ def test_channel_unknown_simulator(temp_dir: Path, small_fasta_file: Path) -> No
     out_file = temp_dir / "corrupt.fasta"
     cmd_args = [
         "channel",
+        "apply",
         "--input-file",
         str(small_fasta_file),
         "--output-file",

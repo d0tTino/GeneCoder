@@ -3,6 +3,8 @@ from pathlib import Path
 import base64
 
 import pytest
+pytest.importorskip("portalocker")
+pytest.importorskip("yaml")
 from genecoder.plugin_security import compute_checksum
 
 from tests.test_cli import run_cli_command
@@ -61,7 +63,8 @@ class _R:
     def read(self):
         return self._data
 
-def fake_urlopen(url):
+def fake_urlopen(url, *, timeout=None):
+    assert timeout == 30
     if url == 'https://example.com/catalog.yaml':
         return _R(catalog)
     if url == 'https://example.com/pkg.whl':

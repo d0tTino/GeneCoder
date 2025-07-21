@@ -1,5 +1,12 @@
 import sys
 import logging
+import types
+import os
+
+# Provide a stub for portalocker if the real module is unavailable
+portalocker_stub = types.ModuleType("portalocker")
+portalocker_stub.Lock = lambda *a, **k: open(os.devnull, "w")  # type: ignore[attr-defined]
+sys.modules.setdefault("portalocker", portalocker_stub)
 
 from typing import Callable
 
@@ -33,7 +40,8 @@ def test_registry_install(monkeypatch):
     def fake_check_call(cmd):
         installs.append(cmd)
 
-    def fake_urlopen(url):
+    def fake_urlopen(url, *, timeout=None):
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             pkg_a = b"AAA"
             pkg_b = b"BBB"
@@ -84,7 +92,8 @@ def test_registry_install_failure(monkeypatch, caplog):
     def fake_check_call(cmd):
         raise RuntimeError("boom")
 
-    def fake_urlopen(url):
+    def fake_urlopen(url, *, timeout=None):
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             pkg = b"CCC"
             c1 = compute_checksum(pkg)
@@ -122,7 +131,8 @@ def test_registry_install_failure(monkeypatch, caplog):
 
 
 def test_registry_bad_yaml(monkeypatch, caplog):
-    def fake_urlopen(url):
+    def fake_urlopen(url, *, timeout=None):
+        assert timeout == 30
         assert url == "https://example.com/plugins.yaml"
         return DummyResponse(b"not: [yaml")
 
@@ -144,7 +154,8 @@ def test_registry_checksum_mismatch(monkeypatch, caplog):
     def fake_check_call(cmd):
         installs.append(cmd)
 
-    def fake_urlopen(url):
+    def fake_urlopen(url, *, timeout=None):
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             wrong = compute_checksum(b"WRONG")
             sig = base64.b64encode(b"sig").decode()
@@ -184,7 +195,8 @@ def test_registry_signature_failure(
     pkg = b"FFF"
     checksum = compute_checksum(pkg)
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             sig = base64.b64encode(b"sig").decode()
             data = (
@@ -233,7 +245,8 @@ def test_registry_missing_signature_error(
     pkg = b"GGG"
     checksum = compute_checksum(pkg)
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
@@ -266,7 +279,8 @@ def test_registry_invalid_signature_format(
     pkg = b"HHH"
     checksum = compute_checksum(pkg)
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
@@ -305,7 +319,8 @@ def test_registry_checksum_validation(monkeypatch):
         calls.append(data)
         return orig_compute(data)
 
-    def fake_urlopen(url):
+    def fake_urlopen(url, *, timeout=None):
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             sig = base64.b64encode(b"sig").decode()
             data = (
@@ -339,7 +354,8 @@ def test_registry_checksum_validation(monkeypatch):
 def _urlopen_via_httpx(client: httpx.Client) -> Callable[[str], DummyResponse]:
     """Return a urlopen replacement using ``client``."""
 
-    def _open(url: str) -> DummyResponse:
+    def _open(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         resp = client.get(url)
         return DummyResponse(resp.content)
 

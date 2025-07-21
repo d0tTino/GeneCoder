@@ -290,6 +290,7 @@ def test_decode_sim_errors_deterministic(tmp_path: Path):
 
     channel_args = [
         "channel",
+        "apply",
         "--input-file",
         str(fasta_file),
         "--output-file",
@@ -306,7 +307,7 @@ def test_decode_sim_errors_deterministic(tmp_path: Path):
     result1 = run_cli_command(channel_args, env=env)
     assert result1.returncode == 0, result1.stderr
 
-    channel_args[4] = str(corrupted2)  # update output path
+    channel_args[5] = str(corrupted2)  # update output path
     result2 = run_cli_command(channel_args, env=env)
     assert result2.returncode == 0, result2.stderr
 

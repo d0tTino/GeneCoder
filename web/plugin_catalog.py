@@ -40,7 +40,7 @@ class RatingRequest(BaseModel):
 
 def _load_catalog() -> None:
     global CATALOG, PLUGIN_RATINGS
-    CATALOG, PLUGIN_RATINGS = plugins.load_catalog(CATALOG_PATH)
+    CATALOG, PLUGIN_RATINGS = plugins.load_catalog_cache(CATALOG_PATH)
 
 
 def _load_challenge() -> None:
@@ -61,6 +61,7 @@ def _load_challenge() -> None:
 
 def _save_catalog() -> None:
     plugins.save_catalog(CATALOG_PATH, CATALOG, PLUGIN_RATINGS)
+    plugins.save_catalog_cache(CATALOG_PATH)
 
 
 def _save_challenge() -> None:

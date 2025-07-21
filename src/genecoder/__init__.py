@@ -27,6 +27,7 @@ from .pipeline import SequencePipeline
 
 
 
+
 __all__ = [
     *sorted(_LAZY_ATTRS),
     "__version__",
@@ -42,8 +43,10 @@ __all__ = [
     "encrypt_data",
     "decrypt_data",
     "compute_checksum",
-    "CloudClient",
 ]
+
+if CloudClient is not None:
+    __all__.append("CloudClient")
 
 
 

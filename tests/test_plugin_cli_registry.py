@@ -2,9 +2,17 @@ import argparse
 import sys
 import logging
 import base64
+import types
+import os
+
+# Provide a stub for portalocker if the real module is unavailable
+portalocker_stub = types.ModuleType("portalocker")
+portalocker_stub.Lock = lambda *a, **k: open(os.devnull, "w")  # type: ignore[attr-defined]
+sys.modules.setdefault("portalocker", portalocker_stub)
 from pathlib import Path
 
 import pytest
+pytest.importorskip("portalocker")
 
 import genecoder.plugin_manager as plugins
 from genecoder.cli import plugin as plugin_cli
@@ -30,7 +38,8 @@ def test_cli_registry_install(monkeypatch: pytest.MonkeyPatch) -> None:
     checksum = compute_checksum(pkg)
     sig = base64.b64encode(b"sig").decode()
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
@@ -75,7 +84,8 @@ def test_cli_registry_install_failure(
     checksum = compute_checksum(pkg)
     sig = base64.b64encode(b"sig").decode()
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
@@ -117,7 +127,8 @@ def test_cli_registry_signature_failure(
     checksum = compute_checksum(pkg)
     sig = base64.b64encode(b"sig").decode()
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
@@ -163,7 +174,8 @@ def test_cli_registry_checksum_mismatch(monkeypatch: pytest.MonkeyPatch, caplog:
     wrong = compute_checksum(b"WRONG")
     sig = base64.b64encode(b"sig").decode()
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"

@@ -10,6 +10,7 @@ portalocker_stub.Lock = lambda *a, **k: open(os.devnull, "w")  # type: ignore[at
 sys.modules.setdefault("portalocker", portalocker_stub)
 
 import pytest
+pytest.importorskip("yaml")
 import genecoder.plugin_manager as plugins
 from genecoder.plugin_security import compute_checksum
 
@@ -47,7 +48,8 @@ def test_registry_and_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
         f"    signature: {sig}"
     ).encode()
 
-    def fake_urlopen(url: str) -> DummyResponse:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             return DummyResponse(registry_yaml)
         if url == "https://example.com/catalog.yaml":

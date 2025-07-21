@@ -32,6 +32,7 @@ def test_channel_cli_simulator(tmp_path: Path) -> None:
     result = run_cli_command(
         [
             "channel",
+            "apply",
             "--input-file",
             str(input_fasta),
             "--output-file",
@@ -66,6 +67,7 @@ def test_channel_cli_yaml(tmp_path: Path) -> None:
     result = run_cli_command(
         [
             "channel",
+            "apply",
             "--input-file",
             str(input_fasta),
             "--output-file",
@@ -94,6 +96,7 @@ def test_channel_cli_multi_record(tmp_path: Path) -> None:
     result = run_cli_command(
         [
             "channel",
+            "apply",
             "--input-file",
             str(input_fasta),
             "--output-file",
@@ -123,6 +126,7 @@ def test_channel_cli_threads_and_processes_error(tmp_path: Path) -> None:
     result = run_cli_command(
         [
             "channel",
+            "apply",
             "--input-file",
             str(input_fasta),
             "--output-file",
@@ -190,6 +194,7 @@ def test_channel_cli_parallel_variants(
     baseline = tmp_path / "baseline.fasta"
     base_cmd = [
         "channel",
+        "apply",
         "--input-file",
         str(input_fasta),
         "--output-file",
@@ -208,6 +213,7 @@ def test_channel_cli_parallel_variants(
     out = tmp_path / f"out_{parallel}_{threads}_{processes}.fasta"
     cmd = [
         "channel",
+        "apply",
         "--input-file",
         str(input_fasta),
         "--output-file",
@@ -252,6 +258,7 @@ def test_channel_cli_bad_yaml(tmp_path: Path) -> None:
     result = run_cli_command(
         [
             "channel",
+            "apply",
             "--input-file",
             str(input_fasta),
             "--output-file",
@@ -281,6 +288,7 @@ def test_channel_cli_wrong_type(tmp_path: Path) -> None:
     result = run_cli_command(
         [
             "channel",
+            "apply",
             "--input-file",
             str(input_fasta),
             "--output-file",
