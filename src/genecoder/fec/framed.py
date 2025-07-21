@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
+from ..codecs import BaseFEC
+
 _HAS_FRAMED = False
 
 if TYPE_CHECKING:  # pragma: no cover - type hints only
@@ -67,6 +69,16 @@ def decode_data_framed(encoded: bytes, info: Mapping[str, Any]) -> Tuple[bytes, 
     return data, int(corrected[0])
 
 
+class FrameDFEC(BaseFEC):
+    """FrameD FEC backend implementing :class:`BaseFEC`."""
+
+    def encode(self, data: bytes, /) -> Tuple[bytes, Mapping[str, Any]]:
+        return encode_data_framed(data)
+
+    def decode(self, encoded: bytes, info: Mapping[str, Any], /) -> Tuple[bytes, int]:
+        return decode_data_framed(encoded, info)
+
+
 from typing import Callable
 
 
@@ -82,4 +94,5 @@ def register(
 ) -> None:
     """Register this module's FEC backend."""
 
-    register_fec("framed", encode_data_framed, decode_data_framed)
+    register_fec("framed", FrameDFEC)
+

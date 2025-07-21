@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
+from .codecs import BaseFEC
+
 _HAS_DNAFORMER = False
 
 if TYPE_CHECKING:
@@ -45,6 +47,16 @@ def decode_data_dnaformer(
     return decoded, 0
 
 
+class DNAFormerFEC(BaseFEC):
+    """DNAformer FEC backend implementing :class:`BaseFEC`."""
+
+    def encode(self, data: bytes, /, *, model_name: str = "dnaformer-small") -> Tuple[bytes, Mapping[str, str]]:
+        return encode_data_dnaformer(data, model_name)
+
+    def decode(self, encoded: bytes, info: Mapping[str, str], /) -> Tuple[bytes, int]:
+        return decode_data_dnaformer(encoded, info)
+
+
 from typing import Callable
 
 
@@ -59,4 +71,5 @@ def register(
     ]
 ) -> None:
     """Register this module's FEC backend."""
-    register_fec("dnaformer", encode_data_dnaformer, decode_data_dnaformer)
+    register_fec("dnaformer", DNAFormerFEC)
+
