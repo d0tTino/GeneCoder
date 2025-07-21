@@ -5,7 +5,6 @@ import base64
 import tempfile
 import zipfile
 import time
-import re
 from pathlib import Path
 
 
@@ -55,12 +54,17 @@ def _handle_submit(args: argparse.Namespace) -> None:
     hpc_cfg = getattr(args, "hpc_config", None)
     if hpc_cfg:
         payload = yaml.safe_load(Path(hpc_cfg).read_text()) or {}
-        from genecoder.cloud.hpc import generate_slurm_script, submit_slurm_job
+        from genecoder.cloud.hpc import (
+            generate_slurm_script,
+            submit_slurm_job,
+            _validate_safe,
+        )
 
         script = payload.get("script")
         if isinstance(script, str):
-            if any(c in script for c in "\n\r") or re.search(r"[;&|<>`$]", script):
+            if any(c in script for c in "\n\r"):
                 raise ValueError("script contains unsafe characters")
+            _validate_safe(script, "script")
         else:
             command = payload.get("command")
             if not isinstance(command, str):
