@@ -2,6 +2,9 @@ import json
 import os
 import subprocess
 import sys
+import pytest
+
+pytest.importorskip("portalocker")
 
 from tests.conftest import PROJECT_ROOT
 

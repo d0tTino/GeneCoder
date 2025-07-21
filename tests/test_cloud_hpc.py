@@ -2,6 +2,7 @@ import pytest
 import subprocess
 from pathlib import Path
 
+pytest.importorskip("httpx")
 from genecoder.cloud.hpc import generate_slurm_script, submit_slurm_job
 from genecoder.cloud import CloudClient
 from tests.test_cli import run_cli_command

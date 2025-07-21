@@ -1,4 +1,7 @@
 import json
+import pytest
+
+pytest.importorskip("portalocker")
 from tests.test_cli import run_cli_command
 
 

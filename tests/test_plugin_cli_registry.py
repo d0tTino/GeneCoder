@@ -12,6 +12,7 @@ sys.modules.setdefault("portalocker", portalocker_stub)
 from pathlib import Path
 
 import pytest
+pytest.importorskip("portalocker")
 
 import genecoder.plugin_manager as plugins
 from genecoder.cli import plugin as plugin_cli

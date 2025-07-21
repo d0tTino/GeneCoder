@@ -10,6 +10,7 @@ portalocker_stub.Lock = lambda *a, **k: open(os.devnull, "w")  # type: ignore[at
 sys.modules.setdefault("portalocker", portalocker_stub)
 
 import pytest
+pytest.importorskip("yaml")
 import genecoder.plugin_manager as plugins
 from genecoder.plugin_security import compute_checksum
 

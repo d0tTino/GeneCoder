@@ -4,6 +4,9 @@ import logging
 
 import pytest
 
+pytest.importorskip("portalocker")
+pytest.importorskip("yaml")
+
 import genecoder.plugin_manager as plugins
 from genecoder.plugin_security import compute_checksum
 

@@ -13,6 +13,9 @@ sys.modules.setdefault("portalocker", portalocker_stub)
 import pytest
 
 
+pytest.importorskip("yaml")
+pytest.importorskip("portalocker")
+
 import genecoder.plugin_manager as plugins
 from genecoder.cli import plugin as plugin_cli
 from genecoder.plugin_security import compute_checksum
