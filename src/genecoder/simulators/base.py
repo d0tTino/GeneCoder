@@ -3,14 +3,16 @@ from __future__ import annotations
 
 from typing import Sequence
 from dataclasses import dataclass
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+
+from ..api import Simulator
 
 
 __all__ = ["BaseSimulator"]
 
 
 @dataclass
-class BaseSimulator(ABC):
+class BaseSimulator(Simulator):
     """Base class for read simulators with simple error settings."""
     substitution_rate: float = 0.0
     insertion_rate: float = 0.0

@@ -6,7 +6,7 @@ from typing import Callable
 
 from .random_utils import make_rng
 
-from .channels.base import BaseChannel
+from .api import Simulator
 from .simulators import register_simulator as _register_simulator
 
 __all__ = ["introduce_errors", "apply_substitutions", "apply_insertions", "apply_deletions", "Channel", "register"]
@@ -101,7 +101,7 @@ def apply_deletions(sequence: str, prob: float, rng: random.Random | None = None
 
 
 
-class Channel(BaseChannel):
+class Channel(Simulator):
     """Channel applying substitution, insertion and deletion errors."""
 
     def __init__(
@@ -125,7 +125,7 @@ class Channel(BaseChannel):
 
 
 def register(
-    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+    registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
     """Register the insertion/deletion error simulator."""
 

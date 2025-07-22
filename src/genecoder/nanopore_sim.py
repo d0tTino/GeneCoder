@@ -20,7 +20,7 @@ __all__ = [
     "Channel",
 ]
 
-from .channels.base import BaseChannel
+from .api import Simulator
 from .simulators import register_simulator as _register_simulator
 
 logger = logging.getLogger(__name__)
@@ -223,7 +223,7 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
     return _simulate_reads(sequence, simulator, error_rate=error_rate)
 
 
-class Channel(BaseChannel):
+class Channel(Simulator):
     """Adapter implementing :class:`BaseChannel` for built-in simulators."""
 
     def __init__(self, name: str, error_rate: float = 0.05) -> None:
@@ -237,7 +237,7 @@ class Channel(BaseChannel):
 
 
 def register(
-    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+    registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
     """Register the builtin simulators."""
 

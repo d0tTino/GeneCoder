@@ -6,7 +6,7 @@ from typing import Callable, Sequence
 from .base import BaseSimulator
 
 from ..random_utils import make_rng
-from ..channels.base import BaseChannel
+from ..api import Simulator
 from ..error_simulation import introduce_errors
 from ..nanopore_sim import simulate_d2sim
 from . import register_simulator as _register_simulator
@@ -48,7 +48,7 @@ class IlluminaChannel(BaseSimulator):
         )
 
 
-class IlluminaD2SimChannel(BaseChannel):
+class IlluminaD2SimChannel(Simulator):
     """Wrapper using the external ``d2sim`` simulator."""
 
     def __init__(self, error_rate: float = 0.05) -> None:
@@ -59,7 +59,7 @@ class IlluminaD2SimChannel(BaseChannel):
 
 
 def register(
-    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+    registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
     registrar("illumina", IlluminaChannel())
     registrar("illumina_d2sim", IlluminaD2SimChannel())

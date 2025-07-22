@@ -4,7 +4,7 @@ from __future__ import annotations
 import random
 from typing import Callable
 
-from .channels.base import BaseChannel
+from .api import Simulator
 from .simulators import register_simulator as _register_simulator
 
 from .random_utils import make_rng
@@ -36,7 +36,7 @@ def simulate_d2sim(
     return _simulate_adapter("d2sim", sequence, error_rate, rng, None)
 
 
-class D2SimChannel(BaseChannel):
+class D2SimChannel(Simulator):
     """Channel wrapper for the optional ``d2sim`` simulator."""
 
     def __init__(self, error_rate: float = 0.05) -> None:
@@ -47,7 +47,7 @@ class D2SimChannel(BaseChannel):
 
 
 def register(
-    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+    registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
     """Register the ``d2sim`` simulator."""
 

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
-from .codecs import BaseFEC
+from .api import FEC
 
 _HAS_PYLDPC = False
 
@@ -90,7 +90,7 @@ def decode_data_ldpc(encoded: bytes, info: Mapping[str, Any]) -> Tuple[bytes, in
     return np.packbits(data_bits).tobytes(), corrections
 
 
-class LdpcFEC(BaseFEC):
+class LdpcFEC(FEC):
     """LDPC FEC backend implementing :class:`BaseFEC`."""
 
     def encode(
@@ -107,7 +107,7 @@ class LdpcFEC(BaseFEC):
 from typing import Callable
 
 
-def register(register_fec: Callable[[str, type[BaseFEC]], None]) -> None:
+def register(register_fec: Callable[[str, type[FEC]], None]) -> None:
     """Register this module's FEC backend."""
     register_fec("ldpc", LdpcFEC)
 

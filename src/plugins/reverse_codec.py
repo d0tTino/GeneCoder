@@ -2,10 +2,10 @@
 
 from typing import Callable
 
-from genecoder.codecs import BaseCodec
+from genecoder.api import Codec
 
 
-class ReverseCodec(BaseCodec):  # type: ignore[misc]
+class ReverseCodec(Codec):  # type: ignore[misc]
     """Simple byte-reversing codec."""
 
     def encode(self, data: bytes, /) -> str:
@@ -15,7 +15,7 @@ class ReverseCodec(BaseCodec):  # type: ignore[misc]
         return encoded[::-1].encode("utf-8")
 
 
-def register(register_codec: Callable[[str, type[BaseCodec]], None]) -> None:
+def register(register_codec: Callable[[str, type[Codec]], None]) -> None:
     """Register the reverse codec."""
 
     register_codec("reverse", ReverseCodec)

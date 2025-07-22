@@ -4,7 +4,7 @@ from __future__ import annotations
 import random
 from typing import Callable
 
-from .channels.base import BaseChannel
+from .api import Simulator
 from .random_utils import make_rng
 from .nanopore_sim import _simulate_adapter, _run_external
 from .simulators import register_simulator as _register_simulator
@@ -37,7 +37,7 @@ def simulate_dnarsim(
     return _simulate_adapter("dnarsim", sequence, error_rate, rng, extra)
 
 
-class DNArSimChannel(BaseChannel):
+class DNArSimChannel(Simulator):
     """Channel wrapper for the optional ``dnarsim`` simulator."""
 
     def __init__(self, error_rate: float = 0.05, profile: str | None = None) -> None:
@@ -54,7 +54,7 @@ class DNArSimChannel(BaseChannel):
 
 
 def register(
-    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+    registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
     """Register the ``dnarsim`` simulator."""
 

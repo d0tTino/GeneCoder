@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
-from .codecs import BaseFEC
+from .api import FEC
 
 _HAS_BCHLIB = False
 
@@ -57,7 +57,7 @@ def decode_data_bch(encoded: bytes, info: Mapping[str, int]) -> Tuple[bytes, int
     return bytes(decoded), corrected
 
 
-class BCHFEC(BaseFEC):
+class BCHFEC(FEC):
     """BCH FEC backend implementing :class:`BaseFEC`."""
 
     def encode(
@@ -74,7 +74,7 @@ class BCHFEC(BaseFEC):
 from typing import Callable
 
 
-def register(register_fec: Callable[[str, type[BaseFEC]], None]) -> None:
+def register(register_fec: Callable[[str, type[FEC]], None]) -> None:
     """Register this module's FEC backend."""
     register_fec("bch", BCHFEC)
 

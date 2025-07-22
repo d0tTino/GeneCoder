@@ -11,21 +11,28 @@ def test_external_plugin_package(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     (pkg / "__init__.py").write_text("")
     (pkg / "ext.py").write_text(
         """
-from typing import Callable, Tuple
+from typing import Callable, Mapping, Tuple
+from genecoder.api import Codec, FEC
 
-def register(register_codec: Callable[[str, Callable[[bytes], str], Callable[[str], bytes]], None]):
-    def enc(data: bytes) -> str:
+class ExtCodec(Codec):
+    def encode(self, data: bytes) -> str:
         return 'Y'
-    def dec(text: str) -> bytes:
-        return b'Y'
-    register_codec('ext_codec', enc, dec)
 
-def register_fec(register_fec: Callable[[str, Callable[[bytes], Tuple[bytes, int]], Callable[[bytes, int], Tuple[bytes, int]]], None]):
-    def enc(data: bytes) -> Tuple[bytes, int]:
-        return data + b'ZZ', 2
-    def dec(data: bytes, nsym: int) -> Tuple[bytes, int]:
-        return data[:-nsym], nsym
-    register_fec('ext_fec', enc, dec)
+    def decode(self, text: str) -> bytes:
+        return b'Y'
+
+class ExtFEC(FEC):
+    def encode(self, data: bytes) -> Tuple[bytes, Mapping[str, int]]:
+        return data + b'ZZ', {'n': 2}
+
+    def decode(self, encoded: bytes, info: Mapping[str, int]) -> Tuple[bytes, int]:
+        return encoded[:-info['n']], info['n']
+
+def register(register_codec: Callable[[str, type[Codec]], None]):
+    register_codec('ext_codec', ExtCodec)
+
+def register_fec(register_fec: Callable[[str, type[FEC]], None]):
+    register_fec('ext_fec', ExtFEC)
 """
     )
     monkeypatch.syspath_prepend(str(tmp_path))

@@ -1,15 +1,16 @@
 from typing import Callable
+from genecoder.api import Codec
 
 
-def register(
-    register_codec: Callable[[str, Callable[[bytes], str], Callable[[str], bytes]], None]
-) -> None:
-    """Register a simple example codec."""
-
-    def encode(data: bytes) -> str:
+class ExampleCodec(Codec):  # type: ignore[misc]
+    def encode(self, data: bytes) -> str:
         return data.hex()
 
-    def decode(text: str) -> bytes:
+    def decode(self, text: str) -> bytes:
         return bytes.fromhex(text)
 
-    register_codec("example", encode, decode)
+
+def register(register_codec: Callable[[str, type[Codec]], None]) -> None:
+    """Register a simple example codec."""
+
+    register_codec("example", ExampleCodec)

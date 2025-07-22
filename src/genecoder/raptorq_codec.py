@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
-from .codecs import BaseFEC
+from .api import FEC
 
 _HAS_RAPTORQ = False
 
@@ -92,7 +92,7 @@ def decode_data_raptorq(encoded: bytes, info: Mapping[str, int]) -> Tuple[bytes,
     return data, 0
 
 
-class RaptorqFEC(BaseFEC):
+class RaptorqFEC(FEC):
     """RaptorQ FEC backend implementing :class:`BaseFEC`."""
 
     def encode(
@@ -109,7 +109,7 @@ class RaptorqFEC(BaseFEC):
 from typing import Callable
 
 
-def register(register_fec: Callable[[str, type[BaseFEC]], None]) -> None:
+def register(register_fec: Callable[[str, type[FEC]], None]) -> None:
     """Register this module's FEC backend."""
     register_fec("raptorq", RaptorqFEC)
 
