@@ -1,41 +1,16 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Any, Iterable, Optional, cast, IO
+from typing import Callable, Dict, Any, Iterable
 from types import ModuleType
 
 import os
-import io
 import sys
 import subprocess
 import tempfile
 import urllib.request
 from urllib.parse import urlparse
 import importlib
-import base64
 from pathlib import Path
-import json
-try:  # pragma: no cover - optional dependency
-    import portalocker
-except Exception:  # pragma: no cover - fallback for tests
-    import types
-
-    class _NoLock:
-        def __init__(self, path: str | os.PathLike[str], mode: str = "r", *, timeout: int | None = None, encoding: str | None = None) -> None:  # noqa: D401,E501
-            """Simplified file lock that doesn't actually lock."""
-            self.path = path
-            self.mode = mode
-            self.encoding = encoding
-            self.fh: IO[str]
-
-        def __enter__(self) -> io.TextIOWrapper:
-            self.fh = open(self.path, self.mode, encoding=self.encoding)
-            return cast(io.TextIOWrapper, self.fh)
-
-        def __exit__(self, exc_type: type | None, exc: BaseException | None, tb: object | None) -> None:
-            if self.fh:
-                self.fh.close()
-
-    portalocker = types.SimpleNamespace(Lock=_NoLock)
 
 
 _yaml: Any
@@ -102,9 +77,6 @@ CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
-# Environment variable name for plugin catalog cache path
-CATALOG_CACHE_ENV = "GENECODER_CATALOG_CACHE"
-
 # re-export for tests
 verify_signature = _verify_signature
 compute_checksum = _compute_checksum
@@ -158,159 +130,8 @@ def register_simulator(name: str, channel: BaseChannel) -> None:
     _register_simulator(name, channel)
 
 
-def _verify_catalog_signature(data: bytes, signature: str) -> bool:
-    """Return ``True`` if ``signature`` verifies ``data`` using a public key."""
-
-    key_path = os.getenv("GENECODER_CATALOG_PUBLIC_KEY")
-    if not key_path:
-        return False
-
-    try:
-        sig_bytes = base64.b64decode(signature, validate=True)
-        pubkey = Path(key_path).read_bytes()
-    except Exception:
-        return False
-
-    try:
-        compute_checksum(data, signature=sig_bytes, public_key=pubkey)
-    except Exception:
-        return False
-
-    return True
 
 
-def load_catalog(
-    path: Optional[str],
-) -> tuple[list[dict[str, Any]], dict[str, list[int]]]:
-    """Return catalog and rating data from ``path``."""
-
-    if not path:
-        return [], {}
-    file_path = Path(path)
-    if not file_path.is_file():
-        return [], {}
-    try:
-        data = json.loads(file_path.read_text(encoding="utf-8"))
-    except Exception:
-        return [], {}
-
-    catalog: list[dict[str, Any]] = []
-    ratings: dict[str, list[int]] = {}
-    items = data.get("plugins", [])
-    if isinstance(items, list):
-        catalog = [
-            {
-                "name": str(item.get("name", "")),
-                "version": str(item.get("version", "")),
-                "checksum": str(item.get("checksum", "")),
-                "signature": item.get("signature"),
-                **({"stars": float(item.get("stars", 0))} if "stars" in item else {}),
-            }
-            for item in items
-            if item.get("name")
-        ]
-
-    rating_data = data.get("ratings", {})
-    if isinstance(rating_data, dict):
-        ratings = {
-            str(k): [int(x) for x in v if isinstance(x, int)]
-            for k, v in rating_data.items()
-            if isinstance(v, list)
-        }
-
-    for entry in catalog:
-        r = ratings.get(entry["name"])
-        if r:
-            entry["stars"] = sum(r) / len(r)
-
-    return catalog, ratings
-
-
-def save_catalog(
-    path: Optional[str],
-    catalog: list[dict[str, Any]],
-    ratings: dict[str, list[int]],
-) -> None:
-    """Persist ``catalog`` and ``ratings`` to ``path``."""
-
-    if not path:
-        return
-    file_path = Path(path)
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    data = json.dumps({"plugins": catalog, "ratings": ratings})
-    with portalocker.Lock(file_path, "a+", timeout=10, encoding="utf-8") as fh:
-        fh.seek(0)
-        fh.truncate(0)
-        fh.write(data)
-        fh.flush()
-        os.fsync(fh.fileno())
-
-
-def rate_plugin(
-    catalog: list[dict[str, Any]],
-    ratings: dict[str, list[int]],
-    name: str,
-    rating: int,
-) -> float:
-    """Add ``rating`` for ``name`` and return the new average."""
-
-    if rating < 1 or rating > 5:
-        raise ValueError("rating must be 1-5")
-    if not any(item["name"] == name for item in catalog):
-        raise KeyError("Plugin not found")
-    rating_list = ratings.setdefault(name, [])
-    rating_list.append(rating)
-    avg = sum(rating_list) / len(rating_list)
-    for item in catalog:
-        if item["name"] == name:
-            item["stars"] = avg
-            break
-    return avg
-
-
-def _catalog_cache_path(path: str | None = None) -> Path | None:
-    cache_env = path or os.getenv(CATALOG_CACHE_ENV)
-    if cache_env:
-        return Path(cache_env)
-    return None
-
-
-def load_catalog_cache(
-    path: str | None = None,
-) -> tuple[list[dict[str, Any]], dict[str, list[int]]]:
-    """Load plugin catalog from cache ``path``."""
-    PLUGIN_CATALOG.clear()
-    cache_path = _catalog_cache_path(path)
-    if cache_path is None:
-        return [], {}
-    catalog, ratings = load_catalog(str(cache_path))
-    if not catalog:
-        return [], {}
-    for entry in catalog:
-        name = entry.get("name")
-        checksum = entry.get("checksum")
-        signature = entry.get("signature")
-        if not name or not checksum or not signature:
-            continue
-        PLUGIN_CATALOG[name] = {
-            "version": entry.get("version", ""),
-            "url": entry.get("url", ""),
-            "description": entry.get("description", ""),
-            "checksum": checksum,
-            "signature": signature,
-            "author": entry.get("author", ""),
-            "stars": entry.get("stars", 0),
-        }
-    return catalog, ratings
-
-
-def save_catalog_cache(path: str | None = None) -> None:
-    """Write ``PLUGIN_CATALOG`` to cache ``path``."""
-    cache_path = _catalog_cache_path(path)
-    if cache_path is None:
-        return
-    catalog = [{"name": name, **meta} for name, meta in PLUGIN_CATALOG.items()]
-    save_catalog(str(cache_path), catalog, {})
 
 
 def _install_registry_plugins(url: str) -> None:
@@ -440,60 +261,6 @@ def install_registry_plugins(url: str | None = None) -> None:
     _install_registry_plugins(url)
 
 
-def _fetch_catalog(url: str) -> None:
-    """Fetch plugin catalogue from ``url`` and store in ``PLUGIN_CATALOG``."""
-
-    if yaml is None:  # pragma: no cover - optional dependency missing
-        logger.warning(
-            "YAML support unavailable, skipping plugin catalog %s. "
-            "Install PyYAML to enable plugin catalogs.",
-            url,
-        )
-        return
-
-    try:
-        with urllib.request.urlopen(url, timeout=30) as response:
-            raw = response.read()
-        data = yaml.safe_load(raw) or {}
-    except Exception as exc:  # pragma: no cover - network error path
-        logger.warning("Failed to fetch plugin catalog %s: %s", url, exc)
-        return
-
-    sig = data.get("signature")
-    if sig:
-        try:
-            if not _verify_catalog_signature(raw, str(sig)):
-                logger.warning("Invalid catalog signature for %s", url)
-                return
-        except Exception as exc:  # pragma: no cover - signature error path
-            logger.warning("Invalid catalog signature for %s: %s", url, exc)
-            return
-
-    PLUGIN_CATALOG.clear()
-    for entry in data.get("plugins", []):
-        name = str(entry.get("name", ""))
-        if not name:
-            continue
-        checksum = entry.get("checksum")
-        if not checksum:
-            logger.error("Missing checksum for plugin %s", name)
-            continue
-        signature = entry.get("signature")
-        if not signature:
-            logger.error("Plugin %s missing required signature", name)
-            continue
-
-        PLUGIN_CATALOG[name] = {
-            "version": str(entry.get("version", "")),
-            "url": str(entry.get("url", "")),
-            "description": str(entry.get("description", "")),
-            "checksum": str(checksum),
-            "signature": str(signature),
-            "author": str(entry.get("author", "")),
-            "stars": entry.get("stars", 0),
-        }
-
-
 def _load_and_register(
     items: Iterable[Any],
     registrar: Callable[..., Any],
@@ -537,24 +304,6 @@ def load_builtin_plugins() -> None:
         builtin.register_builtin_plugins()
 
 
-def fetch_plugin_catalog(*, use_cache: bool = True) -> None:
-    """Fetch plugin catalog using optional local cache."""
-
-    if use_cache:
-        catalog, _ = load_catalog_cache()
-        if catalog:
-            return
-
-    catalog_url = os.getenv("GENECODER_PLUGIN_CATALOG_URL")
-    if catalog_url:
-        _fetch_catalog(catalog_url)
-        if use_cache:
-            try:
-                save_catalog_cache()
-            except Exception:
-                pass
-    else:
-        PLUGIN_CATALOG.clear()
 
 
 def load_entry_point_plugins() -> list[str]:
@@ -628,7 +377,6 @@ def load_plugins() -> None:
     """Load built-in, entry point and local plugins and fetch catalog entries."""
 
     load_builtin_plugins()
-    fetch_plugin_catalog()
     failures = load_entry_point_plugins()
     failures.extend(load_local_plugins())
     if failures:

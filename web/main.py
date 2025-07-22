@@ -1,7 +1,6 @@
 import os
-import json
 import hashlib
-import portalocker
+import json
 import secrets
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.responses import HTMLResponse
@@ -52,46 +51,9 @@ FILE_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 API_TOKEN: str | None = os.getenv("GENECODER_API_TOKEN")
 CORS_ORIGINS = os.getenv("GENECODER_CORS_ORIGINS", "*")
 security = HTTPBearer(auto_error=False)
-PLUGIN_RATINGS: dict[str, list[int]] = {}
-RATINGS_PATH = os.getenv("GENECODER_RATINGS_PATH")
 BUNDLE_DIR = Path(os.getenv("GENECODER_BUNDLE_DIR", "bundle_runs"))
 
 
-def _load_plugin_ratings() -> None:
-    """Load plugin ratings from ``RATINGS_PATH`` if configured."""
-    global PLUGIN_RATINGS
-    if not RATINGS_PATH:
-        return
-    path = Path(RATINGS_PATH)
-    if not path.is_file():
-        return
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:  # pragma: no cover - corrupt file
-        return
-    if isinstance(data, dict):
-        PLUGIN_RATINGS = {
-            k: [int(x) for x in v] for k, v in data.items() if isinstance(v, list)
-        }
-
-
-async def _save_plugin_ratings() -> None:
-    """Persist plugin ratings to ``RATINGS_PATH`` if configured."""
-    if not RATINGS_PATH:
-        return
-    path = Path(RATINGS_PATH)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    data = json.dumps(PLUGIN_RATINGS)
-
-    def _write() -> None:
-        with portalocker.Lock(path, "a+", timeout=10, encoding="utf-8") as fh:
-            fh.seek(0)
-            fh.truncate(0)
-            fh.write(data)
-            fh.flush()
-            os.fsync(fh.fileno())
-
-    await asyncio.to_thread(_write)
 
 
 def verify_token(
@@ -110,7 +72,6 @@ REDIS_URL = os.getenv("GENECODER_REDIS_URL")
 async def _startup() -> None:
     global API_TOKEN
     init_plugins()
-    _load_plugin_ratings()
     if API_TOKEN is None:
         API_TOKEN = secrets.token_urlsafe(16)
         print(f"Generated API token: {API_TOKEN}")
@@ -123,7 +84,6 @@ async def _startup() -> None:
 
 @app.on_event("shutdown")
 async def _shutdown() -> None:
-    await _save_plugin_ratings()
     if FastAPILimiter.redis:
         await FastAPILimiter.close()
 
@@ -159,17 +119,6 @@ dashboard_index_path = helix_ui_dir / "dist" / "dashboard.html"
 if not dashboard_index_path.is_file():
     dashboard_index_path = helix_ui_dir / "dashboard.html"
 
-plugin_index_path = helix_ui_dir / "dist" / "plugins.html"
-if not plugin_index_path.is_file():
-    plugin_index_path = helix_ui_dir / "plugins.html"
-
-marketplace_index_path = helix_ui_dir / "dist" / "marketplace.html"
-if not marketplace_index_path.is_file():
-    marketplace_index_path = helix_ui_dir / "marketplace.html"
-
-scoreboard_index_path = helix_ui_dir / "dist" / "scoreboard.html"
-if not scoreboard_index_path.is_file():
-    scoreboard_index_path = helix_ui_dir / "scoreboard.html"
 
 design_index_path = helix_ui_dir / "dist" / "design.html"
 if not design_index_path.is_file():
@@ -192,22 +141,6 @@ async def dashboard() -> str:
     return dashboard_index_path.read_text(encoding="utf-8")
 
 
-@app.get("/plugin-catalog", response_class=HTMLResponse)
-async def plugin_catalog_page() -> str:
-    """Return the React-based plugin catalog interface."""
-    return plugin_index_path.read_text(encoding="utf-8")
-
-
-@app.get("/marketplace", response_class=HTMLResponse)
-async def marketplace_page() -> str:
-    """Return the React-based marketplace interface."""
-    return marketplace_index_path.read_text(encoding="utf-8")
-
-
-@app.get("/rankings", response_class=HTMLResponse)
-async def rankings_page() -> str:
-    """Return the challenge rankings interface."""
-    return scoreboard_index_path.read_text(encoding="utf-8")
 
 
 @app.get("/design", response_class=HTMLResponse)
@@ -612,9 +545,6 @@ class PluginInstallRequest(BaseModel):
     name: str
 
 
-class PluginRatingRequest(BaseModel):
-    name: str
-    rating: int
 
 
 @app.get("/plugins")
@@ -636,63 +566,6 @@ async def install_plugin(
     return {"status": "ok"}
 
 
-@app.post("/plugins/rate")
-async def rate_plugin(
-    req: PluginRatingRequest,
-    _: None = Depends(verify_token),
-) -> dict[str, float]:
-    """Submit a rating for a plugin and return the new average."""
-    if req.rating < 1 or req.rating > 5:
-        raise HTTPException(status_code=400, detail="rating must be 1-5")
-    ratings = PLUGIN_RATINGS.setdefault(req.name, [])
-    ratings.append(req.rating)
-    avg = sum(ratings) / len(ratings)
-    plugins.PLUGIN_CATALOG.setdefault(req.name, {}).update({"stars": avg})
-    await _save_plugin_ratings()
-    return {"average": avg}
-
-
-@app.get("/plugins/rate")
-async def get_plugin_rating(
-    name: str,
-    _: None = Depends(verify_token),
-) -> dict[str, float]:
-    """Return the current average rating for ``name``."""
-    ratings = PLUGIN_RATINGS.get(name)
-    if not ratings:
-        raise HTTPException(status_code=404, detail="No ratings found")
-    avg = sum(ratings) / len(ratings)
-    return {"average": avg}
-
-
-@app.get("/plugins/search")
-async def search_plugins(
-    q: str | None = None,
-    min_stars: float | None = None,
-) -> dict[str, list[dict[str, object]]]:
-    """Return plugins matching ``q`` and ``min_stars``."""
-
-    results: list[dict[str, object]] = []
-    query = (q or "").lower()
-    for name, meta in plugins.PLUGIN_CATALOG.items():
-        if query and query not in name.lower() and query not in str(meta.get("description", "")).lower():
-            continue
-        if min_stars is not None and float(meta.get("stars", 0)) < float(min_stars):
-            continue
-        results.append({"name": name, **meta})
-    return {"plugins": results}
-
-
-@app.get("/plugins/download")
-async def download_plugin(name: str) -> Response:
-    """Download the plugin package for ``name``."""
-
-    try:
-        fname, data = await asyncio.to_thread(plugin_cli.download_plugin_bytes, name)
-    except SystemExit as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    headers = {"Content-Disposition": f"attachment; filename={fname}"}
-    return Response(content=data, media_type="application/octet-stream", headers=headers)
 
 
 @app.get("/metrics")
