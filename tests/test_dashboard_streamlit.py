@@ -9,7 +9,13 @@ bootstrap = pytest.importorskip("streamlit.web.bootstrap")
 
 
 def test_dashboard_cli_starts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    data = {"gc_distribution": [0.5], "homopolymer_runs": [1], "ecc_success_rates": {"hamming": 1.0}}
+    data = {
+        "gc_distribution": [0.5],
+        "gc_content": 0.5,
+        "homopolymer_runs": [1],
+        "ecc_success_rates": {"hamming": 1.0},
+        "decode_success_rate": 1.0,
+    }
     results = tmp_path / "results.json"
     results.write_text(json.dumps(data))
 
