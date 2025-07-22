@@ -1,6 +1,5 @@
 from importlib.metadata import EntryPoint
 from pathlib import Path
-from typing import Mapping, Any
 
 import genecoder.plugin_manager as plugins
 

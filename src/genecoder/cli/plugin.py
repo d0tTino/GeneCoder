@@ -55,35 +55,9 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     install_parser.add_argument("name", help="Plugin name to install")
     install_parser.set_defaults(func=_handle_install)
 
-    reg_parser = plugin_sub.add_parser(
-        "install-registry",
-        help="Install all plugins from a registry",
-    )
-    reg_parser.add_argument(
-        "--url",
-        help="Registry YAML URL (defaults to $GENECODER_PLUGIN_REGISTRY_URL)",
-        default=None,
-    )
-    reg_parser.set_defaults(func=_handle_install_registry)
-
-    rate_parser = plugin_sub.add_parser(
-        "rate", help="Submit a star rating for a plugin"
-    )
-    rate_parser.add_argument("name", help="Plugin name to rate")
-    rate_parser.add_argument("rating", type=int, help="Rating from 1-5")
-    rate_parser.add_argument(
-        "--server",
-        type=str,
-        default="https://localhost:8000",
-        help="GeneCoder web server URL",
-    )
-    rate_parser.add_argument("--token", type=str, help="Bearer token for authentication")
-    rate_parser.set_defaults(func=_handle_rate)
 
 
 def _handle_list(args: argparse.Namespace) -> None:
-    if not plugins.PLUGIN_CATALOG:
-        plugins.fetch_plugin_catalog()
     if not plugins.PLUGIN_CATALOG:
         logger.info("No plugin catalog available")
         return
@@ -99,8 +73,6 @@ def _handle_list(args: argparse.Namespace) -> None:
 def download_plugin_bytes(name: str) -> tuple[str, bytes]:
     """Return ``(filename, bytes)`` for plugin ``name`` after verification."""
 
-    if not plugins.PLUGIN_CATALOG:
-        plugins.fetch_plugin_catalog()
     meta = plugins.PLUGIN_CATALOG.get(name)
     if not meta:
         logger.error("Unknown plugin: %s", name)
@@ -169,8 +141,6 @@ def download_plugin_bytes(name: str) -> tuple[str, bytes]:
 
 def _handle_install(args: argparse.Namespace) -> None:
     name = args.name
-    if not plugins.PLUGIN_CATALOG:
-        plugins.fetch_plugin_catalog()
     meta = plugins.PLUGIN_CATALOG.get(name)
     if not meta:
         logger.error("Unknown plugin: %s", name)
@@ -244,34 +214,4 @@ def _handle_install(args: argparse.Namespace) -> None:
         )
 
 
-def _handle_install_registry(args: argparse.Namespace) -> None:
-    try:
-        plugins.install_registry_plugins(args.url)
-    except ValueError as exc:
-        logger.error(str(exc))
-        raise SystemExit(1)
-
-
-def _handle_rate(args: argparse.Namespace) -> None:
-    import warnings
-    import httpx
-
-    if not 1 <= args.rating <= 5:
-        logger.error("Rating must be 1-5")
-        raise SystemExit(1)
-    if not args.server.startswith("https://"):
-        warnings.warn("Using a non-HTTPS server URL", stacklevel=2)
-    url = args.server.rstrip("/") + "/plugins/rate"
-    headers = {"Content-Type": "application/json"}
-    if args.token:
-        headers["Authorization"] = f"Bearer {args.token}"
-    try:
-        resp = httpx.post(url, json={"name": args.name, "rating": args.rating}, headers=headers)
-        resp.raise_for_status()
-    except httpx.HTTPError as exc:  # pragma: no cover - network error path
-        logger.error("Failed to submit rating: %s", exc)
-        raise SystemExit(1)
-    avg = resp.json().get("average")
-    if avg is not None:
-        print(avg)
 

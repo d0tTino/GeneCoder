@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Codec wrapper exposing Chamaeleo via the plugin system."""
 
-from typing import Callable, Any, TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 from pathlib import Path
 import tempfile
 
