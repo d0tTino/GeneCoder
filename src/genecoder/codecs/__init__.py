@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# ruff: noqa: ANN401
+
 """Base classes for pluggable codecs and FEC backends."""
 
 from abc import ABC, abstractmethod

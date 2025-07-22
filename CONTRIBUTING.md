@@ -54,6 +54,9 @@ pre-commit run --files plugins-examples/example_codec/example_codec/__init__.py
 
 The hook also runs automatically on each commit if installed.
 
+CI runs `ruff check` and `mypy` on pull requests that modify code. Fix any
+issues they report before merging.
+
 An additional `check-glossary-terms` hook verifies that every term in
 `docs/glossary.json` appears in at least one Markdown file. The commit
 will fail if any terms are missing.
