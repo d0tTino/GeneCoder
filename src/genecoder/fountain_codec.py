@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
-from .codecs import BaseFEC
+from .api import FEC
 
 _HAS_PYFINITE = False
 
@@ -62,7 +62,7 @@ def decode_data_fountain(
     return data, 0
 
 
-class FountainFEC(BaseFEC):
+class FountainFEC(FEC):
     """Simple Fountain code backend implementing :class:`BaseFEC`."""
 
     def encode(
@@ -79,7 +79,7 @@ class FountainFEC(BaseFEC):
 from typing import Callable
 
 
-def register(register_fec: Callable[[str, type[BaseFEC]], None]) -> None:
+def register(register_fec: Callable[[str, type[FEC]], None]) -> None:
     """Register this module's FEC backend."""
     register_fec("fountain", FountainFEC)
 

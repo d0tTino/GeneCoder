@@ -4,7 +4,7 @@ from __future__ import annotations
 import random
 from typing import Callable
 
-from .channels.base import BaseChannel
+from .api import Simulator
 from .random_utils import make_rng
 from .nanopore_sim import _simulate_adapter, _run_external
 from .simulators import register_simulator as _register_simulator
@@ -35,7 +35,7 @@ def simulate_squigulator(
     return _simulate_adapter("squigulator", sequence, error_rate, rng, None)
 
 
-class SquigulatorChannel(BaseChannel):
+class SquigulatorChannel(Simulator):
     """Channel wrapper for the optional ``squigulator`` simulator."""
 
     def __init__(self, error_rate: float = 0.05) -> None:
@@ -46,7 +46,7 @@ class SquigulatorChannel(BaseChannel):
 
 
 def register(
-    registrar: Callable[[str, BaseChannel], None] = _register_simulator,
+    registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
     """Register the ``squigulator`` simulator."""
 

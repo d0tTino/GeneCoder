@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Codec wrapper exposing Chamaeleo via the plugin system."""
 
-from typing import Callable, TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING, Any
 from pathlib import Path
 import tempfile
 
@@ -18,6 +18,7 @@ except Exception:  # pragma: no cover - missing optional dependency
     gc_mod = None
 
 from .plugin_manager import register_codec as _register_codec
+from .api import Codec
 
 __all__ = ["register"]
 
@@ -59,9 +60,19 @@ def decode_chamaeleo(text: str) -> bytes:
         return data.rstrip(b"\x00")
 
 
+class ChamaeleoCodec(Codec):
+    """Codec using the external Chamaeleo library."""
+
+    def encode(self, data: bytes, /, **kwargs: Any) -> str:  # noqa: ANN401
+        return encode_chamaeleo(data)
+
+    def decode(self, encoded: str, /, **kwargs: Any) -> bytes:  # noqa: ANN401
+        return decode_chamaeleo(encoded)
+
+
 def register(
-    registrar: Callable[[str, Callable[[bytes], str], Callable[[str], bytes]], None] = _register_codec,
+    registrar: Callable[[str, type[Codec]], None] = _register_codec,
 ) -> None:
     """Register the Chamaeleo codec."""
 
-    registrar("chamaeleo_gc", encode_chamaeleo, decode_chamaeleo)
+    registrar("chamaeleo_gc", ChamaeleoCodec)

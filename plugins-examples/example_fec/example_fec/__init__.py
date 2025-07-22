@@ -1,15 +1,16 @@
 from typing import Callable, Mapping, Any
+from genecoder.api import FEC
 
 
-def register(
-    register_fec: Callable[[str, Callable[[bytes], bytes], Callable[[bytes, Any], bytes]], None]
-) -> None:
+class ExampleFEC(FEC):  # type: ignore[misc]
+    def encode(self, data: bytes) -> tuple[bytes, Mapping[str, Any]]:
+        return data, {}
+
+    def decode(self, encoded: bytes, info: Mapping[str, Any]) -> tuple[bytes, int]:
+        return encoded, 0
+
+
+def register(register_fec: Callable[[str, type[FEC]], None]) -> None:
     """Register a simple example FEC."""
 
-    def encode(data: bytes) -> bytes:
-        return data
-
-    def decode(encoded: bytes, info: Mapping[str, Any] | None = None) -> bytes:
-        return encoded
-
-    register_fec("example", encode, decode)
+    register_fec("example", ExampleFEC)

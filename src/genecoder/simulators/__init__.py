@@ -3,13 +3,13 @@ from __future__ import annotations
 
 from typing import Dict
 
-from ..channels.base import BaseChannel
+from ..api import Simulator
 from .pipeline import ChannelPipeline
 
-SIMULATOR_REGISTRY: Dict[str, BaseChannel] = {}
+SIMULATOR_REGISTRY: Dict[str, Simulator] = {}
 
 
-def register_simulator(name: str, channel: BaseChannel) -> None:
+def register_simulator(name: str, channel: Simulator) -> None:
     """Register ``channel`` under ``name``."""
     SIMULATOR_REGISTRY[name] = channel
 

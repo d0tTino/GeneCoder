@@ -58,7 +58,6 @@ except Exception:  # pragma: no cover - optional dependency
 
 yaml: Any | None = _yaml
 
-from .channels.base import BaseChannel
 from importlib.metadata import entry_points, EntryPoints
 import logging
 import pkgutil
@@ -82,51 +81,45 @@ verify_signature = _verify_signature
 compute_checksum = _compute_checksum
 
 
-from .codecs import BaseCodec, BaseFEC
+from .api import Codec, FEC, Simulator
 
 
-def register_codec(
-    name: str,
-    encode: Callable[..., Any] | BaseCodec | type[BaseCodec],
-    decode: Callable[..., Any] | None = None,
-) -> None:
+def register_codec(name: str, codec: Codec | type[Codec]) -> None:
     """Register a codec implementation under ``name``."""
 
-    if isinstance(encode, BaseCodec):
-        CODEC_REGISTRY[name] = {"encode": encode.encode, "decode": encode.decode}
-        return
-    if isinstance(encode, type) and issubclass(encode, BaseCodec):
-        inst = encode()
-        CODEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
-        return
+    if isinstance(codec, type):
+        if not issubclass(codec, Codec):
+            raise TypeError("codec must subclass Codec")
+        inst = codec()
+    else:
+        if not isinstance(codec, Codec):
+            raise TypeError("codec must subclass Codec")
+        inst = codec
 
-    if decode is None:
-        raise TypeError("decode function required for legacy registration")
-    CODEC_REGISTRY[name] = {"encode": encode, "decode": decode}
+    CODEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
 
 
-def register_fec(
-    name: str,
-    encode: Callable[..., Any] | BaseFEC | type[BaseFEC],
-    decode: Callable[..., Any] | None = None,
-) -> None:
+def register_fec(name: str, fec: FEC | type[FEC]) -> None:
     """Register a FEC backend under ``name``."""
 
-    if isinstance(encode, BaseFEC):
-        FEC_REGISTRY[name] = {"encode": encode.encode, "decode": encode.decode}
-        return
-    if isinstance(encode, type) and issubclass(encode, BaseFEC):
-        inst = encode()
-        FEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
-        return
+    if isinstance(fec, type):
+        if not issubclass(fec, FEC):
+            raise TypeError("FEC must subclass FEC")
+        inst = fec()
+    else:
+        if not isinstance(fec, FEC):
+            raise TypeError("FEC must subclass FEC")
+        inst = fec
 
-    if decode is None:
-        raise TypeError("decode function required for legacy registration")
-    FEC_REGISTRY[name] = {"encode": encode, "decode": decode}
+    FEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
 
 
-def register_simulator(name: str, channel: BaseChannel) -> None:
+def register_simulator(name: str, channel: Simulator) -> None:
     """Register a read simulator under ``name``."""
+
+    if not isinstance(channel, Simulator):
+        raise TypeError("simulator must subclass Simulator")
+
     _register_simulator(name, channel)
 
 

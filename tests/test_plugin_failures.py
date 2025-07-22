@@ -71,26 +71,34 @@ def test_duplicate_names(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, mode: 
     mod1.write_text(
         """
 from typing import Callable
+from genecoder.api import Codec
 
-def register(register_codec: Callable[[str, Callable[[bytes], str], Callable[[str], bytes]], None]) -> None:
-    def encode(data: bytes) -> str:
+class CodecOne(Codec):
+    def encode(self, data: bytes) -> str:
         return "one"
-    def decode(text: str) -> bytes:
+
+    def decode(self, text: str) -> bytes:
         return b"one"
-    register_codec("dup", encode, decode)
+
+def register(register_codec: Callable[[str, type[Codec]], None]) -> None:
+    register_codec("dup", CodecOne)
 """
     )
     mod2 = tmp_path / "m2.py"
     mod2.write_text(
         """
 from typing import Callable
+from genecoder.api import Codec
 
-def register(register_codec: Callable[[str, Callable[[bytes], str], Callable[[str], bytes]], None]) -> None:
-    def encode(data: bytes) -> str:
+class CodecTwo(Codec):
+    def encode(self, data: bytes) -> str:
         return "two"
-    def decode(text: str) -> bytes:
+
+    def decode(self, text: str) -> bytes:
         return b"two"
-    register_codec("dup", encode, decode)
+
+def register(register_codec: Callable[[str, type[Codec]], None]) -> None:
+    register_codec("dup", CodecTwo)
 """
     )
     monkeypatch.syspath_prepend(str(tmp_path))

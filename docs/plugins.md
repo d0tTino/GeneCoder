@@ -17,13 +17,17 @@ And the plugin module:
 
 ```python
 # my_package/my_plugin.py
+from genecoder.api import Codec
+
+class MyCodec(Codec):
+    def encode(self, data: bytes) -> str:
+        ...
+
+    def decode(self, text: str) -> bytes:
+        ...
 
 def register(register_codec):
-    def encode(data: bytes) -> str:
-        ...
-    def decode(text: str) -> bytes:
-        ...
-    register_codec("mycodec", encode, decode)
+    register_codec("mycodec", MyCodec)
 ```
 
 To add a custom [FEC](glossary.md#forward-error-correction-fec) implementation you would use the `genecoder.fec` group and
@@ -36,18 +40,22 @@ myfec = "my_package.my_fec"
 
 ```python
 # my_package/my_fec.py
+from genecoder.api import FEC
+
+class MyFEC(FEC):
+    def encode(self, data: bytes):
+        ...
+
+    def decode(self, encoded: bytes, info):
+        ...
 
 def register(register_fec):
-    def encode(data: bytes):
-        ...
-    def decode(encoded: bytes, info):
-        ...
-register_fec("myfec", encode, decode)
+    register_fec("myfec", MyFEC)
 ```
 
 Simulator plugins follow the same pattern using the `genecoder.simulators`
 group with a `register_simulator` callback that receives an object implementing
-the :class:`genecoder.channels.base.BaseChannel` protocol.
+the :class:`genecoder.api.Simulator` interface.
 
 Registered codecs are available via `genecoder.CODEC_REGISTRY` after importing
 GeneCoder.
@@ -75,7 +83,7 @@ instructions on signing the distribution.
 ## Developing a Plugin Step by Step
 
 1. Copy `src/plugins/reverse_codec.py` as a starting point.
-2. Implement `encode` and `decode` functions for your algorithm.
+2. Implement a class with `encode` and `decode` methods for your algorithm.
 3. In the module's `register()` function call `register_codec` with a unique name.
 4. Add an entry under `genecoder.plugins` in the `[project.entry-points]`
    section of your `pyproject.toml` pointing to the module.
