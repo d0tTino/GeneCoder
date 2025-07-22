@@ -309,7 +309,7 @@ poetry install --with gui --no-interaction
 genecoder dashboard results.json
 ```
 
-The interface plots GC distribution, homopolymer runs and ECC success rates from the given file.
+The interface plots GC content distribution and homopolymer histograms, and displays decoding success metrics from the given file.
 
 ### Constraint Fix Suggestions
 

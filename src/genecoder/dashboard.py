@@ -12,8 +12,10 @@ import streamlit as st
 
 _DEF_METRICS: dict[str, Any] = {
     "gc_distribution": [],
+    "gc_content": None,
     "homopolymer_runs": [],
     "ecc_success_rates": {},
+    "decode_success_rate": None,
 }
 
 
@@ -46,6 +48,10 @@ def main(results_path: str | None = None) -> None:
     else:
         st.write("No GC distribution data.")
 
+    gc_content = data.get("gc_content")
+    if isinstance(gc_content, (int, float)):
+        st.metric("Average GC Content", f"{float(gc_content):.2%}")
+
     st.header("Homopolymer Runs")
     if data["homopolymer_runs"]:
         st.bar_chart(data["homopolymer_runs"])
@@ -58,6 +64,12 @@ def main(results_path: str | None = None) -> None:
         st.bar_chart({k: float(v) for k, v in ecc.items()})
     else:
         st.write("No ECC success rate data.")
+
+    decode_rate = data.get("decode_success_rate")
+    if isinstance(decode_rate, (int, float)):
+        st.metric("Decode Success", f"{float(decode_rate):.2%}")
+    else:
+        st.write("No decode success metric.")
 
 
 def launch(results_path: str) -> None:
