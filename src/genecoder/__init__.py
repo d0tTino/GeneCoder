@@ -2,6 +2,7 @@
 
 __version__ = "0.1.0"
 
+
 _LAZY_ATTRS = {
     "EncodeOptions",
     "EncodeResult",
@@ -27,6 +28,7 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     CloudClient = None
 
+
 from .plugin_manager import (
     CODEC_REGISTRY,
     FEC_REGISTRY,
@@ -37,7 +39,6 @@ from .plugin_manager import (
 from .simulators import SIMULATOR_REGISTRY, simulate_reads
 from .channel_config import ChannelConfig
 from .pipeline import SequencePipeline
-
 
 
 __all__ = [
@@ -56,9 +57,6 @@ __all__ = [
     "decrypt_data",
     "compute_checksum",
 ]
-
-if CloudClient is not None:
-    __all__.append("CloudClient")
 
 
 

@@ -52,3 +52,30 @@ def test_cli_data_fetch(tmp_path: Path) -> None:
     assert result.returncode == 0
     cached = Path(env["GENECODER_DATA_DIR"]) / "illumina_profile.json"
     assert cached.is_file()
+
+
+def test_fetch_profile_from_env_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    local_dir = tmp_path / "local"
+    local_dir.mkdir()
+    (local_dir / "illumina_profile.json").write_text("local")
+    cache = tmp_path / "cache"
+
+    def fake_open(url: str, *, timeout: int | None = None):
+        raise RuntimeError("network call")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_open)
+    monkeypatch.setenv("GENECODER_PROFILE_DIR", str(local_dir))
+    path = fetch_profile("illumina_profile.json", cache_dir=cache)
+    assert path.is_file()
+    assert path.read_text() == "local"
+
+
+def test_fetch_profile_network_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cache = tmp_path / "cache"
+
+    def fake_open(url: str, *, timeout: int | None = None):
+        raise urllib.error.URLError("unreachable")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_open)
+    with pytest.raises(RuntimeError, match="Failed to download"):
+        fetch_profile("illumina_profile.json", cache_dir=cache)

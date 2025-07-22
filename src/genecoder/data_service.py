@@ -7,6 +7,7 @@ from pathlib import Path
 __all__ = ["get_cache_dir", "fetch_profile", "is_cached"]
 
 DEFAULT_BASE_URL = "https://example.com/profiles"
+PROFILE_DIR_ENV = "GENECODER_PROFILE_DIR"
 
 
 def get_cache_dir() -> Path:
@@ -28,13 +29,33 @@ def fetch_profile(
     cache_dir: Path | None = None,
     refresh: bool = False,
 ) -> Path:
-    """Download ``profile`` to ``cache_dir`` if needed and return its path."""
+    """Download ``profile`` to ``cache_dir`` if needed and return its path.
+
+    The function first checks ``PROFILE_DIR_ENV`` for a local directory
+    containing the requested profile. If the profile exists there, it is copied
+    to ``cache_dir`` and returned without attempting any network access.
+    """
     cache_dir = cache_dir or get_cache_dir()
     dest = cache_dir / profile
     if dest.is_file() and not refresh:
         return dest
+
     cache_dir.mkdir(parents=True, exist_ok=True)
+
+    local_dir = os.getenv(PROFILE_DIR_ENV)
+    if local_dir:
+        candidate = Path(local_dir) / profile
+        if candidate.is_file():
+            dest.write_bytes(candidate.read_bytes())
+            return dest
+
     url = f"{base_url.rstrip('/')}/{profile}"
-    with urllib.request.urlopen(url) as resp:
-        dest.write_bytes(resp.read())
+    try:
+        with urllib.request.urlopen(url, timeout=30) as resp:
+            dest.write_bytes(resp.read())
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to download {profile} from {url}. "
+            f"Provide it locally via {PROFILE_DIR_ENV} or download it manually."
+        ) from exc
     return dest

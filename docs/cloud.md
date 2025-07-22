@@ -91,6 +91,11 @@ Profiles are saved under `~/.genecoder/data` by default. The location can be
 customized with the `--cache-dir` option or the `GENECODER_DATA_DIR`
 environment variable.
 
+If your machine is offline, place the profile files in a local directory and set
+the `GENECODER_PROFILE_DIR` environment variable to that location. The
+`fetch_profile` utility will copy the profile from this directory instead of
+downloading it.
+
 ## Dashboard Heatmaps
 
 The built-in dashboard renders GC content and homopolymer length as heatmaps.
