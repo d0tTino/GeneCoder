@@ -153,20 +153,6 @@ required by the test suite:
 scripts/setup_test_env.sh
 ```
 
-## OpenAI Testing Environment
-
-The `openai_testing/` directory bundles the demo from the
-[`openai-testing-agent-demo`](https://github.com/openai/openai-testing-agent-demo)
-repository. It provides a CUA server, a sample application and a frontend UI
-for automated interface tests. You will need Node.js, npm and an
-`OPENAI_API_KEY` set in your environment. To start the demo and launch the
-GeneCoder Flet GUI run:
-
-```bash
-make openai-testing
-```
-
-See [openai_testing/README.md](openai_testing/README.md) for full details.
 
 ## Continuous Integration
 

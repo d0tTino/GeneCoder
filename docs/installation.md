@@ -172,29 +172,6 @@ GeneCoder writes short-lived files during testing and simulation. Set the
 are created. By default the system's standard location is used. The
 resolved directory can be obtained with ``genecoder.utils.get_temp_dir()``.
 
-## Configuring the OpenAI API Key
-
-The OpenAI testing agent requires an API key. Set the `OPENAI_API_KEY`
-environment variable before running the agent tests.
-
-Add the key to a `.env` file at the project root:
-
-```bash
-OPENAI_API_KEY=sk-yourkey
-```
-
-Load the file before running tests, for example with:
-
-```bash
-set -a && source .env && set +a
-```
-
-Or export the variable directly:
-
-```bash
-export OPENAI_API_KEY=sk-yourkey
-```
-
 ## Building the Documentation
 
 Install the documentation dependencies and generate the static site:
