@@ -41,17 +41,33 @@ class ChannelPipeline(BaseChannel):
         use_process_pool = config.use_process_pool
         use_mpi = config.use_mpi
 
+        channels = []
+        for ch in self.channels:
+            if (
+                config.illumina_profile is not None
+                and hasattr(ch, "profile")
+                and ch.__class__.__name__ == "InsilicoSeqChannel"
+            ):
+                ch = type(ch)(read_length=getattr(ch, "read_length", 150), profile=config.illumina_profile)
+            elif (
+                config.nanopore_profile is not None
+                and hasattr(ch, "profile")
+                and ch.__class__.__name__ == "DNArSimChannel"
+            ):
+                ch = type(ch)(error_rate=getattr(ch, "error_rate", 0.05), profile=config.nanopore_profile)
+            channels.append(ch)
+
         if use_mpi:
             parallel = True
 
-        if not parallel or len(self.channels) <= 1:
-            for channel in self.channels:
+        if not parallel or len(channels) <= 1:
+            for channel in channels:
                 sequence = channel.simulate(sequence)
             metrics.increment("oligos_simulated")
             return sequence
 
         if workers is None:
-            workers = min(len(self.channels), os.cpu_count() or 1)
+            workers = min(len(channels), os.cpu_count() or 1)
 
         if use_mpi:
             try:
@@ -68,7 +84,7 @@ class ChannelPipeline(BaseChannel):
 
         with executor_cls(max_workers=workers) as executor:
             fut: concurrent.futures.Future[str] | None = None
-            for channel in self.channels:
+            for channel in channels:
                 if fut is None:
                     fut = executor.submit(_run_channel, sequence, channel)
                 else:

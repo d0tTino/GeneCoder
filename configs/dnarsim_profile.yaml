@@ -1,0 +1,5 @@
+simulators:
+  - name: dnarsim
+    error_rate: 0.05
+pipeline:
+  nanopore_profile: r9

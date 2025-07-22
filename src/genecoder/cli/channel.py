@@ -74,6 +74,8 @@ def _load_config(
         workers=pipeline.get("workers"),
         use_process_pool=bool(pipeline.get("use_process_pool", False)),
         use_mpi=bool(pipeline.get("use_mpi", False)),
+        illumina_profile=pipeline.get("illumina_profile"),
+        nanopore_profile=pipeline.get("nanopore_profile"),
     )
 
     extra = {
@@ -288,6 +290,8 @@ def run_channel(args: argparse.Namespace) -> None:
         workers=opts.mpi_workers or opts.processes or opts.threads,
         use_process_pool=opts.processes is not None,
         use_mpi=opts.mpi,
+        illumina_profile=None,
+        nanopore_profile=None,
     )
     simulators = opts.simulator_specs
     if simulators is None:

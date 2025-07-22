@@ -86,7 +86,11 @@ def _run_external(command: Sequence[str] | str, sequence: str) -> str:
 
 
 def _simulate_adapter(
-    command: str, sequence: str, error_rate: float, rng: random.Random | None
+    command: str,
+    sequence: str,
+    error_rate: float,
+    rng: random.Random | None,
+    extra_args: Sequence[str] | None = None,
 ) -> str:
 
     """Return ``sequence`` processed by an external ``command`` if available."""
@@ -95,6 +99,8 @@ def _simulate_adapter(
             cmd_list = [command]
             if command in {"d2sim", "dnarsim", "squigulator"}:
                 cmd_list += ["-e", str(error_rate)]
+            if extra_args:
+                cmd_list += list(extra_args)
             cmd_list += _parse_env_options(command)
             return _run_external(cmd_list, sequence)
         except ValueError as exc:  # pragma: no cover - invalid options
@@ -137,7 +143,10 @@ simulate_nanopore = simulate_d2sim
 
 
 def simulate_dnarsim(
-    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
+    sequence: str,
+    error_rate: float = 0.05,
+    rng: random.Random | None = None,
+    profile: str | None = None,
 ) -> str:
     """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`.
 
@@ -149,7 +158,8 @@ def simulate_dnarsim(
     if rng is None:
         rng = make_rng()
 
-    return _simulate_adapter("dnarsim", sequence, error_rate, rng)
+    extra = ["-p", profile] if profile else None
+    return _simulate_adapter("dnarsim", sequence, error_rate, rng, extra)
 
 
 def simulate_squigulator(
