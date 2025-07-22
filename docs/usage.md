@@ -168,18 +168,8 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    When a command is missing GeneCoder automatically falls back to an internal
    error model.
 
-    The same simulators can be accessed programmatically via
-    ``genecoder.simulators.simulate_reads``.
-
-    Additional simulators become available when the optional
-    ``desp`` or ``insilicoseq`` packages are installed:
-
-    ```bash
-    pip install genecoder[desp] genecoder[insilicoseq]
-    genecoder decode --input-files encoded.fasta \
-        --output-file decoded.bin --simulator insilicoseq
-    ```
-
+   The same simulators can be accessed programmatically via
+   ``genecoder.simulators.simulate_reads``.
 
    ```bash
    genecoder decode --input-files encoded.fasta \

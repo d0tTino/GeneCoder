@@ -15,22 +15,14 @@ def register_simulator(name: str, channel: BaseChannel) -> None:
 
 from .base import BaseSimulator
 from .illumina import IlluminaChannel
-from .illumina_profile import IlluminaProfileChannel
-from .adv_nanopore import AdvancedNanoporeChannel
-from .replication import ReplicationSimulator
-from .transcription import TranscriptionSimulator
-from .translation import TranslationSimulator
+from .nanopore import NanoporeChannel
 
 __all__ = [
     "SIMULATOR_REGISTRY",
     "register_simulator",
     "BaseSimulator",
     "IlluminaChannel",
-    "IlluminaProfileChannel",
-    "AdvancedNanoporeChannel",
-    "ReplicationSimulator",
-    "TranscriptionSimulator",
-    "TranslationSimulator",
+    "NanoporeChannel",
     "ChannelPipeline",
     "simulate_reads",
 ]

@@ -8,9 +8,8 @@ GeneCoder supports both built-in error models and adapters to external nanopore 
   `--simulator simple`.
 - **indel** — introduces insertions and deletions in addition to substitutions.
 - **none** — disable simulation (the default).
+- **illumina** — simple Illumina read errors.
 - **nanopore** — alias for `d2sim`.
-- **replication** — basic DNA copying with low error rates.
-- **transcription** — converts DNA to RNA while introducing errors.
 
 `GENECODER_SIM_SEED` can be set to an integer to reproduce the randomness used
 by these simulators.
@@ -89,11 +88,11 @@ genecoder channel --input-file input.fasta --output-file corrupted.fasta \
 genecoder decode corrupted.fasta --output-file decoded.bin <other options>
 ```
 
-Invoke the replication or transcription models:
+Invoke a sequencing simulator before decoding:
 
 ```bash
-genecoder decode --simulator replication <other options>
-genecoder decode --simulator transcription <other options>
+genecoder decode --simulator illumina <other options>
+genecoder decode --simulator nanopore <other options>
 ```
 
 Invoke an external simulator before decoding:

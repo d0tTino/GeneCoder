@@ -1,7 +1,6 @@
 import pytest
 
 from genecoder.simulators.illumina import IlluminaChannel
-from genecoder.simulators.adv_nanopore import AdvancedNanoporeChannel
 from genecoder.error_simulation import Channel as ErrorChannel
 
 
@@ -13,11 +12,6 @@ from genecoder.error_simulation import Channel as ErrorChannel
             IlluminaChannel,
             dict(substitution_rate=0.5, insertion_rate=0.3, deletion_rate=0.2, read_length=6),
             "ACGTACGT",
-        ),
-        (
-            AdvancedNanoporeChannel,
-            dict(substitution_rate=0.5, insertion_rate=0.3, deletion_rate=0.2, read_length=6),
-            "AAAAAA",
         ),
         (
             ErrorChannel,
