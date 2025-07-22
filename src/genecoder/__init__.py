@@ -2,8 +2,6 @@
 
 __version__ = "0.1.0"
 
-CloudClient = None
-
 _LAZY_ATTRS = {
     "EncodeOptions",
     "EncodeResult",
@@ -16,10 +14,18 @@ _LAZY_ATTRS = {
     "CloudClient",
 }
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from .cloud import CloudClient as CloudClientType
+else:
+    CloudClientType = object
+
 try:
-    from .cloud import CloudClient  # type: ignore
+    from .cloud import CloudClient as RealCloudClient
+    CloudClient: type[CloudClientType] | None = RealCloudClient
 except Exception:  # pragma: no cover - optional dependency
-    CloudClient = None  # type: ignore
+    CloudClient = None
 
 from .plugin_manager import (
     CODEC_REGISTRY,
@@ -31,16 +37,6 @@ from .plugin_manager import (
 from .simulators import SIMULATOR_REGISTRY, simulate_reads
 from .channel_config import ChannelConfig
 from .pipeline import SequencePipeline
-
-from typing import Any
-
-CloudClient: Any
-try:  # pragma: no cover - optional dependency
-    from .cloud import CloudClient as RealCloudClient
-    CloudClient = RealCloudClient
-except Exception:  # pragma: no cover - missing optional dependency
-    CloudClient = None
-
 
 
 

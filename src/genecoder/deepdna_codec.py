@@ -1,5 +1,7 @@
 """DeepDNA error correction codec using optional :mod:`deepdna`."""
 
+# ruff: noqa: ANN401
+
 from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
@@ -48,26 +50,21 @@ def decode_data_deepdna(encoded: bytes, info: Mapping[str, str]) -> Tuple[bytes,
 class DeepDNAFEC(BaseFEC):
     """DeepDNA FEC backend implementing :class:`BaseFEC`."""
 
-    def encode(self, data: bytes, /, *, model_name: str = "deepdna-small") -> Tuple[bytes, Mapping[str, str]]:
+    def encode(
+        self, data: bytes, /, *, model_name: str = "deepdna-small", **kwargs: Any
+    ) -> Tuple[bytes, Mapping[str, str]]:  # noqa: ANN401
         return encode_data_deepdna(data, model_name)
 
-    def decode(self, encoded: bytes, info: Mapping[str, str], /) -> Tuple[bytes, int]:
+    def decode(
+        self, encoded: bytes, info: Mapping[str, str], /, **kwargs: Any
+    ) -> Tuple[bytes, int]:  # noqa: ANN401
         return decode_data_deepdna(encoded, info)
 
 
 from typing import Callable
 
 
-def register(
-    register_fec: Callable[
-        [
-            str,
-            Callable[[bytes], Tuple[bytes, Mapping[str, str]]],
-            Callable[[bytes, Mapping[str, str]], Tuple[bytes, int]],
-        ],
-        None,
-    ]
-) -> None:
+def register(register_fec: Callable[[str, type[BaseFEC]], None]) -> None:
     """Register this module's FEC backend."""
     register_fec("deepdna", DeepDNAFEC)
 

@@ -1,5 +1,7 @@
 """LDPC encoding and decoding helpers using optional :mod:`pyldpc`."""
 
+# ruff: noqa: ANN401
+
 from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
@@ -56,7 +58,9 @@ def encode_data_ldpc(data: bytes) -> Tuple[bytes, Any]:
     tuple
         ``(encoded_bytes, info)`` where ``info`` contains matrices needed for
         decoding.
-    """
+"""
+
+# ruff: noqa: ANN401
     _require_pyldpc()
     global np
     if np is None:  # pragma: no cover - optional dependency
@@ -89,26 +93,21 @@ def decode_data_ldpc(encoded: bytes, info: Mapping[str, Any]) -> Tuple[bytes, in
 class LdpcFEC(BaseFEC):
     """LDPC FEC backend implementing :class:`BaseFEC`."""
 
-    def encode(self, data: bytes, /) -> Tuple[bytes, Mapping[str, Any]]:
+    def encode(
+        self, data: bytes, /, **kwargs: Any
+    ) -> Tuple[bytes, Mapping[str, Any]]:  # noqa: ANN401
         return encode_data_ldpc(data)
 
-    def decode(self, encoded: bytes, info: Mapping[str, Any], /) -> Tuple[bytes, int]:
+    def decode(
+        self, encoded: bytes, info: Mapping[str, Any], /, **kwargs: Any
+    ) -> Tuple[bytes, int]:  # noqa: ANN401
         return decode_data_ldpc(encoded, info)
 
 
 from typing import Callable
 
 
-def register(
-    register_fec: Callable[
-        [
-            str,
-            Callable[[bytes], tuple[bytes, Mapping[str, Any]]],
-            Callable[[bytes, Mapping[str, Any]], tuple[bytes, int]],
-        ],
-        None,
-    ]
-) -> None:
+def register(register_fec: Callable[[str, type[BaseFEC]], None]) -> None:
     """Register this module's FEC backend."""
     register_fec("ldpc", LdpcFEC)
 

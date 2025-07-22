@@ -1,5 +1,7 @@
 """RaptorQ encoding and decoding helpers using optional :mod:`raptorq`."""
 
+# ruff: noqa: ANN401
+
 from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
@@ -93,26 +95,21 @@ def decode_data_raptorq(encoded: bytes, info: Mapping[str, int]) -> Tuple[bytes,
 class RaptorqFEC(BaseFEC):
     """RaptorQ FEC backend implementing :class:`BaseFEC`."""
 
-    def encode(self, data: bytes, /, *, symbol_size: int = 8) -> Tuple[bytes, Mapping[str, int]]:
+    def encode(
+        self, data: bytes, /, *, symbol_size: int = 8, **kwargs: Any
+    ) -> Tuple[bytes, Mapping[str, int]]:  # noqa: ANN401
         return encode_data_raptorq(data, symbol_size)
 
-    def decode(self, encoded: bytes, info: Mapping[str, int], /) -> Tuple[bytes, int]:
+    def decode(
+        self, encoded: bytes, info: Mapping[str, int], /, **kwargs: Any
+    ) -> Tuple[bytes, int]:  # noqa: ANN401
         return decode_data_raptorq(encoded, info)
 
 
 from typing import Callable
 
 
-def register(
-    register_fec: Callable[
-        [
-            str,
-            Callable[[bytes], Tuple[bytes, Mapping[str, int]]],
-            Callable[[bytes, Mapping[str, int]], Tuple[bytes, int]],
-        ],
-        None,
-    ]
-) -> None:
+def register(register_fec: Callable[[str, type[BaseFEC]], None]) -> None:
     """Register this module's FEC backend."""
     register_fec("raptorq", RaptorqFEC)
 

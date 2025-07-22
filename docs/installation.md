@@ -34,7 +34,7 @@ the optional groups and what they provide:
 |---------------|-------------------------------------------------|
 | `gui`         | Flet GUI and helix viewer dependencies          |
 | `web`         | FastAPI server and HTTPX client                 |
-| `dev`         | Pytest, Ruff, MyPy and Playwright tools         |
+| `dev`         | Pytest, Ruff, MyPy, types-PyYAML and Playwright tools |
 | `ldpc`        | Low-density parity-check codes                  |
 | `fountain`    | Fountain code support                           |
 | `bch`         | BCH error-correcting codes                      |
@@ -73,6 +73,7 @@ Install the project in editable mode so local changes are picked up immediately:
 ```bash
 poetry install --with gui,web,dev --no-interaction
 ```
+This also installs the `types-PyYAML` stub package required by MyPy for YAML type checking.
 
 Contributors can alternatively open the repository in the provided
 **devcontainer** for a fully preconfigured environment.
