@@ -12,7 +12,6 @@ on:
       - 'ruff.toml'
       - '.github/workflows/**'
       - 'scripts/**'
-      - 'openai_testing/**'
 
 # Ensure only a single workflow run per PR or branch
 concurrency:
@@ -41,7 +40,6 @@ jobs:
               - 'ruff.toml'
               - '.github/workflows/**'
               - 'scripts/**'
-              - 'openai_testing/**'
 
   check-comments:
     runs-on: self-hosted
@@ -232,21 +230,11 @@ jobs:
       with:
         node-version: '20'
 
-    - uses: actions/cache@v3
-      with:
-        path: openai_testing/node_modules
-        key: node-${{ runner.os }}-${{ hashFiles('openai_testing/package-lock.json') }}
-
     - name: Install Node dependencies
       run: |
-        cd openai_testing
-        npm install
-        cd ..
         npm install --prefix web/helix-ui
         npm run build --prefix web/helix-ui
 
-    - name: Smoke test CUA server
-      run: node -e "console.log('cua smoke')"
 
     - name: Smoke test GeneCoder GUI
       if: runner.os != 'Windows'

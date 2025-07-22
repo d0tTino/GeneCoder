@@ -1,6 +1,6 @@
 FROM genecoder:latest
 
-# Install Node.js for openai_testing apps
+# Install Node.js for building web assets
 RUN apt-get update \
     && apt-get install -y curl gnupg \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \

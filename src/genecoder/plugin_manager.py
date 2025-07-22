@@ -69,6 +69,7 @@ from .plugin_security import (
     verify_signature as _verify_signature,
 )
 from .plugin_checks import decode_signature, verify_package
+import base64
 
 
 logger = logging.getLogger(__name__)
@@ -394,3 +395,32 @@ def init_plugins() -> None:
     except Exception as exc:  # pragma: no cover - unexpected error path
         logger.warning("Failed to load plugins: %s", exc)
     _initialized = True
+
+
+def _verify_catalog_signature(data: bytes, signature_b64: str) -> bool:
+    """Return ``True`` if ``signature_b64`` verifies ``data`` using the public key.
+
+    The key path is read from the ``GENECODER_CATALOG_PUBLIC_KEY`` environment
+    variable. ``False`` is returned on any failure.
+    """
+
+    key_path = os.getenv("GENECODER_CATALOG_PUBLIC_KEY")
+    if not key_path:
+        return False
+
+    try:
+        public_key = Path(key_path).read_bytes()
+    except Exception:
+        return False
+
+    try:
+        signature = base64.b64decode(signature_b64, validate=True)
+    except Exception:
+        return False
+
+    try:
+        compute_checksum(data, signature=signature, public_key=public_key)
+    except Exception:
+        return False
+    return True
+
