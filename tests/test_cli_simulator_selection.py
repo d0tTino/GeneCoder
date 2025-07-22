@@ -6,7 +6,6 @@ import pytest
 
 @pytest.mark.parametrize("sim_name", [
     "illumina",
-    "adv_nanopore",
     "illumina_d2sim",
     "nanopore_d2sim",
 ])

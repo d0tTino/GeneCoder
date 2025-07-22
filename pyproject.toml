@@ -57,8 +57,6 @@ uvicorn = { version = "*", extras = ["standard"], optional = true }
 httpx = "<0.28"
 deepdna = {version = "*", optional = true}
 chamaeleo = {version = "*", optional = true}
-desp = {version = "*", optional = true}
-insilicoseq = {version = "*", optional = true}
 
 [tool.poetry.group.gui.dependencies]
 flet = ">=0.28,<0.29"
@@ -112,7 +110,6 @@ squigulator = "genecoder.squigulator_adapter"
 simple = "genecoder.channel_sim"
 indel = "genecoder.error_simulation"
 illumina = "genecoder.simulators.illumina"
-adv_nanopore = "genecoder.simulators.adv_nanopore"
 
 [tool.poetry.extras]
 dnaformer = ["dnaformer", "torch"]
@@ -123,8 +120,6 @@ raptorq = ["raptorq", "numpy"]
 bch = ["bchlib"]
 deepdna = ["deepdna", "torch"]
 chamaeleo = ["chamaeleo"]
-desp = ["desp"]
-insilicoseq = ["insilicoseq"]
 
 gui = ["flet", "matplotlib", "flet-webview", "streamlit"]
 web = ["fastapi", "uvicorn"]

@@ -5,6 +5,6 @@ encode:
   fec: hamming_7_4
 simulate:
   simulators:
-    - adv_nanopore
+    - illumina
 decode:
   method: base4_direct

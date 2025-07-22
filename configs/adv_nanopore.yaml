@@ -1,6 +1,0 @@
-substitution_rate: 0.02
-insertion_rate: 0.04
-deletion_rate: 0.04
-coverage: 1
-read_length: 500
-quality_profile: null
