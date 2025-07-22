@@ -17,7 +17,6 @@ channel: Any | None = None
 bundle: Any | None = None
 plugin: Any | None = None
 benchmark: Any | None = None
-cloud: Any | None = None
 decode_ai: Any | None = None
 stats: Any | None = None
 data: Any | None = None
@@ -65,7 +64,6 @@ def build_parser() -> argparse.ArgumentParser:
         report as _report,
         channel as _channel,
         bundle as _bundle,
-        cloud as _cloud,
         decode_ai as _decode_ai,
         plugin as _plugin_mod,
         benchmark as _benchmark,
@@ -74,7 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
         dashboard as _dashboard,
     )
 
-    global encode, decode, analyze, report, channel, bundle, cloud, plugin, benchmark, decode_ai, stats, data, dashboard
+    global encode, decode, analyze, report, channel, bundle, plugin, benchmark, decode_ai, stats, data, dashboard
 
     encode = _encode
     decode = _decode
@@ -82,7 +80,6 @@ def build_parser() -> argparse.ArgumentParser:
     report = _report
     channel = _channel
     bundle = _bundle
-    cloud = _cloud
     decode_ai = _decode_ai
     plugin = _plugin_mod
     benchmark = _benchmark
@@ -116,7 +113,6 @@ def build_parser() -> argparse.ArgumentParser:
     report.register_subcommand(subparsers)
     channel.register_subcommand(subparsers)
     bundle.register_subcommand(subparsers)
-    cloud.register_subcommand(subparsers)
     plugin.register_subcommand(subparsers)
     benchmark.register_subcommand(subparsers)
     stats.register_subcommand(subparsers)

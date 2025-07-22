@@ -12,22 +12,7 @@ _LAZY_ATTRS = {
     "encrypt_data",
     "decrypt_data",
     "compute_checksum",
-    "CloudClient",
 }
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:  # pragma: no cover - typing only
-    from .cloud import CloudClient as CloudClientType
-else:
-    CloudClientType = object
-
-try:
-    from .cloud import CloudClient as RealCloudClient
-    CloudClient: type[CloudClientType] | None = RealCloudClient
-except Exception:  # pragma: no cover - optional dependency
-    CloudClient = None
-
 
 from .plugin_manager import (
     CODEC_REGISTRY,
@@ -79,7 +64,6 @@ def __getattr__(name: str) -> object:
             perform_decoding,
         )
         from .security import decrypt_data, encrypt_data, compute_checksum
-        from .cloud import CloudClient as _CloudClient
         globals().update({
             "EncodeOptions": EncodeOptions,
             "EncodeResult": EncodeResult,
@@ -89,7 +73,6 @@ def __getattr__(name: str) -> object:
             "encrypt_data": encrypt_data,
             "decrypt_data": decrypt_data,
             "compute_checksum": compute_checksum,
-            "CloudClient": _CloudClient,
         })
         return globals()[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

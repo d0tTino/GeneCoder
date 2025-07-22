@@ -29,7 +29,7 @@ nav:
       - CLI Tutorial: cli_tutorial.md
       - GUI Tutorial: gui_tutorial.md
       - Web API Tutorial: web_api_tutorial.md
-      - Cloud Worker Integration: cloud.md
+      - Local Execution Only: cloud.md
       - Helix Frontend: helix_frontend.md
   - Archived:
       - Full Development Vision: archived/DEVELOPMENT_VISION.md
