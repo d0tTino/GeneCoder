@@ -1,5 +1,7 @@
 """Simple Fountain code helpers using :mod:`pyfinite` for GF arithmetic."""
 
+# ruff: noqa: ANN401
+
 from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
@@ -63,26 +65,21 @@ def decode_data_fountain(
 class FountainFEC(BaseFEC):
     """Simple Fountain code backend implementing :class:`BaseFEC`."""
 
-    def encode(self, data: bytes, /, *, chunk_size: int = 4) -> Tuple[bytes, Mapping[str, int]]:
+    def encode(
+        self, data: bytes, /, *, chunk_size: int = 4, **kwargs: Any
+    ) -> Tuple[bytes, Mapping[str, int]]:  # noqa: ANN401
         return encode_data_fountain(data, chunk_size)
 
-    def decode(self, encoded: bytes, info: Mapping[str, int], /) -> Tuple[bytes, int]:
+    def decode(
+        self, encoded: bytes, info: Mapping[str, int], /, **kwargs: Any
+    ) -> Tuple[bytes, int]:  # noqa: ANN401
         return decode_data_fountain(encoded, info)
 
 
 from typing import Callable
 
 
-def register(
-    register_fec: Callable[
-        [
-            str,
-            Callable[[bytes], tuple[bytes, Mapping[str, int]]],
-            Callable[[bytes, Mapping[str, int]], tuple[bytes, int]],
-        ],
-        None,
-    ]
-) -> None:
+def register(register_fec: Callable[[str, type[BaseFEC]], None]) -> None:
     """Register this module's FEC backend."""
     register_fec("fountain", FountainFEC)
 

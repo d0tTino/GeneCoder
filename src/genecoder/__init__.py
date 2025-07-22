@@ -2,9 +2,6 @@
 
 __version__ = "0.1.0"
 
-# Placeholder for the optional cloud client implementation.  The actual
-# class is imported lazily when accessed via ``__getattr__``.
-CloudClient: type | None
 
 _LAZY_ATTRS = {
     "EncodeOptions",
@@ -18,6 +15,19 @@ _LAZY_ATTRS = {
     "CloudClient",
 }
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from .cloud import CloudClient as CloudClientType
+else:
+    CloudClientType = object
+
+try:
+    from .cloud import CloudClient as RealCloudClient
+    CloudClient: type[CloudClientType] | None = RealCloudClient
+except Exception:  # pragma: no cover - optional dependency
+    CloudClient = None
+
 
 from .plugin_manager import (
     CODEC_REGISTRY,
@@ -29,8 +39,6 @@ from .plugin_manager import (
 from .simulators import SIMULATOR_REGISTRY, simulate_reads
 from .channel_config import ChannelConfig
 from .pipeline import SequencePipeline
-
-
 
 
 __all__ = [

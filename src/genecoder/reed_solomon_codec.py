@@ -5,9 +5,13 @@ encode and decode byte strings with Reed--Solomon error correction. Only the
 number of parity symbols (``nsym``) is currently exposed as a parameter.
 """
 
+# ruff: noqa: ANN401
+
+# ruff: noqa: ANN401
+
 from __future__ import annotations
 
-from typing import Tuple, TYPE_CHECKING
+from typing import Tuple, TYPE_CHECKING, Mapping, Any
 
 from .codecs import BaseFEC
 
@@ -92,16 +96,21 @@ def decode_data_rs(encoded: bytes, nsym: int) -> Tuple[bytes, int]:
 class ReedSolomonFEC(BaseFEC):
     """Reed--Solomon FEC backend implementing :class:`BaseFEC`."""
 
-    def encode(self, data: bytes, /, *, nsym: int = 10) -> Tuple[bytes, int]:
-        return encode_data_rs(data, nsym)
+    def encode(
+        self, data: bytes, /, *, nsym: int = 10, **kwargs: Any
+    ) -> Tuple[bytes, Mapping[str, Any]]:  # noqa: ANN401
+        encoded, used_nsym = encode_data_rs(data, nsym)
+        return encoded, {"nsym": used_nsym}
 
-    def decode(self, encoded: bytes, info: int, /) -> Tuple[bytes, int]:
-        return decode_data_rs(encoded, info)
+    def decode(
+        self, encoded: bytes, info: Mapping[str, Any], /, **kwargs: Any
+    ) -> Tuple[bytes, int]:  # noqa: ANN401
+        return decode_data_rs(encoded, int(info["nsym"]))
 
 
-from typing import Callable, Any
+from typing import Callable
 
-def register(register_fec: Callable[[str, Callable[..., object], Callable[..., object]], None]) -> None:
+def register(register_fec: Callable[[str, type[BaseFEC]], None]) -> None:
     """Register this module's FEC backend."""
     register_fec("reed_solomon", ReedSolomonFEC)
 

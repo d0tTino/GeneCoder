@@ -1,5 +1,7 @@
 """FrameD FEC backend implemented using CFFI."""
 
+# ruff: noqa: ANN401
+
 from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
@@ -20,7 +22,9 @@ else:  # pragma: no cover - optional dependency
         
         _ffi = FFI()
         _ffi.cdef(
-            """
+"""
+
+# ruff: noqa: ANN401
             void* framed_encode(const uint8_t* data, size_t len, size_t* out_len);
             void* framed_decode(const uint8_t* data, size_t len, size_t* out_len, int* corrected);
             void framed_free(void* ptr);
@@ -72,26 +76,21 @@ def decode_data_framed(encoded: bytes, info: Mapping[str, Any]) -> Tuple[bytes, 
 class FrameDFEC(BaseFEC):
     """FrameD FEC backend implementing :class:`BaseFEC`."""
 
-    def encode(self, data: bytes, /) -> Tuple[bytes, Mapping[str, Any]]:
+    def encode(
+        self, data: bytes, /, **kwargs: Any
+    ) -> Tuple[bytes, Mapping[str, Any]]:  # noqa: ANN401
         return encode_data_framed(data)
 
-    def decode(self, encoded: bytes, info: Mapping[str, Any], /) -> Tuple[bytes, int]:
+    def decode(
+        self, encoded: bytes, info: Mapping[str, Any], /, **kwargs: Any
+    ) -> Tuple[bytes, int]:  # noqa: ANN401
         return decode_data_framed(encoded, info)
 
 
 from typing import Callable
 
 
-def register(
-    register_fec: Callable[
-        [
-            str,
-            Callable[[bytes], Tuple[bytes, Mapping[str, Any]]],
-            Callable[[bytes, Mapping[str, Any]], Tuple[bytes, int]],
-        ],
-        None,
-    ]
-) -> None:
+def register(register_fec: Callable[[str, type[BaseFEC]], None]) -> None:
     """Register this module's FEC backend."""
 
     register_fec("framed", FrameDFEC)

@@ -1,5 +1,7 @@
 """DNAformer error correction codec using optional :mod:`dnaformer`."""
 
+# ruff: noqa: ANN401
+
 from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
@@ -50,26 +52,21 @@ def decode_data_dnaformer(
 class DNAFormerFEC(BaseFEC):
     """DNAformer FEC backend implementing :class:`BaseFEC`."""
 
-    def encode(self, data: bytes, /, *, model_name: str = "dnaformer-small") -> Tuple[bytes, Mapping[str, str]]:
+    def encode(
+        self, data: bytes, /, *, model_name: str = "dnaformer-small", **kwargs: Any
+    ) -> Tuple[bytes, Mapping[str, str]]:  # noqa: ANN401
         return encode_data_dnaformer(data, model_name)
 
-    def decode(self, encoded: bytes, info: Mapping[str, str], /) -> Tuple[bytes, int]:
+    def decode(
+        self, encoded: bytes, info: Mapping[str, str], /, **kwargs: Any
+    ) -> Tuple[bytes, int]:  # noqa: ANN401
         return decode_data_dnaformer(encoded, info)
 
 
 from typing import Callable
 
 
-def register(
-    register_fec: Callable[
-        [
-            str,
-            Callable[[bytes], Tuple[bytes, Mapping[str, str]]],
-            Callable[[bytes, Mapping[str, str]], Tuple[bytes, int]],
-        ],
-        None,
-    ]
-) -> None:
+def register(register_fec: Callable[[str, type[BaseFEC]], None]) -> None:
     """Register this module's FEC backend."""
     register_fec("dnaformer", DNAFormerFEC)
 

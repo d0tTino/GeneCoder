@@ -48,13 +48,19 @@ class ChannelPipeline(BaseChannel):
                 and hasattr(ch, "profile")
                 and ch.__class__.__name__ == "InsilicoSeqChannel"
             ):
-                ch = type(ch)(read_length=getattr(ch, "read_length", 150), profile=config.illumina_profile)
+                ch = type(ch)(
+                    read_length=getattr(ch, "read_length", 150),
+                    profile=config.illumina_profile,
+                )  # type: ignore[call-arg]
             elif (
                 config.nanopore_profile is not None
                 and hasattr(ch, "profile")
                 and ch.__class__.__name__ == "DNArSimChannel"
             ):
-                ch = type(ch)(error_rate=getattr(ch, "error_rate", 0.05), profile=config.nanopore_profile)
+                ch = type(ch)(
+                    error_rate=getattr(ch, "error_rate", 0.05),
+                    profile=config.nanopore_profile,
+                )  # type: ignore[call-arg]
             channels.append(ch)
 
         if use_mpi:
