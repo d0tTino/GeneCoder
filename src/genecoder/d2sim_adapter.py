@@ -33,7 +33,7 @@ def simulate_d2sim(
     if rng is None:
         rng = make_rng()
 
-    return _simulate_adapter("d2sim", sequence, error_rate, rng)
+    return _simulate_adapter("d2sim", sequence, error_rate, rng, None)
 
 
 class D2SimChannel(BaseChannel):

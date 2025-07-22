@@ -13,3 +13,5 @@ class ChannelConfig:
     workers: int | None = None
     use_process_pool: bool = False
     use_mpi: bool = False
+    illumina_profile: str | None = None
+    nanopore_profile: str | None = None

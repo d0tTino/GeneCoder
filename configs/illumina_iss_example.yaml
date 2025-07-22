@@ -1,0 +1,5 @@
+simulators:
+  - name: insilicoseq
+    read_length: 150
+pipeline:
+  illumina_profile: hiseq

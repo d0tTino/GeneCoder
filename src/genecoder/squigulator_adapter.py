@@ -32,7 +32,7 @@ def simulate_squigulator(
     if rng is None:
         rng = make_rng()
 
-    return _simulate_adapter("squigulator", sequence, error_rate, rng)
+    return _simulate_adapter("squigulator", sequence, error_rate, rng, None)
 
 
 class SquigulatorChannel(BaseChannel):
