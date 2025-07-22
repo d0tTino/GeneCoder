@@ -1,11 +1,11 @@
 from importlib.metadata import EntryPoint
 from pathlib import Path
-from typing import Mapping, Any
 
+import pytest
 import genecoder.plugin_manager as plugins
 
 
-def test_class_based_plugins(monkeypatch, tmp_path: Path) -> None:
+def test_class_based_plugins(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     codec_mod = tmp_path / "cmod.py"
     codec_mod.write_text(
         """

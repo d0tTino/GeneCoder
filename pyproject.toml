@@ -69,7 +69,6 @@ streamlit = "*"
 [tool.poetry.group.web.dependencies]
 fastapi = ">=0.110"
 uvicorn = { version = "*", extras = ["standard"] }
-httpx = "<0.28"
 fastapi-limiter = "*"
 
 [tool.poetry.group.dev.dependencies]
@@ -128,7 +127,7 @@ desp = ["desp"]
 insilicoseq = ["insilicoseq"]
 
 gui = ["flet", "matplotlib", "flet-webview", "streamlit"]
-web = ["fastapi", "uvicorn", "httpx"]
+web = ["fastapi", "uvicorn"]
 
 [build-system]
 requires = ["poetry-core"]
