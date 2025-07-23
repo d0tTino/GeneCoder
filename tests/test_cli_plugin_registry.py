@@ -1,0 +1,23 @@
+from tests.test_cli import run_cli_command
+import genecoder.plugin_manager as plugins
+
+
+def test_install_registry_requires_flag(monkeypatch):
+    calls = []
+    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
+    monkeypatch.setattr(plugins, "install_registry_plugins", lambda url=None: calls.append(url))
+
+    result = run_cli_command(["plugin", "install-registry"])
+    assert result.returncode != 0
+    assert not calls
+
+
+def test_install_registry_with_flag(monkeypatch):
+    calls = []
+    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
+    monkeypatch.setattr(plugins, "install_registry_plugins", lambda url=None: calls.append(url))
+
+    result = run_cli_command(["plugin", "install-registry", "--allow-registry"])
+    assert result.returncode == 0
+    assert calls == [None]
+

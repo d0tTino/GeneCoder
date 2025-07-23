@@ -55,6 +55,16 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     install_parser.add_argument("name", help="Plugin name to install")
     install_parser.set_defaults(func=_handle_install)
 
+    reg_parser = plugin_sub.add_parser(
+        "install-registry", help="Install packages from the configured registry"
+    )
+    reg_parser.add_argument(
+        "--allow-registry",
+        action="store_true",
+        help="Allow downloading and installing packages from the registry",
+    )
+    reg_parser.set_defaults(func=_handle_install_registry)
+
 
 
 def _handle_list(args: argparse.Namespace) -> None:
@@ -212,6 +222,14 @@ def _handle_install(args: argparse.Namespace) -> None:
             ["install", "--require-hashes", "-r", str(req_file)],
             "pip install",
         )
+
+
+def _handle_install_registry(args: argparse.Namespace) -> None:
+    if not args.allow_registry:
+        logger.error("Registry installation requires --allow-registry")
+        raise SystemExit(1)
+
+    plugins.install_registry_plugins()
 
 
 

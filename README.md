@@ -192,8 +192,11 @@ export GENECODER_PLUGIN_CATALOG_URL=https://example.com/catalog.yaml
 Install registry packages with:
 
 ```bash
-genecoder plugin install-registry
+genecoder plugin install-registry --allow-registry
 ```
+
+The `--allow-registry` flag is required to opt in to downloading and
+executing third-party code. Only use registries from trusted sources.
 
 For details on submitting scores to the plugin challenge and viewing the
 leaderboard interface see
