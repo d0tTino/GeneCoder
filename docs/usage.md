@@ -282,32 +282,6 @@ genecli decode --input-files out/secret.txt.fasta \
     --output-dir decoded/ --method base4_direct --encrypt --key key.bin --checksum
 
 ```
-### MPI Execution
-
-The channel pipeline supports distributed execution via MPI. Enable this mode
-with `--mpi` and specify the number of workers using `--mpi-workers`.
-Install the optional [`mpi4py`](https://mpi4py.readthedocs.io/) package before
-running MPI jobs.
-
-```bash
-pip install mpi4py
-```
-
-A minimal invocation on a single node:
-
-```bash
-mpiexec -n 4 genecli channel --input-file encoded.fasta \
-    --output-file mpi_out.fasta --simulator simple \
-    --mpi --mpi-workers 4
-```
-
-Typical cluster schedulers use commands like `mpirun` or `srun`:
-
-```bash
-mpirun -n 8 genecli channel run config.yml --mpi --mpi-workers 8
-```
-
-Make sure the `mpi4py` dependency is installed on all worker nodes.
 ## Graphical User Interface (GUI)
 
 ### Launching the Flet App

@@ -18,8 +18,6 @@ def _make_args(**kwargs: object) -> argparse.Namespace:
         parallel=False,
         threads=None,
         processes=None,
-        mpi=False,
-        mpi_workers=None,
         batch_workers=None,
         config=None,
         min_length=1,
@@ -74,22 +72,6 @@ def test_threads_and_processes_conflict() -> None:
         build_channel_options(args)
 
 
-def test_mpi_and_threads_conflict() -> None:
-    args = _make_args(simulators=["simple"], mpi=True, threads=4)
-    with pytest.raises(ValueError, match="Cannot combine MPI with threads or processes"):
-        build_channel_options(args)
-
-
-def test_mpi_and_processes_conflict() -> None:
-    args = _make_args(simulators=["simple"], mpi=True, processes=3)
-    with pytest.raises(ValueError, match="Cannot combine MPI with threads or processes"):
-        build_channel_options(args)
-
-
-def test_mpi_workers_requires_mpi() -> None:
-    args = _make_args(simulators=["simple"], mpi_workers=4)
-    with pytest.raises(ValueError, match="--mpi-workers requires --mpi"):
-        build_channel_options(args)
 
 
 def test_config_missing_simulators_error(tmp_path: Path) -> None:
@@ -100,11 +82,6 @@ def test_config_missing_simulators_error(tmp_path: Path) -> None:
         build_channel_options(args)
 
 
-def test_mpi_options_ok() -> None:
-    args = _make_args(simulators=["simple"], mpi=True, mpi_workers=2)
-    opts = build_channel_options(args)
-    assert opts.mpi is True
-    assert opts.mpi_workers == 2
 
 
 def test_min_length_invalid() -> None:

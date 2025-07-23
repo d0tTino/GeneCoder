@@ -31,8 +31,6 @@ class ChannelArgs:
     parallel: bool = False
     threads: int | None = None
     processes: int | None = None
-    mpi: bool = False
-    mpi_workers: int | None = None
 
 logger = logging.getLogger(__name__)
 
