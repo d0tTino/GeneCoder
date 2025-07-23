@@ -146,11 +146,11 @@ Install the project in editable mode with development tools:
 poetry install --with gui,web,dev --no-interaction
 ```
 
-You can also run the helper script to install the optional GUI, web and
-development extras required by the test suite:
+You can also run the helper script to install all optional extras
+required by the full test suite:
 
 ```bash
-scripts/setup_test_env.sh
+scripts/install_extras.sh
 ```
 
 ## Running Tests
@@ -162,7 +162,7 @@ poetry install --with dev --no-interaction
 poetry run pytest -q
 ```
 
-The helper script above installs the GUI and web extras as well, enabling the
+The helper script above installs every extras group, enabling the
 full test matrix.
 
 
