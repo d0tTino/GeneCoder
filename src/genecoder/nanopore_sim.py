@@ -44,7 +44,11 @@ def _parse_env_options(command: str) -> list[str]:
     if not raw:
         return []
 
-    if any(c in raw for c in ";&|`$<>\\\n\r") or not raw.isprintable():
+    import re
+
+    # Reject characters outside a conservative whitelist to avoid
+    # command injection via shell metacharacters.
+    if not raw.isprintable() or not re.fullmatch(r"[A-Za-z0-9_\-./=:'\"\s]*", raw):
         raise ValueError(f"Unsafe characters in {env_var}")
 
     import shlex
@@ -54,6 +58,18 @@ def _parse_env_options(command: str) -> list[str]:
     except ValueError as exc:  # pragma: no cover - error path
         logger.warning("Invalid %s value: %s", env_var, exc)
         return []
+
+    flag_re = re.compile(r"^-{1,2}[A-Za-z0-9][A-Za-z0-9_-]*(=.+)?$")
+    arg_re = re.compile(r"^[A-Za-z0-9./:_-]+$")
+
+    for opt in options:
+        if opt.startswith("-"):
+            if not flag_re.fullmatch(opt):
+                raise ValueError(f"Invalid option {opt!r} in {env_var}")
+        else:
+            if not arg_re.fullmatch(opt):
+                raise ValueError(f"Invalid argument {opt!r} in {env_var}")
+
     logger.debug("Using %s=%r", env_var, options)
     return options
 
