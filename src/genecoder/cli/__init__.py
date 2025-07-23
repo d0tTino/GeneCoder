@@ -9,6 +9,7 @@ from .options import (
 )
 from .encode import run_encoding_pipeline, encode_files
 from .decode import run_decoding_pipeline, decode_files
+from ..core import run_pipeline
 from .cli import main
 from .channel import process_channel, run_channel
 from .analyze import analyze_files
@@ -25,6 +26,7 @@ __all__ = [
     "build_decoding_options",
     "decode_files",
     "run_decoding_pipeline",
+    "run_pipeline",
     "analyze_files",
     "main",
     "process_channel",
