@@ -2,6 +2,10 @@ import json
 from multiprocessing import Process
 from pathlib import Path
 
+import pytest
+
+pytest.importorskip("portalocker")
+
 from genecoder.metrics import Metrics
 
 

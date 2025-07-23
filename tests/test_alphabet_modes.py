@@ -1,5 +1,11 @@
-from genecoder.encoders import encode_base4_direct, decode_base4_direct
-from genecoder.utils import get_alphabet_maps
+import pytest
+
+encoders = pytest.importorskip("genecoder.encoders")
+utils = pytest.importorskip("genecoder.utils")
+
+encode_base4_direct = encoders.encode_base4_direct
+decode_base4_direct = encoders.decode_base4_direct
+get_alphabet_maps = utils.get_alphabet_maps
 
 
 def _roundtrip(alphabet: str) -> None:

@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("pyfinite")
+
 from genecoder.fountain_codec import encode_data_fountain, decode_data_fountain
 
 def test_fountain_roundtrip():
