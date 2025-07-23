@@ -52,3 +52,22 @@ def test_process_single_encode_windows_path_stream(tmp_path: Path) -> None:
     header = records[0][0]
     assert "input_file=seq.bin" in header
     assert "\\" not in header
+
+
+def test_process_single_encode_applies_fix(tmp_path: Path) -> None:
+    input_file = tmp_path / "data.bin"
+    # Produce low GC content and long homopolymers
+    input_file.write_bytes(b"\x00" * 8)
+    output_file = tmp_path / "out_fix.fasta"
+    args = _encode_args()
+    process_single_encode(str(input_file), str(output_file), args)
+
+    records = from_fasta(output_file.read_text())
+    seq = records[0][1]
+    from genecoder.encoders import calculate_gc_content
+    from genecoder.utils import get_max_homopolymer_length
+
+    gc_val = calculate_gc_content(seq)
+    max_hp = get_max_homopolymer_length(seq)
+    assert args.gc_min <= gc_val <= args.gc_max
+    assert max_hp <= args.max_homopolymer

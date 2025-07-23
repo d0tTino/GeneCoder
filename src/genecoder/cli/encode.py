@@ -32,6 +32,7 @@ from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
+from genecoder.constraint_fixer import fix_sequence
 from .common import run_tasks
 from typing import Callable, cast
 
@@ -300,6 +301,13 @@ def process_single_encode(
             data_for_encoding, options, header_name
         )
 
+        final_encoded_dna_sequence = fix_sequence(
+            final_encoded_dna_sequence,
+            target_gc_min=args.gc_min,
+            target_gc_max=args.gc_max,
+            max_homopolymer=args.max_homopolymer,
+        )
+
         if checksum:
             fasta_header = f"{fasta_header} checksum={checksum}"
 
@@ -455,19 +463,28 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--gc-min",
         type=float,
         default=0.45,
-        help="Minimum GC content for gc_balanced encoding (default: 0.45).",
+        help=(
+            "Minimum GC content for gc_balanced encoding and constraint fixing "
+            "(default: 0.45)."
+        ),
     )
     parser.add_argument(
         "--gc-max",
         type=float,
         default=0.55,
-        help="Maximum GC content for gc_balanced encoding (default: 0.55).",
+        help=(
+            "Maximum GC content for gc_balanced encoding and constraint fixing "
+            "(default: 0.55)."
+        ),
     )
     parser.add_argument(
         "--max-homopolymer",
         type=int,
         default=3,
-        help="Maximum homopolymer length for gc_balanced encoding (default: 3).",
+        help=(
+            "Maximum homopolymer length for gc_balanced encoding and constraint "
+            "fixing (default: 3)."
+        ),
     )
     parser.add_argument(
         "--alphabet",
