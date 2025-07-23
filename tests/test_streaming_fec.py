@@ -46,6 +46,9 @@ def test_stream_encode_decode_with_fec(tmp_path, fec_name, encode_fn, decode_fn,
     if not available:
         pytest.skip(f"{fec_name} not available")
 
+    if fec_name == "fountain":
+        pytest.importorskip("pyfinite")
+
     data = os.urandom(256)
     encoded_bytes, info = encode_fn(data)
 
