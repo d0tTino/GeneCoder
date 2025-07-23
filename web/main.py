@@ -19,7 +19,6 @@ from genecoder import perform_encoding, perform_decoding
 from genecoder.plugin_manager import init_plugins
 from genecoder import plugins
 from genecoder.cli import plugin as plugin_cli
-import argparse
 from genecoder.formats import from_fasta
 from genecoder.encoders import calculate_gc_content, decode_base4_direct
 from genecoder.utils import get_max_homopolymer_length, get_temp_dir, bit_error_rate
@@ -558,9 +557,8 @@ async def install_plugin(
     req: PluginInstallRequest,
     _: None = Depends(verify_token),
 ) -> dict[str, str]:
-    args = argparse.Namespace(name=req.name)
     try:
-        await asyncio.to_thread(plugin_cli._handle_install, args)
+        await asyncio.to_thread(plugin_cli.download_plugin, req.name)
     except SystemExit as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"status": "ok"}

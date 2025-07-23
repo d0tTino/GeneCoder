@@ -18,7 +18,7 @@ app = FastAPI()
 API_TOKEN: str | None = None
 
 
-@app.post("/jobs")
+@app.post("/jobs")  # type: ignore[misc]
 def create_job(job: dict[str, Any], authorization: str | None = Header(None)) -> dict[str, str]:
     """Handle bundle job uploads from tests."""
     if authorization != f"Bearer {API_TOKEN}":

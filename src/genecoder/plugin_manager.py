@@ -11,11 +11,15 @@ import urllib.request
 from urllib.parse import urlparse
 from pathlib import Path
 import importlib
+from types import ModuleType
 
+yaml: ModuleType | None
 try:  # optional dependency
-    import yaml
+    import yaml as yaml_module
 except Exception:  # pragma: no cover - optional
     yaml = None
+else:
+    yaml = yaml_module
 
 
 from importlib.metadata import entry_points, EntryPoints
@@ -90,6 +94,10 @@ def register_simulator(name: str, channel: Simulator) -> None:
 
 def _install_registry_plugins(url: str) -> None:
     """Install plugin packages listed in a YAML registry at ``url``."""
+
+    if yaml is None:
+        logger.warning("YAML support unavailable; skipping registry %s", url)
+        return
 
     key_path = os.getenv("GENECODER_PLUGIN_PUBLIC_KEY")
     pubkey: bytes | None = None
