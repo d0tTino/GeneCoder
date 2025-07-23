@@ -5,13 +5,13 @@ from typing import Callable, Sequence, Dict, Iterable
 import random
 
 from ..random_utils import make_rng
-from ..nanopore_sim import simulate_d2sim
+from ..nanopore_sim import simulate_d2sim, simulate_desp
 from ..api import Simulator
 from .base import BaseChannel
 from ..error_simulation import _random_substitution, NUCLEOTIDES
 from . import register_simulator as _register_simulator
 
-__all__ = ["NanoporeChannel", "register"]
+__all__ = ["NanoporeChannel", "NanoporeDeSPChannel", "register"]
 
 
 class NanoporeChannel(BaseChannel):
@@ -47,61 +47,85 @@ class NanoporeChannel(BaseChannel):
         quality = self.quality_profile
         coverage = max(1, self.get_coverage(sequence))
         reads = [
-            self._mutate_read(
+            _mutate_read(
                 simulate_d2sim(sequence, error_rate=self.error_rate, rng=rng),
                 quality,
                 rng,
+                self,
             )
             for _ in range(coverage)
         ]
         if coverage == 1:
             return reads[0]
-        return self._consensus(reads)
+        return _consensus(reads)
 
-    def _mutate_read(
-        self, read: str, quality: Sequence[float] | None, rng: random.Random
-    ) -> str:
-        mutated = []
-        for idx, nt in enumerate(read):
-            if rng.random() < self.deletion_rate:
-                continue
 
-            sub_rate = (
-                quality[idx] if quality is not None and idx < len(quality) else self.substitution_rate
+class NanoporeDeSPChannel(NanoporeChannel):
+    """Channel wrapper using the external ``desp`` simulator."""
+
+    def simulate(self, sequence: str) -> str:
+        rng = make_rng()
+        quality = self.quality_profile
+        coverage = max(1, self.get_coverage(sequence))
+        reads = [
+            _mutate_read(
+                simulate_desp(sequence, error_rate=self.error_rate, rng=rng),
+                quality,
+                rng,
+                self,
             )
-            if self.context_errors and idx > 0:
-                ctx = read[idx - 1 : idx + 1].upper()
-                sub_rate *= self.context_errors.get(ctx, 1.0)
+            for _ in range(coverage)
+        ]
+        if coverage == 1:
+            return reads[0]
+        return _consensus(reads)
 
-            if rng.random() < sub_rate:
-                nt = _random_substitution(nt, rng)
 
-            mutated.append(nt)
-            if rng.random() < self.insertion_rate:
-                mutated.append(rng.choice(NUCLEOTIDES))
+def _mutate_read(
+    read: str, quality: Sequence[float] | None, rng: random.Random, channel: NanoporeChannel
+) -> str:
+    mutated = []
+    for idx, nt in enumerate(read):
+        if rng.random() < channel.deletion_rate:
+            continue
 
-        return "".join(mutated)
+        sub_rate = (
+            quality[idx] if quality is not None and idx < len(quality) else channel.substitution_rate
+        )
+        if channel.context_errors and idx > 0:
+            ctx = read[idx - 1 : idx + 1].upper()
+            sub_rate *= channel.context_errors.get(ctx, 1.0)
 
-    @staticmethod
-    def _consensus(reads: Iterable[str]) -> str:
-        reads = list(reads)
-        if not reads:
-            return ""
-        length = max(len(r) for r in reads)
-        result = []
-        for i in range(length):
-            counts: Dict[str, int] = {}
-            for r in reads:
-                if i < len(r):
-                    base = r[i]
-                    counts[base] = counts.get(base, 0) + 1
-            if counts:
-                result.append(max(counts, key=lambda k: counts[k]))
-        return "".join(result)
+        if rng.random() < sub_rate:
+            nt = _random_substitution(nt, rng)
+
+        mutated.append(nt)
+        if rng.random() < channel.insertion_rate:
+            mutated.append(rng.choice(NUCLEOTIDES))
+
+    return "".join(mutated)
+
+
+def _consensus(reads: Iterable[str]) -> str:
+    reads = list(reads)
+    if not reads:
+        return ""
+    length = max(len(r) for r in reads)
+    result = []
+    for i in range(length):
+        counts: Dict[str, int] = {}
+        for r in reads:
+            if i < len(r):
+                base = r[i]
+                counts[base] = counts.get(base, 0) + 1
+        if counts:
+            result.append(max(counts, key=lambda k: counts[k]))
+    return "".join(result)
 
 
 def register(
     registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
     registrar("nanopore_d2sim", NanoporeChannel())
+    registrar("nanopore_desp", NanoporeDeSPChannel())
 
