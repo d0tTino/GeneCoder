@@ -11,7 +11,6 @@ import urllib.request
 from urllib.parse import urlparse
 from pathlib import Path
 import importlib
-from types import ModuleType
 
 yaml: ModuleType | None
 try:  # optional dependency
