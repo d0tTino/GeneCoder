@@ -15,13 +15,7 @@ The archive has the following layout:
 
 The `summary.json` file includes the configuration hash, timestamp and a list of all files in the archive. If provided, the author and description values are also recorded.
 
-Once an archive has been created it can be uploaded to a remote worker using the cloud CLI:
-
-```bash
-genecoder cloud submit --archive output.tar.gz --server https://worker:8000 --token TOKEN
-```
-
-This is equivalent to supplying a bundle YAML file directly, but avoids rebuilding the archive when the workflow has already been run locally.
+After exporting an archive you may manually inspect or transfer the file as needed.
 
 ## Server-side metrics
 

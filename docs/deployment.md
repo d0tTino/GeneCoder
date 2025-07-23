@@ -1,7 +1,7 @@
 # Deployment Guide
 
-This guide summarizes how to build the React dashboard, start a cloud worker with Docker and submit jobs via the CLI.
-See [cloud_worker.md](cloud_worker.md) for a detailed explanation of the worker container and environment variables.
+This guide summarizes how to build the React dashboard and run the web server locally.
+Remote job submission via the old cloud worker has been removed.
 
 ## Build the Dashboard
 
@@ -15,23 +15,14 @@ npm run build
 
 The generated files are placed in `web/helix-ui/dist`. The FastAPI server automatically serves this folder when available.
 
-## Launch the Cloud Worker
+## Run the Web Server
 
-`genecoder.cloud.worker` provides a minimal REST API for running bundles remotely. Start it inside a container:
-
-```bash
-docker run -p 8000:8000 -e GENECODER_API_TOKEN=TOKEN \
-    ghcr.io/d0ttino/genecoder python -m genecoder.cloud.worker
-```
-
-Replace `TOKEN` with a secret value. The CLI must use the same token when submitting jobs.
-
-## Submit a Job
-
-Packages and uploads are handled by `genecoder cloud submit`:
+Install the optional `web` extras and start the FastAPI server locally:
 
 ```bash
-genecoder cloud submit bundle.yaml --server http://localhost:8000 --token TOKEN
+poetry install --with web --no-interaction
+uvicorn web.main:app --reload
 ```
 
-The command archives the bundle and any input files then posts it to `/jobs` on the running worker. The returned job identifier is printed to the console.
+Set `GENECODER_API_TOKEN` to your desired bearer token. When the server is
+running it serves the dashboard from `web/helix-ui/dist` at the root URL.
