@@ -1,4 +1,3 @@
-import argparse
 import pytest
 
 pytest.importorskip("fastapi_limiter")
@@ -26,10 +25,10 @@ def test_list_plugins(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_install_plugin(monkeypatch: pytest.MonkeyPatch) -> None:
     called = []
 
-    def fake_install(args: argparse.Namespace) -> None:
-        called.append(args.name)
+    def fake_install(name: str) -> None:
+        called.append(name)
 
-    monkeypatch.setattr(plugin_cli, "_handle_install", fake_install)
+    monkeypatch.setattr(plugin_cli, "download_plugin", fake_install)
     plugins.PLUGIN_CATALOG["demo"] = {}
     r = client.post("/plugins/install", headers=AUTH_HEADERS, json={"name": "demo"})
     assert r.status_code == 200
