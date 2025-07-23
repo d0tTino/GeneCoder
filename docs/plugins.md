@@ -30,6 +30,23 @@ def register(register_codec):
     register_codec("mycodec", MyCodec)
 ```
 
+## Package Structure
+
+A plugin is a standard Python package. At a minimum it contains a
+`pyproject.toml` declaring the entry point and a module with a
+`register()` function. The directory layout for a project named
+`mycodec` could look like this:
+
+```text
+mycodec/
+├── pyproject.toml
+└── mycodec/
+    └── __init__.py
+```
+
+The `__init__.py` file defines the codec class and the `register`
+function shown above.
+
 To add a custom [FEC](glossary.md#forward-error-correction-fec) implementation you would use the `genecoder.fec` group and
 call the provided `register_fec` callback:
 
@@ -79,6 +96,13 @@ with custom extensions locally.
 Run `scripts/scaffold_plugin.sh <name>` to create a new plugin project. The
 generated template registers an entry point and includes a README with
 instructions on signing the distribution.
+
+## Signing Plugins
+
+Third-party plugins distributed through the upcoming marketplace must be
+signed. The helper scripts in `plugins-examples/signing/` show how to
+generate an RSA key pair and attach the signature to your wheel. Publish
+the `public.pem` key alongside the wheel so users can verify it.
 
 ## Developing a Plugin Step by Step
 
