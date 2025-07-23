@@ -9,54 +9,11 @@ import subprocess
 import tempfile
 import urllib.request
 from urllib.parse import urlparse
-import importlib
 from pathlib import Path
+import importlib
 
+import yaml
 
-_yaml: Any
-try:  # pragma: no cover - import is trivial
-    _yaml = importlib.import_module("yaml")
-except Exception:  # pragma: no cover - optional dependency
-    def _simple_safe_load(data: str | bytes) -> dict[str, Any]:
-        text = data.decode() if isinstance(data, (bytes, bytearray)) else str(data)
-        result: dict[str, Any] = {}
-        current_list: list[dict[str, Any]] | None = None
-        current_item: dict[str, Any] | None = None
-
-        for raw in text.splitlines():
-            line = raw.rstrip()
-            if not line:
-                continue
-            if not line.startswith(" "):
-                key, _, val = line.partition(":")
-                key = key.strip()
-                val = val.strip().strip("'\"")
-                current_item = None
-                if not val:
-                    current_list = []
-                    result[key] = current_list
-                else:
-                    result[key] = val
-                continue
-            if line.lstrip().startswith("- "):
-                current_item = {}
-                if current_list is not None:
-                    current_list.append(current_item)
-                line = line.lstrip()[2:]
-                if line:
-                    k, _, v = line.partition(":")
-                    current_item[k.strip()] = v.strip().strip("'\"")
-                continue
-            if current_item is not None:
-                k, _, v = line.lstrip().partition(":")
-                current_item[k.strip()] = v.strip().strip("'\"")
-
-        return result
-
-    _yaml = ModuleType("yaml")
-    _yaml.safe_load = _simple_safe_load
-
-yaml: Any | None = _yaml
 
 from importlib.metadata import entry_points, EntryPoints
 import logging
@@ -130,14 +87,6 @@ def register_simulator(name: str, channel: Simulator) -> None:
 
 def _install_registry_plugins(url: str) -> None:
     """Install plugin packages listed in a YAML registry at ``url``."""
-
-    if yaml is None:  # pragma: no cover - optional dependency missing
-        logger.warning(
-            "YAML support unavailable, skipping plugin registry %s. "
-            "Install PyYAML to enable plugin catalogs.",
-            url,
-        )
-        return
 
     key_path = os.getenv("GENECODER_PLUGIN_PUBLIC_KEY")
     pubkey: bytes | None = None
