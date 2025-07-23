@@ -80,9 +80,10 @@ Contributors can alternatively open the repository in the provided
 
 ## Running Tests
 
-Run the tests inside the Poetry environment:
+Install the development dependencies before running the tests:
 
 ```bash
+poetry install --with dev --no-interaction
 poetry run pytest -q
 ```
 
