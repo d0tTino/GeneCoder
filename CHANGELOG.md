@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
   if it still violates GC content or homopolymer limits.
 - Added ``--d2sim-options`` and ``GENECODER_D2SIM_OPTIONS`` to customize ``d2sim`` calls.
 - Refactored ``BaseSimulator`` for shared simulator settings.
+- Added ``BaseChannel`` with common error parameters for simulators.
 - Plugin registry now verifies package checksums before installation.
 
 ## [0.1.0] - 2025-06-12

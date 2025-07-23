@@ -13,13 +13,14 @@ def register_simulator(name: str, channel: Simulator) -> None:
     """Register ``channel`` under ``name``."""
     SIMULATOR_REGISTRY[name] = channel
 
-from .base import BaseSimulator
+from .base import BaseChannel, BaseSimulator
 from .illumina import IlluminaChannel
 from .nanopore import NanoporeChannel
 
 __all__ = [
     "SIMULATOR_REGISTRY",
     "register_simulator",
+    "BaseChannel",
     "BaseSimulator",
     "IlluminaChannel",
     "NanoporeChannel",
