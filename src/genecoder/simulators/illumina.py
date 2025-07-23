@@ -10,9 +10,10 @@ from ..random_utils import make_rng
 from ..api import Simulator
 from ..error_simulation import _random_substitution, NUCLEOTIDES
 from ..nanopore_sim import simulate_d2sim
+from ..insilicoseq_adapter import simulate_insilicoseq
 from . import register_simulator as _register_simulator
 
-__all__ = ["IlluminaChannel", "IlluminaD2SimChannel", "register"]
+__all__ = ["IlluminaChannel", "IlluminaD2SimChannel", "IlluminaInSilicoSeqChannel", "register"]
 
 
 class IlluminaChannel(BaseSimulator):
@@ -103,8 +104,19 @@ class IlluminaD2SimChannel(Simulator):
         return simulate_d2sim(sequence, error_rate=self.error_rate, rng=make_rng())
 
 
+class IlluminaInSilicoSeqChannel(Simulator):
+    """Wrapper using the external ``InSilicoSeq`` simulator."""
+
+    def __init__(self, error_rate: float = 0.05) -> None:
+        self.error_rate = error_rate
+
+    def simulate(self, sequence: str) -> str:
+        return simulate_insilicoseq(sequence, error_rate=self.error_rate, rng=make_rng())
+
+
 def register(
     registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
     registrar("illumina", IlluminaChannel())
     registrar("illumina_d2sim", IlluminaD2SimChannel())
+    registrar("illumina_insilicoseq", IlluminaInSilicoSeqChannel())

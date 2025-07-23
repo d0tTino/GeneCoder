@@ -90,7 +90,7 @@ def test_cli_decode_duplicate_output_names(tmp_path: Path) -> None:
     assert out2.read_bytes() == b"two"
 
 
-@pytest.mark.parametrize("sim_name", ["d2sim", "dnarsim", "squigulator"])
+@pytest.mark.parametrize("sim_name", ["d2sim", "dnarsim", "squigulator", "desp"])
 def test_cli_decode_missing_simulator(tmp_path: Path, sim_name: str) -> None:
     env = os.environ.copy()
     src_path = Path(__file__).resolve().parent.parent / "src"
@@ -142,7 +142,7 @@ def test_cli_decode_missing_simulator(tmp_path: Path, sim_name: str) -> None:
     assert out_file.read_text().startswith("missing")
 
 
-@pytest.mark.parametrize("sim_name", ["d2sim", "dnarsim", "squigulator"])
+@pytest.mark.parametrize("sim_name", ["d2sim", "dnarsim", "squigulator", "desp"])
 def test_cli_decode_simulator_failure(tmp_path: Path, sim_name: str) -> None:
     env = os.environ.copy()
     src_path = Path(__file__).resolve().parent.parent / "src"

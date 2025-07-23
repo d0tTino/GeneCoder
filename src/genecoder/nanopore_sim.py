@@ -16,6 +16,8 @@ __all__ = [
     "simulate_d2sim",
     "simulate_dnarsim",
     "simulate_squigulator",
+    "simulate_desp",
+    "simulate_insilicoseq",
     "simulate_reads",
     "Channel",
 ]
@@ -113,7 +115,7 @@ def _simulate_adapter(
     if shutil.which(command):
         try:
             cmd_list = [command]
-            if command in {"d2sim", "dnarsim", "squigulator"}:
+            if command in {"d2sim", "dnarsim", "squigulator", "desp", "insilicoseq"}:
                 cmd_list += ["-e", str(error_rate)]
             if extra_args:
                 cmd_list += list(extra_args)
@@ -194,6 +196,28 @@ def simulate_squigulator(
     return _simulate_adapter("squigulator", sequence, error_rate, rng)
 
 
+def simulate_desp(
+    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
+) -> str:
+    """Use ``desp`` if available, else fall back to :func:`simulate_errors`."""
+
+    if rng is None:
+        rng = make_rng()
+
+    return _simulate_adapter("desp", sequence, error_rate, rng)
+
+
+def simulate_insilicoseq(
+    sequence: str, error_rate: float = 0.05, rng: random.Random | None = None
+) -> str:
+    """Use ``insilicoseq`` if available, else fall back to :func:`simulate_errors`."""
+
+    if rng is None:
+        rng = make_rng()
+
+    return _simulate_adapter("insilicoseq", sequence, error_rate, rng)
+
+
 def simulate_none(
     sequence: str,
     error_rate: float = 0.0,
@@ -213,6 +237,8 @@ SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random | None], str]]
     "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,
     "squigulator": simulate_squigulator,
+    "desp": simulate_desp,
+    "insilicoseq": simulate_insilicoseq,
     # backward compatibility names
     "nanopore": simulate_d2sim,
     "none": simulate_none,

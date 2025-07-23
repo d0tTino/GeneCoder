@@ -379,6 +379,16 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         help="Extra command line options forwarded to dnarsim.",
     )
     parser.add_argument(
+        "--desp-options",
+        type=str,
+        help="Extra command line options forwarded to desp.",
+    )
+    parser.add_argument(
+        "--insilicoseq-options",
+        type=str,
+        help="Extra command line options forwarded to insilicoseq.",
+    )
+    parser.add_argument(
         "--squigulator-options",
         type=str,
         help="Extra command line options forwarded to squigulator.",
@@ -394,6 +404,10 @@ def decode_files(args: argparse.Namespace) -> None:
         os.environ["GENECODER_D2SIM_OPTIONS"] = args.d2sim_options
     if getattr(args, "dnarsim_options", None):
         os.environ["GENECODER_DNARSIM_OPTIONS"] = args.dnarsim_options
+    if getattr(args, "desp_options", None):
+        os.environ["GENECODER_DESP_OPTIONS"] = args.desp_options
+    if getattr(args, "insilicoseq_options", None):
+        os.environ["GENECODER_INSILICOSEQ_OPTIONS"] = args.insilicoseq_options
     if getattr(args, "squigulator_options", None):
         os.environ["GENECODER_SQUIGULATOR_OPTIONS"] = args.squigulator_options
 

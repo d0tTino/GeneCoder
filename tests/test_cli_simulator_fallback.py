@@ -4,7 +4,7 @@ import pytest
 from tests.test_cli import run_cli_command
 
 
-@pytest.mark.parametrize("sim_name", ["d2sim", "dnarsim", "squigulator"])
+@pytest.mark.parametrize("sim_name", ["d2sim", "dnarsim", "squigulator", "desp"])
 def test_cli_simulator_fallback(tmp_path: Path, sim_name: str):
     env = os.environ.copy()
     src_path = Path(__file__).resolve().parent.parent / "src"
