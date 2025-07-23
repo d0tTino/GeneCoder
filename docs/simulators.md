@@ -4,7 +4,7 @@ GeneCoder supports both built-in error models and adapters to external nanopore 
 
 ## Built-in simulators
 
-- **simple** — random substitution errors. Use `genecoder channel --sub-prob` or
+- **simple** — random substitution errors. Use `genecli channel --sub-prob` or
   `--simulator simple`.
 - **indel** — introduces insertions and deletions in addition to substitutions.
 - **none** — disable simulation (the default).
@@ -83,35 +83,35 @@ sudo make install
 Apply simple substitutions with a chosen probability using the ``channel`` command:
 
 ```bash
-genecoder channel --input-file input.fasta --output-file corrupted.fasta \
+genecli channel --input-file input.fasta --output-file corrupted.fasta \
     --sub-prob 0.02
-genecoder decode corrupted.fasta --output-file decoded.bin <other options>
+genecli decode corrupted.fasta --output-file decoded.bin <other options>
 ```
 
 Invoke a sequencing simulator before decoding:
 
 ```bash
-genecoder decode --simulator illumina <other options>
-genecoder decode --simulator nanopore <other options>
+genecli decode --simulator illumina <other options>
+genecli decode --simulator nanopore <other options>
 ```
 
 Invoke an external simulator before decoding:
 
 ```bash
-genecoder decode --simulator d2sim <other options>
+genecli decode --simulator d2sim <other options>
 ```
 
 Provide additional parameters to ``d2sim`` using ``--d2sim-options``:
 
 ```bash
-genecoder decode --simulator d2sim --d2sim-options "--seed 42" <other options>
+genecli decode --simulator d2sim --d2sim-options "--seed 42" <other options>
 ```
 
 Provide extra flags to ``dnarsim`` or ``squigulator`` in the same way:
 
 ```bash
-genecoder decode --simulator dnarsim --dnarsim-options "<opts>" <other options>
-genecoder decode --simulator squigulator --squigulator-options "<opts>" <other options>
+genecli decode --simulator dnarsim --dnarsim-options "<opts>" <other options>
+genecli decode --simulator squigulator --squigulator-options "<opts>" <other options>
 ```
 
 Use `GENECODER_SIM_SEED=<seed>` to make runs reproducible.

@@ -127,7 +127,7 @@ pre-commit install
 Verify the installation with a quick smoke test:
 
 ```powershell
-genecoder --version
+genecli --version
 poetry run pytest -q
 ```
 

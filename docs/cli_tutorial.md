@@ -7,16 +7,16 @@ This tutorial walks through basic command-line usage of GeneCoder.
 ```bash
 pip install genecoder[cli]
 
-genecoder encode --input-files example.txt --output-file example.fasta --method base4_direct
+genecli encode --input-files example.txt --output-file example.fasta --method base4_direct
 ```
 
 ## Decoding a file
 
 ```bash
-genecoder decode --input-files example.fasta --output-file decoded.txt --method base4_direct
+genecli decode --input-files example.fasta --output-file decoded.txt --method base4_direct
 ```
 
-See `genecoder --help` for all available options.
+See `genecli --help` for all available options.
 
 ## Running a bundle
 
@@ -33,7 +33,7 @@ decode:
 Execute the bundle:
 
 ```bash
-genecoder bundle run bundle.yaml --cache-dir runs/
+genecli bundle run bundle.yaml --cache-dir runs/
 ```
 
 Results are written to `runs/<hash>/<timestamp>/` and skipped when the same

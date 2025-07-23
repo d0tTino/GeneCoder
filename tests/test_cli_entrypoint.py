@@ -26,4 +26,4 @@ def test_genecoder_version_entrypoint(tmp_path: Path) -> None:
     env["PATH"] = str(env_dir / bindir) + os.pathsep + env.get("PATH", "")
     env["PYTHONPATH"] = str(PROJECT_ROOT / "src") + os.pathsep + env.get("PYTHONPATH", "")
 
-    subprocess.run(["genecoder", "--version"], check=True, env=env)
+    subprocess.run(["genecli", "--version"], check=True, env=env)

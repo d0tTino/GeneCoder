@@ -2,4 +2,4 @@
 
 The previous cloud submission feature has been removed.
 All workflows should now be run locally with the standard CLI commands.
-Use `genecoder bundle run` to execute bundles on your machine.
+Use `genecli bundle run` to execute bundles on your machine.

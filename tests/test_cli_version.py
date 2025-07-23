@@ -21,7 +21,7 @@ def test_cli_version(tmp_path: Path):
     subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True)
     bin_dir = "Scripts" if os.name == "nt" else "bin"
     pip_path = venv_dir / bin_dir / "pip"
-    genecoder_path = venv_dir / bin_dir / "genecoder"
+    genecli_path = venv_dir / bin_dir / "genecli"
 
     subprocess.run([str(pip_path), "install", "-U", "pip", "setuptools", "wheel"], check=True)
     subprocess.run(
@@ -45,7 +45,7 @@ def test_cli_version(tmp_path: Path):
     ], check=True)
 
     result = subprocess.run(
-        [str(genecoder_path), "--version"],
+        [str(genecli_path), "--version"],
         capture_output=True,
         text=True,
         check=True,
