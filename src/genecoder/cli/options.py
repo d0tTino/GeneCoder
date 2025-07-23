@@ -22,8 +22,6 @@ class ChannelOptions:
     parallel: bool = False
     threads: int | None = None
     processes: int | None = None
-    mpi: bool = False
-    mpi_workers: int | None = None
     batch_workers: int | None = None
     simulator_specs: list[tuple[str, dict[str, object]]] | None = None
     illumina_depth: int | None = None
@@ -145,13 +143,11 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         constraints.update(cfg_con)
         if not args.parallel and cfg_pipeline.parallel:
             args.parallel = True
-        if args.threads is None and args.processes is None and args.mpi_workers is None:
+        if args.threads is None and args.processes is None:
             if cfg_pipeline.workers is not None:
                 args.threads = cfg_pipeline.workers
         if cfg_pipeline.use_process_pool:
             args.processes = args.threads
-        if cfg_pipeline.use_mpi:
-            args.mpi = True
 
     _validate_simulator_prob_args(
         simulators, args.sub_prob, args.ins_prob, args.del_prob
@@ -164,10 +160,6 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         raise ValueError("min_length cannot be greater than max_length")
     if args.threads is not None and args.processes is not None:
         raise ValueError("Cannot specify both --threads and --processes")
-    if args.mpi and (args.threads is not None or args.processes is not None):
-        raise ValueError("Cannot combine MPI with threads or processes")
-    if args.mpi_workers is not None and not args.mpi:
-        raise ValueError("--mpi-workers requires --mpi")
     if args.batch_workers is not None and args.batch_workers <= 0:
         raise ValueError("batch_workers must be greater than 0")
 
@@ -181,8 +173,6 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         parallel=args.parallel,
         threads=args.threads,
         processes=args.processes,
-        mpi=args.mpi,
-        mpi_workers=args.mpi_workers,
         batch_workers=args.batch_workers,
         simulator_specs=sim_specs,
         illumina_depth=args.illumina_depth,

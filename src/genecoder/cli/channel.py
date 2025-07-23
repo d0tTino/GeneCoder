@@ -265,8 +265,6 @@ def register_subcommand(
         )
         target.add_argument("--threads", type=int, default=None, help="Number of worker threads")
         target.add_argument("--processes", type=int, default=None, help="Use process pool with N workers")
-        target.add_argument("--mpi", action="store_true", help="Use MPI for parallel execution")
-        target.add_argument("--mpi-workers", type=int, default=None, help="Number of MPI workers")
         target.add_argument(
             "--batch-workers",
             type=int,
@@ -292,10 +290,10 @@ def run_channel(args: argparse.Namespace) -> None:
         raise SystemExit(1)
 
     cfg = ChannelConfig(
-        parallel=opts.parallel or opts.mpi,
-        workers=opts.mpi_workers or opts.processes or opts.threads,
+        parallel=opts.parallel,
+        workers=opts.processes or opts.threads,
         use_process_pool=opts.processes is not None,
-        use_mpi=opts.mpi,
+        use_mpi=False,
         illumina_profile=None,
         nanopore_profile=None,
     )
