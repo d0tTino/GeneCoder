@@ -248,6 +248,12 @@ def register_subcommand(
         target.add_argument("--sub-prob", type=float, default=0.0, help="Substitution probability per nucleotide")
         target.add_argument("--ins-prob", type=float, default=0.0, help="Insertion probability after each nucleotide")
         target.add_argument("--del-prob", type=float, default=0.0, help="Deletion probability per nucleotide")
+        target.add_argument("--illumina-depth", type=int, default=None, help="Coverage depth for Illumina reads")
+        target.add_argument("--illumina-quality", type=str, default=None, help="Comma-separated quality profile or path to JSON")
+        target.add_argument("--illumina-context", type=str, default=None, help="Path to JSON/YAML context error map")
+        target.add_argument("--nanopore-depth", type=int, default=None, help="Coverage depth for Nanopore reads")
+        target.add_argument("--nanopore-quality", type=str, default=None, help="Comma-separated quality profile or path to JSON")
+        target.add_argument("--nanopore-context", type=str, default=None, help="Path to JSON/YAML context error map")
         target.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output")
         target.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
         target.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
@@ -296,6 +302,26 @@ def run_channel(args: argparse.Namespace) -> None:
     simulators = opts.simulator_specs
     if simulators is None:
         simulators = [(name, {}) for name in opts.simulators]
+
+    updated: list[tuple[str, dict[str, object]]] = []
+    for name, params in simulators:
+        new_params = dict(params)
+        if name.startswith("illumina"):
+            if opts.illumina_depth is not None:
+                new_params.setdefault("coverage", opts.illumina_depth)
+            if opts.illumina_quality is not None:
+                new_params.setdefault("quality_profile", opts.illumina_quality)
+            if opts.illumina_context is not None:
+                new_params.setdefault("context_errors", opts.illumina_context)
+        if name.startswith("nanopore"):
+            if opts.nanopore_depth is not None:
+                new_params.setdefault("coverage", opts.nanopore_depth)
+            if opts.nanopore_quality is not None:
+                new_params.setdefault("quality_profile", opts.nanopore_quality)
+            if opts.nanopore_context is not None:
+                new_params.setdefault("context_errors", opts.nanopore_context)
+        updated.append((name, new_params))
+    simulators = updated
 
     process_channel(
         args.input_file,

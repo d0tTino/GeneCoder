@@ -26,6 +26,53 @@ class ChannelOptions:
     mpi_workers: int | None = None
     batch_workers: int | None = None
     simulator_specs: list[tuple[str, dict[str, object]]] | None = None
+    illumina_depth: int | None = None
+    nanopore_depth: int | None = None
+    illumina_quality: Sequence[float] | None = None
+    nanopore_quality: Sequence[float] | None = None
+    illumina_context: Dict[str, float] | None = None
+    nanopore_context: Dict[str, float] | None = None
+
+
+def _parse_quality(value: str | None) -> Sequence[float] | None:
+    if value is None:
+        return None
+    from pathlib import Path
+    try:
+        path = Path(value)
+        if path.is_file():
+            import json
+            import yaml
+            text = path.read_text(encoding="utf-8")
+            try:
+                data = json.loads(text)
+            except json.JSONDecodeError:
+                data = yaml.safe_load(text)
+            if isinstance(data, Sequence):
+                return [float(x) for x in data]
+            raise ValueError("quality profile must be a list")
+    except Exception:
+        pass
+    return [float(x) for x in value.split(",") if x]
+
+
+def _parse_context(value: str | None) -> Dict[str, float] | None:
+    if value is None:
+        return None
+    from pathlib import Path
+    path = Path(value)
+    if not path.is_file():
+        raise ValueError("context file not found")
+    import json
+    import yaml
+    text = path.read_text(encoding="utf-8")
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        data = yaml.safe_load(text)
+    if not isinstance(data, dict):
+        raise ValueError("context must be a mapping")
+    return {str(k).upper(): float(v) for k, v in data.items()}
 
 
 def _validate_simulator_prob_args(
@@ -138,4 +185,10 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         mpi_workers=args.mpi_workers,
         batch_workers=args.batch_workers,
         simulator_specs=sim_specs,
+        illumina_depth=args.illumina_depth,
+        nanopore_depth=args.nanopore_depth,
+        illumina_quality=_parse_quality(args.illumina_quality),
+        nanopore_quality=_parse_quality(args.nanopore_quality),
+        illumina_context=_parse_context(args.illumina_context),
+        nanopore_context=_parse_context(args.nanopore_context),
     )
