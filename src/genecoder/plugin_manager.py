@@ -12,7 +12,10 @@ from urllib.parse import urlparse
 from pathlib import Path
 import importlib
 
-import yaml
+try:  # optional dependency
+    import yaml
+except Exception:  # pragma: no cover - optional
+    yaml = None
 
 
 from importlib.metadata import entry_points, EntryPoints

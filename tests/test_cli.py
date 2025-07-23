@@ -46,6 +46,7 @@ def run_cli_command(command_args: list[str], env=None) -> _Result:
     saved_env = os.environ.copy()
     saved_path = sys.path[:]
     os.environ.update(env)
+    os.environ.setdefault("GENECODER_DISABLE_FIX", "1")
 
     import importlib as _importlib
     import genecoder.plugin_manager as _pm

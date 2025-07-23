@@ -1,7 +1,12 @@
 import json
 from pathlib import Path
 
-from streamlit.testing.v1 import AppTest
+import pytest
+
+try:  # pragma: no cover - skip if streamlit fails to import
+    from streamlit.testing.v1 import AppTest
+except Exception:
+    pytest.skip("streamlit unavailable", allow_module_level=True)
 
 
 def test_dashboard_main_renders(tmp_path: Path) -> None:

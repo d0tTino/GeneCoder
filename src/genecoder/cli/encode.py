@@ -301,12 +301,13 @@ def process_single_encode(
             data_for_encoding, options, header_name
         )
 
-        final_encoded_dna_sequence = fix_sequence(
-            final_encoded_dna_sequence,
-            target_gc_min=args.gc_min,
-            target_gc_max=args.gc_max,
-            max_homopolymer=args.max_homopolymer,
-        )
+        if os.getenv("GENECODER_DISABLE_FIX") not in {"1", "true", "True"}:
+            final_encoded_dna_sequence = fix_sequence(
+                final_encoded_dna_sequence,
+                target_gc_min=args.gc_min,
+                target_gc_max=args.gc_max,
+                max_homopolymer=args.max_homopolymer,
+            )
 
         if checksum:
             fasta_header = f"{fasta_header} checksum={checksum}"
