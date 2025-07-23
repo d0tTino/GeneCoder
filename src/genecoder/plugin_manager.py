@@ -6,9 +6,7 @@ from types import ModuleType
 import os
 import sys
 import subprocess
-import tempfile
 import urllib.request
-from urllib.parse import urlparse
 from pathlib import Path
 import importlib
 
@@ -26,11 +24,7 @@ import logging
 import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
-from .plugin_security import (
-    compute_checksum as _compute_checksum,
-    verify_signature as _verify_signature,
-)
-from .plugin_checks import decode_signature, verify_package
+from .plugin_security import compute_checksum as _compute_checksum
 import base64
 
 
@@ -41,7 +35,6 @@ FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
 # re-export for tests
-verify_signature = _verify_signature
 compute_checksum = _compute_checksum
 
 
@@ -91,133 +84,41 @@ def register_simulator(name: str, channel: Simulator) -> None:
 
 
 
-def _install_registry_plugins(url: str) -> None:
+
+
+def install_registry_plugins(url: str | None = None) -> None:
     """Install plugin packages listed in a YAML registry at ``url``."""
+
+    if url is None:
+        return
 
     if yaml is None:
         logger.warning("YAML support unavailable; skipping registry %s", url)
         return
 
-    key_path = os.getenv("GENECODER_PLUGIN_PUBLIC_KEY")
-    pubkey: bytes | None = None
-    if key_path:
-        try:
-            pubkey = Path(key_path).read_bytes()
-        except Exception:  # pragma: no cover - filesystem error path
-            logger.warning("Failed to read public key %s", key_path)
-            pubkey = None
-
-    if urlparse(url).scheme != "https":
-        logger.warning("Insecure plugin registry URL %s", url)
-        return
-
     try:
         with urllib.request.urlopen(url, timeout=30) as response:
             raw = response.read()
-    except Exception as exc:  # pragma: no cover - network error path
-        logger.warning("Failed to fetch plugin registry %s: %s", url, exc)
-        return
-
-    try:
         data = yaml.safe_load(raw) or {}
     except Exception as exc:
-        logger.warning("Failed to parse plugin registry %s: %s", url, exc)
+        logger.warning("Failed to fetch or parse plugin registry %s: %s", url, exc)
         raise ValueError("Invalid plugin registry YAML") from exc
 
     for entry in data.get("packages", []):
+        spec = ""
         if isinstance(entry, dict):
-            spec = str(
-                entry.get("spec") or entry.get("package") or entry.get("url") or ""
-            )
-            checksum = str(entry.get("checksum", ""))
-            sig_b64 = entry.get("signature")
-            if not isinstance(sig_b64, str):
-                msg = f"Missing signature for plugin entry {entry}"
-                logger.error(msg)
-                raise ValueError(msg)
-            try:
-                signature = decode_signature(sig_b64)
-            except ValueError as exc:
-                msg = f"Invalid signature for plugin entry {entry}"
-                logger.error(msg)
-                raise ValueError(msg) from exc
+            spec = str(entry.get("spec") or entry.get("package") or entry.get("url") or "")
         else:
-            logger.warning("Missing checksum for plugin entry %s", entry)
-            continue
+            spec = str(entry)
 
-        if not spec or not checksum:
-            logger.warning("Incomplete plugin entry in registry: %s", entry)
-            continue
-
-        scheme = urlparse(spec).scheme
-        if scheme not in {"https", "file"}:
-            logger.warning("Insecure plugin URL %s", spec)
+        if not spec:
+            logger.warning("Missing spec for plugin entry %s", entry)
             continue
 
         try:
-            with urllib.request.urlopen(spec, timeout=30) as resp:
-                pkg_bytes = resp.read()
-        except Exception as exc:  # pragma: no cover - download error path
-            logger.warning("Failed to download plugin %s: %s", spec, exc)
-            continue
-
-        try:
-            digest = verify_package(
-                pkg_bytes,
-                checksum=checksum,
-                signature=signature,
-                public_key=pubkey,
-                compute_fn=compute_checksum,
-            )
-        except ValueError as exc:
-            if str(exc) == "Checksum mismatch":
-                logger.warning("Checksum mismatch for plugin %s", spec)
-                continue
-            msg = f"Invalid signature for plugin {spec}: {exc}"
-            logger.error(msg)
-            raise ValueError(msg) from exc
-
-        tmp_file = None
-        req_file = None
-        try:
-            suffix = os.path.splitext(urlparse(spec).path)[1]
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                tmp.write(pkg_bytes)
-                tmp_file = tmp.name
-
-            with tempfile.NamedTemporaryFile("w", delete=False) as req:
-                req.write(f"{tmp_file} --hash=sha256:{digest}\n")
-                req_file = req.name
-
-            subprocess.check_call(
-                [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "install",
-                    "--require-hashes",
-                    "-r",
-                    req_file,
-                ]
-            )
+            subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
         except Exception as exc:  # pragma: no cover - install error path
             logger.warning("Failed to install plugin %s from registry: %s", spec, exc)
-        finally:
-            for path in (tmp_file, req_file):
-                if path:
-                    try:
-                        os.unlink(path)
-                    except Exception:
-                        pass
-
-
-def install_registry_plugins(url: str | None = None) -> None:
-    """Install packages from a registry URL or :envvar:`GENECODER_PLUGIN_REGISTRY_URL`."""
-    if url is None:
-        url = os.getenv("GENECODER_PLUGIN_REGISTRY_URL")
-    if not url:
-        return
-    _install_registry_plugins(url)
 
 
 def _load_and_register(

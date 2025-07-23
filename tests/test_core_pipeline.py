@@ -6,7 +6,7 @@ import pytest
 
 from genecoder.core import run_pipeline
 from genecoder.api import Codec
-from genecoder.plugin_manager import CODEC_REGISTRY, register_codec, init_plugins
+from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.reed_solomon_codec import _HAS_REEDSOLO
 

@@ -17,9 +17,8 @@ def test_install_registry_plugins_malformed_yaml(monkeypatch: pytest.MonkeyPatch
         assert url == "https://example.com/plugins.yaml"
         return DummyResponse(b"not: [yaml")
 
-    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
 
     with pytest.raises(ValueError, match="Invalid plugin registry YAML"):
-        plugins.install_registry_plugins()
+        plugins.install_registry_plugins("https://example.com/plugins.yaml")
