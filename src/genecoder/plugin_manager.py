@@ -103,10 +103,16 @@ def _install_registry_plugins(url: str) -> None:
 
     try:
         with urllib.request.urlopen(url, timeout=30) as response:
-            data = yaml.safe_load(response.read()) or {}
+            raw = response.read()
     except Exception as exc:  # pragma: no cover - network error path
         logger.warning("Failed to fetch plugin registry %s: %s", url, exc)
         return
+
+    try:
+        data = yaml.safe_load(raw) or {}
+    except Exception as exc:
+        logger.warning("Failed to parse plugin registry %s: %s", url, exc)
+        raise ValueError("Invalid plugin registry YAML") from exc
 
     for entry in data.get("packages", []):
         if isinstance(entry, dict):

@@ -142,10 +142,10 @@ def test_registry_bad_yaml(monkeypatch, caplog):
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.WARNING), pytest.raises(ValueError):
         plugins.install_registry_plugins()
 
-    assert "Failed to fetch plugin registry" in caplog.text
+    assert "Failed to parse plugin registry" in caplog.text
 
 
 def test_registry_checksum_mismatch(monkeypatch, caplog):
