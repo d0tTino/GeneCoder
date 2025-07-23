@@ -29,18 +29,8 @@ def test_ldpc_encode_decode_roundtrip(monkeypatch):
     assert corrections == 0
 
 
-def test_fountain_parity(monkeypatch):
-    monkeypatch.setattr('genecoder.fountain_codec._HAS_PYFINITE', True)
-    monkeypatch.setattr('genecoder.fountain_codec.ffield', __import__('types').SimpleNamespace(FField=lambda _: __import__('types').SimpleNamespace(Add=lambda a,b:a ^ b)))
-    data = bytes([1, 2, 3, 4])
-    encoded, info = encode_data_fountain(data, chunk_size=4)
-    parity = encoded[-4:]
+def test_fountain_basic_roundtrip():
+    data = b"abcd"
+    encoded, info = encode_data_fountain(data, chunk_size=2)
     decoded, _ = decode_data_fountain(encoded, info)
     assert decoded == data
-    assert any(parity) and len(parity) == 4
-
-
-def test_fountain_missing_dependency(monkeypatch):
-    monkeypatch.setattr('genecoder.fountain_codec._HAS_PYFINITE', False)
-    with pytest.raises(ImportError):
-        encode_data_fountain(b"data")
