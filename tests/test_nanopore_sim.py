@@ -76,6 +76,22 @@ def test_parse_options_unsafe(monkeypatch, command):
         nanopore_sim._parse_env_options(command)
 
 
+@pytest.mark.parametrize("command", ["d2sim", "dnarsim", "squigulator"])
+def test_parse_options_bad_characters(monkeypatch, command):
+    env_var = f"GENECODER_{command.upper()}_OPTIONS"
+    monkeypatch.setenv(env_var, "--foo $(rm -rf /)")
+    with pytest.raises(ValueError):
+        nanopore_sim._parse_env_options(command)
+
+
+@pytest.mark.parametrize("command", ["d2sim", "dnarsim", "squigulator"])
+def test_parse_options_invalid_flag(monkeypatch, command):
+    env_var = f"GENECODER_{command.upper()}_OPTIONS"
+    monkeypatch.setenv(env_var, "---badflag")
+    with pytest.raises(ValueError):
+        nanopore_sim._parse_env_options(command)
+
+
 @pytest.mark.parametrize("name", ADAPTERS.keys())
 def test_adapters_invalid_env_options(monkeypatch, name):
     func, cmd = ADAPTERS[name]
