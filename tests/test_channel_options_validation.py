@@ -25,6 +25,12 @@ def _make_args(**kwargs: object) -> argparse.Namespace:
         min_length=1,
         max_length=300,
         max_homopolymer=4,
+        illumina_depth=None,
+        nanopore_depth=None,
+        illumina_quality=None,
+        nanopore_quality=None,
+        illumina_context=None,
+        nanopore_context=None,
     )
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
