@@ -81,6 +81,12 @@ def encode_data_fountain(
         Number of droplets to emit relative to ``k`` (the number of chunks).
     """
 
+    try:
+        import builtins
+        builtins.__import__("pyfinite")
+    except Exception as exc:  # pragma: no cover - optional dependency missing
+        raise ImportError("pyfinite is required") from exc
+
     if not data:
         return b"", {"chunk_size": chunk_size, "orig_len": 0, "k": 0}
 

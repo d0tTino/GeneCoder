@@ -1,4 +1,3 @@
-import os
 from genecoder import insilicoseq_adapter, desp_adapter
 
 
