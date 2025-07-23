@@ -26,7 +26,7 @@ except Exception:  # pragma: no cover - fallback for tests
             if self.fh:
                 self.fh.close()
 
-    portalocker = types.SimpleNamespace(Lock=_NoLock)
+    portalocker = cast(Any, types.SimpleNamespace(Lock=_NoLock))
 
 __all__ = [
     "Metrics",

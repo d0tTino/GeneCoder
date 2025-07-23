@@ -361,11 +361,16 @@ def process_single_encode(
             else 0.0
         )
 
+        final_gc = calculate_gc_content(final_encoded_dna_sequence)
+        final_hp = get_max_homopolymer_length(final_encoded_dna_sequence)
+
         metrics = {
             "original_size": original_size_bytes,
             "dna_length": final_encoded_length_nucleotides,
             "compression_ratio": compression_ratio,
             "bits_per_nt": bits_per_nucleotide,
+            "final_gc": final_gc,
+            "final_max_homopolymer": final_hp,
         }
 
         logger.info(f"\n--- Encoding Metrics for {input_file_path} ---")
@@ -383,6 +388,22 @@ def process_single_encode(
         logger.info(
             f"Bits per nucleotide: {bits_per_nucleotide:.2f} bits/nt (based on original data and final DNA length)"
         )
+
+        logger.info(f"Final GC content: {final_gc:.2%}")
+        logger.info(f"Final max homopolymer length: {final_hp}")
+        if not (args.gc_min <= final_gc <= args.gc_max):
+            logger.warning(
+                "Final GC content %.2f%% outside requested range [%.2f%%, %.2f%%]",
+                final_gc * 100,
+                args.gc_min * 100,
+                args.gc_max * 100,
+            )
+        if final_hp > args.max_homopolymer:
+            logger.warning(
+                "Final max homopolymer length %d exceeds limit %d",
+                final_hp,
+                args.max_homopolymer,
+            )
 
         if args.method == "gc_balanced":
             gc_balanced_payload_dna = (
