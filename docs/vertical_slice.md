@@ -67,7 +67,7 @@ Ensure the command line interface is available and the test suite passes. On
 Windows this is run from PowerShell just like on Linux:
 
 ```bash
-genecoder --version
+genecli --version
 poetry run pytest -q
 ```
 
@@ -77,7 +77,7 @@ An example configuration file at `configs/vertical_slice_demo.yaml` demonstrates
 using a simulator and Hamming FEC. Run the bundle with:
 
 ```bash
-genecoder bundle run configs/vertical_slice_demo.yaml --cache-dir runs
+genecli bundle run configs/vertical_slice_demo.yaml --cache-dir runs
 ```
 
 The `scripts/vertical_slice.sh` helper executes the same command automatically
@@ -90,7 +90,7 @@ constraints is provided at `configs/channel_demo.yaml`.
 Apply the channel step using:
 
 ```bash
-genecoder channel run configs/channel_demo.yaml
+genecli channel run configs/channel_demo.yaml
 ```
 
 ## Launch the GUI
@@ -125,15 +125,15 @@ manifest before processing resumes:
 
 ```bash
 # initial encode
-genecoder encode --input-files big.bin --output-file big.fasta \
+genecli encode --input-files big.bin --output-file big.fasta \
   --stream --chunk-size 1048576
 
 # resume if interrupted
-genecoder encode --input-files big.bin --output-file big.fasta \
+genecli encode --input-files big.bin --output-file big.fasta \
   --stream --chunk-size 1048576 --resume
 
 # decoding with resume support
-genecoder decode --input-files big.fasta --output-file big.bin \
+genecli decode --input-files big.fasta --output-file big.bin \
   --stream --chunk-size 1048576 --resume
 ```
 
@@ -141,7 +141,7 @@ Using `--mirror` on the `encode` command automatically launches the helix
 viewer displaying the sequence and its reverse complement:
 
 ```bash
-genecoder encode --input-files hello.txt --output-file hello.fasta --mirror
+genecli encode --input-files hello.txt --output-file hello.fasta --mirror
 ```
 
 This document condenses the key steps from the installation and usage guides into a quick demo.

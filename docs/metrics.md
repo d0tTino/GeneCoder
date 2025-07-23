@@ -15,13 +15,13 @@ metrics file location.
 GeneCoder's north-star goal is to accelerate DNA storage research by enabling more oligos to be simulated each week. The `oligos_per_week` metric aggregates `oligos_simulated_ts` into ISO weeks, providing a clear view of weekly usage trends.
 
 
-Display these values with `genecoder stats` or via the `/metrics` web API.
+Display these values with `genecli stats` or via the `/metrics` web API.
 Weekly counts appear under `oligos_per_week`.
 
 Example CLI output:
 
 ```bash
-$ genecoder stats
+$ genecli stats
 encode_runs: 3
 bundle_runs: 1
 oligos_simulated: 5

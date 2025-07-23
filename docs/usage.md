@@ -9,15 +9,15 @@ For a hands-on introduction check the Jupyter notebooks in the [notebooks/](../n
 GeneCoder operations are performed with the `genecoder` CLI:
 
 ```bash
-genecoder <command> --input-files <path1> [<path2> ...] \
+genecli <command> --input-files <path1> [<path2> ...] \
     [--output-file <path>] [--output-dir <dir>] \
     --method <method_name> [--fec <fec_method>] [options]
 ```
 
-Run `genecoder --help` to see all available commands:
+Run `genecli --help` to see all available commands:
 
 ```bash
-genecoder --help
+genecli --help
 ```
 
 Example output:
@@ -25,8 +25,8 @@ Example output:
 A quick sanity check is to run the command and ensure the usage header appears.
 
 ```bash
-$ genecoder --help | head -n 5
-Usage: genecoder [-h] [--version] {encode,decode,analyze,channel} ...
+$ genecli --help | head -n 5
+Usage: genecli [-h] [--version] {encode,decode,analyze,channel} ...
 GeneCoder: Encode and decode data into simulated DNA sequences.
 ...
 ```
@@ -50,21 +50,21 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 1. **Encode using Base-4 Direct Mapping**
 
    ```bash
-   genecoder encode --input-files path/to/your_document.txt \
+   genecli encode --input-files path/to/your_document.txt \
        --output-file encoded_base4.fasta --method base4_direct
    ```
 
 2. **Decode using Base-4 Direct Mapping**
 
    ```bash
-   genecoder decode --input-files path/to/encoded_base4.fasta \
+   genecli decode --input-files path/to/encoded_base4.fasta \
        --output-file decoded_document.txt --method base4_direct
    ```
 
 3. **Encode with Huffman, parity and Triple-Repeat FEC**
 
    ```bash
-   genecoder encode --input-files path/to/my_data.bin \
+   genecli encode --input-files path/to/my_data.bin \
        --output-dir encoded_output/ --method huffman \
        --add-parity --fec triple_repeat
    ```
@@ -72,7 +72,7 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 4. **Encode using the base6 alphabet**
 
    ```bash
-   genecoder encode --input-files data.bin \
+   genecli encode --input-files data.bin \
        --output-file encoded_base6.fasta --alphabet base6
    ```
 
@@ -83,21 +83,21 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 5. **Encode with Base-4 Direct and Hamming(7,4) FEC**
 
    ```bash
-   genecoder encode --input-files path/to/important_data.txt \
+   genecli encode --input-files path/to/important_data.txt \
        --output-dir encoded_hamming/ --method base4_direct --fec hamming_7_4
    ```
 
 6. **Decode a Hamming(7,4) encoded file**
 
    ```bash
-   genecoder decode --input-files encoded_hamming/important_data.txt.fasta \
+   genecli decode --input-files encoded_hamming/important_data.txt.fasta \
        --output-file decoded_important_data.txt --method base4_direct
    ```
 
 7. **Batch encode multiple files using GC-Balanced**
 
    ```bash
-   genecoder encode --input-files file1.txt notes.md image.png \
+   genecli encode --input-files file1.txt notes.md image.png \
        --output-dir gc_encoded_batch/ --method gc_balanced \
        --gc-min 0.40 --gc-max 0.60 --max-homopolymer 4
    ```
@@ -105,16 +105,16 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 8. **Batch decode multiple FASTA files**
 
    ```bash
-   genecoder decode --input-files gc_encoded_batch/*.fasta \
+   genecli decode --input-files gc_encoded_batch/*.fasta \
        --output-dir decoded_batch/ --method gc_balanced
    ```
 
 9. **Stream encode and decode a large file**
 
    ```bash
-   genecoder encode --input-files big.bin --output-file big.fasta \
+   genecli encode --input-files big.bin --output-file big.fasta \
        --stream --method base4_direct
-   genecoder decode --input-files big.fasta --output-file big_decoded.bin \
+   genecli decode --input-files big.fasta --output-file big_decoded.bin \
        --stream --method base4_direct
    ```
 
@@ -124,9 +124,9 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 10. **Introduce channel errors before decoding**
 
    ```bash
-   genecoder channel --input-file encoded.fasta --output-file corrupted.fasta \
+   genecli channel --input-file encoded.fasta --output-file corrupted.fasta \
        --sub-prob 0.02
-   genecoder decode corrupted.fasta --output-file decoded.bin
+   genecli decode corrupted.fasta --output-file decoded.bin
    ```
 
    Set the environment variable `GENECODER_SIM_SEED` to an integer to make the
@@ -135,11 +135,11 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 11. **Encode, corrupt and decode a file with automatic extensions**
 
    ```bash
-   genecoder encode --input-files hello.jpg --output-dir encoded \
+   genecli encode --input-files hello.jpg --output-dir encoded \
        --method base4_direct --auto-ext
-   genecoder channel --input-file encoded/hello.jpg.dna --output-file corrupted.dna \
+   genecli channel --input-file encoded/hello.jpg.dna --output-file corrupted.dna \
        --sub-prob 0.01
-   genecoder decode corrupted.dna --output-dir decoded --auto-ext
+   genecli decode corrupted.dna --output-dir decoded --auto-ext
    ```
 
    Verify the round-trip checksum:
@@ -172,7 +172,7 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    ``genecoder.simulators.simulate_reads``.
 
    ```bash
-   genecoder decode --input-files encoded.fasta \
+   genecli decode --input-files encoded.fasta \
        --output-file decoded.bin --simulator squigulator
    ```
 
@@ -181,7 +181,7 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    Apply multiple simulators and enforce synthesis constraints:
 
    ```bash
-   genecoder channel --input-file encoded.fasta \
+   genecli channel --input-file encoded.fasta \
        --output-file channel.fasta --simulator simple --simulator indel
    ```
 
@@ -196,7 +196,7 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    ```
 
 ```bash
-genecoder channel run config.yml
+genecli channel run config.yml
 ```
 
    The command processes each FASTA record through a pipeline of steps. Set
@@ -204,7 +204,7 @@ genecoder channel run config.yml
    parallel:
 
 ```bash
-genecoder channel run config.yml
+genecli channel run config.yml
 ```
 
 14. **AI-assisted decoding**
@@ -214,7 +214,7 @@ genecoder channel run config.yml
 
    ```bash
    poetry install --extras dnaformer --no-interaction
-   genecoder decode --input-files noisy.fasta --output-file out.bin \
+   genecli decode --input-files noisy.fasta --output-file out.bin \
        --method ai
    ```
 
@@ -222,7 +222,7 @@ genecoder channel run config.yml
 
    ```bash
    poetry install --extras deepdna --no-interaction
-   genecoder decode --input-files noisy.fasta --output-file out.bin \
+   genecli decode --input-files noisy.fasta --output-file out.bin \
        --method ai
    ```
 
@@ -263,7 +263,7 @@ Use `--capsule` to store the encoded DNA and related metadata in a single JSON f
 This option works only with one input file. Example:
 
 ```bash
-genecoder encode --input-files msg.txt \
+genecli encode --input-files msg.txt \
     --output-dir out/ --method base4_direct \
     --capsule seq.capsule
 ```
@@ -276,9 +276,9 @@ decoding.
 
 
 ```bash
-genecoder encode --input-files secret.txt \
+genecli encode --input-files secret.txt \
     --output-dir out/ --method base4_direct --encrypt --key key.bin --checksum
-genecoder decode --input-files out/secret.txt.fasta \
+genecli decode --input-files out/secret.txt.fasta \
     --output-dir decoded/ --method base4_direct --encrypt --key key.bin --checksum
 
 ```
@@ -296,7 +296,7 @@ pip install mpi4py
 A minimal invocation on a single node:
 
 ```bash
-mpiexec -n 4 genecoder channel --input-file encoded.fasta \
+mpiexec -n 4 genecli channel --input-file encoded.fasta \
     --output-file mpi_out.fasta --simulator simple \
     --mpi --mpi-workers 4
 ```
@@ -304,7 +304,7 @@ mpiexec -n 4 genecoder channel --input-file encoded.fasta \
 Typical cluster schedulers use commands like `mpirun` or `srun`:
 
 ```bash
-mpirun -n 8 genecoder channel run config.yml --mpi --mpi-workers 8
+mpirun -n 8 genecli channel run config.yml --mpi --mpi-workers 8
 ```
 
 Make sure the `mpi4py` dependency is installed on all worker nodes.
@@ -332,7 +332,7 @@ The dashboard visualizes simulation output stored in a JSON file. Install the op
 
 ```bash
 poetry install --with gui --no-interaction
-genecoder dashboard results.json
+genecli dashboard results.json
 ```
 
 The interface plots GC content distribution and homopolymer histograms, and displays decoding success metrics from the given file.
@@ -341,7 +341,7 @@ The interface plots GC content distribution and homopolymer histograms, and disp
 
 Both the CLI `analyze` command and the GUI provide simple suggestions when a
 sequence falls outside the 40-60% GC range or exceeds the default homopolymer
-limit. After running `genecoder analyze`, a log entry shows the GC content and
+limit. After running `genecli analyze`, a log entry shows the GC content and
 maximum homopolymer length of an adjusted sequence. The GUI displays a
 "Suggested fix" message beneath the encoding status when applicable.
 

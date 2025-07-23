@@ -1,9 +1,9 @@
 # Bundle Archives
 
-The `genecoder bundle run` command executes the steps defined in a YAML configuration. When the run completes, passing the `--export-archive` flag creates a gzipped tar archive containing the entire run directory. Optional `--author` and `--description` flags add metadata to the generated summary file.
+The `genecli bundle run` command executes the steps defined in a YAML configuration. When the run completes, passing the `--export-archive` flag creates a gzipped tar archive containing the entire run directory. Optional `--author` and `--description` flags add metadata to the generated summary file.
 
 ```
-genecoder bundle run workflow.yml --cache-dir runs --export-archive output.tar.gz
+genecli bundle run workflow.yml --cache-dir runs --export-archive output.tar.gz
 ```
 
 The archive has the following layout:

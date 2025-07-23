@@ -56,7 +56,7 @@ def setup_logging(level: int) -> None:
     root_logger.addHandler(stderr_handler)
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
     from . import (
         encode as _encode,
         decode as _decode,
@@ -93,6 +93,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_plugins()
 
     parser = argparse.ArgumentParser(
+        prog=prog,
         description=(
             "GeneCoder: Encode and decode data into simulated DNA sequences. "
             "For educational simulations only; see the README's Disclaimer. "
@@ -124,8 +125,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 
-def main(argv: list[str] | None = None) -> None:
-    parser = build_parser()
+def main(argv: list[str] | None = None, prog: str | None = None) -> None:
+    parser = build_parser(prog)
     args = parser.parse_args(argv)
 
     level = logging.INFO - (args.verbose * 10) + (args.quiet * 10)
