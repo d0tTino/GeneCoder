@@ -8,26 +8,37 @@ from abc import abstractmethod
 from ..api import Simulator
 
 
-__all__ = ["BaseSimulator"]
+__all__ = ["BaseChannel", "BaseSimulator"]
 
 
 @dataclass
-class BaseSimulator(Simulator):
-    """Base class for read simulators with simple error settings."""
+class BaseChannel(Simulator):
+    """Base class for sequencing channels with simple error rates."""
+
     substitution_rate: float = 0.0
     insertion_rate: float = 0.0
     deletion_rate: float = 0.0
     coverage: int = 1
+
+    def get_coverage(self, sequence: str) -> int:
+        """Hook returning desired coverage for ``sequence``."""
+        return self.coverage
+
+    @abstractmethod
+    def simulate(self, sequence: str) -> str:  # pragma: no cover - abstract
+        """Return a possibly corrupted version of ``sequence``."""
+        raise NotImplementedError
+
+
+@dataclass
+class BaseSimulator(BaseChannel):
+    """Base class for read simulators with quality/length settings."""
     read_length: int = 150
     quality_profile: Sequence[float] | None = None
 
     def __post_init__(self) -> None:
         if self.quality_profile is not None:
             self.quality_profile = tuple(self.quality_profile)
-
-    def get_coverage(self, sequence: str) -> int:
-        """Hook returning desired coverage for ``sequence``."""
-        return self.coverage
 
     def get_read_length(self, sequence: str) -> int:
         """Hook returning read length for ``sequence``."""

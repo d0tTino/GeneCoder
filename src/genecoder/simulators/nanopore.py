@@ -6,15 +6,30 @@ from typing import Callable
 from ..random_utils import make_rng
 from ..nanopore_sim import simulate_d2sim
 from ..api import Simulator
+from .base import BaseChannel
 from . import register_simulator as _register_simulator
 
 __all__ = ["NanoporeChannel", "register"]
 
 
-class NanoporeChannel(Simulator):
+class NanoporeChannel(BaseChannel):
     """Channel that delegates to :mod:`d2sim` if installed."""
 
-    def __init__(self, error_rate: float = 0.05) -> None:
+    def __init__(
+        self,
+        error_rate: float = 0.05,
+        *,
+        substitution_rate: float = 0.0,
+        insertion_rate: float = 0.0,
+        deletion_rate: float = 0.0,
+        coverage: int = 1,
+    ) -> None:
+        super().__init__(
+            substitution_rate=substitution_rate,
+            insertion_rate=insertion_rate,
+            deletion_rate=deletion_rate,
+            coverage=coverage,
+        )
         self.error_rate = error_rate
 
     def simulate(self, sequence: str) -> str:
@@ -25,3 +40,4 @@ def register(
     registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
     registrar("nanopore_d2sim", NanoporeChannel())
+
