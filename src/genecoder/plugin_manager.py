@@ -9,6 +9,7 @@ import subprocess
 import urllib.request
 from pathlib import Path
 import importlib
+import re
 
 yaml: ModuleType | None
 try:  # optional dependency
@@ -36,6 +37,19 @@ PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
 # re-export for tests
 compute_checksum = _compute_checksum
+
+_SAFE_PKG_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+_SAFE_URL_RE = re.compile(r"^(?:https?|file)://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+$")
+
+
+def _validate_spec(spec: str) -> None:
+    """Raise ``ValueError`` if *spec* is not a safe package name or URL."""
+
+    if not spec or re.search(r"[\s;&|`$<>]", spec):
+        raise ValueError("Unsafe plugin spec")
+    if _SAFE_PKG_RE.fullmatch(spec) or _SAFE_URL_RE.fullmatch(spec):
+        return
+    raise ValueError("Unsafe plugin spec")
 
 
 from .api import Codec, FEC, Simulator
@@ -123,6 +137,8 @@ def install_registry_plugins(url: str | None = None) -> None:
         if not spec:
             logger.warning("Missing spec for plugin entry %s", entry)
             continue
+
+        _validate_spec(spec)
 
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
