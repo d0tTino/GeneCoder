@@ -7,13 +7,14 @@ import os
 import sys
 import subprocess
 import urllib.request
+import tempfile
 from pathlib import Path
 import importlib
 import re
 
 yaml: ModuleType | None
 try:  # optional dependency
-    import yaml as yaml_module
+    import yaml as yaml_module  # type: ignore[import-untyped]
 except Exception:  # pragma: no cover - optional
     yaml = None
 else:
@@ -105,16 +106,19 @@ def install_registry_plugins(url: str | None = None) -> None:
     """Install plugin packages listed in a YAML registry at ``url``."""
 
     if url is None:
+        url = os.getenv("GENECODER_PLUGIN_REGISTRY_URL")
+    if not url:
         return
 
     yaml_module = yaml
     if yaml_module is None:
         try:  # lazy import for environments where PyYAML may be installed later
-            import yaml as yaml_module
+            import yaml as yaml_module_real
         except Exception:  # pragma: no cover - optional
             logger.warning("YAML support unavailable; skipping registry %s", url)
             return
         else:
+            yaml_module = yaml_module_real
             globals()["yaml"] = yaml_module
     if yaml_module is None:  # for type checkers
         logger.warning("YAML support unavailable; skipping registry %s", url)
@@ -130,8 +134,12 @@ def install_registry_plugins(url: str | None = None) -> None:
 
     for entry in data.get("packages", []):
         spec = ""
+        checksum = None
+        sig_b64: str | None = None
         if isinstance(entry, dict):
             spec = str(entry.get("spec") or entry.get("package") or entry.get("url") or "")
+            checksum = entry.get("checksum")
+            sig_b64 = entry.get("signature")
         else:
             spec = str(entry)
 
@@ -141,10 +149,61 @@ def install_registry_plugins(url: str | None = None) -> None:
 
         _validate_spec(spec)
 
+        install_target = spec
+        pkg_path = None
+        if checksum or sig_b64:
+            try:
+                with urllib.request.urlopen(spec, timeout=30) as resp:
+                    pkg_bytes = resp.read()
+            except Exception as exc:  # pragma: no cover - download error path
+                logger.warning("Failed to download plugin %s: %s", spec, exc)
+                raise
+
+            signature = None
+            public_key = None
+            if sig_b64:
+                try:
+                    signature = base64.b64decode(str(sig_b64), validate=True)
+                except Exception:
+                    logger.error("Invalid signature for plugin %s", spec)
+                    raise ValueError("Invalid signature")
+
+                key_path = os.getenv("GENECODER_PLUGIN_PUBLIC_KEY")
+                if not key_path:
+                    logger.error("Invalid signature for plugin %s", spec)
+                    raise ValueError("Invalid signature")
+                try:
+                    public_key = Path(key_path).read_bytes()
+                except Exception:
+                    logger.error("Invalid signature for plugin %s", spec)
+                    raise ValueError("Invalid signature")
+
+            try:
+                digest = compute_checksum(pkg_bytes, signature=signature, public_key=public_key)
+            except Exception:
+                logger.error("Invalid signature for plugin %s", spec)
+                raise ValueError("Invalid signature")
+
+            if checksum and digest != str(checksum):
+                logger.error("Checksum mismatch for plugin %s", spec)
+                raise ValueError("Checksum mismatch")
+
+            tmp = tempfile.NamedTemporaryFile(delete=False)
+            pkg_path = tmp.name
+            tmp.write(pkg_bytes)
+            tmp.close()
+            install_target = pkg_path
+
         try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
+            subprocess.check_call([sys.executable, "-m", "pip", "install", install_target])
         except Exception as exc:  # pragma: no cover - install error path
             logger.warning("Failed to install plugin %s from registry: %s", spec, exc)
+        finally:
+            if pkg_path is not None:
+                try:
+                    os.unlink(pkg_path)
+                except Exception:
+                    pass
 
 
 def _load_and_register(
