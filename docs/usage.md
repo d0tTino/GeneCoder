@@ -226,6 +226,24 @@ genecli channel run config.yml
        --method ai
    ```
 
+15. **Run the full pipeline from a YAML file**
+
+   Create a configuration with the codec, FEC and channel settings:
+
+   ```yaml
+   codec: base4_direct
+   fec: reed_solomon
+   channel:
+     name: simple
+     substitution_rate: 0.01
+   ```
+
+   Then execute:
+
+   ```bash
+   genecli pipeline input.bin output.bin --config pipeline.yml
+   ```
+
 ### Manifest files
 
 Each encoded file produces a companion JSON manifest capturing the encoding
