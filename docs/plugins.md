@@ -112,6 +112,38 @@ project locally, import GeneCoder or invoke the CLI to register the new plugin.
 Registered codecs and simulators appear in the respective registries once
 `genecoder.plugins.load_plugins()` runs.
 
+## Plugin Registries
+
+GeneCoder can install a set of third-party packages listed in a YAML registry.
+Set the `GENECODER_PLUGIN_REGISTRY_URL` environment variable to the registry
+file and run:
+
+```bash
+genecli plugin install-registry --allow-registry
+```
+
+The command reads the `packages` array from the YAML document and installs each
+entry with `pip`. Entries may specify a `spec`, `package` or `url` value that is
+passed directly to `pip install`. Optional `checksum` and `signature` fields can
+be included for verification. When a `checksum` is provided the downloaded
+wheel's SHA256 digest must match. A `signature` is validated using the public
+key referenced by `GENECODER_PLUGIN_PUBLIC_KEY`.
+
+Example registry:
+
+```yaml
+packages:
+  - spec: https://example.com/mycodec-1.0-py3-none-any.whl
+    checksum: "91b6d490..."
+    signature: "MEUCIQDf..."
+  - spec: myplugin==0.2.4
+```
+
+Installing plugins executes code from remote sources. Always verify checksums or
+signatures and only use registry files from trusted providers. The
+`--allow-registry` flag is required to opt in to this behaviour as a safety
+measure.
+
 
 ## Challenge Scoreboard
 
