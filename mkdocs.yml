@@ -31,6 +31,7 @@ nav:
       - Web API Tutorial: web_api_tutorial.md
       - Local Execution Only: cloud.md
       - Helix Frontend: helix_frontend.md
+      - Parallel Pipeline: parallel.md
   - Archived:
       - Full Development Vision: archived/DEVELOPMENT_VISION.md
   - Technology Stack: technology_stack.md
