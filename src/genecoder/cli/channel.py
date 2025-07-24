@@ -33,7 +33,13 @@ def _load_config(
     ChannelConfig,
     dict[str, Any],
 ]:
-    import yaml
+    try:
+        import yaml
+    except Exception:  # pragma: no cover - optional dependency
+        from genecoder.plugin_manager import yaml as yaml_module
+        if yaml_module is None:
+            raise
+        yaml = yaml_module
 
     with open(path, "r", encoding="utf-8") as f:
         try:

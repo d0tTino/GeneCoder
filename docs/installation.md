@@ -12,18 +12,21 @@ poetry install --no-interaction
 ```
 Poetry manages all dependencies. `pyproject.toml` and `poetry.lock` are the single source of truth. Use `scripts/export_requirements.sh` if you need `requirements.txt` files.
 
+GUI and web functionality are not installed by default. Add them with
+`poetry install --with gui --with web` when needed.
+
 
 
 ## Optional Extras
 
-Install the optional GUI, web API and DNAformer components with Poetry's
+GUI and web functionality are optional. Install their dependencies with Poetry's
 `--with` flag:
 
 ```bash
 poetry install --with gui,web,dnaformer --no-interaction
 ```
-The `gui` extras install Flet, Matplotlib and `flet-webview` while the `web`
-extras pull in FastAPI, Uvicorn (with the `standard` extras) and HTTPX.
+The `gui` group installs Flet, Matplotlib and `flet-webview` while the `web`
+group pulls in FastAPI, Uvicorn (with the `standard` extras) and HTTPX.
 
 ## Extras Required for the Full Test Suite
 

@@ -68,7 +68,7 @@ dependencies with:
 poetry install --no-interaction
 ```
 
-Install optional extras for the GUI or web API with:
+GUI and web features are optional. Install their dependencies with:
 
 ```bash
 poetry install --with gui,web --no-interaction
@@ -122,17 +122,6 @@ Desktop packages are available on the [releases page](https://github.com/d0tTino
 Download the `.msix` file for Windows or the `.dmg` for macOS and follow your
 platform's standard installation prompts.
 
-To run the web build locally install the optional `web` extras and start the
-FastAPI server:
-
-```bash
-poetry install --with web --no-interaction
-poetry run uvicorn web.main:app --reload
-```
-
-Set the `GENECODER_API_TOKEN` environment variable to supply the bearer token
-required by the API. If the variable is not set, a random token is generated and
-printed at startup.
 
 See [docs/installation.md](docs/installation.md) for detailed setup and testing instructions, including the [mamba-based setup](docs/installation.md#mamba-based-setup) and the [Windows Quick Start](docs/installation.md#windows-quick-start).
 - For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md).
