@@ -4,7 +4,8 @@ GeneCoder discovers additional functionality using Python entry points. Any
 package can expose entry points under `genecoder.plugins`, `genecoder.fec` or
 `genecoder.simulators` that point to modules with a `register` function. The
 function receives a callback used to add the implementation to the appropriate
-registry.
+registry. GeneCoder looks only at packages installed in your current Python
+environment when loading plugins.
 
 Example `pyproject.toml` snippet:
 
@@ -94,15 +95,8 @@ group. Install any of these packages with `pip install` to experiment
 with custom extensions locally.
 
 Run `scripts/scaffold_plugin.sh <name>` to create a new plugin project. The
-generated template registers an entry point and includes a README with
-instructions on signing the distribution.
-
-## Signing Plugins
-
-Third-party plugins distributed through the upcoming marketplace must be
-signed. The helper scripts in `plugins-examples/signing/` show how to
-generate an RSA key pair and attach the signature to your wheel. Publish
-the `public.pem` key alongside the wheel so users can verify it.
+generated template registers an entry point and includes a README explaining
+how to install the distribution locally for development.
 
 ## Developing a Plugin Step by Step
 
@@ -113,30 +107,8 @@ the `public.pem` key alongside the wheel so users can verify it.
    section of your `pyproject.toml` pointing to the module.
 5. Install the package and run `python -m genecoder.plugins` or invoke the CLI to load it.
 
-## Installing Third-Party Plugins
-
-Plugins are discovered via Python entry points, so any installed package that
-defines the appropriate entry point will be loaded automatically. Install a
-plugin from PyPI:
-
-```bash
-pip install genecoder-myplugin
-```
-
-Or from a local directory:
-
-```bash
-pip install ./path/to/my_plugin
-```
-
-After installation, import GeneCoder or invoke the CLI to load the new plugin.
-Registered codecs and simulators appear in the respective registries:
-
-```python
-import genecoder
-from genecoder.plugins import CODEC_REGISTRY
-
-genecoder.plugins.load_plugins()
-print(CODEC_REGISTRY.keys())
-```
+GeneCoder loads plugins only from installed packages. After installing your
+project locally, import GeneCoder or invoke the CLI to register the new plugin.
+Registered codecs and simulators appear in the respective registries once
+`genecoder.plugins.load_plugins()` runs.
 
