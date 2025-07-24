@@ -198,6 +198,9 @@ genecli plugin install-registry --allow-registry
 
 The `--allow-registry` flag is required to opt in to downloading and
 executing third-party code. Only use registries from trusted sources.
+Every registry entry must include either a `checksum` or a `signature`
+which is verified during installation. Set `GENECODER_PLUGIN_PUBLIC_KEY`
+to the public key path when using signatures.
 
 For details on submitting scores to the plugin challenge and viewing the
 leaderboard interface see the
