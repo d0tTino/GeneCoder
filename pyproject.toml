@@ -49,11 +49,6 @@ pyldpc = {version = ">=0.7.6,<0.7.7", optional = true}
 pyfinite = {version = ">=1.9,<2.0", optional = true}
 bchlib = {version = ">=2.1,<3.0", optional = true}
 raptorq = {version = ">=2.0,<3.0", optional = true}
-flet = {version = ">=0.28,<0.29", optional = true}
-matplotlib = {version = "*", optional = true}
-flet-webview = {version = "*", optional = true}
-fastapi = {version = ">=0.110", optional = true}
-uvicorn = { version = "*", extras = ["standard"], optional = true }
 httpx = "<0.28"
 deepdna = {version = "*", optional = true}
 chamaeleo = {version = "*", optional = true}
@@ -121,8 +116,6 @@ bch = ["bchlib"]
 deepdna = ["deepdna", "torch"]
 chamaeleo = ["chamaeleo"]
 
-gui = ["flet", "matplotlib", "flet-webview", "streamlit"]
-web = ["fastapi", "uvicorn"]
 
 [build-system]
 requires = ["poetry-core"]

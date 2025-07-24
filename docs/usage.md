@@ -286,7 +286,7 @@ genecli decode --input-files out/secret.txt.fasta \
 
 ### Launching the Flet App
 
-Install the optional GUI extras:
+Install the GUI dependencies with the optional `gui` group:
 
 ```bash
 poetry install --with gui --no-interaction
@@ -302,7 +302,7 @@ The GUI exposes encoding options, error correction choices and displays metrics 
 
 ### Launching the Streamlit Dashboard
 
-The dashboard visualizes simulation output stored in a JSON file. Install the optional GUI extras and run:
+The dashboard visualizes simulation output stored in a JSON file. Install the `gui` group and run:
 
 ```bash
 poetry install --with gui --no-interaction

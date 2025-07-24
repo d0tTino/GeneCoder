@@ -1,6 +1,8 @@
 import pytest
 import genecoder.plugin_manager as plugins
 
+pytest.importorskip("yaml")
+
 class DummyResponse:
     def __init__(self, data: bytes) -> None:
         self._data = data

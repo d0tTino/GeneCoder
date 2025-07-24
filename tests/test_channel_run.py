@@ -1,5 +1,8 @@
 from pathlib import Path
+import pytest
 from tests.test_cli import run_cli_command
+
+pytest.importorskip("yaml")
 
 
 def test_channel_run(tmp_path: Path) -> None:

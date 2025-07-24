@@ -92,14 +92,23 @@ def install_registry_plugins(url: str | None = None) -> None:
     if url is None:
         return
 
-    if yaml is None:
+    yaml_module = yaml
+    if yaml_module is None:
+        try:  # lazy import for environments where PyYAML may be installed later
+            import yaml as yaml_module
+        except Exception:  # pragma: no cover - optional
+            logger.warning("YAML support unavailable; skipping registry %s", url)
+            return
+        else:
+            globals()["yaml"] = yaml_module
+    if yaml_module is None:  # for type checkers
         logger.warning("YAML support unavailable; skipping registry %s", url)
         return
 
     try:
         with urllib.request.urlopen(url, timeout=30) as response:
             raw = response.read()
-        data = yaml.safe_load(raw) or {}
+        data = yaml_module.safe_load(raw) or {}
     except Exception as exc:
         logger.warning("Failed to fetch or parse plugin registry %s: %s", url, exc)
         raise ValueError("Invalid plugin registry YAML") from exc
