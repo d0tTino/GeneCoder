@@ -124,10 +124,10 @@ genecli plugin install-registry --allow-registry
 
 The command reads the `packages` array from the YAML document and installs each
 entry with `pip`. Entries may specify a `spec`, `package` or `url` value that is
-passed directly to `pip install`. Optional `checksum` and `signature` fields can
-be included for verification. When a `checksum` is provided the downloaded
-wheel's SHA256 digest must match. A `signature` is validated using the public
-key referenced by `GENECODER_PLUGIN_PUBLIC_KEY`.
+passed directly to `pip install`. **Every entry must now include either a**
+`checksum` **or a** `signature` **field**. When a `checksum` is provided the
+downloaded wheel's SHA256 digest must match. A `signature` is validated using
+the public key referenced by `GENECODER_PLUGIN_PUBLIC_KEY`.
 
 Example registry:
 
@@ -143,6 +143,13 @@ Installing plugins executes code from remote sources. Always verify checksums or
 signatures and only use registry files from trusted providers. The
 `--allow-registry` flag is required to opt in to this behaviour as a safety
 measure.
+
+Example environment setup:
+
+```bash
+export GENECODER_PLUGIN_REGISTRY_URL=https://example.com/plugins.yaml
+export GENECODER_PLUGIN_PUBLIC_KEY=/path/to/public.pem
+```
 
 
 ## Challenge Scoreboard
