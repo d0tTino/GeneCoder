@@ -112,3 +112,10 @@ project locally, import GeneCoder or invoke the CLI to register the new plugin.
 Registered codecs and simulators appear in the respective registries once
 `genecoder.plugins.load_plugins()` runs.
 
+
+## Challenge Scoreboard
+
+The GeneCoder web server exposes a small API for recording plugin challenge results. Scores can be retrieved with `GET /catalog/challenge` and new entries submitted via `POST /catalog/challenge`. Include a bearer token in the `Authorization` header when `GENECODER_API_TOKEN` is set.
+
+A React page in `web/helix-ui` displays the standings. After building the web assets open `helix-ui/scoreboard.html` (or `dist/scoreboard.html`) in a browser while the server is running to view the leaderboard.
+
