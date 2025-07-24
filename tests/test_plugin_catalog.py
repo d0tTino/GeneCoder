@@ -1,5 +1,8 @@
-import pytest
+import json
+import logging
 from pathlib import Path
+
+import pytest
 
 pytest.importorskip("fastapi_limiter")
 fastapi = pytest.importorskip("fastapi")
@@ -23,3 +26,40 @@ def test_challenge_endpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     assert isinstance(data, dict)
     assert "entries" in data
     assert isinstance(data["entries"], dict)
+
+
+def test_load_catalog_signature(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import genecoder.plugin_manager as plugins
+
+    catalog = {"plugins": {"demo": {"description": "Demo"}}, "signature": "sig"}
+    path = tmp_path / "cat.json"
+    path.write_text(json.dumps(catalog))
+
+    calls: list[tuple[bytes, str]] = []
+
+    def fake_verify(data: bytes, sig: str) -> bool:
+        calls.append((data, sig))
+        return True
+
+    monkeypatch.setattr(plugins, "_verify_catalog_signature", fake_verify)
+    plugins.PLUGIN_CATALOG.clear()
+    plugins.load_plugin_catalog(f"file://{path}")
+
+    assert calls == [(path.read_bytes(), "sig")]
+    assert "demo" in plugins.PLUGIN_CATALOG
+
+
+def test_load_catalog_bad_signature(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, tmp_path: Path) -> None:
+    import genecoder.plugin_manager as plugins
+
+    catalog = {"plugins": {"demo": {"description": "Demo"}}, "signature": "sig"}
+    path = tmp_path / "cat.json"
+    path.write_text(json.dumps(catalog))
+
+    monkeypatch.setattr(plugins, "_verify_catalog_signature", lambda d, s: False)
+    plugins.PLUGIN_CATALOG.clear()
+    with caplog.at_level(logging.WARNING):
+        plugins.load_plugin_catalog(f"file://{path}")
+
+    assert "Invalid catalog signature" in caplog.text
+    assert not plugins.PLUGIN_CATALOG

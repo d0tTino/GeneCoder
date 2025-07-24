@@ -26,6 +26,7 @@ import pkgutil
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
 from .plugin_security import compute_checksum as _compute_checksum
 import base64
+import json
 
 
 logger = logging.getLogger(__name__)
@@ -242,12 +243,69 @@ def load_local_plugins() -> list[str]:
 _initialized = False
 
 
+def load_plugin_catalog(url: str | None = None) -> None:
+    """Populate :data:`PLUGIN_CATALOG` from ``url`` or the environment."""
+
+    if url is None:
+        url = os.getenv("GENECODER_PLUGIN_CATALOG_URL")
+    if not url:
+        return
+
+    try:
+        with urllib.request.urlopen(url, timeout=30) as response:
+            raw = response.read()
+    except Exception as exc:
+        logger.warning("Failed to fetch plugin catalog %s: %s", url, exc)
+        return
+
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except Exception:
+        yaml_module = yaml
+        if yaml_module is None:
+            logger.warning("Failed to parse plugin catalog %s", url)
+            return
+        try:
+            data = yaml_module.safe_load(raw) or {}
+        except Exception as exc:
+            logger.warning("Failed to parse plugin catalog %s: %s", url, exc)
+            return
+
+    if isinstance(data, dict):
+        signature = data.get("signature")
+        if signature:
+            if not _verify_catalog_signature(raw, signature):
+                logger.warning("Invalid catalog signature for %s", url)
+                return
+        plugins_data = data.get("plugins", data.get("entries", {}))
+    else:
+        plugins_data = data
+
+    catalog: Dict[str, Dict[str, Any]] = {}
+    if isinstance(plugins_data, list):
+        for entry in plugins_data:
+            if isinstance(entry, dict) and "name" in entry:
+                meta = {k: v for k, v in entry.items() if k != "name"}
+                catalog[str(entry["name"])] = meta
+    elif isinstance(plugins_data, dict):
+        for name, meta in plugins_data.items():
+            if isinstance(meta, dict):
+                catalog[str(name)] = dict(meta)
+    else:
+        logger.warning("Invalid plugin catalog format from %s", url)
+        return
+
+    PLUGIN_CATALOG.clear()
+    PLUGIN_CATALOG.update(catalog)
+
+
 def load_plugins() -> None:
     """Load built-in, entry point and local plugins and fetch catalog entries."""
 
     load_builtin_plugins()
     failures = load_entry_point_plugins()
     failures.extend(load_local_plugins())
+    load_plugin_catalog()
     if failures:
         logger.warning("Failed to import plugins: %s", ", ".join(failures))
 
