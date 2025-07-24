@@ -200,8 +200,8 @@ The `--allow-registry` flag is required to opt in to downloading and
 executing third-party code. Only use registries from trusted sources.
 
 For details on submitting scores to the plugin challenge and viewing the
-leaderboard interface see
-[docs/plugins.md#challenge-scoreboard](docs/plugins.md#challenge-scoreboard).
+leaderboard interface see the
+[Challenge Scoreboard](docs/plugins.md#challenge-scoreboard) section.
 
 ### Web Server Environment Variables
 
