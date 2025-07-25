@@ -314,6 +314,11 @@ export GENECODER_PLUGIN_REGISTRY_URL=
 export GENECODER_PLUGIN_CATALOG_URL=
 ```
 
+Simulator profiles used by external tools are cached under
+`~/.genecoder/data` by default. Set `GENECODER_DATA_DIR` to change this
+location. Provide pre-downloaded profiles via `GENECODER_PROFILE_DIR` to
+run simulators without network access.
+
 ## Graphical User Interface (GUI)
 
 ### Launching the Flet App
