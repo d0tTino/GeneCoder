@@ -300,6 +300,20 @@ genecli decode --input-files out/secret.txt.fasta \
     --output-dir decoded/ --method base4_direct --encrypt --key key.bin --checksum
 
 ```
+
+### Offline Operation
+
+GeneCoder functions without network access. Plugins are discovered from packages
+already installed in the current Python environment. Remote registries or
+catalogs are only consulted when `GENECODER_PLUGIN_REGISTRY_URL` or
+`GENECODER_PLUGIN_CATALOG_URL` is set. For air‑gapped deployments leave these
+variables unset or set them to empty strings:
+
+```bash
+export GENECODER_PLUGIN_REGISTRY_URL=
+export GENECODER_PLUGIN_CATALOG_URL=
+```
+
 ## Graphical User Interface (GUI)
 
 ### Launching the Flet App
