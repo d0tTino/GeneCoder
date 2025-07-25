@@ -92,6 +92,19 @@ def test_registry_bad_yaml(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCa
     assert "Failed to fetch or parse plugin registry" in caplog.text
 
 
+def test_registry_unreachable(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        raise OSError("no network")
+
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+
+    with caplog.at_level(logging.WARNING):
+        plugins.install_registry_plugins("https://example.com/plugins.yaml")
+
+    assert "Failed to fetch plugin registry" in caplog.text
+
+
 def _urlopen_via_httpx(client: httpx.Client) -> Callable[[str], DummyResponse]:
     """Return a urlopen replacement using ``client``."""
 
