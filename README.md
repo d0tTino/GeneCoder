@@ -176,6 +176,8 @@ See [docs/plugins.md](docs/plugins.md) for details on writing and registering
 new codecs, FEC back-ends or simulators. Plugins are automatically loaded when
 using the CLI or GUI. When using GeneCoder as a library call
 ``genecoder.plugins.load_plugins()`` first to populate the registries.
+GeneCoder follows an offline-first design: without a registry URL only plugins
+already installed in the environment are loaded.
 
 Remote plugin sources can be configured via the environment variables
 ``GENECODER_PLUGIN_REGISTRY_URL`` and ``GENECODER_PLUGIN_CATALOG_URL``. Set
