@@ -240,9 +240,30 @@ genecli channel run config.yml
 
    Then execute:
 
-   ```bash
-   genecli pipeline input.bin output.bin --config pipeline.yml
-   ```
+  ```bash
+  genecli pipeline input.bin output.bin --config pipeline.yml
+  ```
+
+### MPI Channel Pipeline
+
+`ChannelPipeline` can distribute work across multiple machines using MPI.
+Enable this by setting `use_mpi: true` in the pipeline section of your YAML
+configuration and running the command with `mpiexec`.
+
+```yaml
+pipeline:
+  parallel: true
+  workers: 4
+  use_mpi: true
+```
+
+```bash
+pip install mpi4py
+mpiexec -n 4 genecli channel run pipeline.yml
+```
+
+MPI execution requires the `mpi4py` package and an MPI implementation such as
+MPICH or OpenMPI.
 
 ### Manifest files
 
