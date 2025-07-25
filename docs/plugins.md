@@ -156,7 +156,23 @@ export GENECODER_PLUGIN_PUBLIC_KEY=/path/to/public.pem
 
 ## Challenge Scoreboard
 
-The GeneCoder web server exposes a small API for recording plugin challenge results. Scores can be retrieved with `GET /catalog/challenge` and new entries submitted via `POST /catalog/challenge`. Include a bearer token in the `Authorization` header when `GENECODER_API_TOKEN` is set.
+The GeneCoder web server exposes a small API for recording plugin challenge results. Scores can be retrieved with `GET /catalog/challenge` and new entries submitted via `POST /catalog/challenge`.
+
+Set `GENECODER_API_TOKEN` to secure write access before starting the server:
+
+```bash
+export GENECODER_API_TOKEN=secret
+uvicorn web.main:app
+```
+
+Submit a score with `curl` by including the token in the `Authorization` header:
+
+```bash
+curl -X POST http://localhost:8000/catalog/challenge \
+  -H "Authorization: Bearer $GENECODER_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "alice", "points": 5}'
+```
 
 A React page in `web/helix-ui` displays the standings. After building the web assets open `helix-ui/scoreboard.html` (or `dist/scoreboard.html`) in a browser while the server is running to view the leaderboard.
 
