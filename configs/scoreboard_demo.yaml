@@ -1,0 +1,6 @@
+# Sample configuration enabling the challenge scoreboard when running the
+# FastAPI server. Start the application with uvicorn and set the
+# GENECODER_API_TOKEN environment variable to secure write access.
+# Scores are submitted via the /catalog/challenge endpoint.
+
+endpoint: /catalog/challenge
