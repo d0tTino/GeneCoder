@@ -198,3 +198,21 @@ poetry run mkdocs build
 
 The combined PDF will be available at `site/pdf/combined.pdf`.
 
+## Offline Setup
+
+GeneCoder works without network access by default. Only plugins already
+installed in the current environment are loaded and no external profiles are
+fetched. To explicitly disable remote lookups set these environment variables to
+empty strings:
+
+```bash
+export GENECODER_PLUGIN_REGISTRY_URL=
+export GENECODER_PROFILE_DIR=
+```
+
+Setting `GENECODER_PROFILE_DIR` avoids attempts to download simulator profiles
+while `GENECODER_PLUGIN_REGISTRY_URL` ensures plugins are discovered solely from
+local packages. The CLI and GUI behave the same way when these variables are
+unset or empty, making this the recommended configuration for air‑gapped
+systems.
+
