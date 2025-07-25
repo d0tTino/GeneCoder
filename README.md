@@ -232,3 +232,7 @@ Several environment variables control optional behaviour of the FastAPI server:
 - `GENECODER_CORS_ORIGINS` – comma-separated list of allowed origins for
   Cross-Origin Resource Sharing (CORS). The default `*` permits requests from any
   origin. Restrict this variable to limit which web clients may call the API.
+- `GENECODER_DATA_DIR` – directory used to cache simulator profiles
+  (default `~/.genecoder/data`).
+- `GENECODER_PROFILE_DIR` – optional path with pre-downloaded profiles for
+  running simulators offline.
