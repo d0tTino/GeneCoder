@@ -62,3 +62,51 @@ def test_pipeline_roundtrip_fountain(tmp_path: Path) -> None:
     assert result == data
     assert outp.read_bytes() == data
 
+
+@pytest.mark.skipif(not _HAS_REEDSOLO, reason="reedsolo not installed")
+def test_pipeline_roundtrip_rs_illumina(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("GENECODER_SIM_SEED", "1")
+    init_plugins()
+    _register_base_codec()
+
+    data = b"pipeline RS illumina"
+    inp = tmp_path / "data.bin"
+    outp = tmp_path / "out.bin"
+    inp.write_bytes(data)
+
+    result = run_pipeline(
+        "base4",
+        "reed_solomon",
+        "illumina",
+        str(inp),
+        str(outp),
+    )
+    assert result == data
+    assert outp.read_bytes() == data
+
+
+def test_pipeline_roundtrip_fountain_nanopore(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pytest.importorskip("pyfinite")
+    monkeypatch.setenv("GENECODER_SIM_SEED", "1")
+    init_plugins()
+    _register_base_codec()
+
+    data = b"pipeline fountain nanopore"
+    inp = tmp_path / "data.bin"
+    outp = tmp_path / "out.bin"
+    inp.write_bytes(data)
+
+    result = run_pipeline(
+        "base4",
+        "fountain",
+        "nanopore",
+        str(inp),
+        str(outp),
+    )
+    assert result == data
+    assert outp.read_bytes() == data
+
