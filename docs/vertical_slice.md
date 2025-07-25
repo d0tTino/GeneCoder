@@ -93,6 +93,16 @@ Apply the channel step using:
 genecli channel run configs/channel_demo.yaml
 ```
 
+## Encode Example
+
+Run a single encode step with error correction and channel simulation:
+
+```bash
+genecli encode input.bin output.fasta --codec chamaeleo_gc --fec reed_solomon --channel illumina
+```
+
+This creates `output.fasta.manifest.json` containing encoding metrics.
+
 ## Launch the GUI
 
 ```bash
@@ -114,6 +124,12 @@ The server includes a small dashboard for quick sequence analysis. Navigate to
 homopolymer metrics and heatmap plots. The GUI also provides an "Open Web
 Dashboard" button under the Analysis tab which launches the same page in your
 default browser.
+
+Metrics from the encode example above can also be inspected locally:
+
+```bash
+genecli dashboard output.fasta.manifest.json
+```
 
 ## Streaming Encode and Resume
 
