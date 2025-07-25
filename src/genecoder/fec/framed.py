@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Tuple, TYPE_CHECKING
+from typing import Any, Mapping, Tuple, TYPE_CHECKING, cast
 
 from ..api import FEC
 
@@ -55,7 +55,9 @@ def encode_data_framed(data: bytes) -> Tuple[bytes, Any]:
     assert _ffi is not None and _lib is not None
     out_len = _ffi.new("size_t*")
     buf = _lib.framed_encode(data, len(data), out_len)
-    encoded = bytes(_ffi.buffer(buf, out_len[0]))
+    # ``_ffi.buffer`` returns a ``_cffi_backend.buffer``. Cast to ``Any`` so
+    # ``bytes`` can consume it without mypy complaints.
+    encoded = bytes(cast(Any, _ffi.buffer(buf, out_len[0])))
     _lib.framed_free(buf)
     return encoded, {}
 
@@ -68,7 +70,9 @@ def decode_data_framed(encoded: bytes, info: Mapping[str, Any]) -> Tuple[bytes, 
     out_len = _ffi.new("size_t*")
     corrected = _ffi.new("int*")
     buf = _lib.framed_decode(encoded, len(encoded), out_len, corrected)
-    data = bytes(_ffi.buffer(buf, out_len[0]))
+    # Cast ``_ffi.buffer`` result to ``Any`` before converting to ``bytes`` to
+    # placate type checkers.
+    data = bytes(cast(Any, _ffi.buffer(buf, out_len[0])))
     _lib.framed_free(buf)
     return data, int(corrected[0])
 

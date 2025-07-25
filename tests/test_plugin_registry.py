@@ -1,5 +1,6 @@
 import sys
 import logging
+import subprocess
 
 from typing import Callable
 from pathlib import Path
@@ -155,3 +156,36 @@ def test_catalog_signature_validation(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert plugins._verify_catalog_signature(b"DATA", sig_b64)
     assert calls == [(b"DATA", b"sig", b"PUB")]
+
+
+def test_registry_network_failure(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    def fake_check_call(cmd: list[str]) -> None:
+        raise subprocess.CalledProcessError(1, cmd, "network unreachable")
+
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                "  - spec: https://example.com/pkgD.whl\n"
+            ).encode()
+            return DummyResponse(data)
+        raise AssertionError(url)
+
+    class FakeYAML:
+        @staticmethod
+        def safe_load(raw: bytes) -> dict[str, list[str]]:
+            return {"packages": ["https://example.com/pkgD.whl"]}
+
+    monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins, "yaml", FakeYAML)
+
+    with caplog.at_level(logging.WARNING):
+        plugins.install_registry_plugins("https://example.com/plugins.yaml")
+
+    assert (
+        "Failed to install plugin https://example.com/pkgD.whl from registry" in caplog.text
+    )
