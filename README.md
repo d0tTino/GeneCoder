@@ -190,6 +190,17 @@ export GENECODER_PLUGIN_REGISTRY_URL=https://example.com/registry.yaml
 export GENECODER_PLUGIN_CATALOG_URL=https://example.com/catalog.yaml
 ```
 
+GeneCoder works fully offline unless these variables are set. Plugins are loaded
+from packages already installed in the current Python environment. No network
+requests are made by the plugin manager when the registry and catalog URLs are
+unset. For air‑gapped deployments set them to empty strings to disable remote
+lookups entirely:
+
+```bash
+export GENECODER_PLUGIN_REGISTRY_URL=
+export GENECODER_PLUGIN_CATALOG_URL=
+```
+
 Install registry packages with:
 
 ```bash
