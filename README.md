@@ -117,6 +117,9 @@ framework backends. Expect the installation to consume around **2&nbsp;GB** of
 disk space and take roughly **10&nbsp;minutes** on a typical broadband
 connection.
 
+For running GeneCoder without any network access see
+[the offline setup notes](docs/installation.md#offline-setup).
+
 
 Desktop packages are available on the [releases page](https://github.com/d0tTino/GeneCoder/releases).
 Download the `.msix` file for Windows or the `.dmg` for macOS and follow your
