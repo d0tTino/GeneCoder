@@ -166,8 +166,19 @@ poetry install --extras framed --no-interaction
 ```
 
 
+
 The `framed` FEC method becomes available automatically after
 installation.
+
+## Licenses for Optional Extras
+
+GeneCoder itself and all core functionality use permissive licenses. Some
+optional extras come with additional requirements:
+
+* **FrameD** &ndash; [LGPLv3](https://www.gnu.org/licenses/lgpl-3.0.html)
+* **DeepDNA** &ndash; [MIT](https://opensource.org/license/mit/)
+
+These components are only needed when installing the corresponding extras.
 
 ## Custom Temporary Directory
 
