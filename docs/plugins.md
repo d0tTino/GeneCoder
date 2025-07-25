@@ -116,7 +116,9 @@ Registered codecs and simulators appear in the respective registries once
 
 GeneCoder can install a set of third-party packages listed in a YAML registry.
 Set the `GENECODER_PLUGIN_REGISTRY_URL` environment variable to the registry
-file and run:
+file and run the install command below. If this variable is unset no network
+requests are made and GeneCoder loads only plugins already present in the
+current Python environment.
 
 ```bash
 genecli plugin install-registry --allow-registry
@@ -142,7 +144,7 @@ packages:
 Installing plugins executes code from remote sources. Always verify checksums or
 signatures and only use registry files from trusted providers. The
 `--allow-registry` flag is required to opt in to this behaviour as a safety
-measure.
+measure and the command will fail without it.
 
 Example environment setup:
 
