@@ -142,3 +142,105 @@ def test_registry_checksum_mismatch(monkeypatch: pytest.MonkeyPatch, caplog: pyt
 
     assert not installs
     assert "Checksum mismatch for plugin https://example.com/pkg.whl" in caplog.text
+
+
+def _plugin_data_paths() -> tuple[Path, Path, str]:
+    root = Path(__file__).resolve().parent
+    pkg = root / "data" / "plugins" / "fake_pkg.whl"
+    sig_b64 = (root / "data" / "plugins" / "fake_sig.b64").read_text().strip()
+    pub = root / "data" / "plugins" / "fake_pub.pem"
+    return pkg, pub, sig_b64
+
+
+def test_registry_real_signature(monkeypatch: pytest.MonkeyPatch) -> None:
+    pkg_path, pub_key, sig_b64 = _plugin_data_paths()
+    pkg_bytes = pkg_path.read_bytes()
+    checksum = compute_checksum(pkg_bytes)
+
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n    signature: {sig_b64}"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkg.whl":
+            return DummyResponse(pkg_bytes)
+        raise AssertionError(url)
+
+    installs: list[list[str]] = []
+
+    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(pub_key))
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+
+    plugins.install_registry_plugins()
+
+    assert installs and installs[0][:4] == [sys.executable, "-m", "pip", "install"]
+
+
+def test_registry_real_invalid_signature(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    pkg_path, pub_key, _sig_b64 = _plugin_data_paths()
+    pkg_bytes = pkg_path.read_bytes()
+    checksum = compute_checksum(pkg_bytes)
+    bad_sig_b64 = "AAAA"
+
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n    signature: {bad_sig_b64}"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkg.whl":
+            return DummyResponse(pkg_bytes)
+        raise AssertionError(url)
+
+    installs: list[list[str]] = []
+
+    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(pub_key))
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+
+    with pytest.raises(ValueError, match="Invalid signature"):
+        with caplog.at_level(logging.ERROR):
+            plugins.install_registry_plugins()
+
+    assert not installs
+    assert "Invalid signature for plugin https://example.com/pkg.whl" in caplog.text
+
+
+def test_registry_real_checksum_mismatch(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    pkg_path, pub_key, sig_b64 = _plugin_data_paths()
+    pkg_bytes = pkg_path.read_bytes()
+    wrong_checksum = "deadbeef"
+
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {wrong_checksum}\n    signature: {sig_b64}"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkg.whl":
+            return DummyResponse(pkg_bytes)
+        raise AssertionError(url)
+
+    installs: list[list[str]] = []
+
+    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
+    monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(pub_key))
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+
+    with pytest.raises(ValueError, match="Checksum mismatch"):
+        with caplog.at_level(logging.ERROR):
+            plugins.install_registry_plugins()
+
+    assert not installs
+    assert "Checksum mismatch for plugin https://example.com/pkg.whl" in caplog.text
