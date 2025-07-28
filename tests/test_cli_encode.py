@@ -1,4 +1,5 @@
 import argparse
+import os
 from pathlib import Path
 
 from genecoder.cli.encode import process_single_encode
@@ -59,6 +60,7 @@ def test_process_single_encode_applies_fix(tmp_path: Path) -> None:
     # Produce low GC content and long homopolymers
     input_file.write_bytes(b"\x00" * 8)
     output_file = tmp_path / "out_fix.fasta"
+    os.environ.pop("GENECODER_DISABLE_FIX", None)
     args = _encode_args()
     process_single_encode(str(input_file), str(output_file), args)
 
