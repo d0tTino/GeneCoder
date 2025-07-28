@@ -1,9 +1,13 @@
 # Demo configuration enabling MPI execution with two simple channels
+input: encoded/message.fasta
+output: mpi_output.fasta
+
 simulators:
   - name: simple
     error_rate: 0.01
   - name: simple
     error_rate: 0.02
+
 pipeline:
   parallel: true
   workers: 2
