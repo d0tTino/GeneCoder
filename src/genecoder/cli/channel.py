@@ -263,6 +263,9 @@ def register_subcommand(
         target.add_argument("--nanopore-depth", type=int, default=None, help="Coverage depth for Nanopore reads")
         target.add_argument("--nanopore-quality", type=str, default=None, help="Comma-separated quality profile or path to JSON")
         target.add_argument("--nanopore-context", type=str, default=None, help="Path to JSON/YAML context error map")
+        target.add_argument("--nanopore-sub-rate", type=float, default=None, help="Substitution rate for Nanopore reads")
+        target.add_argument("--nanopore-ins-rate", type=float, default=None, help="Insertion rate for Nanopore reads")
+        target.add_argument("--nanopore-del-rate", type=float, default=None, help="Deletion rate for Nanopore reads")
         target.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output")
         target.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
         target.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
@@ -333,6 +336,12 @@ def run_channel(args: argparse.Namespace) -> None:
                 new_params.setdefault("quality_profile", opts.nanopore_quality)
             if opts.nanopore_context is not None:
                 new_params.setdefault("context_errors", opts.nanopore_context)
+            if opts.nanopore_sub_rate is not None:
+                new_params.setdefault("substitution_rate", opts.nanopore_sub_rate)
+            if opts.nanopore_ins_rate is not None:
+                new_params.setdefault("insertion_rate", opts.nanopore_ins_rate)
+            if opts.nanopore_del_rate is not None:
+                new_params.setdefault("deletion_rate", opts.nanopore_del_rate)
         updated.append((name, new_params))
     simulators = updated
 
