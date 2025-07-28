@@ -29,6 +29,8 @@ class DummyResponse:
 
 def test_registry_install(monkeypatch: pytest.MonkeyPatch) -> None:
     installs: list[list[str]] = []
+    pkg = b"PKG"
+    checksum = plugins.compute_checksum(pkg)
 
     def fake_check_call(cmd: list[str]) -> None:
         installs.append(cmd)
@@ -38,10 +40,12 @@ def test_registry_install(monkeypatch: pytest.MonkeyPatch) -> None:
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                "  - spec: https://example.com/pkgA.whl\n"
-                "  - spec: https://example.com/pkgB.whl\n"
+                f"  - spec: https://example.com/pkgA.whl\n    checksum: {checksum}\n"
+                f"  - spec: https://example.com/pkgB.whl\n    checksum: {checksum}\n"
             ).encode()
             return DummyResponse(data)
+        elif url in ("https://example.com/pkgA.whl", "https://example.com/pkgB.whl"):
+            return DummyResponse(pkg)
         raise AssertionError(url)
 
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
@@ -49,24 +53,28 @@ def test_registry_install(monkeypatch: pytest.MonkeyPatch) -> None:
 
     plugins.install_registry_plugins("https://example.com/plugins.yaml")
 
-    assert installs == [
-        [sys.executable, "-m", "pip", "install", "https://example.com/pkgA.whl"],
-        [sys.executable, "-m", "pip", "install", "https://example.com/pkgB.whl"],
-    ]
+    assert len(installs) == 2
+    for cmd in installs:
+        assert cmd[:4] == [sys.executable, "-m", "pip", "install"]
 
 
 def test_registry_install_failure(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
     def fake_check_call(cmd: list[str]) -> None:
         raise RuntimeError("boom")
 
+    pkg = b"PKG"
+    checksum = plugins.compute_checksum(pkg)
+
     def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
         assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                "  - spec: https://example.com/pkgC.whl\n"
+                f"  - spec: https://example.com/pkgC.whl\n    checksum: {checksum}\n"
             ).encode()
             return DummyResponse(data)
+        elif url == "https://example.com/pkgC.whl":
+            return DummyResponse(pkg)
         raise AssertionError(url)
 
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
@@ -119,12 +127,13 @@ def _urlopen_via_httpx(client: httpx.Client) -> Callable[[str], DummyResponse]:
 
 def test_registry_install_via_httpx(monkeypatch: pytest.MonkeyPatch) -> None:
     pkg = b"PKG"
+    checksum = plugins.compute_checksum(pkg)
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/plugins.yaml":
             data = (
                 "packages:\n"
-                "  - spec: https://example.com/pkg.whl\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n"
             )
             return httpx.Response(200, text=data)
         elif request.url.path == "/pkg.whl":
@@ -177,20 +186,25 @@ def test_registry_network_failure(
     def fake_check_call(cmd: list[str]) -> None:
         raise subprocess.CalledProcessError(1, cmd, "network unreachable")
 
+    pkg = b"PKG"
+    checksum = plugins.compute_checksum(pkg)
+
     def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
         assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                "  - spec: https://example.com/pkgD.whl\n"
+                f"  - spec: https://example.com/pkgD.whl\n    checksum: {checksum}\n"
             ).encode()
             return DummyResponse(data)
+        elif url == "https://example.com/pkgD.whl":
+            return DummyResponse(pkg)
         raise AssertionError(url)
 
     class FakeYAML:
         @staticmethod
-        def safe_load(raw: bytes) -> dict[str, list[str]]:
-            return {"packages": ["https://example.com/pkgD.whl"]}
+        def safe_load(raw: bytes) -> dict[str, list[dict[str, str]]]:
+            return {"packages": [{"spec": "https://example.com/pkgD.whl", "checksum": checksum}]}
 
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)

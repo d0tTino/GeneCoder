@@ -144,6 +144,21 @@ def test_registry_checksum_mismatch(monkeypatch: pytest.MonkeyPatch, caplog: pyt
     assert "Checksum mismatch for plugin https://example.com/pkg.whl" in caplog.text
 
 
+def test_registry_missing_checksum_signature(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
+        assert url == "https://example.com/plugins.yaml"
+        data = "packages:\n  - spec: https://example.com/pkg.whl\n".encode()
+        return DummyResponse(data)
+
+    monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+
+    with pytest.raises(ValueError, match="Checksum or signature required"):
+        plugins.install_registry_plugins()
+
+
 def _plugin_data_paths() -> tuple[Path, Path, str]:
     root = Path(__file__).resolve().parent
     pkg = root / "data" / "plugins" / "fake_pkg.whl"
