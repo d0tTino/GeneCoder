@@ -257,6 +257,9 @@ def register_subcommand(
         target.add_argument("--illumina-depth", type=int, default=None, help="Coverage depth for Illumina reads")
         target.add_argument("--illumina-quality", type=str, default=None, help="Comma-separated quality profile or path to JSON")
         target.add_argument("--illumina-context", type=str, default=None, help="Path to JSON/YAML context error map")
+        target.add_argument("--illumina-sub-rate", type=float, default=None, help="Substitution rate for Illumina reads")
+        target.add_argument("--illumina-ins-rate", type=float, default=None, help="Insertion rate for Illumina reads")
+        target.add_argument("--illumina-del-rate", type=float, default=None, help="Deletion rate for Illumina reads")
         target.add_argument("--nanopore-depth", type=int, default=None, help="Coverage depth for Nanopore reads")
         target.add_argument("--nanopore-quality", type=str, default=None, help="Comma-separated quality profile or path to JSON")
         target.add_argument("--nanopore-context", type=str, default=None, help="Path to JSON/YAML context error map")
@@ -310,13 +313,19 @@ def run_channel(args: argparse.Namespace) -> None:
     updated: list[tuple[str, dict[str, object]]] = []
     for name, params in simulators:
         new_params = dict(params)
-        if name.startswith("illumina"):
+        if name == "illumina":
             if opts.illumina_depth is not None:
                 new_params.setdefault("coverage", opts.illumina_depth)
             if opts.illumina_quality is not None:
                 new_params.setdefault("quality_profile", opts.illumina_quality)
             if opts.illumina_context is not None:
                 new_params.setdefault("context_errors", opts.illumina_context)
+            if opts.illumina_sub_rate is not None:
+                new_params.setdefault("substitution_rate", opts.illumina_sub_rate)
+            if opts.illumina_ins_rate is not None:
+                new_params.setdefault("insertion_rate", opts.illumina_ins_rate)
+            if opts.illumina_del_rate is not None:
+                new_params.setdefault("deletion_rate", opts.illumina_del_rate)
         if name.startswith("nanopore"):
             if opts.nanopore_depth is not None:
                 new_params.setdefault("coverage", opts.nanopore_depth)
