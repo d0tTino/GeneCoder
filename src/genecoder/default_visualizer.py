@@ -38,8 +38,8 @@ class DefaultVisualizer(Visualizer):
 
 
 def register(
-    registrar: Callable[[str, Visualizer], None] = _register_visualizer,
+    registrar: Callable[[str, Visualizer | type[Visualizer]], None] = _register_visualizer,
 ) -> None:
     """Register the default visualizer."""
 
-    registrar("default", DefaultVisualizer())
+    registrar("default", DefaultVisualizer)

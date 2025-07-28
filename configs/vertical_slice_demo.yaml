@@ -6,5 +6,7 @@ encode:
 simulate:
   simulators:
     - illumina
+  pipeline:
+    illumina_profile: hiseq
 decode:
   method: base4_direct

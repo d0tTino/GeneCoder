@@ -74,7 +74,8 @@ poetry run pytest -q
 ## Bundle Workflow
 
 An example configuration file at `configs/vertical_slice_demo.yaml` demonstrates
-using a simulator and Hamming FEC. Run the bundle with:
+using a simulator and Hamming FEC. The `pipeline` section selects the built-in
+`hiseq` profile for the Illumina simulator. Run the bundle with:
 
 ```bash
 genecli bundle run configs/vertical_slice_demo.yaml --cache-dir runs
@@ -86,8 +87,9 @@ as part of the demo.
 ## Channel Configuration
 
 A unified configuration describing sequencing simulators and synthesis
-constraints is provided at `configs/channel_demo.yaml`.
-Apply the channel step using:
+constraints is provided at `configs/channel_demo.yaml`. Another example at
+`configs/dnarsim_profile.yaml` selects the `r9` Nanopore profile. Apply the
+channel step using:
 
 ```bash
 genecli channel run configs/channel_demo.yaml

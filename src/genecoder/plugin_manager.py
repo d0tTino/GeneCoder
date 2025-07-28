@@ -14,7 +14,7 @@ import re
 
 yaml: ModuleType | None
 try:  # optional dependency
-    import yaml as yaml_module
+    import yaml as yaml_module  # type: ignore[import-untyped]
 except Exception:  # pragma: no cover - optional
     yaml = None
 else:
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
-VISUALIZER_REGISTRY: Dict[str, Visualizer] = {}
+VISUALIZER_REGISTRY: Dict[str, Callable[..., Any]] = {}
 
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
@@ -57,7 +57,7 @@ def _validate_spec(spec: str) -> None:
     raise ValueError("Unsafe plugin spec")
 
 
-from .api import Codec, FEC, Simulator, Visualizer
+from .api import Codec, FEC, Simulator
 
 
 def register_codec(name: str, codec: Codec | type[Codec]) -> None:
@@ -99,13 +99,19 @@ def register_simulator(name: str, channel: Simulator) -> None:
     _register_simulator(name, channel)
 
 
-def register_visualizer(name: str, visualizer: Visualizer) -> None:
+def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer]) -> None:
     """Register a visualizer under ``name``."""
 
-    if not isinstance(visualizer, Visualizer):
-        raise TypeError("visualizer must subclass Visualizer")
+    if isinstance(visualizer, type):
+        if not issubclass(visualizer, Visualizer):
+            raise TypeError("visualizer must subclass Visualizer")
+        inst = visualizer()
+    else:
+        if not isinstance(visualizer, Visualizer):
+            raise TypeError("visualizer must subclass Visualizer")
+        inst = visualizer
 
-    VISUALIZER_REGISTRY[name] = visualizer
+    VISUALIZER_REGISTRY[name] = inst.visualize
 
 
 
