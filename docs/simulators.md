@@ -12,7 +12,18 @@ GeneCoder supports both built-in error models and adapters to external nanopore 
   `--illumina-sub-rate`, `--illumina-ins-rate` and `--illumina-del-rate`. Depth
   and quality can be adjusted using `--illumina-depth`, `--illumina-quality` and
   `--illumina-context`.
-- **nanopore** — alias for `d2sim`.
+- **nanopore** — alias for `d2sim`. Customize rates with `--nanopore-sub-rate`,
+  `--nanopore-ins-rate` and `--nanopore-del-rate`.
+
+Example YAML:
+
+```yaml
+simulators:
+  - name: nanopore_d2sim
+    substitution_rate: 0.05
+    insertion_rate: 0.01
+    deletion_rate: 0.02
+```
 
 `GENECODER_SIM_SEED` can be set to an integer to reproduce the randomness used
 by these simulators.
