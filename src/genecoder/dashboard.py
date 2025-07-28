@@ -19,6 +19,28 @@ _DEF_METRICS: dict[str, Any] = {
 }
 
 
+def _calc_decode_success(data: dict[str, Any]) -> float | None:
+    """Return overall decode success rate from ``data``.
+
+    Falls back to averaging ``ecc_success_rates`` when ``decode_success_rate``
+    is missing.
+    """
+    rate = data.get("decode_success_rate")
+    if isinstance(rate, (int, float)):
+        return float(rate)
+    ecc = data.get("ecc_success_rates")
+    if isinstance(ecc, dict) and ecc:
+        values = []
+        for val in ecc.values():
+            try:
+                values.append(float(val))
+            except Exception:
+                pass
+        if values:
+            return sum(values) / len(values)
+    return None
+
+
 def _load_metrics(path: str) -> dict[str, Any]:
     try:
         with open(path, "r", encoding="utf-8") as fh:
@@ -68,9 +90,9 @@ def main(results_path: str | None = None) -> None:
     else:
         st.write("No ECC success rate data.")
 
-    decode_rate = data.get("decode_success_rate")
-    if isinstance(decode_rate, (int, float)):
-        st.metric("Decode Success", f"{float(decode_rate):.2%}")
+    decode_rate = _calc_decode_success(data)
+    if decode_rate is not None:
+        st.metric("Decode Success", f"{decode_rate:.2%}")
     else:
         st.write("No decode success metric.")
 
