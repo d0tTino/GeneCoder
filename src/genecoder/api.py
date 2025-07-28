@@ -4,9 +4,12 @@ from __future__ import annotations
 """Public abstract interfaces for GeneCoder plugins."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Mapping, Tuple
+from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
-__all__ = ["Codec", "FEC", "Simulator"]
+if TYPE_CHECKING:  # pragma: no cover - for type checkers
+    from .app_helpers import EncodeResult, DecodeResult
+
+__all__ = ["Codec", "FEC", "Simulator", "Visualizer"]
 
 
 class Codec(ABC):
@@ -39,3 +42,13 @@ class Simulator(ABC):
     @abstractmethod
     def simulate(self, sequence: str) -> str:
         """Return a possibly corrupted version of ``sequence``."""
+
+
+class Visualizer(ABC):
+    """Base class for result visualizers."""
+
+    @abstractmethod
+    def visualize(
+        self, result: "EncodeResult | DecodeResult", /, **kwargs: Any
+    ) -> None:
+        """Visualize ``result`` using optional keyword arguments."""
