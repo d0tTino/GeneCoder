@@ -154,6 +154,9 @@ def install_registry_plugins(url: str | None = None) -> None:
 
         _validate_spec(spec)
 
+        if checksum is None and sig_b64 is None:
+            raise ValueError("Checksum or signature required")
+
         install_target = spec
         pkg_path = None
         if checksum or sig_b64:

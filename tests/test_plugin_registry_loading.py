@@ -19,13 +19,14 @@ class DummyResponse:
 
 def test_load_plugins_with_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     pkg = b"PKG"
+    checksum = plugins.compute_checksum(pkg)
 
     def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
         assert timeout == 30
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                "  - spec: https://example.com/pkg.whl\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkg.whl":
