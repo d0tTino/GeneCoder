@@ -3,15 +3,32 @@ from __future__ import annotations
 
 from typing import Callable, Sequence, Dict, Iterable
 import random
+import shutil
+import subprocess
+import logging
 
 from ..random_utils import make_rng
-from ..nanopore_sim import simulate_d2sim, simulate_desp
+from ..nanopore_sim import (
+    simulate_d2sim,
+    simulate_desp,
+    _run_external,
+    _parse_env_options,
+)
 from ..api import Simulator
 from .base import BaseChannel
-from ..error_simulation import _random_substitution, NUCLEOTIDES
+from ..error_simulation import (
+    _random_substitution,
+    introduce_errors,
+    NUCLEOTIDES,
+)
 from . import register_simulator as _register_simulator
 
-__all__ = ["NanoporeChannel", "NanoporeDeSPChannel", "register"]
+__all__ = [
+    "NanoporeChannel",
+    "NanoporeDeSPChannel",
+    "NanoporeDNArSimChannel",
+    "register",
+]
 
 
 class NanoporeChannel(BaseChannel):
@@ -81,6 +98,82 @@ class NanoporeDeSPChannel(NanoporeChannel):
         return _consensus(reads)
 
 
+class NanoporeDNArSimChannel(NanoporeChannel):
+    """Channel wrapper using the external ``dnarsim`` simulator."""
+
+    def __init__(
+        self,
+        error_rate: float = 0.05,
+        profile: str | None = None,
+        *,
+        substitution_rate: float = 0.0,
+        insertion_rate: float = 0.0,
+        deletion_rate: float = 0.0,
+        coverage: int = 1,
+        quality_profile: Sequence[float] | None = None,
+        context_errors: Dict[str, float] | None = None,
+    ) -> None:
+        super().__init__(
+            error_rate,
+            substitution_rate=substitution_rate,
+            insertion_rate=insertion_rate,
+            deletion_rate=deletion_rate,
+            coverage=coverage,
+            quality_profile=quality_profile,
+            context_errors=context_errors,
+        )
+        self.profile = profile
+
+    def _simulate_cli(self, sequence: str) -> str:
+        cmd = "dnarsim"
+        if shutil.which(cmd):
+            cmd_list = [cmd, "-e", str(self.error_rate)]
+            if self.profile:
+                cmd_list += ["-p", self.profile]
+            try:
+                cmd_list += _parse_env_options(cmd)
+                return _run_external(cmd_list, sequence)
+            except (ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
+                logging.getLogger(__name__).warning(
+                    "%s failed: %s; falling back to simple dnarsim model", cmd, exc
+                )
+        else:
+            logging.getLogger(__name__).warning(
+                "%s not found; falling back to simple dnarsim model", cmd
+            )
+        raise RuntimeError("fallback")
+
+    @staticmethod
+    def _simulate_fallback(sequence: str, error_rate: float, rng: random.Random) -> str:
+        sub_p = error_rate * 0.4
+        ins_p = error_rate * 0.3
+        del_p = error_rate * 0.3
+        return introduce_errors(
+            sequence,
+            substitution_prob=sub_p,
+            insertion_prob=ins_p,
+            deletion_prob=del_p,
+            rng=rng,
+        )
+
+    def simulate(self, sequence: str) -> str:
+        rng = make_rng()
+        quality = self.quality_profile
+        coverage = max(1, self.get_coverage(sequence))
+
+        reads = []
+        for _ in range(coverage):
+            try:
+                base = self._simulate_cli(sequence)
+            except Exception:
+                base = self._simulate_fallback(sequence, self.error_rate, rng)
+            reads.append(_mutate_read(base, quality, rng, self))
+
+        if coverage == 1:
+            return reads[0]
+        return _consensus(reads)
+
+
 def _mutate_read(
     read: str, quality: Sequence[float] | None, rng: random.Random, channel: NanoporeChannel
 ) -> str:
@@ -128,4 +221,5 @@ def register(
 ) -> None:
     registrar("nanopore_d2sim", NanoporeChannel())
     registrar("nanopore_desp", NanoporeDeSPChannel())
+    registrar("nanopore_dnarsim", NanoporeDNArSimChannel())
 
