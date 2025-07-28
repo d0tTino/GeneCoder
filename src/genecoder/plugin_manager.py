@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
+VISUALIZER_REGISTRY: Dict[str, Callable[..., Any]] = {}
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
 # re-export for tests
@@ -54,7 +55,7 @@ def _validate_spec(spec: str) -> None:
     raise ValueError("Unsafe plugin spec")
 
 
-from .api import Codec, FEC, Simulator
+from .api import Codec, FEC, Simulator, Visualizer
 
 
 def register_codec(name: str, codec: Codec | type[Codec]) -> None:
@@ -94,6 +95,21 @@ def register_simulator(name: str, channel: Simulator) -> None:
         raise TypeError("simulator must subclass Simulator")
 
     _register_simulator(name, channel)
+
+
+def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer]) -> None:
+    """Register a result visualizer under ``name``."""
+
+    if isinstance(visualizer, type):
+        if not issubclass(visualizer, Visualizer):
+            raise TypeError("visualizer must subclass Visualizer")
+        inst = visualizer()
+    else:
+        if not isinstance(visualizer, Visualizer):
+            raise TypeError("visualizer must subclass Visualizer")
+        inst = visualizer
+
+    VISUALIZER_REGISTRY[name] = inst.visualize
 
 
 
@@ -250,6 +266,7 @@ def load_builtin_plugins() -> None:
 
     CODEC_REGISTRY.clear()
     FEC_REGISTRY.clear()
+    VISUALIZER_REGISTRY.clear()
     SIMULATOR_REGISTRY.clear()
 
     builtin = importlib.import_module("genecoder.builtin_plugins")
@@ -267,6 +284,7 @@ def load_entry_point_plugins() -> list[str]:
         "genecoder.plugins": (register_codec, "codec"),
         "genecoder.fec": (register_fec, "FEC"),
         "genecoder.simulators": (register_simulator, "simulator"),
+        "genecoder.visualizers": (register_visualizer, "visualizer"),
     }
     for group, (registrar, kind) in groups.items():
         try:
@@ -309,6 +327,9 @@ def load_local_plugins() -> list[str]:
             register_s = getattr(module, "register_simulator", None)
             if callable(register_s):
                 register_s(register_simulator)
+            register_v = getattr(module, "register_visualizer", None)
+            if callable(register_v):
+                register_v(register_visualizer)
 
     register = getattr(plugins, "register", None)
     if callable(register):
@@ -319,6 +340,9 @@ def load_local_plugins() -> list[str]:
     register_s = getattr(plugins, "register_simulator", None)
     if callable(register_s):
         register_s(register_simulator)
+    register_v = getattr(plugins, "register_visualizer", None)
+    if callable(register_v):
+        register_v(register_visualizer)
 
     return failures
 
