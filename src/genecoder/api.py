@@ -6,8 +6,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
-if TYPE_CHECKING:  # pragma: no cover - for type checkers
-    from .app_helpers import EncodeResult, DecodeResult
 
 __all__ = ["Codec", "FEC", "Simulator", "Visualizer"]
 
@@ -45,10 +43,9 @@ class Simulator(ABC):
 
 
 class Visualizer(ABC):
-    """Base class for result visualizers."""
+    """Abstract base class for sequence visualizers."""
 
     @abstractmethod
-    def visualize(
-        self, result: "EncodeResult | DecodeResult", /, **kwargs: Any
-    ) -> None:
-        """Visualize ``result`` using optional keyword arguments."""
+    def visualize(self, sequence: str, /, **kwargs: Any) -> Any:
+        """Return a visualization of ``sequence``."""
+

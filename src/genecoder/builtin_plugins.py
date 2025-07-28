@@ -67,18 +67,9 @@ def register_builtin_plugins() -> None:
         "builtin",
     )
 
-    try:
-        vis_mod = import_module("plugins.helix_visualizer")
-    except ModuleNotFoundError:
-        vis_spec = spec_from_file_location(
-            "plugins.helix_visualizer",
-            Path(__file__).resolve().parents[1]
-            / "plugins"
-            / "helix_visualizer.py",
-        )
-        assert vis_spec and vis_spec.loader
-        vis_mod = module_from_spec(vis_spec)
-        vis_spec.loader.exec_module(vis_mod)
-    vis_register = getattr(vis_mod, "register", None)
-    if callable(vis_register):
-        vis_register(register_visualizer)
+    _load_and_register(
+        ["genecoder.default_visualizer"],
+        register_visualizer,
+        "builtin",
+    )
+

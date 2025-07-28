@@ -27,6 +27,7 @@ import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
 from .plugin_security import compute_checksum as _compute_checksum
+from .api import Visualizer
 import base64
 import json
 
@@ -35,7 +36,8 @@ logger = logging.getLogger(__name__)
 
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
-VISUALIZER_REGISTRY: Dict[str, Callable[..., Any]] = {}
+VISUALIZER_REGISTRY: Dict[str, Visualizer] = {}
+
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
 # re-export for tests
@@ -97,20 +99,13 @@ def register_simulator(name: str, channel: Simulator) -> None:
     _register_simulator(name, channel)
 
 
-def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer]) -> None:
-    """Register a result visualizer under ``name``."""
+def register_visualizer(name: str, visualizer: Visualizer) -> None:
+    """Register a visualizer under ``name``."""
 
-    if isinstance(visualizer, type):
-        if not issubclass(visualizer, Visualizer):
-            raise TypeError("visualizer must subclass Visualizer")
-        inst = visualizer()
-    else:
-        if not isinstance(visualizer, Visualizer):
-            raise TypeError("visualizer must subclass Visualizer")
-        inst = visualizer
+    if not isinstance(visualizer, Visualizer):
+        raise TypeError("visualizer must subclass Visualizer")
 
-    VISUALIZER_REGISTRY[name] = inst.visualize
-
+    VISUALIZER_REGISTRY[name] = visualizer
 
 
 

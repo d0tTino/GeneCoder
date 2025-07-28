@@ -34,6 +34,7 @@ __all__ = [
     "FEC_REGISTRY",
     "VISUALIZER_REGISTRY",
     "SIMULATOR_REGISTRY",
+    "VISUALIZER_REGISTRY",
     "simulate_reads",
     "init_plugins",
     "load_plugins",
