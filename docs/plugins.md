@@ -78,6 +78,21 @@ the :class:`genecoder.api.Simulator` interface.
 Registered codecs are available via `genecoder.CODEC_REGISTRY` after importing
 GeneCoder.
 
+## Plugin Security
+
+Installing a plugin runs code from a third-party package. Always verify
+downloads and use registries from trusted sources. GeneCoder can validate a
+wheel's digital signature with
+:func:`genecoder.plugin_security.verify_signature`, which internally calls
+:func:`genecoder.security.compute_checksum` and raises ``InvalidSignature`` if
+verification fails. Set the ``GENECODER_PLUGIN_PUBLIC_KEY`` environment variable
+to the path of a PEM encoded key so the installer can perform this check
+automatically.
+
+Host registry files over HTTPS or a secured internal server and keep them under
+version control. Each entry should include a ``checksum`` or ``signature`` so
+tampering is detected before installation.
+
 ## Built-in Plugins
 
 GeneCoder includes a set of codec, FEC and simulator plugins that ship with the
