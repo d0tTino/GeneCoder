@@ -3,14 +3,20 @@ from __future__ import annotations
 
 from typing import Callable, Sequence, Dict, Iterable
 import random
+import shutil
+import subprocess
+import logging
 
 from .base import BaseSimulator
 
 from ..random_utils import make_rng
 from ..api import Simulator
 from ..error_simulation import _random_substitution, NUCLEOTIDES
-from ..nanopore_sim import simulate_d2sim
-from ..insilicoseq_adapter import simulate_insilicoseq
+from ..nanopore_sim import (
+    simulate_d2sim,
+    _run_external,
+    _parse_env_options,
+)
 from . import register_simulator as _register_simulator
 
 __all__ = ["IlluminaChannel", "IlluminaD2SimChannel", "IlluminaInSilicoSeqChannel", "register"]
@@ -105,13 +111,30 @@ class IlluminaD2SimChannel(Simulator):
 
 
 class IlluminaInSilicoSeqChannel(Simulator):
-    """Wrapper using the external ``InSilicoSeq`` simulator."""
+    """Use the ``insilicoseq`` CLI with a simple fallback."""
 
     def __init__(self, error_rate: float = 0.05) -> None:
         self.error_rate = error_rate
+        self._fallback = IlluminaChannel(substitution_rate=error_rate)
 
     def simulate(self, sequence: str) -> str:
-        return simulate_insilicoseq(sequence, error_rate=self.error_rate, rng=make_rng())
+        cmd = "insilicoseq"
+        if shutil.which(cmd):
+            cmd_list = [cmd, "-e", str(self.error_rate)]
+            try:
+                cmd_list += _parse_env_options(cmd)
+                return _run_external(cmd_list, sequence)
+            except (ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
+                logging.getLogger(__name__).warning(
+                    "%s failed: %s; falling back to simple Illumina model",
+                    cmd,
+                    exc,
+                )
+        else:
+            logging.getLogger(__name__).warning(
+                "%s not found; falling back to simple Illumina model", cmd
+            )
+        return self._fallback.simulate(sequence)
 
 
 def register(
