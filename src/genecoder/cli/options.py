@@ -36,6 +36,8 @@ class ChannelOptions:
     nanopore_sub_rate: float | None = None
     nanopore_ins_rate: float | None = None
     nanopore_del_rate: float | None = None
+    illumina_profile: str | None = None
+    nanopore_profile: str | None = None
 
 
 def _parse_quality(value: str | None) -> Sequence[float] | None:
@@ -193,4 +195,6 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         nanopore_sub_rate=args.nanopore_sub_rate,
         nanopore_ins_rate=args.nanopore_ins_rate,
         nanopore_del_rate=args.nanopore_del_rate,
+        illumina_profile=args.illumina_profile,
+        nanopore_profile=args.nanopore_profile,
     )

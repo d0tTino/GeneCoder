@@ -7,6 +7,8 @@
    - Refine GC-content balancing algorithms for more stable synthesis results.
 3. **Phase 3: Simulation & Analysis**
    - Model sequencing errors in greater detail to mimic real-world conditions.
+   - Provide named sequencing profiles (e.g., `miseq`, `hiseq`, `minion`,
+     `promethion`) selectable via CLI options.
    - Integrate with common bioinformatics tools for downstream analysis.
    - Provide automated reports summarizing encoding accuracy and efficiency.
 4. **Phase 4: Ecosystem & Automation**

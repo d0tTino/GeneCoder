@@ -19,6 +19,8 @@ from genecoder.synthesis import SynthesisConstraints, validate_sequence
 from genecoder.error_simulation import introduce_errors
 from genecoder.metrics import metrics
 from genecoder.parallel import parallel_map
+from genecoder.simulators.illumina import ILLUMINA_PROFILES
+from genecoder.simulators.nanopore import NANOPORE_PROFILES
 from .options import ChannelOptions, build_channel_options
 from .shared import add_single_io_args
 
@@ -260,12 +262,14 @@ def register_subcommand(
         target.add_argument("--illumina-sub-rate", type=float, default=None, help="Substitution rate for Illumina reads")
         target.add_argument("--illumina-ins-rate", type=float, default=None, help="Insertion rate for Illumina reads")
         target.add_argument("--illumina-del-rate", type=float, default=None, help="Deletion rate for Illumina reads")
+        target.add_argument("--illumina-profile", type=str, default=None, help="Named Illumina profile to use")
         target.add_argument("--nanopore-depth", type=int, default=None, help="Coverage depth for Nanopore reads")
         target.add_argument("--nanopore-quality", type=str, default=None, help="Comma-separated quality profile or path to JSON")
         target.add_argument("--nanopore-context", type=str, default=None, help="Path to JSON/YAML context error map")
         target.add_argument("--nanopore-sub-rate", type=float, default=None, help="Substitution rate for Nanopore reads")
         target.add_argument("--nanopore-ins-rate", type=float, default=None, help="Insertion rate for Nanopore reads")
         target.add_argument("--nanopore-del-rate", type=float, default=None, help="Deletion rate for Nanopore reads")
+        target.add_argument("--nanopore-profile", type=str, default=None, help="Named Nanopore profile to use")
         target.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output")
         target.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
         target.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
@@ -306,8 +310,8 @@ def run_channel(args: argparse.Namespace) -> None:
         workers=opts.processes or opts.threads,
         use_process_pool=opts.processes is not None,
         use_mpi=False,
-        illumina_profile=None,
-        nanopore_profile=None,
+        illumina_profile=opts.illumina_profile,
+        nanopore_profile=opts.nanopore_profile,
     )
     simulators = opts.simulator_specs
     if simulators is None:
@@ -317,31 +321,45 @@ def run_channel(args: argparse.Namespace) -> None:
     for name, params in simulators:
         new_params = dict(params)
         if name == "illumina":
+            if opts.illumina_profile:
+                prof = ILLUMINA_PROFILES.get(opts.illumina_profile)
+                if prof is None:
+                    logger.error("Unknown Illumina profile: %s", opts.illumina_profile)
+                    raise SystemExit(1)
+                for k, v in prof.items():
+                    new_params.setdefault(k, v)
             if opts.illumina_depth is not None:
-                new_params.setdefault("coverage", opts.illumina_depth)
+                new_params["coverage"] = opts.illumina_depth
             if opts.illumina_quality is not None:
-                new_params.setdefault("quality_profile", opts.illumina_quality)
+                new_params["quality_profile"] = opts.illumina_quality
             if opts.illumina_context is not None:
-                new_params.setdefault("context_errors", opts.illumina_context)
+                new_params["context_errors"] = opts.illumina_context
             if opts.illumina_sub_rate is not None:
-                new_params.setdefault("substitution_rate", opts.illumina_sub_rate)
+                new_params["substitution_rate"] = opts.illumina_sub_rate
             if opts.illumina_ins_rate is not None:
-                new_params.setdefault("insertion_rate", opts.illumina_ins_rate)
+                new_params["insertion_rate"] = opts.illumina_ins_rate
             if opts.illumina_del_rate is not None:
-                new_params.setdefault("deletion_rate", opts.illumina_del_rate)
+                new_params["deletion_rate"] = opts.illumina_del_rate
         if name.startswith("nanopore"):
+            if opts.nanopore_profile:
+                prof = NANOPORE_PROFILES.get(opts.nanopore_profile)
+                if prof is None:
+                    logger.error("Unknown Nanopore profile: %s", opts.nanopore_profile)
+                    raise SystemExit(1)
+                for k, v in prof.items():
+                    new_params.setdefault(k, v)
             if opts.nanopore_depth is not None:
-                new_params.setdefault("coverage", opts.nanopore_depth)
+                new_params["coverage"] = opts.nanopore_depth
             if opts.nanopore_quality is not None:
-                new_params.setdefault("quality_profile", opts.nanopore_quality)
+                new_params["quality_profile"] = opts.nanopore_quality
             if opts.nanopore_context is not None:
-                new_params.setdefault("context_errors", opts.nanopore_context)
+                new_params["context_errors"] = opts.nanopore_context
             if opts.nanopore_sub_rate is not None:
-                new_params.setdefault("substitution_rate", opts.nanopore_sub_rate)
+                new_params["substitution_rate"] = opts.nanopore_sub_rate
             if opts.nanopore_ins_rate is not None:
-                new_params.setdefault("insertion_rate", opts.nanopore_ins_rate)
+                new_params["insertion_rate"] = opts.nanopore_ins_rate
             if opts.nanopore_del_rate is not None:
-                new_params.setdefault("deletion_rate", opts.nanopore_del_rate)
+                new_params["deletion_rate"] = opts.nanopore_del_rate
         updated.append((name, new_params))
     simulators = updated
 
