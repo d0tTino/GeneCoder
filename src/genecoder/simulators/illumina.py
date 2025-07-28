@@ -19,7 +19,29 @@ from ..nanopore_sim import (
 )
 from . import register_simulator as _register_simulator
 
-__all__ = ["IlluminaChannel", "IlluminaD2SimChannel", "IlluminaInSilicoSeqChannel", "register"]
+__all__ = [
+    "IlluminaChannel",
+    "IlluminaD2SimChannel",
+    "IlluminaInSilicoSeqChannel",
+    "register",
+    "ILLUMINA_PROFILES",
+]
+
+# Preset parameter profiles for :class:`IlluminaChannel`.
+ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
+    "miseq": {
+        "substitution_rate": 0.001,
+        "insertion_rate": 0.0001,
+        "deletion_rate": 0.0001,
+        "read_length": 250,
+    },
+    "hiseq": {
+        "substitution_rate": 0.0005,
+        "insertion_rate": 0.00005,
+        "deletion_rate": 0.00005,
+        "read_length": 150,
+    },
+}
 
 
 class IlluminaChannel(BaseSimulator):

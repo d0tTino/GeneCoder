@@ -28,7 +28,24 @@ __all__ = [
     "NanoporeDeSPChannel",
     "NanoporeDNArSimChannel",
     "register",
+    "NANOPORE_PROFILES",
 ]
+
+# Preset parameter profiles for :class:`NanoporeChannel`.
+NANOPORE_PROFILES: dict[str, dict[str, float | int]] = {
+    "minion": {
+        "error_rate": 0.12,
+        "substitution_rate": 0.02,
+        "insertion_rate": 0.04,
+        "deletion_rate": 0.06,
+    },
+    "promethion": {
+        "error_rate": 0.08,
+        "substitution_rate": 0.015,
+        "insertion_rate": 0.02,
+        "deletion_rate": 0.045,
+    },
+}
 
 
 class NanoporeChannel(BaseChannel):

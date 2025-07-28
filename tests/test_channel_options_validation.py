@@ -35,6 +35,8 @@ def _make_args(**kwargs: object) -> argparse.Namespace:
         nanopore_sub_rate=None,
         nanopore_ins_rate=None,
         nanopore_del_rate=None,
+        illumina_profile=None,
+        nanopore_profile=None,
     )
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
