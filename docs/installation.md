@@ -93,12 +93,21 @@ poetry run pytest -q
 ## Docker Dev Container
 
 The repository ships with a Visual Studio Code Dev Container configuration. You
-can still build the image and run the tests manually:
+can still build the image manually using the included `Dockerfile`:
 
 ```bash
 docker build -t genecoder .
-docker run --rm -e SKIP_PACKAGING_TESTS=1 genecoder poetry run pytest -q
 ```
+
+For a quick offline setup run the helper script which mounts the current
+repository into a container based on that image and disables networking:
+
+```bash
+./scripts/docker_dev.sh
+```
+
+Inside the container you can run commands like `poetry run pytest -q` without
+network access.
 ## Using the Dev Container
 
 Run `devcontainer open` from the repository root to build and launch the configured environment. Alternatively, install the **Dev Containers** extension in VS Code and select **Reopen in Container** when prompted. The container extends the project `Dockerfile` and includes Node and other helpful development tools.
