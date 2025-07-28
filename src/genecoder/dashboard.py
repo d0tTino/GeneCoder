@@ -24,6 +24,9 @@ def _load_metrics(path: str) -> dict[str, Any]:
         with open(path, "r", encoding="utf-8") as fh:
             data = json.load(fh)
         if isinstance(data, dict):
+            metrics = data.get("metrics")
+            if isinstance(metrics, dict):
+                return metrics
             return data
     except Exception as exc:  # pragma: no cover - I/O errors are surfaced in UI
         st.error(f"Failed to load {path}: {exc}")
@@ -44,7 +47,7 @@ def main(results_path: str | None = None) -> None:
 
     st.header("GC Distribution")
     if data["gc_distribution"]:
-        st.line_chart(data["gc_distribution"])
+        st.bar_chart(data["gc_distribution"])
     else:
         st.write("No GC distribution data.")
 

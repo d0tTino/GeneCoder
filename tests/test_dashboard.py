@@ -34,3 +34,19 @@ def test_main_runs(tmp_path: Path) -> None:
 
     mod = importlib.reload(importlib.import_module("genecoder.dashboard"))
     mod.main(str(path))
+
+
+def test_load_metrics_manifest(tmp_path: Path) -> None:
+    metrics_path = Path(__file__).parent / "data" / "metrics.json"
+    metrics = json.loads(metrics_path.read_text())
+    manifest = {
+        "file": "test.bin",
+        "encoding_parameters": {"method": "base4_direct"},
+        "metrics": metrics,
+    }
+    manifest_path = tmp_path / "test.manifest.json"
+    manifest_path.write_text(json.dumps(manifest))
+
+    from genecoder import dashboard
+
+    assert dashboard._load_metrics(str(manifest_path)) == metrics

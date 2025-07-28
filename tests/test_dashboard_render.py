@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import pytest
@@ -10,15 +9,9 @@ except Exception:
 
 
 def test_dashboard_main_renders(tmp_path: Path) -> None:
-    data = {
-        "gc_distribution": [0.1, 0.2, 0.3],
-        "gc_content": 0.2,
-        "homopolymer_runs": [1, 2, 3],
-        "ecc_success_rates": {"hamming": 1.0},
-        "decode_success_rate": 0.9,
-    }
+    metrics_file = Path(__file__).parent / "data" / "metrics.json"
     results = tmp_path / "results.json"
-    results.write_text(json.dumps(data))
+    results.write_text(metrics_file.read_text())
     def run_app(path: str) -> None:
         from genecoder import dashboard as dash
         dash.main(path)
