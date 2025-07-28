@@ -72,3 +72,13 @@ mpiexec -n 4 genecli channel run config.yml
 
 MPI requires an installed MPI implementation (such as MPICH or OpenMPI) in addition to `mpi4py`.
 
+### MPI Example
+
+A ready-to-run configuration at `configs/mpi_demo.yaml` shows two simple channels
+with `use_mpi: true`.
+Execute it using:
+
+```bash
+mpiexec -n 2 genecli channel run configs/mpi_demo.yaml
+```
+

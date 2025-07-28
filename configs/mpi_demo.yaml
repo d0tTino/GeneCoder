@@ -1,0 +1,10 @@
+# Demo configuration enabling MPI execution with two simple channels
+simulators:
+  - name: simple
+    error_rate: 0.01
+  - name: simple
+    error_rate: 0.02
+pipeline:
+  parallel: true
+  workers: 2
+  use_mpi: true
