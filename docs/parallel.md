@@ -75,10 +75,42 @@ MPI requires an installed MPI implementation (such as MPICH or OpenMPI) in addit
 ### MPI Example
 
 A ready-to-run configuration at `configs/mpi_demo.yaml` shows two simple channels
-with `use_mpi: true`.
-Execute it using:
+with `use_mpi: true`. The demo expects an encoded FASTA at
+`encoded/message.fasta`. Generate it from any text file:
+
+```bash
+genecli encode --input-files message.txt --output-file encoded/message.fasta
+```
+
+Execute the pipeline using:
 
 ```bash
 mpiexec -n 2 genecli channel run configs/mpi_demo.yaml
 ```
+
+### mpiexec Quickstart
+
+Follow these steps to run the demo configuration under MPI.
+
+1. Install an MPI runtime and the `mpi4py` package:
+
+   ```bash
+   # MPICH
+   sudo apt-get install mpich
+   # or OpenMPI
+   sudo apt-get install openmpi-bin
+   pip install mpi4py
+   ```
+
+2. Launch the pipeline with `mpiexec`:
+
+   ```bash
+   mpiexec -n 2 genecli channel run configs/mpi_demo.yaml
+   ```
+
+   OpenMPI users can instead run:
+
+   ```bash
+   mpirun -np 2 genecli channel run configs/mpi_demo.yaml
+   ```
 
