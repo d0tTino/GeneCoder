@@ -27,6 +27,7 @@ import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
 from .plugin_security import compute_checksum as _compute_checksum
+from .api import Visualizer
 import base64
 import json
 
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
+VISUALIZER_REGISTRY: Dict[str, Visualizer] = {}
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
 # re-export for tests
@@ -94,6 +96,15 @@ def register_simulator(name: str, channel: Simulator) -> None:
         raise TypeError("simulator must subclass Simulator")
 
     _register_simulator(name, channel)
+
+
+def register_visualizer(name: str, visualizer: Visualizer) -> None:
+    """Register a visualizer under ``name``."""
+
+    if not isinstance(visualizer, Visualizer):
+        raise TypeError("visualizer must subclass Visualizer")
+
+    VISUALIZER_REGISTRY[name] = visualizer
 
 
 
@@ -267,6 +278,7 @@ def load_entry_point_plugins() -> list[str]:
         "genecoder.plugins": (register_codec, "codec"),
         "genecoder.fec": (register_fec, "FEC"),
         "genecoder.simulators": (register_simulator, "simulator"),
+        "genecoder.visualizers": (register_visualizer, "visualizer"),
     }
     for group, (registrar, kind) in groups.items():
         try:
@@ -309,6 +321,9 @@ def load_local_plugins() -> list[str]:
             register_s = getattr(module, "register_simulator", None)
             if callable(register_s):
                 register_s(register_simulator)
+            register_v = getattr(module, "register_visualizer", None)
+            if callable(register_v):
+                register_v(register_visualizer)
 
     register = getattr(plugins, "register", None)
     if callable(register):
@@ -319,6 +334,9 @@ def load_local_plugins() -> list[str]:
     register_s = getattr(plugins, "register_simulator", None)
     if callable(register_s):
         register_s(register_simulator)
+    register_v = getattr(plugins, "register_visualizer", None)
+    if callable(register_v):
+        register_v(register_visualizer)
 
     return failures
 

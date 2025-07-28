@@ -75,6 +75,26 @@ Simulator plugins follow the same pattern using the `genecoder.simulators`
 group with a `register_simulator` callback that receives an object implementing
 the :class:`genecoder.api.Simulator` interface.
 
+Visualizer plugins register under `genecoder.visualizers` with a
+`register_visualizer` callback. The class should implement the
+``genecoder.api.Visualizer`` interface.
+
+```toml
+[project.entry-points."genecoder.visualizers"]
+myvis = "my_package.my_vis"
+```
+
+```python
+from genecoder.api import Visualizer
+
+class MyVisualizer(Visualizer):
+    def visualize(self, sequence: str, /, **kwargs):
+        ...
+
+def register(register_visualizer):
+    register_visualizer("myvis", MyVisualizer())
+```
+
 Registered codecs are available via `genecoder.CODEC_REGISTRY` after importing
 GeneCoder.
 

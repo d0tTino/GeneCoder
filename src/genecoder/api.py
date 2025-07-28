@@ -6,7 +6,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Mapping, Tuple
 
-__all__ = ["Codec", "FEC", "Simulator"]
+__all__ = ["Codec", "FEC", "Simulator", "Visualizer"]
 
 
 class Codec(ABC):
@@ -39,3 +39,11 @@ class Simulator(ABC):
     @abstractmethod
     def simulate(self, sequence: str) -> str:
         """Return a possibly corrupted version of ``sequence``."""
+
+
+class Visualizer(ABC):
+    """Abstract base class for sequence visualizers."""
+
+    @abstractmethod
+    def visualize(self, sequence: str, /, **kwargs: Any) -> Any:
+        """Return a visualization of ``sequence``."""

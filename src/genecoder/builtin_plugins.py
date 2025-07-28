@@ -10,6 +10,7 @@ from .plugin_manager import (
     register_codec,
     register_fec,
     register_simulator,
+    register_visualizer,
     _load_and_register,
 )
 
@@ -63,5 +64,11 @@ def register_builtin_plugins() -> None:
             "genecoder.desp_adapter",
         ],
         register_simulator,
+        "builtin",
+    )
+
+    _load_and_register(
+        ["genecoder.default_visualizer"],
+        register_visualizer,
         "builtin",
     )
