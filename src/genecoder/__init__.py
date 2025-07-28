@@ -32,6 +32,7 @@ __all__ = [
     "__version__",
     "CODEC_REGISTRY",
     "FEC_REGISTRY",
+    "VISUALIZER_REGISTRY",
     "SIMULATOR_REGISTRY",
     "VISUALIZER_REGISTRY",
     "simulate_reads",

@@ -72,3 +72,4 @@ def register_builtin_plugins() -> None:
         register_visualizer,
         "builtin",
     )
+

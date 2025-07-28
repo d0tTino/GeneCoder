@@ -4,7 +4,8 @@ from __future__ import annotations
 """Public abstract interfaces for GeneCoder plugins."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Mapping, Tuple
+from typing import Any, Mapping, Tuple, TYPE_CHECKING
+
 
 __all__ = ["Codec", "FEC", "Simulator", "Visualizer"]
 
@@ -47,3 +48,4 @@ class Visualizer(ABC):
     @abstractmethod
     def visualize(self, sequence: str, /, **kwargs: Any) -> Any:
         """Return a visualization of ``sequence``."""
+

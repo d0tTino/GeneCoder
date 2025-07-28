@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 CODEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 VISUALIZER_REGISTRY: Dict[str, Visualizer] = {}
+
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
 # re-export for tests
@@ -56,7 +57,7 @@ def _validate_spec(spec: str) -> None:
     raise ValueError("Unsafe plugin spec")
 
 
-from .api import Codec, FEC, Simulator
+from .api import Codec, FEC, Simulator, Visualizer
 
 
 def register_codec(name: str, codec: Codec | type[Codec]) -> None:
@@ -105,7 +106,6 @@ def register_visualizer(name: str, visualizer: Visualizer) -> None:
         raise TypeError("visualizer must subclass Visualizer")
 
     VISUALIZER_REGISTRY[name] = visualizer
-
 
 
 
@@ -261,6 +261,7 @@ def load_builtin_plugins() -> None:
 
     CODEC_REGISTRY.clear()
     FEC_REGISTRY.clear()
+    VISUALIZER_REGISTRY.clear()
     SIMULATOR_REGISTRY.clear()
 
     builtin = importlib.import_module("genecoder.builtin_plugins")
