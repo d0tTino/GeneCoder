@@ -132,6 +132,24 @@ def register_subcommand(
     else:
         parser.add_argument("--fec", default=None)
     parser.add_argument("--channel", choices=chan_choices, default=None)
+    parser.add_argument(
+        "--sub-rate",
+        type=float,
+        default=None,
+        help="Substitution rate/probability for the selected channel",
+    )
+    parser.add_argument(
+        "--ins-rate",
+        type=float,
+        default=None,
+        help="Insertion rate/probability for the selected channel",
+    )
+    parser.add_argument(
+        "--del-rate",
+        type=float,
+        default=None,
+        help="Deletion rate/probability for the selected channel",
+    )
 
     parser.set_defaults(func=_handle_command)
 
@@ -147,6 +165,24 @@ def _handle_command(args: argparse.Namespace) -> None:
     fec = args.fec if args.fec is not None else cfg_fec
     channel = args.channel or cfg_channel
     channel_params = cfg_params if channel == cfg_channel else {}
+    if channel is not None and channel != "none":
+        if args.sub_rate is not None:
+            if channel == "indel":
+                channel_params["substitution_prob"] = args.sub_rate
+            elif channel != "simple":
+                channel_params["substitution_rate"] = args.sub_rate
+            else:
+                channel_params["error_rate"] = args.sub_rate
+        if args.ins_rate is not None:
+            if channel == "indel":
+                channel_params["insertion_prob"] = args.ins_rate
+            elif channel != "simple":
+                channel_params["insertion_rate"] = args.ins_rate
+        if args.del_rate is not None:
+            if channel == "indel":
+                channel_params["deletion_prob"] = args.del_rate
+            elif channel != "simple":
+                channel_params["deletion_rate"] = args.del_rate
 
     if codec is None:
         logger.error("Codec must be specified via --codec or config")
