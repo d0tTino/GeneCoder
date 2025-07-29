@@ -17,6 +17,7 @@ from ..nanopore_sim import (
 from ..api import Simulator
 from .base import BaseChannel
 from ..error_simulation import (
+    introduce_errors,
     _random_substitution,
     NUCLEOTIDES,
 )
