@@ -163,31 +163,29 @@ class NanoporeDNArSimChannel(NanoporeChannel):
     def _simulate_fallback(sequence: str, error_rate: float, rng: random.Random) -> str:
         sub_p = error_rate * 0.4
         ins_p = error_rate * 0.3
-        base_del_p = error_rate * 0.3
-
-        mutated: list[str] = []
-        prev = ""
+        del_p = error_rate * 0.3
+        base = introduce_errors(
+            sequence,
+            substitution_prob=sub_p,
+            insertion_prob=ins_p,
+            deletion_prob=del_p,
+            rng=rng,
+        )
+        result: list[str] = []
+        run_char = ""
         run_len = 0
-        for nt in sequence:
-            if nt == prev:
+        for nt in base:
+            if nt == run_char:
                 run_len += 1
             else:
+                run_char = nt
                 run_len = 1
-                prev = nt
-
-            del_p = base_del_p * (2 if run_len > 3 else 1)
-            del_p = min(1.0, del_p)
-            if rng.random() < del_p:
+            extra_prob = 0.2 if run_len >= 5 else 0.0
+            if rng.random() < extra_prob:
                 continue
+            result.append(nt)
+        return "".join(result)
 
-            if rng.random() < sub_p:
-                nt = _random_substitution(nt, rng)
-
-            mutated.append(nt)
-            if rng.random() < ins_p:
-                mutated.append(rng.choice(NUCLEOTIDES))
-
-        return "".join(mutated)
 
     def simulate(self, sequence: str) -> str:
         rng = make_rng()

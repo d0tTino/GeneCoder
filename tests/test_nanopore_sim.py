@@ -285,3 +285,24 @@ def test_simulate_reads_wrapper_deprecated(monkeypatch):
 
     assert result == "wrapped"
     assert called == [("ACGT", "none", 0.2)]
+
+from genecoder.simulators.nanopore import NanoporeDNArSimChannel
+
+
+def _avg_deletions(seq: str, channel: NanoporeDNArSimChannel, monkeypatch) -> float:
+    counts = []
+    for i in range(50):
+        monkeypatch.setenv("GENECODER_SIM_SEED", str(i))
+        mutated = channel.simulate(seq)
+        counts.append(len(seq) - len(mutated))
+    return sum(counts) / len(counts)
+
+
+def test_homopolymers_increase_deletions(monkeypatch):
+    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda _: None)
+    channel = NanoporeDNArSimChannel(error_rate=0.4, deletion_rate=0.1)
+    homopoly = "A" * 50
+    balanced = ("ACGT" * 12) + "AC"
+    homopoly_del = _avg_deletions(homopoly, channel, monkeypatch)
+    balanced_del = _avg_deletions(balanced, channel, monkeypatch)
+    assert homopoly_del > balanced_del
