@@ -15,7 +15,10 @@ def _const_rng() -> random.Random:
 
 def test_simulate_fallback_homopolymer_deletion() -> None:
     rng = _const_rng()
-    assert NanoporeDNArSimChannel._simulate_fallback("AAAAT", 0.1, rng) == "AAAT"
+    assert (
+        NanoporeDNArSimChannel._simulate_fallback("AAAAT", 0.1, rng)
+        == "AAAAT"
+    )
 
     rng = _const_rng()
     assert NanoporeDNArSimChannel._simulate_fallback("AAAT", 0.1, rng) == "AAAT"
