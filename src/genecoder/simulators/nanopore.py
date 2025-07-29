@@ -18,7 +18,6 @@ from ..api import Simulator
 from .base import BaseChannel
 from ..error_simulation import (
     _random_substitution,
-    introduce_errors,
     NUCLEOTIDES,
 )
 from . import register_simulator as _register_simulator
@@ -187,6 +186,7 @@ class NanoporeDNArSimChannel(NanoporeChannel):
             result.append(nt)
         return "".join(result)
 
+
     def simulate(self, sequence: str) -> str:
         rng = make_rng()
         quality = self.quality_profile
@@ -209,8 +209,18 @@ def _mutate_read(
     read: str, quality: Sequence[float] | None, rng: random.Random, channel: NanoporeChannel
 ) -> str:
     mutated = []
+    prev = ""
+    run_len = 0
     for idx, nt in enumerate(read):
-        if rng.random() < channel.deletion_rate:
+        if nt == prev:
+            run_len += 1
+        else:
+            run_len = 1
+            prev = nt
+
+        del_rate = channel.deletion_rate * (2 if run_len > 3 else 1)
+        del_rate = min(1.0, del_rate)
+        if rng.random() < del_rate:
             continue
 
         sub_rate = (
