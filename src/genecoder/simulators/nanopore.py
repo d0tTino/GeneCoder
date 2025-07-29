@@ -17,7 +17,6 @@ from ..nanopore_sim import (
 from ..api import Simulator
 from .base import BaseChannel
 from ..error_simulation import (
-    introduce_errors,
     _random_substitution,
     NUCLEOTIDES,
 )
@@ -176,7 +175,9 @@ class NanoporeDNArSimChannel(NanoporeChannel):
                 run_len = 1
                 prev = nt
 
-            del_p = base_del_p * (2 if run_len > 3 else 1)
+            # Double the deletion probability only for very long runs to
+            # prevent excessive trimming of shorter homopolymers.
+            del_p = base_del_p * (2 if run_len >= 5 else 1)
             del_p = min(1.0, del_p)
             if rng.random() < del_p:
                 continue
