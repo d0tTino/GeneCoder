@@ -7,6 +7,20 @@ function receives a callback used to add the implementation to the appropriate
 registry. GeneCoder looks only at packages installed in your current Python
 environment when loading plugins.
 
+## Entry Point Groups
+
+The callback passed to `register()` depends on the entry point group used:
+
+- **Codecs** register under `genecoder.plugins` and call
+  `register_codec(name, CodecClass)`.
+- **FEC modules** register under `genecoder.fec` and call
+  `register_fec(name, FECClass)`.
+- **Simulators** register under `genecoder.simulators` and call
+  `register_simulator(name, SimulatorInstance)`.
+
+See the packages in [`plugins-examples`](../plugins-examples/) for working
+implementations of each entry point group.
+
 Example `pyproject.toml` snippet:
 
 ```toml
@@ -129,11 +143,17 @@ extensions.
 ## Plugin Examples
 
 See the [plugins-examples](../plugins-examples/) directory in the source tree for
-minimal sample packages implementing a codec, a
-[FEC](glossary.md#forward-error-correction-fec) backend, a read
-simulator and a small package plugin using the `genecoder.plugins`
-group. Install any of these packages with `pip install` to experiment
-with custom extensions locally.
+minimal packages showing how each entry point group works:
+
+- `example_codec` – registers a codec using `register_codec("example", ExampleCodec)`.
+- `example_fec` – registers a FEC backend via `register_fec("example", ExampleFEC)`.
+- `example_simulator` – registers a simulator with `register_simulator("example", PassthroughChannel())`.
+- `advanced_fec` – registers LDPC helper functions under `genecoder.fec`.
+- `example_package_plugin` – demonstrates a small plugin that exposes simple
+  encode/decode functions through `genecoder.plugins`.
+
+Install any of these packages with `pip install ./plugins-examples/<name>` to
+experiment locally.
 
 Run `scripts/scaffold_plugin.sh <name>` to create a new plugin project. The
 generated template registers an entry point and includes a README explaining
