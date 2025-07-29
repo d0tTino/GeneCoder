@@ -154,8 +154,16 @@ poetry install --with dev --no-interaction
 poetry run pytest -q
 ```
 
+
 The helper script above installs every extras group, enabling the
 full test matrix.
+
+## Parallel Execution
+
+`ChannelPipeline` can execute steps concurrently. Set
+`parallel=True` in `ChannelConfig` and choose a `workers` count. Adding
+`use_mpi=True` enables distributed runs. See
+[docs/parallel.md](docs/parallel.md) for more options and CLI tips.
 
 
 ## Continuous Integration
