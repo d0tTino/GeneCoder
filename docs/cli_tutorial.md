@@ -38,3 +38,21 @@ genecli bundle run bundle.yaml --cache-dir runs/
 
 Results are written to `runs/<hash>/<timestamp>/` and skipped when the same
 configuration is executed again.
+
+## Simulating channel errors
+
+The `pipeline` command can apply a sequencing simulator between encoding and
+decoding. Pass per-channel rates directly on the command line:
+
+```bash
+genecli pipeline input.bin output.bin --codec base4_direct --channel indel \
+    --sub-rate 0.1 --ins-rate 0.02 --del-rate 0.05
+```
+
+The same parameters work with the `channel` command when applying simulators to
+FASTA sequences:
+
+```bash
+genecli channel apply --input-file seq.fasta --output-file corrupted.fasta \
+    --simulator indel --sub-rate 0.1 --ins-rate 0.02 --del-rate 0.05 --min-length 1
+```

@@ -256,6 +256,24 @@ def register_subcommand(
         target.add_argument("--sub-prob", type=float, default=0.0, help="Substitution probability per nucleotide")
         target.add_argument("--ins-prob", type=float, default=0.0, help="Insertion probability after each nucleotide")
         target.add_argument("--del-prob", type=float, default=0.0, help="Deletion probability per nucleotide")
+        target.add_argument(
+            "--sub-rate",
+            type=float,
+            default=None,
+            help="Substitution rate for generic simulators",
+        )
+        target.add_argument(
+            "--ins-rate",
+            type=float,
+            default=None,
+            help="Insertion rate for generic simulators",
+        )
+        target.add_argument(
+            "--del-rate",
+            type=float,
+            default=None,
+            help="Deletion rate for generic simulators",
+        )
         target.add_argument("--illumina-depth", type=int, default=None, help="Coverage depth for Illumina reads")
         target.add_argument("--illumina-quality", type=str, default=None, help="Comma-separated quality profile or path to JSON")
         target.add_argument("--illumina-context", type=str, default=None, help="Path to JSON/YAML context error map")
@@ -360,6 +378,15 @@ def run_channel(args: argparse.Namespace) -> None:
                 new_params["insertion_rate"] = opts.nanopore_ins_rate
             if opts.nanopore_del_rate is not None:
                 new_params["deletion_rate"] = opts.nanopore_del_rate
+        if name == "indel":
+            if opts.sub_rate is not None:
+                new_params["substitution_prob"] = opts.sub_rate
+            if opts.ins_rate is not None:
+                new_params["insertion_prob"] = opts.ins_rate
+            if opts.del_rate is not None:
+                new_params["deletion_prob"] = opts.del_rate
+        if name == "simple" and opts.sub_rate is not None:
+            new_params["error_rate"] = opts.sub_rate
         updated.append((name, new_params))
     simulators = updated
 
