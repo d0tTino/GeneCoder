@@ -53,6 +53,7 @@ raptorq = {version = ">=2.0,<3.0", optional = true}
 httpx = "<0.28"
 deepdna = {version = "*", optional = true}
 chamaeleo = {version = "*", optional = true}
+dnachisel = {version = "*", optional = true}
 
 [tool.poetry.group.gui.dependencies]
 flet = ">=0.28,<0.29"
@@ -116,6 +117,7 @@ raptorq = ["raptorq", "numpy"]
 bch = ["bchlib"]
 deepdna = ["deepdna", "torch"]
 chamaeleo = ["chamaeleo"]
+chisel = ["dnachisel"]
 
 
 [build-system]

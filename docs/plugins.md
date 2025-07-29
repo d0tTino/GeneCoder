@@ -140,6 +140,14 @@ project. These are registered when :func:`genecoder.plugins.load_plugins` import
 the :mod:`genecoder.builtin_plugins` module before discovering any third-party
 extensions.
 
+The optional ``dnachisel_fixer`` plugin exposes a GC and homopolymer adjustment
+helper powered by [DNA Chisel](https://github.com/Edinburgh-Genome-Foundry/DNAChisel).
+Install GeneCoder with the ``chisel`` extras to enable it:
+
+```bash
+poetry install --extras chisel --no-interaction
+```
+
 ## Plugin Examples
 
 See the [plugins-examples](../plugins-examples/) directory in the source tree for
