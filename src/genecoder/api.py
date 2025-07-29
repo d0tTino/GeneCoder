@@ -4,7 +4,7 @@ from __future__ import annotations
 """Public abstract interfaces for GeneCoder plugins."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Mapping, Tuple, TYPE_CHECKING
+from typing import Any, Mapping, Tuple
 
 
 __all__ = ["Codec", "FEC", "Simulator", "Visualizer"]
