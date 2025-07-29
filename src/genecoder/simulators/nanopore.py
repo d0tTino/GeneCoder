@@ -18,7 +18,6 @@ from ..api import Simulator
 from .base import BaseChannel
 from ..error_simulation import (
     _random_substitution,
-    introduce_errors,
     NUCLEOTIDES,
 )
 from . import register_simulator as _register_simulator
@@ -164,14 +163,31 @@ class NanoporeDNArSimChannel(NanoporeChannel):
     def _simulate_fallback(sequence: str, error_rate: float, rng: random.Random) -> str:
         sub_p = error_rate * 0.4
         ins_p = error_rate * 0.3
-        del_p = error_rate * 0.3
-        return introduce_errors(
-            sequence,
-            substitution_prob=sub_p,
-            insertion_prob=ins_p,
-            deletion_prob=del_p,
-            rng=rng,
-        )
+        base_del_p = error_rate * 0.3
+
+        mutated: list[str] = []
+        prev = ""
+        run_len = 0
+        for nt in sequence:
+            if nt == prev:
+                run_len += 1
+            else:
+                run_len = 1
+                prev = nt
+
+            del_p = base_del_p * (2 if run_len > 3 else 1)
+            del_p = min(1.0, del_p)
+            if rng.random() < del_p:
+                continue
+
+            if rng.random() < sub_p:
+                nt = _random_substitution(nt, rng)
+
+            mutated.append(nt)
+            if rng.random() < ins_p:
+                mutated.append(rng.choice(NUCLEOTIDES))
+
+        return "".join(mutated)
 
     def simulate(self, sequence: str) -> str:
         rng = make_rng()
@@ -195,8 +211,18 @@ def _mutate_read(
     read: str, quality: Sequence[float] | None, rng: random.Random, channel: NanoporeChannel
 ) -> str:
     mutated = []
+    prev = ""
+    run_len = 0
     for idx, nt in enumerate(read):
-        if rng.random() < channel.deletion_rate:
+        if nt == prev:
+            run_len += 1
+        else:
+            run_len = 1
+            prev = nt
+
+        del_rate = channel.deletion_rate * (2 if run_len > 3 else 1)
+        del_rate = min(1.0, del_rate)
+        if rng.random() < del_rate:
             continue
 
         sub_rate = (
