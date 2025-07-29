@@ -14,7 +14,7 @@ import re
 
 yaml: ModuleType | None
 try:  # optional dependency
-    import yaml as yaml_module  # type: ignore[import-untyped]
+    import yaml as yaml_module
 except Exception:  # pragma: no cover - optional
     yaml = None
 else:
