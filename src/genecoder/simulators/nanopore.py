@@ -17,7 +17,6 @@ from ..nanopore_sim import (
 from ..api import Simulator
 from .base import BaseChannel
 from ..error_simulation import (
-    introduce_errors,
     _random_substitution,
     NUCLEOTIDES,
 )
@@ -176,7 +175,11 @@ class NanoporeDNArSimChannel(NanoporeChannel):
                 run_len = 1
                 prev = nt
 
-            del_p = base_del_p * (2 if run_len > 3 else 1)
+            # Increase deletion probability for long homopolymers. Only
+            # sequences of five bases or longer get the boosted rate so that
+            # a four-base run with a typical error rate is not deleted when
+            # rng.random() returns 0.05 (see tests/test_nanopore_homopolymer.py).
+            del_p = base_del_p * (2 if run_len > 4 else 1)
             del_p = min(1.0, del_p)
             if rng.random() < del_p:
                 continue
