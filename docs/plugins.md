@@ -107,7 +107,8 @@ wheel's digital signature with
 :func:`genecoder.security.compute_checksum` and raises ``InvalidSignature`` if
 verification fails. Set the ``GENECODER_PLUGIN_PUBLIC_KEY`` environment variable
 to the path of a PEM encoded key so the installer can perform this check
-automatically.
+automatically. Every wheel is hashed and the digest compared against the
+``checksum`` or ``signature`` listed in the registry before installation.
 
 When installing a signed wheel the file is downloaded and its SHA256 digest
 computed. The signature from the registry entry is base64 decoded and verified
@@ -212,7 +213,13 @@ export GENECODER_PLUGIN_REGISTRY_URL=./configs/registry.yaml
 export GENECODER_PLUGIN_PUBLIC_KEY=/path/to/public.pem
 genecli plugin install-registry --allow-registry
 ```
+## Simulator Environment Variables
 
+External simulator plugins can forward additional flags to their underlying
+tools. Set `GENECODER_D2SIM_OPTIONS`, `GENECODER_DNARSIM_OPTIONS` or
+`GENECODER_SQUIGULATOR_OPTIONS` to pass options to the respective simulator.
+Use `GENECODER_SIM_SEED` to make runs reproducible. The CLI automatically
+includes these values when invoking the simulator plugin.
 
 ## Plugin Catalogs
 

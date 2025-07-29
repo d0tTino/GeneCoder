@@ -225,3 +225,19 @@ local packages. The CLI and GUI behave the same way when these variables are
 unset or empty, making this the recommended configuration for air‑gapped
 systems.
 
+## Plugin Verification
+
+Plugin registries record a `checksum` or `signature` for every wheel. The
+installer computes the SHA256 digest of each download and compares it against
+this information before proceeding. Provide the verification key via the
+`GENECODER_PLUGIN_PUBLIC_KEY` environment variable so signatures are checked
+automatically. Installation fails if the digest or signature does not match.
+See [Plugin Security](plugins.md#plugin-security) for more details.
+
+## Configuring Optional Simulators
+
+External simulators accept additional flags through environment variables. Set
+`GENECODER_D2SIM_OPTIONS`, `GENECODER_DNARSIM_OPTIONS` or
+`GENECODER_SQUIGULATOR_OPTIONS` to pass options to the respective tool. Use
+`GENECODER_SIM_SEED` to make runs reproducible.
+
