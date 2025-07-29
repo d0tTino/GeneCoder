@@ -402,3 +402,26 @@ def _handle_run(args: argparse.Namespace) -> None:
         config=cfg,
         batch_workers=extra.get("batch_workers"),
     )
+
+
+def _handle_list_profiles(_: argparse.Namespace) -> None:
+    """Print available Illumina and Nanopore profiles."""
+
+    print("Illumina profiles:")
+    for name in sorted(ILLUMINA_PROFILES):
+        print(f"  {name}")
+
+    print("Nanopore profiles:")
+    for name in sorted(NANOPORE_PROFILES):
+        print(f"  {name}")
+
+
+def register_profiles_subcommand(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    """Register the ``profiles`` subcommand."""
+
+    parser = subparsers.add_parser(
+        "profiles", help="List available sequencing profiles"
+    )
+    parser.set_defaults(func=_handle_list_profiles)

@@ -116,6 +116,7 @@ def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
     analyze.register_subcommand(subparsers)
     report.register_subcommand(subparsers)
     channel.register_subcommand(subparsers)
+    channel.register_profiles_subcommand(subparsers)
     bundle.register_subcommand(subparsers)
     plugin.register_subcommand(subparsers)
     benchmark.register_subcommand(subparsers)
