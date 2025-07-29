@@ -270,6 +270,25 @@ mpiexec -n 4 genecli channel run pipeline.yml
 MPI execution requires the `mpi4py` package and an MPI implementation such as
 MPICH or OpenMPI.
 
+### MPI Pipeline
+
+The full encode->FEC->channel->decode pipeline can also run under MPI when
+`mpi4py` is installed. Set `use_mpi` and the desired number of `workers` in your
+YAML configuration or pass `--use-mpi` on the command line.
+
+```yaml
+pipeline:
+  use_mpi: true
+  workers: 4
+```
+
+Install the optional dependency and execute with `mpiexec`:
+
+```bash
+pip install mpi4py
+mpiexec -n 4 genecli pipeline run pipeline.yml --use-mpi
+```
+
 ### Manifest files
 
 Each encoded file produces a companion JSON manifest capturing the encoding
