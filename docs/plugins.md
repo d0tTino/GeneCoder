@@ -109,6 +109,11 @@ verification fails. Set the ``GENECODER_PLUGIN_PUBLIC_KEY`` environment variable
 to the path of a PEM encoded key so the installer can perform this check
 automatically.
 
+When installing a signed wheel the file is downloaded and its SHA256 digest
+computed. The signature from the registry entry is base64 decoded and verified
+against the digest using the public key. Installation is aborted if this check
+fails or if the digest does not match the optional ``checksum`` field.
+
 Host registry files over HTTPS or a secured internal server and keep them under
 version control. Each entry should include a ``checksum`` or ``signature`` so
 tampering is detected before installation.
@@ -150,8 +155,9 @@ Registered codecs and simulators appear in the respective registries once
 ## Plugin Registries
 
 GeneCoder can install a set of third-party packages listed in a YAML registry.
-Set the `GENECODER_PLUGIN_REGISTRY_URL` environment variable to the registry
-file and run the install command below. If this variable is unset no network
+Set the `GENECODER_PLUGIN_REGISTRY_URL` environment variable to point to that
+registry file and run the install command below. The path may be an HTTP(S)
+address or a local `file://` URL. When the variable is unset no network
 requests are made and GeneCoder loads only plugins already present in the
 current Python environment.
 
@@ -207,6 +213,14 @@ export GENECODER_PLUGIN_PUBLIC_KEY=/path/to/public.pem
 genecli plugin install-registry --allow-registry
 ```
 
+
+## Plugin Catalogs
+
+Catalog files list metadata for available plugins. Set
+`GENECODER_PLUGIN_CATALOG_URL` to a JSON or YAML document describing each
+plugin. If the catalog includes a top-level `signature` field GeneCoder verifies
+it using the public key specified in `GENECODER_CATALOG_PUBLIC_KEY` before
+updating the catalog. Any modification causes verification to fail.
 
 ## Challenge Scoreboard
 
