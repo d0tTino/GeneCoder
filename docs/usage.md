@@ -419,7 +419,8 @@ poetry install --extras chisel --no-interaction
 ```
 
 Pass `--fix-chisel` to `genecli encode` or `genecli analyze` to automatically
-adjust sequences so they satisfy strict GC and homopolymer limits:
+adjust sequences so they satisfy strict GC and homopolymer limits. The option
+uses the ``dnachisel_fixer`` plugin when available:
 
 ```bash
 genecli encode --input-files sample.bin \

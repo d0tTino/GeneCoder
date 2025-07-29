@@ -27,7 +27,7 @@ from genecoder.encoders import (
 )
 from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import encode_data_with_hamming
-from genecoder.plugin_manager import FEC_REGISTRY
+from genecoder.plugin_manager import CODEC_REGISTRY, FEC_REGISTRY
 from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
@@ -302,12 +302,22 @@ def process_single_encode(
         )
 
         if os.getenv("GENECODER_DISABLE_FIX") not in {"1", "true", "True"}:
-            final_encoded_dna_sequence = fix_sequence(
-                final_encoded_dna_sequence,
-                target_gc_min=args.gc_min,
-                target_gc_max=args.gc_max,
-                max_homopolymer=args.max_homopolymer,
-            )
+            if getattr(args, "fix_chisel", False) and "dnachisel_fixer" in CODEC_REGISTRY:
+                from genecoder.dnachisel_fixer import fix_sequence_dnachisel
+
+                final_encoded_dna_sequence = fix_sequence_dnachisel(
+                    final_encoded_dna_sequence,
+                    gc_min=args.gc_min,
+                    gc_max=args.gc_max,
+                    max_homopolymer=args.max_homopolymer,
+                )
+            else:
+                final_encoded_dna_sequence = fix_sequence(
+                    final_encoded_dna_sequence,
+                    target_gc_min=args.gc_min,
+                    target_gc_max=args.gc_max,
+                    max_homopolymer=args.max_homopolymer,
+                )
 
         if checksum:
             fasta_header = f"{fasta_header} checksum={checksum}"
@@ -559,6 +569,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--mirror",
         action="store_true",
         help="Also output the reverse-complement sequence and launch the visualizer.",
+    )
+    parser.add_argument(
+        "--fix-chisel",
+        action="store_true",
+        help="Use DNA Chisel for constraint fixing when available.",
     )
     parser.set_defaults(func=_handle_command)
 

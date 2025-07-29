@@ -35,6 +35,7 @@ def register_builtin_plugins() -> None:
     _load_and_register(
         [
             "genecoder.chamaeleo_codec",
+            "genecoder.dnachisel_fixer",
         ],
         register_codec,
         "builtin",
