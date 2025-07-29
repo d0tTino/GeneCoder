@@ -165,13 +165,27 @@ class NanoporeDNArSimChannel(NanoporeChannel):
         sub_p = error_rate * 0.4
         ins_p = error_rate * 0.3
         del_p = error_rate * 0.3
-        return introduce_errors(
+        base = introduce_errors(
             sequence,
             substitution_prob=sub_p,
             insertion_prob=ins_p,
             deletion_prob=del_p,
             rng=rng,
         )
+        result: list[str] = []
+        run_char = ""
+        run_len = 0
+        for nt in base:
+            if nt == run_char:
+                run_len += 1
+            else:
+                run_char = nt
+                run_len = 1
+            extra_prob = 0.2 if run_len >= 5 else 0.0
+            if rng.random() < extra_prob:
+                continue
+            result.append(nt)
+        return "".join(result)
 
     def simulate(self, sequence: str) -> str:
         rng = make_rng()
