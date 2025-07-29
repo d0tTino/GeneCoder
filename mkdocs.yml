@@ -32,6 +32,7 @@ nav:
       - Local Execution Only: cloud.md
       - Helix Frontend: helix_frontend.md
       - Parallel Pipeline: parallel.md
+      - MPI Channel Simulation: mpi.md
   - Archived:
       - Full Development Vision: archived/DEVELOPMENT_VISION.md
   - Technology Stack: technology_stack.md
