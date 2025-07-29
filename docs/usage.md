@@ -409,6 +409,23 @@ sequence in 3D with orbit controls, overlays for
 and fullscreen button make the visualization interactive. The frontend lives
 under `web/helix-ui` and is loaded via a WebView in the GUI.
 
+### Advanced Constraint Fixing
+
+Install the optional `chisel` extras to leverage a more sophisticated
+constraint solver:
+
+```bash
+poetry install --extras chisel --no-interaction
+```
+
+Pass `--fix-chisel` to `genecli encode` or `genecli analyze` to automatically
+adjust sequences so they satisfy strict GC and homopolymer limits:
+
+```bash
+genecli encode --input-files sample.bin \
+    --output-dir fixed/ --method base4_direct --fix-chisel
+```
+
 ## Disclaimer
 
 GeneCoder is intended for educational simulations only. It should not be used
