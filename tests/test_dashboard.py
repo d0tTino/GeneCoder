@@ -66,6 +66,9 @@ def test_display_ecc_and_decode_metric(
 ) -> None:
     data = {
         "ecc_success_rates": {"rs": 0.8, "bch": 0.9},
+        "substitutions": 5,
+        "insertions": 1,
+        "deletions": 2,
     }
     path = tmp_path / "metrics.json"
     path.write_text(json.dumps(data))
@@ -77,6 +80,13 @@ def test_display_ecc_and_decode_metric(
     assert dummy_streamlit["bar_chart"], "bar_chart not called"
     ecc_args, _ = dummy_streamlit["bar_chart"][0]
     assert {"rs": 0.8, "bch": 0.9} == ecc_args[0]
+    assert len(dummy_streamlit["bar_chart"]) >= 2
+    err_args, _ = dummy_streamlit["bar_chart"][1]
+    assert {
+        "Substitutions": 5,
+        "Insertions": 1,
+        "Deletions": 2,
+    } == err_args[0]
 
     # Decode success metric averages ECC rates
     assert dummy_streamlit["metric"], "metric not called"

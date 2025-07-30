@@ -17,6 +17,9 @@ _DEF_METRICS: dict[str, Any] = {
     "homopolymer_runs": [],
     "ecc_success_rates": {},
     "decode_success_rate": None,
+    "substitutions": None,
+    "insertions": None,
+    "deletions": None,
 }
 
 
@@ -100,6 +103,22 @@ def main(results_path: str | None = None) -> None:
         st.metric("Decode Success", f"{decode_rate:.2%}")
     else:
         st.write("No decode success metric.")
+
+    st.header("Error Counts")
+    subs = data.get("substitutions")
+    ins = data.get("insertions")
+    dels = data.get("deletions")
+    counts = {}
+    if isinstance(subs, int):
+        counts["Substitutions"] = subs
+    if isinstance(ins, int):
+        counts["Insertions"] = ins
+    if isinstance(dels, int):
+        counts["Deletions"] = dels
+    if counts:
+        st.bar_chart(counts)
+    else:
+        st.write("No error count data.")
 
 
 def launch(results_path: str) -> None:

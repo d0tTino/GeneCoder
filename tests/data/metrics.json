@@ -6,5 +6,8 @@
     "rs": 0.98,
     "bch": 0.95
   },
-  "decode_success_rate": 0.97
+  "decode_success_rate": 0.97,
+  "substitutions": 2,
+  "insertions": 1,
+  "deletions": 0
 }

@@ -9,6 +9,7 @@ import os
 import random
 from pathlib import Path
 from typing import Sequence, Dict, Any
+from difflib import SequenceMatcher
 
 
 from genecoder.formats import from_fasta, to_fasta
@@ -125,6 +126,20 @@ def _apply_simulators(
     return result
 
 
+def _count_errors(original: str, mutated: str) -> tuple[int, int, int]:
+    """Return substitution, insertion and deletion counts."""
+    subs = ins = dels = 0
+    sm = SequenceMatcher(None, original, mutated)
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "replace":
+            subs += max(i2 - i1, j2 - j1)
+        elif tag == "delete":
+            dels += i2 - i1
+        elif tag == "insert":
+            ins += j2 - j1
+    return subs, ins, dels
+
+
 def process_channel(
     input_file: str,
     output_file: str,
@@ -156,8 +171,9 @@ def process_channel(
     headers = [h for h, _ in records]
     sequences = [s for _, s in records]
 
-    def _process(item: tuple[int, str]) -> str:
+    def _process(item: tuple[int, str]) -> tuple[str, tuple[int, int, int]]:
         idx, seq = item
+        original = seq
         if simulators:
             cfg = config or ChannelConfig()
             seq = _apply_simulators(seq, simulators, config=cfg)
@@ -174,18 +190,25 @@ def process_channel(
         if not validate_sequence(seq, synth):
             raise ValueError("Sequence violates synthesis constraints")
         logger.info("Sequence satisfies synthesis constraints")
-        return seq
+        return seq, _count_errors(original, seq)
 
     if batch_workers and len(sequences) > 1:
-        processed_seqs = parallel_map(
+        processed = parallel_map(
             _process,
             list(enumerate(sequences)),
             workers=batch_workers,
         )
     else:
-        processed_seqs = [_process(p) for p in enumerate(sequences)]
+        processed = [_process(p) for p in enumerate(sequences)]
 
-    processed_records = list(zip(headers, processed_seqs))
+    processed_records: list[tuple[str, str]] = []
+    sub_total = ins_total = del_total = 0
+    for header, (seq, stats) in zip(headers, processed):
+        s, i, d = stats
+        sub_total += s
+        ins_total += i
+        del_total += d
+        processed_records.append((header, seq))
 
     fasta_out = "".join(
         to_fasta(seq, header, line_width=80) for header, seq in processed_records
@@ -204,7 +227,12 @@ def process_channel(
             "del_prob": del_prob,
         },
         "constraints": constraints,
-        "metrics": {"length": total_len},
+        "metrics": {
+            "length": total_len,
+            "substitutions": sub_total,
+            "insertions": ins_total,
+            "deletions": del_total,
+        },
     }
     manifest_path = os.path.splitext(output_file)[0] + ".manifest.json"
     with open(manifest_path, "w", encoding="utf-8") as m_out:
