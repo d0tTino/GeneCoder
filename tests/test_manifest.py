@@ -3,6 +3,10 @@ import pytest
 from dataclasses import dataclass
 
 from genecoder.manifest import generate_manifest
+from genecoder.core import run_pipeline
+from genecoder.api import Codec
+from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
+import json
 from genecoder.cli import EncodingOptions
 from pathlib import Path
 import os
@@ -69,4 +73,35 @@ def test_generate_manifest_missing_required_key_dataclass() -> None:
 
     with pytest.raises(ValueError, match="Missing required encoding parameter\(s\): method"):
         generate_manifest("bad.txt", NoMethod(), {"dna_length": 1})
+
+
+class _Base4Codec(Codec):
+    def encode(self, data: bytes) -> str:  # type: ignore[override]
+        from genecoder.encoders import encode_base4_direct
+        return encode_base4_direct(data)  # type: ignore[return-value]
+
+    def decode(self, encoded: str) -> bytes:  # type: ignore[override]
+        from genecoder.encoders import decode_base4_direct
+        return decode_base4_direct(encoded)[0]
+
+
+def test_pipeline_manifest_metrics(tmp_path: Path) -> None:
+    init_plugins()
+    CODEC_REGISTRY["base4"] = {"encode": _Base4Codec().encode, "decode": _Base4Codec().decode}
+    inp = tmp_path / "data.bin"
+    outp = tmp_path / "out.bin"
+    inp.write_bytes(b"ACGTACGT")
+
+    result, metrics = run_pipeline("base4", None, "none", str(inp), str(outp))
+    assert result == b"ACGTACGT"
+
+    manifest = generate_manifest(inp.name, {"method": "base4"}, metrics)
+    manifest_path = tmp_path / "m.json"
+    manifest_path.write_text(json.dumps(manifest))
+
+    from genecoder import dashboard
+
+    loaded = dashboard._load_metrics(str(manifest_path))
+    assert loaded["gc_content"] == metrics["gc_content"]
+    assert loaded["max_homopolymer"] == metrics["max_homopolymer"]
 

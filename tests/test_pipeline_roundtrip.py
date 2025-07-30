@@ -42,8 +42,9 @@ def test_pipeline_roundtrip_reed_solomon(tmp_path: Path) -> None:
     outp = tmp_path / "out.bin"
     inp.write_bytes(data)
 
-    result = run_pipeline("base4", "reed_solomon", "simple", str(inp), str(outp))
+    result, metrics = run_pipeline("base4", "reed_solomon", "simple", str(inp), str(outp))
     assert result == data
+    assert metrics["gc_content"] >= 0.0
     assert outp.read_bytes() == data
 
 
@@ -58,8 +59,9 @@ def test_pipeline_roundtrip_fountain(tmp_path: Path) -> None:
     outp = tmp_path / "out.bin"
     inp.write_bytes(data)
 
-    result = run_pipeline("base4", "fountain", "simple", str(inp), str(outp))
+    result, metrics = run_pipeline("base4", "fountain", "simple", str(inp), str(outp))
     assert result == data
+    assert metrics["gc_content"] >= 0.0
     assert outp.read_bytes() == data
 
 
@@ -76,7 +78,7 @@ def test_pipeline_roundtrip_rs_illumina(
     outp = tmp_path / "out.bin"
     inp.write_bytes(data)
 
-    result = run_pipeline(
+    result, _ = run_pipeline(
         "base4",
         "reed_solomon",
         "illumina",
@@ -100,7 +102,7 @@ def test_pipeline_roundtrip_fountain_nanopore(
     outp = tmp_path / "out.bin"
     inp.write_bytes(data)
 
-    result = run_pipeline(
+    result, _ = run_pipeline(
         "base4",
         "fountain",
         "nanopore",
