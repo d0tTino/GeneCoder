@@ -7,6 +7,9 @@ import logging
 from pathlib import Path
 from typing import Any, Dict
 
+from genecoder.simulators.illumina import ILLUMINA_PROFILES
+from genecoder.simulators.nanopore import NANOPORE_PROFILES
+
 from genecoder.core import run_pipeline
 from genecoder.plugin_manager import (
     CODEC_REGISTRY,
@@ -120,6 +123,8 @@ def register_subcommand(
     codec_choices = sorted(CODEC_REGISTRY.keys()) or None
     fec_choices = sorted(FEC_REGISTRY.keys())
     chan_choices = ["none", *sorted(SIMULATOR_REGISTRY.keys())]
+    illumina_profiles = ", ".join(sorted(ILLUMINA_PROFILES))
+    nanopore_profiles = ", ".join(sorted(NANOPORE_PROFILES))
 
     parser.add_argument("input", help="Path to input file")
     parser.add_argument("output", help="Path to output file")
@@ -131,7 +136,15 @@ def register_subcommand(
         parser.add_argument("--fec", choices=fec_choices, default=None)
     else:
         parser.add_argument("--fec", default=None)
-    parser.add_argument("--channel", choices=chan_choices, default=None)
+    parser.add_argument(
+        "--channel",
+        choices=chan_choices,
+        default=None,
+        help=(
+            "Channel simulator to apply. Illumina profiles: "
+            f"{illumina_profiles}. Nanopore profiles: {nanopore_profiles}."
+        ),
+    )
     parser.add_argument(
         "--sub-rate",
         type=float,

@@ -56,3 +56,8 @@ FASTA sequences:
 genecli channel apply --input-file seq.fasta --output-file corrupted.fasta \
     --simulator indel --sub-rate 0.1 --ins-rate 0.02 --del-rate 0.05 --min-length 1
 ```
+
+Built-in channel profiles include:
+
+- **Illumina** – `miseq`, `hiseq`
+- **Nanopore** – `minion`, `promethion`
