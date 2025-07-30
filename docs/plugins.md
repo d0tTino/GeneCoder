@@ -223,6 +223,18 @@ export GENECODER_PLUGIN_REGISTRY_URL=https://example.com/plugins.yaml
 export GENECODER_PLUGIN_PUBLIC_KEY=/path/to/public.pem
 ```
 
+### Verifying Plugin Signatures
+
+Set the `GENECODER_PLUGIN_PUBLIC_KEY` environment variable to a PEM encoded
+public key before running `genecli plugin install-registry --allow-registry`.
+GeneCoder checks the `signature` field for every wheel using the helper
+functions in [src/genecoder/plugin_checks.py](../src/genecoder/plugin_checks.py).
+
+```bash
+export GENECODER_PLUGIN_PUBLIC_KEY=/path/to/public.pem
+genecli plugin install-registry --allow-registry
+```
+
 ### Registry Installation Security
 
 The registry file enumerates remote wheels along with a `checksum` or
