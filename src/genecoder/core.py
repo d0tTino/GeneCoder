@@ -3,7 +3,10 @@ from __future__ import annotations
 """Simple encode/ECC/channel/decode pipeline utilities."""
 
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Tuple, Dict
+
+from .gc_constrained_encoder import calculate_gc_content
+from .utils import get_max_homopolymer_length
 
 from .plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
 from .simulators import SIMULATOR_REGISTRY
@@ -17,7 +20,7 @@ def run_pipeline(
     channel: str | None,
     input_path: str,
     output_path: str,
-) -> bytes:
+) -> Tuple[bytes, Dict[str, float | int]]:
     """Process ``input_path`` through the selected codec, FEC and channel.
 
     The decoded bytes are written to ``output_path`` and also returned.
@@ -42,6 +45,9 @@ def run_pipeline(
     if channel and channel != "none":
         dna = SIMULATOR_REGISTRY[channel].simulate(dna)
 
+    gc_content = calculate_gc_content(dna)
+    max_homopolymer = get_max_homopolymer_length(dna)
+
     decoded_any = CODEC_REGISTRY[codec]["decode"](dna)
     assert isinstance(decoded_any, (bytes, bytearray))
     decoded = bytes(decoded_any)
@@ -51,4 +57,4 @@ def run_pipeline(
         decoded, _ = FEC_REGISTRY[fec]["decode"](decoded, fec_info)
 
     Path(output_path).write_bytes(decoded)
-    return decoded
+    return decoded, {"gc_content": gc_content, "max_homopolymer": max_homopolymer}

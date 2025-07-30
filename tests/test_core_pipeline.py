@@ -34,6 +34,7 @@ def test_roundtrip_rs_simple(tmp_path: Path) -> None:
     data = b"pipeline test"
     inp.write_bytes(data)
 
-    result = run_pipeline("base4", "reed_solomon", "simple", str(inp), str(outp))
+    result, metrics = run_pipeline("base4", "reed_solomon", "simple", str(inp), str(outp))
     assert result == data
+    assert metrics["gc_content"] >= 0.0
     assert outp.read_bytes() == data
