@@ -394,7 +394,17 @@ poetry install --with gui --no-interaction
 genecli dashboard results.json
 ```
 
-The interface plots GC content distribution, homopolymer histograms, and ECC success-rate bar charts. It also displays the overall decode success percentage derived from the metrics file.
+The interface plots GC content distribution, homopolymer histograms, and ECC success-rate bar charts. It also displays the overall decode success percentage derived from the metrics file. When substitution, insertion and deletion counts are present, they are shown as a simple bar chart.
+
+Example metrics snippet:
+
+```json
+{
+  "substitutions": 12,
+  "insertions": 3,
+  "deletions": 1
+}
+```
 
 ### Constraint Fix Suggestions
 

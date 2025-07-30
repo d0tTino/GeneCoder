@@ -25,6 +25,9 @@ def aggregate_metrics(root: Path) -> dict[str, Any]:
     total_files = 0
     total_bytes = 0
     total_nt = 0
+    total_subs = 0
+    total_ins = 0
+    total_dels = 0
     bpn_values: list[float] = []
     for manifest in parse_manifests(root):
         total_files += 1
@@ -39,10 +42,22 @@ def aggregate_metrics(root: Path) -> dict[str, Any]:
             bpn = metrics.get("bits_per_nt")
             if isinstance(bpn, (int, float)):
                 bpn_values.append(float(bpn))
+            s = metrics.get("substitutions")
+            if isinstance(s, int):
+                total_subs += s
+            i = metrics.get("insertions")
+            if isinstance(i, int):
+                total_ins += i
+            d = metrics.get("deletions")
+            if isinstance(d, int):
+                total_dels += d
     avg_bpn = sum(bpn_values) / len(bpn_values) if bpn_values else 0.0
     return {
         "files": total_files,
         "total_original_size": total_bytes,
         "total_dna_length": total_nt,
         "avg_bits_per_nt": avg_bpn,
+        "total_substitutions": total_subs,
+        "total_insertions": total_ins,
+        "total_deletions": total_dels,
     }

@@ -49,6 +49,9 @@ def test_channel_cli_simulator(tmp_path: Path) -> None:
     data = json.loads(manifest.read_text())
     assert data["simulators"] == ["simple"]
     assert isinstance(data["metrics"].get("length"), int)
+    assert "substitutions" in data["metrics"]
+    assert "insertions" in data["metrics"]
+    assert "deletions" in data["metrics"]
 
 
 def test_cli_illumina_rates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -375,6 +378,9 @@ def test_channel_cli_parallel_variants(
     data = json.loads(manifest.read_text())
     assert data["simulators"] == ["simple"]
     assert data["metrics"]["length"] == len(seq)
+    assert "substitutions" in data["metrics"]
+    assert "insertions" in data["metrics"]
+    assert "deletions" in data["metrics"]
 
 
 def test_channel_cli_bad_yaml(tmp_path: Path) -> None:

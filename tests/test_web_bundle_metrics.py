@@ -29,7 +29,14 @@ def test_bundle_metrics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
         json.dumps({
             "file": "x",
             "encoding_parameters": {"method": "base4_direct"},
-            "metrics": {"original_size": 10, "dna_length": 20, "bits_per_nt": 1.5},
+            "metrics": {
+                "original_size": 10,
+                "dna_length": 20,
+                "bits_per_nt": 1.5,
+                "substitutions": 2,
+                "insertions": 1,
+                "deletions": 1,
+            },
         })
     )
     r = _request("GET", "/bundle-metrics")
@@ -39,4 +46,7 @@ def test_bundle_metrics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     assert data["total_original_size"] == 10
     assert data["total_dna_length"] == 20
     assert abs(data["avg_bits_per_nt"] - 1.5) < 1e-6
+    assert data["total_substitutions"] == 2
+    assert data["total_insertions"] == 1
+    assert data["total_deletions"] == 1
 
