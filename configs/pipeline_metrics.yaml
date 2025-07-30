@@ -1,0 +1,19 @@
+# Sample pipeline configuration demonstrating metric collection.
+# Set GENECODER_METRICS_PATH to specify the metrics file before running:
+#   GENECODER_METRICS_PATH=metrics.json genecli bundle run configs/pipeline_metrics.yaml
+encode:
+  input_files:
+    - tests/data/vertical_slice.txt
+  method: base4_direct
+  fec: hamming_7_4
+simulate:
+  simulators:
+    - name: simple
+      error_rate: 0.01
+  pipeline:
+    parallel: false
+    workers: null
+    use_process_pool: false
+    use_mpi: false
+decode:
+  method: base4_direct

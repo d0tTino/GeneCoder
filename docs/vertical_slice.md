@@ -81,6 +81,9 @@ using a simulator and Hamming FEC. The `pipeline` section selects the built-in
 genecli bundle run configs/vertical_slice_demo.yaml --cache-dir runs
 ```
 
+For a pipeline run that records usage statistics see
+`configs/pipeline_metrics.yaml`.
+
 The `scripts/vertical_slice.sh` helper executes the same command automatically
 as part of the demo.
 
