@@ -88,6 +88,15 @@ Execute the pipeline using:
 mpiexec -n 2 genecli channel run configs/mpi_demo.yaml
 ```
 
+You can also run a short Python example:
+
+```bash
+mpiexec -n 2 python scripts/mpi_example.py
+```
+
+The script prints the processed sequence from each MPI rank so you can verify
+distributed execution.
+
 ### mpiexec Quickstart
 
 Follow these steps to run the demo configuration under MPI.
