@@ -185,10 +185,13 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --output-file channel.fasta --simulator simple --simulator indel
    ```
 
-   Named sequencing profiles are available. Use `--illumina-profile miseq` or
-   `--illumina-profile hiseq` for Illumina runs and `--nanopore-profile minion`
-   or `--nanopore-profile promethion` for Nanopore data. Individual rate options
-   override the selected profile.
+   Named sequencing profiles are available:
+
+   - **Illumina** – `miseq`, `hiseq`
+   - **Nanopore** – `minion`, `promethion`
+
+   Select a profile with `--illumina-profile` or `--nanopore-profile`. Individual rate options
+   override the chosen profile.
 
    The same configuration can be provided via YAML:
 
