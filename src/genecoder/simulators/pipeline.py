@@ -89,17 +89,26 @@ class ChannelPipeline(BaseChannel):
             )
 
         with executor_cls(max_workers=workers) as executor:
-            fut: concurrent.futures.Future[str] | None = None
-            for channel in channels:
-                if fut is None:
-                    fut = executor.submit(_run_channel, sequence, channel)
-                else:
-                    fut = executor.submit(
-                        lambda f=fut, ch=channel: _run_channel(f.result(), ch)
-                    )
+            done_future: concurrent.futures.Future[str] = concurrent.futures.Future()
 
-            if fut is not None:
-                sequence = fut.result()
+            def _dispatch(idx: int, seq: str) -> None:
+                fut = executor.submit(_run_channel, seq, channels[idx])
+                if hasattr(fut, "add_done_callback"):
+                    if idx + 1 < len(channels):
+                        fut.add_done_callback(
+                            lambda f, i=idx + 1: _dispatch(i, f.result())
+                        )
+                    else:
+                        fut.add_done_callback(lambda f: done_future.set_result(f.result()))
+                else:
+                    res = fut.result()
+                    if idx + 1 < len(channels):
+                        _dispatch(idx + 1, res)
+                    else:
+                        done_future.set_result(res)
+
+            _dispatch(0, sequence)
+            sequence = done_future.result()
 
         metrics.increment("oligos_simulated")
         return sequence
