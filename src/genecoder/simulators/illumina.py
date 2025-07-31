@@ -7,6 +7,15 @@ import shutil
 import subprocess
 import logging
 
+try:  # Optional at runtime
+    from numba import njit
+except Exception:  # pragma: no cover - fallback when numba missing
+    def njit(*args, **kwargs):
+        def wrapper(func):
+            return func
+
+        return wrapper
+
 from .base import BaseSimulator
 
 from ..random_utils import make_rng
@@ -44,6 +53,38 @@ ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
 }
 
 
+@njit(cache=True, forceobj=True)
+def _mutate_read_jit(
+    read: str,
+    quality: Sequence[float] | None,
+    substitution_rate: float,
+    insertion_rate: float,
+    deletion_rate: float,
+    context_errors: Dict[str, float],
+    rng: random.Random,
+) -> str:
+    mutated: list[str] = []
+    for idx, nt in enumerate(read):
+        if rng.random() < deletion_rate:
+            continue
+
+        sub_rate = (
+            quality[idx] if quality is not None and idx < len(quality) else substitution_rate
+        )
+        if context_errors and idx > 0:
+            ctx = read[idx - 1 : idx + 1].upper()
+            sub_rate *= context_errors.get(ctx, 1.0)
+
+        if rng.random() < sub_rate:
+            nt = _random_substitution(nt, rng)
+
+        mutated.append(nt)
+        if rng.random() < insertion_rate:
+            mutated.append(rng.choice(NUCLEOTIDES))
+
+    return "".join(mutated)
+
+
 class IlluminaChannel(BaseSimulator):
     """Channel modeling basic Illumina read errors."""
 
@@ -72,26 +113,15 @@ class IlluminaChannel(BaseSimulator):
     def _mutate_read(
         self, read: str, quality: Sequence[float] | None, rng: random.Random
     ) -> str:
-        mutated = []
-        for idx, nt in enumerate(read):
-            if rng.random() < self.deletion_rate:
-                continue
-
-            sub_rate = (
-                quality[idx] if quality is not None and idx < len(quality) else self.substitution_rate
-            )
-            if self.context_errors and idx > 0:
-                ctx = read[idx - 1 : idx + 1].upper()
-                sub_rate *= self.context_errors.get(ctx, 1.0)
-
-            if rng.random() < sub_rate:
-                nt = _random_substitution(nt, rng)
-
-            mutated.append(nt)
-            if rng.random() < self.insertion_rate:
-                mutated.append(rng.choice(NUCLEOTIDES))
-
-        return "".join(mutated)
+        return _mutate_read_jit(
+            read,
+            quality,
+            self.substitution_rate,
+            self.insertion_rate,
+            self.deletion_rate,
+            self.context_errors,
+            rng,
+        )
 
     @staticmethod
     def _consensus(reads: Iterable[str]) -> str:
