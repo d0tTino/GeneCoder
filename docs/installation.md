@@ -69,7 +69,8 @@ python -m pip install -e .[gui,web,dev]
 ```
 This command installs the optional GUI, web, and development dependencies in
 editable mode. The `dev` group pulls in stub packages like `types-PyYAML` so
-`mypy` runs without additional steps.
+`mypy` runs without additional steps. Make sure this stub package is
+installed whenever you run the type checker.
 
 ## Development Setup
 
