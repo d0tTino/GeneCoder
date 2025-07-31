@@ -26,3 +26,5 @@ uvicorn web.main:app --reload
 
 Set `GENECODER_API_TOKEN` to your desired bearer token. When the server is
 running it serves the dashboard from `web/helix-ui/dist` at the root URL.
+
+See [mpi.md](mpi.md) for instructions on running channel simulations across multiple nodes using MPI.
