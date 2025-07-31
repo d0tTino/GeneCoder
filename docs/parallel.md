@@ -1,6 +1,8 @@
 # Parallel Channel Pipeline
 
-GeneCoder's `genecoder.simulators.pipeline.ChannelPipeline` can execute channel steps concurrently. This is useful when a pipeline contains several simulators or when processing large batches of sequences.
+GeneCoder's `genecoder.simulators.pipeline.ChannelPipeline` can execute channel steps concurrently. The pipeline now dispatches each step as a future so the next stage starts as soon as the previous one finishes. This overlapping of work is especially helpful when running several simulators or processing many sequences.
+
+Running on a four-core machine with `parallel=True` often cuts the runtime for CPU-bound pipelines nearly in half. Each completed sequence still increments the `oligos_simulated` counter once, so parallel execution only speeds up how quickly those metrics accumulate.
 
 ## Threads
 
@@ -13,6 +15,16 @@ from genecoder.channel_config import ChannelConfig
 pipeline = ChannelPipeline([...])
 cfg = ChannelConfig(parallel=True, workers=4)
 result = pipeline.simulate(sequence, config=cfg)
+```
+
+Process several sequences in parallel using `parallel_map`:
+
+```python
+from genecoder.parallel import parallel_map
+
+sequences = ["ACGT", "TGCA", "GATC"]
+cfg = ChannelConfig(parallel=True, workers=4)
+results = parallel_map(lambda s: pipeline.simulate(s, config=cfg), sequences, workers=4)
 ```
 
 Run the same from the CLI:
