@@ -164,7 +164,10 @@ full test matrix.
 `ChannelPipeline` can execute steps concurrently. Set
 `parallel=True` in `ChannelConfig` and choose a `workers` count. Adding
 `use_mpi=True` enables distributed runs. See
-[docs/parallel.md](docs/parallel.md) for more options and CLI tips.
+[docs/parallel.md](docs/parallel.md) for more options and CLI tips. Multi‑node
+instructions live in [docs/mpi.md](docs/mpi.md). MPI support requires the
+`mpi4py` package and an MPI implementation (MPICH or OpenMPI) but is optional
+for local or offline use.
 
 
 ## Continuous Integration
