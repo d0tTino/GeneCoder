@@ -65,9 +65,11 @@ If you prefer `pip`, ensure you are using **Python 3.11+** and install the
 repository in editable mode so changes take effect immediately:
 
 ```bash
-python -m pip install -e .[gui,web]
+python -m pip install -e .[gui,web,dev]
 ```
-This command installs the optional GUI and web dependencies in editable mode.
+This command installs the optional GUI, web, and development dependencies in
+editable mode. The `dev` group pulls in stub packages like `types-PyYAML` so
+`mypy` runs without additional steps.
 
 ## Development Setup
 

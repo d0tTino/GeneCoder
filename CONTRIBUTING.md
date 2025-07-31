@@ -57,6 +57,16 @@ The hook also runs automatically on each commit if installed.
 CI runs `ruff check` and `mypy` on pull requests that modify code. Fix any
 issues they report before merging.
 
+### Running `mypy` Manually
+
+Install the development extras so stub packages like `types-PyYAML` are
+available, then invoke `mypy`:
+
+```bash
+python -m pip install -e .[dev]
+mypy --config-file pyproject.toml --show-error-codes
+```
+
 An additional `check-glossary-terms` hook verifies that every term in
 `docs/glossary.json` appears in at least one Markdown file. The commit
 will fail if any terms are missing.

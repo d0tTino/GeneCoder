@@ -120,6 +120,7 @@ bch = ["bchlib"]
 deepdna = ["deepdna", "torch"]
 chamaeleo = ["chamaeleo"]
 chisel = ["dnachisel"]
+dev = ["types-PyYAML"]
 
 
 [build-system]
