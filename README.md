@@ -95,7 +95,7 @@ test suite:
 |---------------|-------------------------------------------------|
 | `gui`         | Flet GUI and helix viewer dependencies          |
 | `web`         | FastAPI server for the web dashboard            |
-| `dev`         | Pytest, Ruff, MyPy and Playwright tools         |
+| `dev`         | Pytest, Ruff, MyPy, types-PyYAML and Playwright tools |
 | `ldpc`        | Low-density parity-check codes                  |
 | `fountain`    | Fountain code support                           |
 | `bch`         | BCH error-correcting codes                      |
@@ -153,6 +153,14 @@ Install the development dependencies before executing the test suite:
 ```bash
 poetry install --with dev --no-interaction
 poetry run pytest -q
+```
+
+Run MyPy after installing the same `dev` extras so stub packages like
+`types-PyYAML` are available:
+
+```bash
+python -m pip install -e .[dev]
+mypy --config-file pyproject.toml --show-error-codes
 ```
 
 
