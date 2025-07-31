@@ -60,7 +60,8 @@ issues they report before merging.
 ### Running `mypy` Manually
 
 Install the development extras so stub packages like `types-PyYAML` are
-available, then invoke `mypy`:
+available. `mypy` relies on this stub package for YAML type checking, so
+ensure it is installed before running:
 
 ```bash
 python -m pip install -e .[dev]
