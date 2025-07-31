@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import random
-from typing import Protocol, Callable
+from typing import Callable, Optional, Protocol
 
 from .random_utils import make_rng
 
@@ -18,7 +18,6 @@ class RandomLike(Protocol):
 
     def choice(self, seq: list[str]) -> str: ...
 
-from typing import Optional
 
 NUCLEOTIDES = ["A", "T", "C", "G"]
 
