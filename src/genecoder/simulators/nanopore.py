@@ -7,6 +7,15 @@ import shutil
 import subprocess
 import logging
 
+try:  # Optional at runtime
+    from numba import njit
+except Exception:  # pragma: no cover - fallback when numba missing
+    def njit(*args, **kwargs):
+        def wrapper(func):
+            return func
+
+        return wrapper
+
 from ..random_utils import make_rng
 from ..nanopore_sim import (
     simulate_d2sim,
@@ -45,6 +54,79 @@ NANOPORE_PROFILES: dict[str, dict[str, float | int]] = {
         "deletion_rate": 0.045,
     },
 }
+
+
+@njit(cache=True, forceobj=True)
+def _simulate_fallback_jit(sequence: str, error_rate: float, rng: random.Random) -> str:
+    sub_p = error_rate * 0.4
+    ins_p = error_rate * 0.3
+    base_del_p = error_rate * 0.3
+
+    mutated: list[str] = []
+    prev = ""
+    run_len = 0
+    for nt in sequence:
+        if nt == prev:
+            run_len += 1
+        else:
+            run_len = 1
+            prev = nt
+
+        del_p = base_del_p * (2 if run_len >= 5 else 1)
+        del_p = min(1.0, del_p)
+        if rng.random() < del_p:
+            continue
+
+        if rng.random() < sub_p:
+            nt = _random_substitution(nt, rng)
+
+        mutated.append(nt)
+        if rng.random() < ins_p:
+            mutated.append(rng.choice(NUCLEOTIDES))
+
+    return "".join(mutated)
+
+
+@njit(cache=True, forceobj=True)
+def _mutate_read_jit(
+    read: str,
+    quality: Sequence[float] | None,
+    rng: random.Random,
+    substitution_rate: float,
+    insertion_rate: float,
+    deletion_rate: float,
+    context_errors: Dict[str, float],
+) -> str:
+    mutated = []
+    prev = ""
+    run_len = 0
+    for idx, nt in enumerate(read):
+        if nt == prev:
+            run_len += 1
+        else:
+            run_len = 1
+            prev = nt
+
+        del_rate = deletion_rate * (2 if run_len > 3 else 1)
+        del_rate = min(1.0, del_rate)
+        if rng.random() < del_rate:
+            continue
+
+        sub_rate = (
+            quality[idx] if quality is not None and idx < len(quality) else substitution_rate
+        )
+        if context_errors and idx > 0:
+            ctx = read[idx - 1 : idx + 1].upper()
+            sub_rate *= context_errors.get(ctx, 1.0)
+
+        if rng.random() < sub_rate:
+            nt = _random_substitution(nt, rng)
+
+        mutated.append(nt)
+        if rng.random() < insertion_rate:
+            mutated.append(rng.choice(NUCLEOTIDES))
+
+    return "".join(mutated)
 
 
 class NanoporeChannel(BaseChannel):
@@ -161,36 +243,7 @@ class NanoporeDNArSimChannel(NanoporeChannel):
 
     @staticmethod
     def _simulate_fallback(sequence: str, error_rate: float, rng: random.Random) -> str:
-        sub_p = error_rate * 0.4
-        ins_p = error_rate * 0.3
-        base_del_p = error_rate * 0.3
-
-        mutated: list[str] = []
-        prev = ""
-        run_len = 0
-        for nt in sequence:
-            if nt == prev:
-                run_len += 1
-            else:
-                run_len = 1
-                prev = nt
-
-            # Double the deletion probability only for very long runs to
-            # prevent excessive trimming of shorter homopolymers.
-            del_p = base_del_p * (2 if run_len >= 5 else 1)
-
-            del_p = min(1.0, del_p)
-            if rng.random() < del_p:
-                continue
-
-            if rng.random() < sub_p:
-                nt = _random_substitution(nt, rng)
-
-            mutated.append(nt)
-            if rng.random() < ins_p:
-                mutated.append(rng.choice(NUCLEOTIDES))
-
-        return "".join(mutated)
+        return _simulate_fallback_jit(sequence, error_rate, rng)
 
 
     def simulate(self, sequence: str) -> str:
@@ -214,36 +267,15 @@ class NanoporeDNArSimChannel(NanoporeChannel):
 def _mutate_read(
     read: str, quality: Sequence[float] | None, rng: random.Random, channel: NanoporeChannel
 ) -> str:
-    mutated = []
-    prev = ""
-    run_len = 0
-    for idx, nt in enumerate(read):
-        if nt == prev:
-            run_len += 1
-        else:
-            run_len = 1
-            prev = nt
-
-        del_rate = channel.deletion_rate * (2 if run_len > 3 else 1)
-        del_rate = min(1.0, del_rate)
-        if rng.random() < del_rate:
-            continue
-
-        sub_rate = (
-            quality[idx] if quality is not None and idx < len(quality) else channel.substitution_rate
-        )
-        if channel.context_errors and idx > 0:
-            ctx = read[idx - 1 : idx + 1].upper()
-            sub_rate *= channel.context_errors.get(ctx, 1.0)
-
-        if rng.random() < sub_rate:
-            nt = _random_substitution(nt, rng)
-
-        mutated.append(nt)
-        if rng.random() < channel.insertion_rate:
-            mutated.append(rng.choice(NUCLEOTIDES))
-
-    return "".join(mutated)
+    return _mutate_read_jit(
+        read,
+        quality,
+        rng,
+        channel.substitution_rate,
+        channel.insertion_rate,
+        channel.deletion_rate,
+        channel.context_errors,
+    )
 
 
 def _consensus(reads: Iterable[str]) -> str:
