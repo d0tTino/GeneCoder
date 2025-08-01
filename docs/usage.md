@@ -215,7 +215,25 @@ genecli channel run config.yml
 genecli channel run config.yml
 ```
 
-14. **AI-assisted decoding**
+14. **Add DNA decay to the channel pipeline**
+
+   Simulate long‑term storage by including a ``decay`` stage. ``half_life``
+   controls how quickly bases are lost and ``variation`` adds random jitter to
+   the process.
+
+   ```yaml
+   simulators:
+     - simple
+   decay:
+     half_life: 1000   # days
+     variation: 0.1
+   ```
+
+```bash
+genecli channel run decay_config.yml
+```
+
+15. **AI-assisted decoding**
 
    Install the optional `dnaformer` extras to enable a machine learning model
    that can recover sequences with high error rates:
@@ -234,7 +252,7 @@ genecli channel run config.yml
        --method ai
    ```
 
-15. **Run the full pipeline from a YAML file**
+16. **Run the full pipeline from a YAML file**
 
    Create a configuration with the codec, FEC and channel settings:
 
