@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Mapping, Tuple, Dict
+from difflib import SequenceMatcher
 
 from .gc_constrained_encoder import calculate_gc_content
 from .utils import get_max_homopolymer_length
@@ -12,6 +13,20 @@ from .plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
 from .simulators import SIMULATOR_REGISTRY
 
 __all__ = ["run_pipeline"]
+
+
+def _count_errors(original: str, mutated: str) -> tuple[int, int, int]:
+    """Return substitution, insertion and deletion counts."""
+    subs = ins = dels = 0
+    sm = SequenceMatcher(None, original, mutated)
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "replace":
+            subs += max(i2 - i1, j2 - j1)
+        elif tag == "delete":
+            dels += i2 - i1
+        elif tag == "insert":
+            ins += j2 - j1
+    return subs, ins, dels
 
 
 def run_pipeline(
@@ -41,9 +56,11 @@ def run_pipeline(
         data, fec_info = FEC_REGISTRY[fec]["encode"](data)
 
     dna = CODEC_REGISTRY[codec]["encode"](data)
-
+    orig_dna = dna
+    subs = ins = dels = None
     if channel and channel != "none":
         dna = SIMULATOR_REGISTRY[channel].simulate(dna)
+        subs, ins, dels = _count_errors(orig_dna, dna)
 
     gc_content = calculate_gc_content(dna)
     max_homopolymer = get_max_homopolymer_length(dna)
@@ -57,4 +74,14 @@ def run_pipeline(
         decoded, _ = FEC_REGISTRY[fec]["decode"](decoded, fec_info)
 
     Path(output_path).write_bytes(decoded)
-    return decoded, {"gc_content": gc_content, "max_homopolymer": max_homopolymer}
+    metrics: Dict[str, float | int] = {
+        "gc_content": gc_content,
+        "max_homopolymer": max_homopolymer,
+    }
+    if subs is not None:
+        metrics.update({
+            "substitutions": subs,
+            "insertions": ins,
+            "deletions": dels,
+        })
+    return decoded, metrics
