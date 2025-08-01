@@ -10,8 +10,13 @@ import logging
 try:  # Optional at runtime
     from numba import njit
 except Exception:  # pragma: no cover - fallback when numba missing
-    def njit(*args, **kwargs):
-        def wrapper(func):
+    from typing import Callable, TypeVar, ParamSpec
+
+    P = ParamSpec("P")
+    R = TypeVar("R")
+
+    def njit(*args: object, **kwargs: object) -> Callable[[Callable[P, R]], Callable[P, R]]:
+        def wrapper(func: Callable[P, R]) -> Callable[P, R]:
             return func
 
         return wrapper
@@ -62,7 +67,7 @@ NANOPORE_PROFILES: dict[str, dict[str, float | int]] = {
 }
 
 
-@njit(cache=True, forceobj=True)
+@njit(cache=True, forceobj=True)  # type: ignore[misc]
 def _simulate_fallback_jit(sequence: str, error_rate: float, rng: random.Random) -> str:
     sub_p = error_rate * 0.4
     ins_p = error_rate * 0.3
@@ -93,7 +98,7 @@ def _simulate_fallback_jit(sequence: str, error_rate: float, rng: random.Random)
     return "".join(mutated)
 
 
-@njit(cache=True, forceobj=True)
+@njit(cache=True, forceobj=True)  # type: ignore[misc]
 def _mutate_read_jit(
     read: str,
     quality: Sequence[float] | None,
@@ -249,7 +254,9 @@ class NanoporeDNArSimChannel(NanoporeChannel):
 
     @staticmethod
     def _simulate_fallback(sequence: str, error_rate: float, rng: random.Random) -> str:
-        return _simulate_fallback_jit(sequence, error_rate, rng)
+        from typing import cast
+
+        return cast(str, _simulate_fallback_jit(sequence, error_rate, rng))
 
 
     def simulate(self, sequence: str) -> str:
@@ -273,14 +280,19 @@ class NanoporeDNArSimChannel(NanoporeChannel):
 def _mutate_read(
     read: str, quality: Sequence[float] | None, rng: random.Random, channel: NanoporeChannel
 ) -> str:
-    return _mutate_read_jit(
-        read,
-        quality,
-        rng,
-        channel.substitution_rate,
-        channel.insertion_rate,
-        channel.deletion_rate,
-        channel.context_errors,
+    from typing import cast
+
+    return cast(
+        str,
+        _mutate_read_jit(
+            read,
+            quality,
+            rng,
+            channel.substitution_rate,
+            channel.insertion_rate,
+            channel.deletion_rate,
+            channel.context_errors,
+        ),
     )
 
 

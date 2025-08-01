@@ -253,6 +253,20 @@ def register_subcommand(
         "run", help="Run channel pipeline from a YAML config"
     )
     run_parser.add_argument("config", type=str, help="Path to channel config")
+    illumina_profiles = ", ".join(sorted(ILLUMINA_PROFILES))
+    nanopore_profiles = ", ".join(sorted(NANOPORE_PROFILES))
+    run_parser.add_argument(
+        "--illumina-profile",
+        type=str,
+        default=None,
+        help=f"Named Illumina profile to use. Available profiles: {illumina_profiles}",
+    )
+    run_parser.add_argument(
+        "--nanopore-profile",
+        type=str,
+        default=None,
+        help=f"Named Nanopore profile to use. Available profiles: {nanopore_profiles}",
+    )
     run_parser.set_defaults(func=_handle_run)
 
     apply_parser = channel_sub.add_parser(
@@ -438,6 +452,11 @@ def _handle_run(args: argparse.Namespace) -> None:
     except Exception as exc:  # pragma: no cover - config error handling
         logger.error(str(exc))
         raise SystemExit(1)
+
+    if args.illumina_profile is not None:
+        cfg.illumina_profile = args.illumina_profile
+    if args.nanopore_profile is not None:
+        cfg.nanopore_profile = args.nanopore_profile
 
     input_file = extra.get("input_file")
     output_file = extra.get("output_file")
