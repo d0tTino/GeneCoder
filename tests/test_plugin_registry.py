@@ -11,7 +11,6 @@ import pytest
 httpx = pytest.importorskip("httpx")
 
 import genecoder.plugin_manager as plugins
-import genecoder.plugin_security as plugin_security
 
 
 class DummyResponse:
