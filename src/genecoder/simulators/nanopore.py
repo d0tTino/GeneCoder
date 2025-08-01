@@ -53,6 +53,12 @@ NANOPORE_PROFILES: dict[str, dict[str, float | int]] = {
         "insertion_rate": 0.02,
         "deletion_rate": 0.045,
     },
+    "r10": {
+        "error_rate": 0.05,
+        "substitution_rate": 0.01,
+        "insertion_rate": 0.02,
+        "deletion_rate": 0.03,
+    },
 }
 
 

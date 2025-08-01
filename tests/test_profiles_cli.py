@@ -9,3 +9,5 @@ def test_pipeline_profiles_listed() -> None:
     assert "hiseq" in out
     assert "minion" in out
     assert "promethion" in out
+    assert "novaseq" in out
+    assert "r10" in out

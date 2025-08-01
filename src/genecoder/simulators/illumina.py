@@ -50,6 +50,12 @@ ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
         "deletion_rate": 0.00005,
         "read_length": 150,
     },
+    "novaseq": {
+        "substitution_rate": 0.0003,
+        "insertion_rate": 0.00003,
+        "deletion_rate": 0.00003,
+        "read_length": 150,
+    },
 }
 
 
