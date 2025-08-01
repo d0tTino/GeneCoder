@@ -22,6 +22,7 @@ from genecoder.metrics import metrics
 from genecoder.parallel import parallel_map
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES
+from genecoder.simulators.decay import DegradationChannel
 from .options import ChannelOptions, build_channel_options
 from .shared import add_single_io_args
 
@@ -102,27 +103,33 @@ def _load_config(
 
 def _apply_simulators(
     sequence: str,
-    simulators: Sequence[tuple[str, Dict[str, Any]]],
+    simulators: Sequence[
+        BaseChannel | tuple[str, Dict[str, Any]]
+    ],
     *,
     config: ChannelConfig,
 ) -> str:
     channels: list[BaseChannel] = []
-    for name, params in simulators:
-        if name not in SIMULATOR_REGISTRY:
-            logger.error("Unknown simulator: %s", name)
-            raise SystemExit(1)
-        channel = SIMULATOR_REGISTRY[name]
-        if params:
-            try:
-                channel = type(channel)(**params)
-            except Exception as exc:
-                logger.error("Invalid parameters for %s: %s", name, exc)
+    for item in simulators:
+        if isinstance(item, BaseChannel):
+            channel = item
+            name = channel.__class__.__name__
+        else:
+            name, params = item
+            if name not in SIMULATOR_REGISTRY:
+                logger.error("Unknown simulator: %s", name)
                 raise SystemExit(1)
+            channel = SIMULATOR_REGISTRY[name]
+            if params:
+                try:
+                    channel = type(channel)(**params)
+                except Exception as exc:
+                    logger.error("Invalid parameters for %s: %s", name, exc)
+                    raise SystemExit(1)
         channels.append(channel)
+        logger.info("Applied %s simulator", name)
     pipeline = ChannelPipeline(channels)
     result: str = pipeline.simulate(sequence, config=config)
-    for name, _ in simulators:
-        logger.info("Applied %s simulator", name)
     return result
 
 
@@ -143,7 +150,7 @@ def _count_errors(original: str, mutated: str) -> tuple[int, int, int]:
 def process_channel(
     input_file: str,
     output_file: str,
-    simulators: Sequence[tuple[str, Dict[str, Any]]],
+    simulators: Sequence[BaseChannel | tuple[str, Dict[str, Any]]],
     constraints: dict[str, int],
     *,
     sub_prob: float = 0.0,
@@ -330,6 +337,12 @@ def register_subcommand(
         target.add_argument("--nanopore-ins-rate", type=float, default=None, help="Insertion rate for Nanopore reads")
         target.add_argument("--nanopore-del-rate", type=float, default=None, help="Deletion rate for Nanopore reads")
         target.add_argument("--nanopore-profile", type=str, default=None, help="Named Nanopore profile to use")
+        target.add_argument(
+            "--decay-rate",
+            type=float,
+            default=None,
+            help="Probability of strand loss and damage",
+        )
         target.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output")
         target.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
         target.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
@@ -376,6 +389,9 @@ def run_channel(args: argparse.Namespace) -> None:
     simulators = opts.simulator_specs
     if simulators is None:
         simulators = [(name, {}) for name in opts.simulators]
+
+    if opts.decay_rate is not None:
+        simulators.append(DegradationChannel(deletion_prob=opts.decay_rate))
 
     updated: list[tuple[str, dict[str, object]]] = []
     for name, params in simulators:
@@ -463,6 +479,9 @@ def _handle_run(args: argparse.Namespace) -> None:
     if not input_file or not output_file:
         logger.error("Config must define 'input' and 'output' paths")
         raise SystemExit(1)
+
+    if args.decay_rate is not None:
+        simulators.append(DegradationChannel(deletion_prob=args.decay_rate))
 
     process_channel(
         input_file,
