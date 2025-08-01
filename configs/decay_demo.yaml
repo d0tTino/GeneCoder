@@ -1,5 +1,5 @@
-# Example channel pipeline applying Illumina sequencing
-# followed by storage decay simulation
+# Example pipeline applying Illumina sequencing
+# followed by the new decay channel to simulate long-term storage
 input: encoded/message.fasta
 output: decay_output.fasta
 
