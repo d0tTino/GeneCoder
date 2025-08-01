@@ -148,7 +148,7 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
 
     sim_specs: list[tuple[str, dict[str, object]]] | None = None
     if args.config:
-        cfg_sim, cfg_con, cfg_pipeline, _ = _load_config(args.config)
+        cfg_sim, cfg_con, cfg_pipeline, extra = _load_config(args.config)
         if cfg_sim:
             sim_specs = cfg_sim
             simulators = [name for name, _ in cfg_sim]
@@ -160,6 +160,8 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
                 args.threads = cfg_pipeline.workers
         if cfg_pipeline.use_process_pool:
             args.processes = args.threads
+        if getattr(args, "decay_rate", None) is None:
+            args.decay_rate = extra.get("decay_rate")
 
     _validate_simulator_prob_args(
         simulators, args.sub_prob, args.ins_prob, args.del_prob

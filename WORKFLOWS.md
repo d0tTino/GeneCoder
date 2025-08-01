@@ -163,5 +163,7 @@ decay_rate: 0.05
 ```
 
 Invoke the pipeline with ``genecli channel apply --decay-rate 0.05`` or include
-the ``decay_rate`` field in a YAML config as shown above.
+the ``decay_rate`` field in a YAML config as shown above. When using
+``genecli channel run`` the same field can be specified in the configuration
+file to enable the simulator.
 

@@ -97,6 +97,8 @@ def _load_config(
         "seed": data.get("seed"),
         "batch_workers": data.get("batch_workers"),
     }
+    if "decay_rate" in data:
+        extra["decay_rate"] = float(data["decay_rate"])
 
     return simulators, {k: int(v) for k, v in synth_section.items()}, cfg, extra
 
@@ -273,6 +275,12 @@ def register_subcommand(
         type=str,
         default=None,
         help=f"Named Nanopore profile to use. Available profiles: {nanopore_profiles}",
+    )
+    run_parser.add_argument(
+        "--decay-rate",
+        type=float,
+        default=None,
+        help="Probability of strand loss and damage",
     )
     run_parser.set_defaults(func=_handle_run)
 
@@ -480,8 +488,9 @@ def _handle_run(args: argparse.Namespace) -> None:
         logger.error("Config must define 'input' and 'output' paths")
         raise SystemExit(1)
 
-    if args.decay_rate is not None:
-        simulators.append(DegradationChannel(deletion_prob=args.decay_rate))
+    decay_rate = args.decay_rate if args.decay_rate is not None else extra.get("decay_rate")
+    if decay_rate is not None:
+        simulators.append(DegradationChannel(deletion_prob=decay_rate))
 
     process_channel(
         input_file,
