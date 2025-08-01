@@ -98,7 +98,7 @@ def test_registry_bad_yaml(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCa
     with caplog.at_level(logging.WARNING), pytest.raises(ValueError):
         plugins.install_registry_plugins("https://example.com/plugins.yaml")
 
-    assert "Failed to fetch or parse plugin registry" in caplog.text
+    assert "Failed to parse plugin registry" in caplog.text
 
 
 def test_registry_unreachable(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
@@ -163,6 +163,8 @@ def test_catalog_signature_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     sig_b64 = base64.b64encode(b"sig").decode()
     calls: list[tuple[bytes, bytes, bytes]] = []
 
+    orig_compute = plugins.compute_checksum
+
     def fake_compute(
         data: bytes,
         *,
@@ -171,7 +173,7 @@ def test_catalog_signature_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     ) -> str:
         assert signature is not None and public_key is not None
         calls.append((data, signature, public_key))
-        return plugins.compute_checksum(data)
+        return orig_compute(data)
 
     monkeypatch.setenv("GENECODER_CATALOG_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins, "compute_checksum", fake_compute)

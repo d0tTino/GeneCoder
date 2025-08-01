@@ -4,8 +4,9 @@ import argparse
 import json
 import sys
 
-from genecoder.app_helpers import EncodeResult, DecodeResult
+from genecoder.app_helpers import DecodeResult, EncodeResult
 from genecoder import report as report_module
+from genecoder.html_report import generate_html_report
 
 
 def register_subcommand(
@@ -29,6 +30,23 @@ def register_subcommand(
     )
     parser.add_argument("--output-file", type=str, help="Path to write the report. Defaults to stdout")
     parser.set_defaults(func=_handle_command)
+
+    html_parser = subparsers.add_parser(
+        "html-report",
+        help="Generate an HTML summary report from a manifest JSON.",
+    )
+    html_parser.add_argument(
+        "--manifest",
+        type=str,
+        required=True,
+        help="Path to manifest JSON file",
+    )
+    html_parser.add_argument(
+        "--output-file",
+        type=str,
+        help="Path to write the HTML report. Defaults to stdout",
+    )
+    html_parser.set_defaults(func=_handle_html_command)
 
 
 def _handle_command(args: argparse.Namespace) -> None:
@@ -54,3 +72,12 @@ def _handle_command(args: argparse.Namespace) -> None:
             fh.write(report_text)
     else:
         sys.stdout.write(report_text)
+
+
+def _handle_html_command(args: argparse.Namespace) -> None:
+    html = generate_html_report(args.manifest)
+    if args.output_file:
+        with open(args.output_file, "w", encoding="utf-8") as fh:
+            fh.write(html)
+    else:
+        sys.stdout.write(html)

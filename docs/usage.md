@@ -328,6 +328,13 @@ Example snippet:
 
 See [Manifest Format](manifest.md) for the full structure and required keys.
 
+Generate a standalone HTML summary from a manifest:
+
+```bash
+genecli html-report --manifest encoded/example.txt.manifest.json \
+    --output-file summary.html
+```
+
 
 
 ### Capsule output
