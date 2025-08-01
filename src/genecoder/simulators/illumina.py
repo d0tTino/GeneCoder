@@ -10,8 +10,13 @@ import logging
 try:  # Optional at runtime
     from numba import njit
 except Exception:  # pragma: no cover - fallback when numba missing
-    def njit(*args, **kwargs):
-        def wrapper(func):
+    from typing import Callable, TypeVar, ParamSpec
+
+    P = ParamSpec("P")
+    R = TypeVar("R")
+
+    def njit(*args: object, **kwargs: object) -> Callable[[Callable[P, R]], Callable[P, R]]:
+        def wrapper(func: Callable[P, R]) -> Callable[P, R]:
             return func
 
         return wrapper
@@ -53,7 +58,7 @@ ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
 }
 
 
-@njit(cache=True, forceobj=True)
+@njit(cache=True, forceobj=True)  # type: ignore[misc]
 def _mutate_read_jit(
     read: str,
     quality: Sequence[float] | None,
@@ -113,14 +118,19 @@ class IlluminaChannel(BaseSimulator):
     def _mutate_read(
         self, read: str, quality: Sequence[float] | None, rng: random.Random
     ) -> str:
-        return _mutate_read_jit(
-            read,
-            quality,
-            self.substitution_rate,
-            self.insertion_rate,
-            self.deletion_rate,
-            self.context_errors,
-            rng,
+        from typing import cast
+
+        return cast(
+            str,
+            _mutate_read_jit(
+                read,
+                quality,
+                self.substitution_rate,
+                self.insertion_rate,
+                self.deletion_rate,
+                self.context_errors,
+                rng,
+            ),
         )
 
     @staticmethod
