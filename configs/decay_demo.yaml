@@ -1,0 +1,15 @@
+# Example channel pipeline applying Illumina sequencing
+# followed by storage decay simulation
+input: encoded/message.fasta
+output: decay_output.fasta
+
+simulators:
+  - illumina
+
+decay:
+  half_life: 1000   # days
+  variation: 0.1
+
+pipeline:
+  illumina_profile: hiseq
+

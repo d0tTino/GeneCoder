@@ -235,6 +235,25 @@ export GENECODER_PLUGIN_PUBLIC_KEY=/path/to/public.pem
 genecli plugin install-registry --allow-registry
 ```
 
+### Signing Plugin Packages
+
+Plugin wheels can be signed so GeneCoder verifies them during installation.
+First build the distribution and create a private/public RSA key pair. Sign the
+wheel's SHA256 digest and save the base64 encoded result:
+
+```bash
+python -m build
+openssl genpkey -algorithm RSA -out private.pem -pkeyopt rsa_keygen_bits:2048
+openssl rsa -in private.pem -pubout -out public.pem
+openssl dgst -sha256 -sign private.pem -binary dist/*.whl | base64 > signature.txt
+```
+
+Add the `signature` value from ``signature.txt`` to your registry entry and
+provide users with `public.pem` so they can verify the download. Set
+`GENECODER_PLUGIN_PUBLIC_KEY` to this public key before running
+`genecli plugin install-registry --allow-registry`. GeneCoder will read the
+variable and verify the signature automatically during installation.
+
 ### Registry Installation Security
 
 The registry file enumerates remote wheels along with a `checksum` or

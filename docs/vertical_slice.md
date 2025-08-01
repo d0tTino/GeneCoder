@@ -98,7 +98,8 @@ channel step using:
 genecli channel run configs/channel_demo.yaml
 ```
 
-To model storage degradation add a ``decay`` section to the same file:
+The `configs/decay_demo.yaml` file demonstrates storage degradation using
+the new decay channel:
 
 ```yaml
 simulators:
@@ -111,7 +112,7 @@ decay:
 Run the pipeline with:
 
 ```bash
-genecli channel run configs/channel_demo.yaml
+genecli channel run configs/decay_demo.yaml
 ```
 
 ## Encode Example

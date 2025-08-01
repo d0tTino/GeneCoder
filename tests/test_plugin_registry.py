@@ -11,6 +11,7 @@ import pytest
 httpx = pytest.importorskip("httpx")
 
 import genecoder.plugin_manager as plugins
+import genecoder.plugin_security as plugin_security
 
 
 class DummyResponse:
@@ -174,6 +175,7 @@ def test_catalog_signature_validation(monkeypatch: pytest.MonkeyPatch) -> None:
         assert signature is not None and public_key is not None
         calls.append((data, signature, public_key))
         return orig_compute(data)
+
 
     monkeypatch.setenv("GENECODER_CATALOG_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins, "compute_checksum", fake_compute)
