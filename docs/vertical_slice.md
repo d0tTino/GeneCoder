@@ -98,6 +98,22 @@ channel step using:
 genecli channel run configs/channel_demo.yaml
 ```
 
+To model storage degradation add a ``decay`` section to the same file:
+
+```yaml
+simulators:
+  - illumina
+decay:
+  half_life: 1000   # days
+  variation: 0.1
+```
+
+Run the pipeline with:
+
+```bash
+genecli channel run configs/channel_demo.yaml
+```
+
 ## Encode Example
 
 Run a single encode step with error correction and channel simulation:
