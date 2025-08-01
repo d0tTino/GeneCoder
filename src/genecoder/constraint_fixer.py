@@ -81,4 +81,8 @@ def fix_sequence(
     """Return ``sequence`` adjusted for GC content and homopolymers."""
     seq = adjust_gc_balance(sequence, target_gc_min, target_gc_max, rng=rng)
     seq = limit_homopolymers(seq, max_homopolymer, rng=rng)
+    # Breaking up long homopolymers can skew the GC ratio slightly. Run a final
+    # pass of GC balancing to ensure the sequence ends within the requested
+    # bounds.
+    seq = adjust_gc_balance(seq, target_gc_min, target_gc_max, rng=rng)
     return seq
