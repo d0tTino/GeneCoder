@@ -41,6 +41,7 @@ class ChannelOptions:
     sub_rate: float | None = None
     ins_rate: float | None = None
     del_rate: float | None = None
+    decay_rate: float | None = None
 
 
 def _parse_quality(value: str | None) -> Sequence[float] | None:
@@ -203,4 +204,5 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         sub_rate=args.sub_rate,
         ins_rate=args.ins_rate,
         del_rate=args.del_rate,
+        decay_rate=getattr(args, "decay_rate", None),
     )

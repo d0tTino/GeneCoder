@@ -150,3 +150,18 @@ branch executes. The documentation deployment workflow triggers only when
 for version tags. These adjustments keep CI usage minimal while still running
 tests and linters for real code changes.
 
+### Channel Configuration with the Decay Simulator
+
+You can model simple DNA degradation by adding a ``decay_rate`` stage to the
+channel pipeline. The value represents the probability that an entire strand is
+lost during simulation.
+
+```yaml
+simulators:
+  - simple
+decay_rate: 0.05
+```
+
+Invoke the pipeline with ``genecli channel apply --decay-rate 0.05`` or include
+the ``decay_rate`` field in a YAML config as shown above.
+
