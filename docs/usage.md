@@ -219,7 +219,8 @@ genecli channel run config.yml
 
    Simulate long‑term storage by including a ``decay`` stage. ``half_life``
    controls how quickly bases are lost and ``variation`` adds random jitter to
-   the process.
+   the process. The stage randomly removes nucleotides from the sequence so
+   lower values or higher variation lead to more dropouts.
 
    ```yaml
    simulators:
