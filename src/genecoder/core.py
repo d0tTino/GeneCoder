@@ -78,8 +78,8 @@ def run_pipeline(
         "gc_content": gc_content,
         "max_homopolymer": max_homopolymer,
     }
-    if subs is not None:
-        assert ins is not None and dels is not None
+    if subs is not None and ins is not None and dels is not None:
+
         metrics.update({
             "substitutions": subs,
             "insertions": ins,

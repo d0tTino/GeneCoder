@@ -164,6 +164,8 @@ def test_catalog_signature_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     sig_b64 = base64.b64encode(b"sig").decode()
     calls: list[tuple[bytes, bytes, bytes]] = []
 
+    orig_compute = plugins.compute_checksum
+
     def fake_compute(
         data: bytes,
         *,
@@ -172,7 +174,8 @@ def test_catalog_signature_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     ) -> str:
         assert signature is not None and public_key is not None
         calls.append((data, signature, public_key))
-        return plugin_security.compute_checksum(data)
+        return orig_compute(data)
+
 
     monkeypatch.setenv("GENECODER_CATALOG_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins, "compute_checksum", fake_compute)
