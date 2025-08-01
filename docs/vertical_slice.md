@@ -15,13 +15,6 @@ PowerShell script is provided for Windows users to run the demo automatically.
 ```bash
 git clone https://github.com/d0tTino/GeneCoder.git
 cd GeneCoder
-poetry install --with gui,web,dnaformer --no-interaction
-```
-
-### Automated Windows Script
-
-Windows users can run all of the steps below with the provided PowerShell
-script. The same `poetry install` command installs the optional GUI and web
 extras on Windows:
 
 ```powershell
@@ -99,14 +92,21 @@ genecli channel run configs/channel_demo.yaml
 ```
 
 The `configs/decay_demo.yaml` file demonstrates storage degradation using
-the new decay channel:
-
+the new decay channel. The pipeline first applies the Illumina simulator
+before running the decay stage:
 ```yaml
+input: encoded/message.fasta
+output: decay_output.fasta
+
 simulators:
   - illumina
+
 decay:
   half_life: 1000   # days
   variation: 0.1
+
+pipeline:
+  illumina_profile: hiseq
 ```
 
 The ``half_life`` value indicates the time required for half the DNA to
