@@ -11,6 +11,7 @@ import pytest
 httpx = pytest.importorskip("httpx")
 
 import genecoder.plugin_manager as plugins
+import genecoder.plugin_security as plugin_security
 
 
 class DummyResponse:
@@ -98,7 +99,7 @@ def test_registry_bad_yaml(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCa
     with caplog.at_level(logging.WARNING), pytest.raises(ValueError):
         plugins.install_registry_plugins("https://example.com/plugins.yaml")
 
-    assert "Failed to fetch or parse plugin registry" in caplog.text
+    assert "Failed to parse plugin registry" in caplog.text
 
 
 def test_registry_unreachable(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
@@ -171,7 +172,7 @@ def test_catalog_signature_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     ) -> str:
         assert signature is not None and public_key is not None
         calls.append((data, signature, public_key))
-        return plugins.compute_checksum(data)
+        return plugin_security.compute_checksum(data)
 
     monkeypatch.setenv("GENECODER_CATALOG_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins, "compute_checksum", fake_compute)
