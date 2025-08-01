@@ -34,6 +34,7 @@ def test_load_builtin_plugins_populates_registries() -> None:
         "illumina_insilicoseq",
         "nanopore_d2sim",
         "nanopore_desp",
+        "decay",
     }
     assert sim_names <= set(plugins.SIMULATOR_REGISTRY)
 
