@@ -109,11 +109,16 @@ decay:
   variation: 0.1
 ```
 
+The ``half_life`` value indicates the time required for half the DNA to
+degrade while ``variation`` adds randomness across sequences. This results in
+deletion errors that emulate gradual decay during storage.
+
 Run the pipeline with:
 
 ```bash
 genecli channel run configs/decay_demo.yaml
 ```
+
 
 ## Encode Example
 
