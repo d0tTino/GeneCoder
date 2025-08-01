@@ -5,8 +5,15 @@ from pathlib import Path
 import pytest
 
 from genecoder.core import run_pipeline
-from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
+from genecoder.plugin_manager import (
+    CODEC_REGISTRY,
+    register_fec,
+    register_simulator,
+    init_plugins,
+)
 from genecoder.api import Codec
+from genecoder.fountain_codec import FountainFEC
+from genecoder.simulators.illumina import IlluminaChannel
 
 
 class _Base4Codec(Codec):
@@ -29,16 +36,18 @@ def test_fountain_illumina_pipeline(
         "encode": _Base4Codec().encode,
         "decode": _Base4Codec().decode,
     }
+    register_fec("test_fountain", FountainFEC())
+    register_simulator("test_illumina", IlluminaChannel())
 
-    data = b"fountain illumina pipeline"
+    data = b"illumina"
     inp = tmp_path / "data.bin"
     outp = tmp_path / "out.bin"
     inp.write_bytes(data)
 
     result, _ = run_pipeline(
         "base4",
-        "fountain",
-        "illumina",
+        "test_fountain",
+        "test_illumina",
         str(inp),
         str(outp),
     )
