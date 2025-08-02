@@ -36,3 +36,13 @@ Use the buttons at the bottom of each tab to start the selected operation.
 After encoding completes, GC and homopolymer metrics are shown. If they fall outside recommended ranges, a **Fix Sequence** button allows automatic adjustment. Clicking it displays the fixed DNA snippet and updated metrics.
 
 Example: encode any file, then click **Fix Sequence** when the suggestion text appears to view the corrected sequence.
+
+## Launching the Streamlit Dashboard
+
+GeneCoder also ships with a simple Streamlit dashboard for exploring simulation metrics. After installing the `gui` extras, run:
+
+```bash
+genecli dashboard examples/dashboard_metrics.json
+```
+
+The dashboard visualizes the sample metrics file and plots GC distribution, homopolymer statistics and decode success rates.
