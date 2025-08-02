@@ -364,6 +364,18 @@ def register_subcommand(
             default=None,
             help="Deletion rate for generic simulators",
         )
+        target.add_argument(
+            "--coverage",
+            type=int,
+            default=None,
+            help="Coverage depth for simulators",
+        )
+        target.add_argument(
+            "--quality-profile",
+            type=str,
+            default=None,
+            help="Comma-separated quality profile or path to JSON",
+        )
         target.add_argument("--illumina-depth", type=int, default=None, help="Coverage depth for Illumina reads")
         target.add_argument("--illumina-quality", type=str, default=None, help="Comma-separated quality profile or path to JSON")
         target.add_argument("--illumina-context", type=str, default=None, help="Path to JSON/YAML context error map")
@@ -439,6 +451,11 @@ def run_channel(args: argparse.Namespace) -> None:
     updated: list[tuple[str, dict[str, object]]] = []
     for name, params in simulators:
         new_params = dict(params)
+        if name == "illumina" or name.startswith("nanopore"):
+            if opts.coverage is not None:
+                new_params.setdefault("coverage", opts.coverage)
+            if opts.quality_profile is not None:
+                new_params.setdefault("quality_profile", opts.quality_profile)
         if name == "illumina":
             if opts.illumina_profile:
                 prof = ILLUMINA_PROFILES.get(opts.illumina_profile)
