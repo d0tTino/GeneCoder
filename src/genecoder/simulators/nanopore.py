@@ -153,7 +153,29 @@ class NanoporeChannel(BaseChannel):
         coverage: int = 1,
         quality_profile: Sequence[float] | None = None,
         context_errors: Dict[str, float] | None = None,
+        profile_path: str | None = None,
     ) -> None:
+        if profile_path is not None:
+            try:
+                import yaml
+            except Exception:  # pragma: no cover - optional dependency
+                from genecoder.plugin_manager import yaml as yaml_module
+                if yaml_module is None:
+                    raise
+                yaml = yaml_module
+
+            with open(profile_path, "r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+            if not isinstance(data, dict):
+                raise ValueError("Profile file must map keys to values")
+            error_rate = float(data.get("error_rate", error_rate))
+            substitution_rate = float(data.get("substitution_rate", substitution_rate))
+            insertion_rate = float(data.get("insertion_rate", insertion_rate))
+            deletion_rate = float(data.get("deletion_rate", deletion_rate))
+            coverage = int(data.get("coverage", coverage))
+            quality_profile = data.get("quality_profile", quality_profile)
+            context_errors = data.get("context_errors", context_errors)
+
         super().__init__(
             substitution_rate=substitution_rate,
             insertion_rate=insertion_rate,

@@ -108,7 +108,29 @@ class IlluminaChannel(BaseSimulator):
         read_length: int = 150,
         quality_profile: Sequence[float] | None = None,
         context_errors: Dict[str, float] | None = None,
+        profile_path: str | None = None,
     ) -> None:
+        if profile_path is not None:
+            try:
+                import yaml
+            except Exception:  # pragma: no cover - optional dependency
+                from genecoder.plugin_manager import yaml as yaml_module
+                if yaml_module is None:
+                    raise
+                yaml = yaml_module
+
+            with open(profile_path, "r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+            if not isinstance(data, dict):
+                raise ValueError("Profile file must map keys to values")
+            substitution_rate = float(data.get("substitution_rate", substitution_rate))
+            insertion_rate = float(data.get("insertion_rate", insertion_rate))
+            deletion_rate = float(data.get("deletion_rate", deletion_rate))
+            read_length = int(data.get("read_length", read_length))
+            coverage = int(data.get("coverage", coverage))
+            quality_profile = data.get("quality_profile", quality_profile)
+            context_errors = data.get("context_errors", context_errors)
+
         super().__init__(
             substitution_rate=substitution_rate,
             insertion_rate=insertion_rate,

@@ -38,6 +38,8 @@ class ChannelOptions:
     nanopore_del_rate: float | None = None
     illumina_profile: str | None = None
     nanopore_profile: str | None = None
+    illumina_profile_file: str | None = None
+    nanopore_profile_file: str | None = None
     sub_rate: float | None = None
     ins_rate: float | None = None
     del_rate: float | None = None
@@ -203,6 +205,8 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         nanopore_del_rate=args.nanopore_del_rate,
         illumina_profile=args.illumina_profile,
         nanopore_profile=args.nanopore_profile,
+        illumina_profile_file=args.illumina_profile_file,
+        nanopore_profile_file=args.nanopore_profile_file,
         sub_rate=args.sub_rate,
         ins_rate=args.ins_rate,
         del_rate=args.del_rate,

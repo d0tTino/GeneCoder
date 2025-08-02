@@ -191,7 +191,8 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    - **Nanopore** – `minion`, `promethion`
 
    Select a profile with `--illumina-profile` or `--nanopore-profile`. Individual rate options
-   override the chosen profile.
+   override the chosen profile. Custom parameters can also be loaded from YAML files
+   using `--illumina-profile-file` or `--nanopore-profile-file`.
 
    The same configuration can be provided via YAML:
 
