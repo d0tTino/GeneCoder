@@ -31,32 +31,44 @@ def test_challenge_endpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
 def test_load_catalog_signature(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     import genecoder.plugin_manager as plugins
 
-    catalog = {"plugins": {"demo": {"description": "Demo"}}, "signature": "sig"}
+    catalog = {
+        "plugins": {"demo": {"description": "Demo"}},
+        "signature": "sig",
+        "signature_scheme": "pss",
+    }
     path = tmp_path / "cat.json"
     path.write_text(json.dumps(catalog))
 
-    calls: list[tuple[bytes, str]] = []
+    calls: list[tuple[bytes, str, str | None]] = []
 
-    def fake_verify(data: bytes, sig: str) -> bool:
-        calls.append((data, sig))
+    def fake_verify(data: bytes, sig: str, *, padding_scheme: str | None = None) -> bool:
+        calls.append((data, sig, padding_scheme))
         return True
 
     monkeypatch.setattr(plugins, "_verify_catalog_signature", fake_verify)
     plugins.PLUGIN_CATALOG.clear()
     plugins.load_plugin_catalog(f"file://{path}")
 
-    assert calls == [(path.read_bytes(), "sig")]
+    assert calls == [(path.read_bytes(), "sig", "pss")]
     assert "demo" in plugins.PLUGIN_CATALOG
 
 
 def test_load_catalog_bad_signature(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, tmp_path: Path) -> None:
     import genecoder.plugin_manager as plugins
 
-    catalog = {"plugins": {"demo": {"description": "Demo"}}, "signature": "sig"}
+    catalog = {
+        "plugins": {"demo": {"description": "Demo"}},
+        "signature": "sig",
+        "signature_scheme": "pss",
+    }
     path = tmp_path / "cat.json"
     path.write_text(json.dumps(catalog))
 
-    monkeypatch.setattr(plugins, "_verify_catalog_signature", lambda d, s: False)
+    monkeypatch.setattr(
+        plugins,
+        "_verify_catalog_signature",
+        lambda d, s, *, padding_scheme=None: False,
+    )
     plugins.PLUGIN_CATALOG.clear()
     with caplog.at_level(logging.WARNING):
         plugins.load_plugin_catalog(f"file://{path}")

@@ -407,8 +407,9 @@ def load_plugin_catalog(url: str | None = None) -> None:
 
     if isinstance(data, dict):
         signature = data.get("signature")
+        scheme = data.get("signature_scheme") or data.get("scheme")
         if signature:
-            if not _verify_catalog_signature(raw, signature):
+            if not _verify_catalog_signature(raw, signature, padding_scheme=scheme):
                 logger.warning("Invalid catalog signature for %s", url)
                 return
         plugins_data = data.get("plugins", data.get("entries", {}))
@@ -457,7 +458,9 @@ def init_plugins() -> None:
     _initialized = True
 
 
-def _verify_catalog_signature(data: bytes, signature_b64: str) -> bool:
+def _verify_catalog_signature(
+    data: bytes, signature_b64: str, *, padding_scheme: str | None = None
+) -> bool:
     """Return ``True`` if ``signature_b64`` verifies ``data`` using the public key.
 
     The key path is read from the ``GENECODER_CATALOG_PUBLIC_KEY`` environment
@@ -479,7 +482,12 @@ def _verify_catalog_signature(data: bytes, signature_b64: str) -> bool:
         return False
 
     try:
-        compute_checksum(data, signature=signature, public_key=public_key)
+        compute_checksum(
+            data,
+            signature=signature,
+            public_key=public_key,
+            padding_scheme=padding_scheme or "pkcs1",
+        )
     except Exception:
         return False
     return True
