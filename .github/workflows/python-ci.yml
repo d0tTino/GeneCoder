@@ -269,6 +269,7 @@ jobs:
     - name: Run unit tests
       env:
         SKIP_PACKAGING_TESTS: "1"
+        STREAMLIT_SERVER_HEADLESS: "1"
       run: |
         poetry run pytest -n auto --cov=src --cov-config=.coveragerc -vv
         coverage xml
