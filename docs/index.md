@@ -25,3 +25,4 @@ For more details, explore the sections below.
 * [Usage Metrics](metrics.md) – Track encode and simulation counts.
 * [Introductory Notebooks](../notebooks) – Encoding, channel simulation and decoding examples.
 * [Lesson Notebooks](../notebooks/lessons) – Step-by-step guides for encoding basics, FEC, simulation and analysis.
+* [MPI Pipeline Execution](mpi.md) – Run the channel pipeline across multiple nodes.
