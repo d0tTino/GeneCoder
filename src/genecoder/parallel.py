@@ -18,8 +18,9 @@ def parallel_map(
     *,
     workers: int | None = None,
     use_processes: bool = False,
+    use_mpi: bool = False,
 ) -> list[R]:
-    """Apply ``func`` to ``items`` using threads or processes."""
+    """Apply ``func`` to ``items`` using threads, processes or MPI."""
 
     items = list(items)
     if not items:
@@ -28,10 +29,17 @@ def parallel_map(
     if workers is None:
         workers = min(len(items), os.cpu_count() or 1)
 
-    executor_cls = (
-        concurrent.futures.ProcessPoolExecutor
-        if use_processes
-        else concurrent.futures.ThreadPoolExecutor
-    )
+    if use_mpi:
+        try:  # pragma: no cover - optional dependency
+            from mpi4py.futures import MPIPoolExecutor
+        except Exception as exc:  # pragma: no cover - missing dependency
+            raise RuntimeError("mpi4py is required for MPI execution") from exc
+        executor_cls = MPIPoolExecutor
+    else:
+        executor_cls = (
+            concurrent.futures.ProcessPoolExecutor
+            if use_processes
+            else concurrent.futures.ThreadPoolExecutor
+        )
     with executor_cls(max_workers=workers) as executor:
         return list(executor.map(func, items))
