@@ -161,7 +161,7 @@ def test_catalog_signature_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     key.write_text("PUB")
 
     sig_b64 = base64.b64encode(b"sig").decode()
-    calls: list[tuple[bytes, bytes, bytes]] = []
+    calls: list[tuple[bytes, bytes, bytes, str]] = []
 
     orig_compute = plugins.compute_checksum
 
@@ -170,17 +170,18 @@ def test_catalog_signature_validation(monkeypatch: pytest.MonkeyPatch) -> None:
         *,
         signature: bytes | None = None,
         public_key: bytes | None = None,
+        padding_scheme: str = "pkcs1",
     ) -> str:
         assert signature is not None and public_key is not None
-        calls.append((data, signature, public_key))
+        calls.append((data, signature, public_key, padding_scheme))
         return orig_compute(data)
 
 
     monkeypatch.setenv("GENECODER_CATALOG_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins, "compute_checksum", fake_compute)
 
-    assert plugins._verify_catalog_signature(b"DATA", sig_b64)
-    assert calls == [(b"DATA", b"sig", b"PUB")]
+    assert plugins._verify_catalog_signature(b"DATA", sig_b64, padding_scheme="pss")
+    assert calls == [(b"DATA", b"sig", b"PUB", "pss")]
 
 
 def test_registry_network_failure(

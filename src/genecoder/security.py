@@ -52,12 +52,14 @@ def compute_checksum(
     *,
     signature: bytes | None = None,
     public_key: bytes | None = None,
+    padding_scheme: str = "pkcs1",
 ) -> str:
     """Return a hexadecimal SHA256 checksum for ``data``.
 
     If ``signature`` and ``public_key`` are provided, verify that the signature
     matches ``data`` using RSA or ECDSA with a SHA256 hash. ``InvalidSignature``
-    or ``ValueError`` is raised on failure.
+    or ``ValueError`` is raised on failure. RSA signatures default to PKCS#1
+    padding. Specify ``padding_scheme="pss"`` to require RSA-PSS verification.
     """
 
     digest = hashlib.sha256(data).hexdigest()
@@ -72,7 +74,18 @@ def compute_checksum(
 
         key = serialization.load_pem_public_key(public_key)
         if isinstance(key, rsa.RSAPublicKey):
-            key.verify(signature, data, padding.PKCS1v15(), hashes.SHA256())
+            if padding_scheme == "pss":
+                key.verify(
+                    signature,
+                    data,
+                    padding.PSS(
+                        mgf=padding.MGF1(hashes.SHA256()),
+                        salt_length=padding.PSS.MAX_LENGTH,
+                    ),
+                    hashes.SHA256(),
+                )
+            else:
+                key.verify(signature, data, padding.PKCS1v15(), hashes.SHA256())
         elif isinstance(key, ec.EllipticCurvePublicKey):
             key.verify(signature, data, ec.ECDSA(hashes.SHA256()))
         else:  # pragma: no cover - unsupported key type

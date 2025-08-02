@@ -24,6 +24,7 @@ def verify_package(
     checksum: str | None = None,
     signature: bytes | None = None,
     public_key: bytes | None = None,
+    padding_scheme: str = "pkcs1",
     compute_fn: Callable[..., str] | None = None,
 ) -> str:
     """Return the SHA256 digest of ``data`` after optional verification.
@@ -34,7 +35,12 @@ def verify_package(
     """
     if compute_fn is None:
         compute_fn = compute_checksum
-    digest = compute_fn(data, signature=signature, public_key=public_key)
+    digest = compute_fn(
+        data,
+        signature=signature,
+        public_key=public_key,
+        padding_scheme=padding_scheme,
+    )
     if checksum is not None and digest != checksum:
         raise ValueError("Checksum mismatch")
     return digest

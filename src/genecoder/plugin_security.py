@@ -10,11 +10,24 @@ def compute_checksum(
     *,
     signature: bytes | None = None,
     public_key: bytes | None = None,
+    padding_scheme: str = "pkcs1",
 ) -> str:
     """Return the SHA256 checksum of *data*."""
-    return _compute_checksum(data, signature=signature, public_key=public_key)
+    return _compute_checksum(
+        data,
+        signature=signature,
+        public_key=public_key,
+        padding_scheme=padding_scheme,
+    )
 
 
-def verify_signature(data: bytes, signature: bytes, public_key: bytes) -> None:
+def verify_signature(
+    data: bytes, signature: bytes, public_key: bytes, *, padding_scheme: str = "pkcs1"
+) -> None:
     """Raise if *signature* does not verify *data* with *public_key*."""
-    _compute_checksum(data, signature=signature, public_key=public_key)
+    _compute_checksum(
+        data,
+        signature=signature,
+        public_key=public_key,
+        padding_scheme=padding_scheme,
+    )
