@@ -3,9 +3,10 @@ from __future__ import annotations
 """CLI helpers for the core encode/ECC/channel/decode pipeline."""
 
 import argparse
+import json
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES
@@ -70,8 +71,8 @@ def _run_with_params(
     channel_params: Dict[str, Any],
     input_path: str,
     output_path: str,
-) -> None:
-    """Run pipeline with optional ``channel_params``."""
+) -> Dict[str, Any]:
+    """Run pipeline with optional ``channel_params`` and return metrics."""
 
     init_plugins()
 
@@ -85,33 +86,24 @@ def _run_with_params(
         logger.error("Unknown channel: %s", channel)
         raise SystemExit(1)
 
-    data = Path(input_path).read_bytes()
-
-    fec_info: Any | None = None
-    if fec:
-        data, fec_info = FEC_REGISTRY[fec]["encode"](data)
-
-    dna = CODEC_REGISTRY[codec]["encode"](data)
-
-    if channel and channel != "none":
-        ch = SIMULATOR_REGISTRY[channel]
+    chan_name = channel or "none"
+    temp_name = chan_name
+    if chan_name != "none":
+        ch = SIMULATOR_REGISTRY[chan_name]
         if channel_params:
             try:
                 ch = type(ch)(**channel_params)
             except Exception as exc:
-                logger.error("Invalid channel parameters for %s: %s", channel, exc)
+                logger.error("Invalid channel parameters for %s: %s", chan_name, exc)
                 raise SystemExit(1)
-        dna = ch.simulate(dna)
-
-    decoded_any = CODEC_REGISTRY[codec]["decode"](dna)
-    assert isinstance(decoded_any, (bytes, bytearray))
-    decoded = bytes(decoded_any)
-
-    if fec:
-        assert fec_info is not None
-        decoded, _ = FEC_REGISTRY[fec]["decode"](decoded, fec_info)
-
-    Path(output_path).write_bytes(decoded)
+        temp_name = f"_tmp_{chan_name}"
+        SIMULATOR_REGISTRY[temp_name] = ch
+    try:
+        _, metrics_any = run_pipeline(codec, fec, temp_name, input_path, output_path)
+    finally:
+        if temp_name != chan_name and temp_name in SIMULATOR_REGISTRY:
+            del SIMULATOR_REGISTRY[temp_name]
+    return cast(Dict[str, Any], metrics_any)
 
 
 def register_subcommand(
@@ -205,6 +197,11 @@ def _handle_command(args: argparse.Namespace) -> None:
         channel = "none"
 
     if channel_params:
-        _run_with_params(codec, fec, channel, channel_params, args.input, args.output)
+        metrics = _run_with_params(
+            codec, fec, channel, channel_params, args.input, args.output
+        )
     else:
-        run_pipeline(codec, fec, channel, args.input, args.output)
+        _, metrics = run_pipeline(codec, fec, channel, args.input, args.output)
+
+    metrics_path = Path(str(args.output) + ".json")
+    metrics_path.write_text(json.dumps({"metrics": metrics}))
