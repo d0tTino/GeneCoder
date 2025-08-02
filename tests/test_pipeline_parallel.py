@@ -97,3 +97,17 @@ def test_channel_pipeline_mpi(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result == expected
     assert _DummyExecutor.called
     assert calls == ["oligos_simulated"]
+
+def test_channel_pipeline_parallel_threads(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(pipeline_module.metrics, "increment", lambda k: calls.append(k))
+
+    pipeline = ChannelPipeline([_AppendChannel("A"), _AppendChannel("B")])
+    expected = pipeline.simulate("X")
+    calls.clear()
+
+    cfg = ChannelConfig(parallel=True, workers=2, use_process_pool=False)
+    result = pipeline.simulate("X", config=cfg)
+
+    assert result == expected
+    assert calls == ["oligos_simulated"]
