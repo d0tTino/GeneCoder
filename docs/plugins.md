@@ -160,8 +160,27 @@ minimal packages showing how each entry point group works:
 - `example_package_plugin` – demonstrates a small plugin that exposes simple
   encode/decode functions through `genecoder.plugins`.
 
-Install any of these packages with `pip install ./plugins-examples/<name>` to
-experiment locally.
+Follow these steps to try the example codec plugin:
+
+1. From the repository root install it with:
+
+   ```bash
+   pip install ./plugins-examples/example_codec
+   ```
+2. Inspect `plugins-examples/example_codec/pyproject.toml` to see the
+   `genecoder.plugins` entry and review the plugin module.
+3. Load plugins and confirm the entry point registered:
+
+   ```python
+   from genecoder.plugins import load_plugins
+   load_plugins()
+   from genecoder import CODEC_REGISTRY
+   print("example" in CODEC_REGISTRY)
+   ```
+
+Swap `example_codec` for `example_fec` or `example_simulator` to explore the
+other entry point groups. Install any of these packages with
+`pip install ./plugins-examples/<name>` to experiment locally.
 
 Run `scripts/scaffold_plugin.sh <name>` to create a new plugin project. The
 generated template registers an entry point and includes a README explaining
