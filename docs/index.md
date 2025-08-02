@@ -14,7 +14,6 @@ GeneCoder has been enhanced with new encoding strategies, error correction, batc
 
 For more details, explore the sections below.
 
-* [Plugin System](plugins.md) – Extend GeneCoder with custom codecs and viewers.
 * [Vertical Slice Guide](vertical_slice.md) – Quick setup and interface demo.
 * [n8n Overview](n8n_overview.md) – Automate workflows with n8n.
 * [Simulators](simulators.md) – Available read simulators and how to install external tools.
@@ -26,3 +25,9 @@ For more details, explore the sections below.
 * [Introductory Notebooks](../notebooks) – Encoding, channel simulation and decoding examples.
 * [Lesson Notebooks](../notebooks/lessons) – Step-by-step guides for encoding basics, FEC, simulation and analysis.
 * [MPI Pipeline Execution](mpi.md) – Run the channel pipeline across multiple nodes.
+
+## Extending GeneCoder
+
+* [Plugin System](plugins.md) – Step-by-step guide to writing codecs, FEC modules and simulators.
+* [Plugin Packaging Tutorial](../notebooks/lessons/6_plugin_packaging.ipynb) – Interactive walkthrough of entry points.
+* [Example Plugins](../plugins-examples) – Installable packages demonstrating each entry point group.
