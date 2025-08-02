@@ -103,6 +103,27 @@ def _load_config(
     return simulators, {k: int(v) for k, v in synth_section.items()}, cfg, extra
 
 
+def _load_profile_file(path: str) -> Dict[str, Any]:
+    """Return parameters from YAML ``path``."""
+    try:
+        import yaml
+    except Exception:  # pragma: no cover - optional dependency
+        from genecoder.plugin_manager import yaml as yaml_module
+        if yaml_module is None:
+            raise
+        yaml = yaml_module
+
+    with open(path, "r", encoding="utf-8") as fh:
+        try:
+            data = yaml.safe_load(fh) or {}
+        except Exception as exc:  # pragma: no cover - invalid YAML path
+            raise ValueError(f"Invalid YAML in {path}: {exc}") from exc
+
+    if not isinstance(data, dict):
+        raise ValueError("Profile file must map keys to values")
+    return data
+
+
 def _apply_simulators(
     sequence: str,
     simulators: Sequence[
@@ -271,10 +292,22 @@ def register_subcommand(
         help=f"Named Illumina profile to use. Available profiles: {illumina_profiles}",
     )
     run_parser.add_argument(
+        "--illumina-profile-file",
+        type=str,
+        default=None,
+        help="YAML file with Illumina simulator parameters",
+    )
+    run_parser.add_argument(
         "--nanopore-profile",
         type=str,
         default=None,
         help=f"Named Nanopore profile to use. Available profiles: {nanopore_profiles}",
+    )
+    run_parser.add_argument(
+        "--nanopore-profile-file",
+        type=str,
+        default=None,
+        help="YAML file with Nanopore simulator parameters",
     )
     run_parser.add_argument(
         "--decay-rate",
@@ -338,6 +371,7 @@ def register_subcommand(
         target.add_argument("--illumina-ins-rate", type=float, default=None, help="Insertion rate for Illumina reads")
         target.add_argument("--illumina-del-rate", type=float, default=None, help="Deletion rate for Illumina reads")
         target.add_argument("--illumina-profile", type=str, default=None, help="Named Illumina profile to use")
+        target.add_argument("--illumina-profile-file", type=str, default=None, help="YAML file with Illumina simulator parameters")
         target.add_argument("--nanopore-depth", type=int, default=None, help="Coverage depth for Nanopore reads")
         target.add_argument("--nanopore-quality", type=str, default=None, help="Comma-separated quality profile or path to JSON")
         target.add_argument("--nanopore-context", type=str, default=None, help="Path to JSON/YAML context error map")
@@ -345,6 +379,7 @@ def register_subcommand(
         target.add_argument("--nanopore-ins-rate", type=float, default=None, help="Insertion rate for Nanopore reads")
         target.add_argument("--nanopore-del-rate", type=float, default=None, help="Deletion rate for Nanopore reads")
         target.add_argument("--nanopore-profile", type=str, default=None, help="Named Nanopore profile to use")
+        target.add_argument("--nanopore-profile-file", type=str, default=None, help="YAML file with Nanopore simulator parameters")
         target.add_argument(
             "--decay-rate",
             type=float,
@@ -412,6 +447,10 @@ def run_channel(args: argparse.Namespace) -> None:
                     raise SystemExit(1)
                 for k, v in prof.items():
                     new_params.setdefault(k, v)
+            if opts.illumina_profile_file:
+                file_params = _load_profile_file(opts.illumina_profile_file)
+                for k, v in file_params.items():
+                    new_params.setdefault(k, v)
             if opts.illumina_depth is not None:
                 new_params["coverage"] = opts.illumina_depth
             if opts.illumina_quality is not None:
@@ -431,6 +470,10 @@ def run_channel(args: argparse.Namespace) -> None:
                     logger.error("Unknown Nanopore profile: %s", opts.nanopore_profile)
                     raise SystemExit(1)
                 for k, v in prof.items():
+                    new_params.setdefault(k, v)
+            if opts.nanopore_profile_file:
+                file_params = _load_profile_file(opts.nanopore_profile_file)
+                for k, v in file_params.items():
                     new_params.setdefault(k, v)
             if opts.nanopore_depth is not None:
                 new_params["coverage"] = opts.nanopore_depth
@@ -481,6 +524,18 @@ def _handle_run(args: argparse.Namespace) -> None:
         cfg.illumina_profile = args.illumina_profile
     if args.nanopore_profile is not None:
         cfg.nanopore_profile = args.nanopore_profile
+    if args.illumina_profile_file is not None:
+        prof = _load_profile_file(args.illumina_profile_file)
+        for name, params in simulators:
+            if name == "illumina":
+                for k, v in prof.items():
+                    params.setdefault(k, v)
+    if args.nanopore_profile_file is not None:
+        prof = _load_profile_file(args.nanopore_profile_file)
+        for name, params in simulators:
+            if name.startswith("nanopore"):
+                for k, v in prof.items():
+                    params.setdefault(k, v)
 
     input_file = extra.get("input_file")
     output_file = extra.get("output_file")
