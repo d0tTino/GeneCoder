@@ -31,7 +31,7 @@ import logging
 import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
-from .plugin_security import compute_checksum as _compute_checksum
+from . import plugin_security
 from .api import Visualizer
 import base64
 import json
@@ -46,7 +46,7 @@ VISUALIZER_REGISTRY: Dict[str, Callable[..., Any]] = {}
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
 # re-export for tests
-compute_checksum = _compute_checksum
+compute_checksum = plugin_security.compute_checksum
 
 _SAFE_PKG_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _SAFE_URL_RE = re.compile(r"^(?:https?|file)://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+$")
@@ -209,7 +209,9 @@ def install_registry_plugins(url: str | None = None) -> None:
                     raise ValueError("Invalid signature")
 
             try:
-                digest = compute_checksum(pkg_bytes, signature=signature, public_key=public_key)
+                digest = plugin_security.compute_checksum(
+                    pkg_bytes, signature=signature, public_key=public_key
+                )
             except Exception:
                 logger.error("Invalid signature for plugin %s", spec)
                 raise ValueError("Invalid signature")

@@ -199,7 +199,8 @@ entry with `pip`. Entries may specify a `spec`, `package` or `url` value that is
 passed directly to `pip install`. **Every entry must now include either a**
 `checksum` **or a** `signature` **field**. When a `checksum` is provided the
 downloaded wheel's SHA256 digest must match. A `signature` is validated using
-the public key referenced by `GENECODER_PLUGIN_PUBLIC_KEY`.
+the public key referenced by `GENECODER_PLUGIN_PUBLIC_KEY` and verified with
+``genecoder.plugin_security.compute_checksum``.
 
 Example registry:
 
