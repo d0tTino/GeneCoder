@@ -34,3 +34,25 @@ def test_dashboard_cli_starts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     res = run_cli_command(["dashboard", str(results)])
     assert res.returncode == 0, res.stderr
     assert called
+
+
+def test_dashboard_error_counts_rendered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    metrics_file = Path(__file__).parent / "data" / "metrics.json"
+    results = tmp_path / "results.json"
+    results.write_text(metrics_file.read_text())
+
+    charts: list[object] = []
+
+    def capture_bar_chart(data: object, *args: object, **kwargs: object) -> None:  # pragma: no cover - simple capture
+        charts.append(data)
+
+    monkeypatch.setattr(streamlit, "bar_chart", capture_bar_chart)
+
+    from genecoder import dashboard as dash
+
+    dash.main(str(results))
+
+    assert charts
+    assert charts[-1] == {"Substitutions": 2, "Insertions": 0, "Deletions": 0}
