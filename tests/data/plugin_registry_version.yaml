@@ -1,0 +1,4 @@
+packages:
+  - spec: example_pkg
+    checksum: 45095df41e6342cabf37e17e4d88855c15b0a186469716949153a53367706787
+    version: "1.0.0"

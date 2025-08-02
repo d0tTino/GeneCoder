@@ -219,3 +219,46 @@ def test_registry_network_failure(
     assert (
         "Failed to install plugin https://example.com/pkgD.whl from registry" in caplog.text
     )
+
+
+def test_registry_version_match(monkeypatch: pytest.MonkeyPatch) -> None:
+    pkg = b"PKG"
+
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
+        if url == "https://example.com/plugins.yaml":
+            data = Path("tests/data/plugin_registry_version.yaml").read_bytes()
+            return DummyResponse(data)
+        elif url == "example_pkg":
+            return DummyResponse(pkg)
+        raise AssertionError(url)
+
+    installs: list[list[str]] = []
+
+    monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins, "get_pkg_version", lambda name: "1.0.0")
+
+    plugins.install_registry_plugins("https://example.com/plugins.yaml")
+
+    assert installs and installs[0][:4] == [sys.executable, "-m", "pip", "install"]
+
+
+def test_registry_version_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    pkg = b"PKG"
+
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
+        if url == "https://example.com/plugins.yaml":
+            data = Path("tests/data/plugin_registry_version.yaml").read_bytes()
+            return DummyResponse(data)
+        elif url == "example_pkg":
+            return DummyResponse(pkg)
+        raise AssertionError(url)
+
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins, "get_pkg_version", lambda name: "0.9.0")
+
+    with pytest.raises(ValueError, match="Version mismatch"):
+        plugins.install_registry_plugins("https://example.com/plugins.yaml")
