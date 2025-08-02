@@ -6,6 +6,7 @@ import random
 import shutil
 import subprocess
 import logging
+from pathlib import Path
 
 try:  # Optional at runtime
     from numba import njit
@@ -44,8 +45,8 @@ __all__ = [
     "NANOPORE_PROFILES",
 ]
 
-# Preset parameter profiles for :class:`NanoporeChannel`.
-NANOPORE_PROFILES: dict[str, dict[str, float | int]] = {
+# Preset parameter profiles for :class:`NanoporeChannel` loaded from YAML.
+_DEFAULT_NANOPORE_PROFILES: dict[str, dict[str, float | int]] = {
     "minion": {
         "error_rate": 0.12,
         "substitution_rate": 0.02,
@@ -65,6 +66,25 @@ NANOPORE_PROFILES: dict[str, dict[str, float | int]] = {
         "deletion_rate": 0.03,
     },
 }
+
+try:  # pragma: no cover - optional dependency
+    import yaml  # type: ignore
+
+    _cfg_path = Path(__file__).resolve().parents[3] / "configs" / "nanopore.yml"
+    with open(_cfg_path, "r", encoding="utf-8") as _fh:
+        _data = yaml.safe_load(_fh) or {}
+    if isinstance(_data, dict):
+        NANOPORE_PROFILES: dict[
+            str, dict[str, float | int | Dict[int, float]]
+        ] = {
+            str(name): params
+            for name, params in _data.items()
+            if isinstance(params, dict)
+        }
+    else:  # pragma: no cover - unexpected structure
+        NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
+except Exception:  # pragma: no cover - fallback when yaml missing
+    NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
 
 
 @njit(cache=True, forceobj=True)  # type: ignore[misc]
@@ -107,6 +127,8 @@ def _mutate_read_jit(
     insertion_rate: float,
     deletion_rate: float,
     context_errors: Dict[str, float],
+    insertion_profile: Dict[int, float],
+    deletion_profile: Dict[int, float],
 ) -> str:
     mutated = []
     prev = ""
@@ -118,7 +140,7 @@ def _mutate_read_jit(
             run_len = 1
             prev = nt
 
-        del_rate = deletion_rate * (2 if run_len > 3 else 1)
+        del_rate = deletion_profile.get(run_len, deletion_rate)
         del_rate = min(1.0, del_rate)
         if rng.random() < del_rate:
             continue
@@ -134,7 +156,8 @@ def _mutate_read_jit(
             nt = _random_substitution(nt, rng)
 
         mutated.append(nt)
-        if rng.random() < insertion_rate:
+        ins_rate = insertion_profile.get(run_len, insertion_rate)
+        if rng.random() < ins_rate:
             mutated.append(rng.choice(NUCLEOTIDES))
 
     return "".join(mutated)
@@ -153,6 +176,8 @@ class NanoporeChannel(BaseChannel):
         coverage: int = 1,
         quality_profile: Sequence[float] | None = None,
         context_errors: Dict[str, float] | None = None,
+        insertion_profile: Dict[int, float] | None = None,
+        deletion_profile: Dict[int, float] | None = None,
         profile_path: str | None = None,
     ) -> None:
         if profile_path is not None:
@@ -175,6 +200,8 @@ class NanoporeChannel(BaseChannel):
             coverage = int(data.get("coverage", coverage))
             quality_profile = data.get("quality_profile", quality_profile)
             context_errors = data.get("context_errors", context_errors)
+            insertion_profile = data.get("insertion_profile", insertion_profile)
+            deletion_profile = data.get("deletion_profile", deletion_profile)
 
         super().__init__(
             substitution_rate=substitution_rate,
@@ -188,6 +215,12 @@ class NanoporeChannel(BaseChannel):
         )
         self.context_errors = {
             k.upper(): float(v) for k, v in (context_errors or {}).items()
+        }
+        self.insertion_profile = {
+            int(k): float(v) for k, v in (insertion_profile or {}).items()
+        }
+        self.deletion_profile = {
+            int(k): float(v) for k, v in (deletion_profile or {}).items()
         }
 
     def simulate(self, sequence: str) -> str:
@@ -314,6 +347,8 @@ def _mutate_read(
             channel.insertion_rate,
             channel.deletion_rate,
             channel.context_errors,
+            channel.insertion_profile,
+            channel.deletion_profile,
         ),
     )
 
