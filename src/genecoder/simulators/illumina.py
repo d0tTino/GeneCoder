@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Callable, Sequence, Dict, Iterable
+from pathlib import Path
+import json
 import random
 import shutil
 import subprocess
@@ -40,6 +42,33 @@ __all__ = [
     "register",
     "ILLUMINA_PROFILES",
 ]
+
+
+# Helper to parse quality profiles from strings or files
+def _parse_quality_profile(value: str) -> Sequence[float]:
+    """Return a list of floats from ``value``.
+
+    ``value`` may be a comma-separated list or a path to JSON/YAML.
+    """
+    path = Path(value)
+    if path.is_file():
+        text = path.read_text(encoding="utf-8")
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            try:  # Optional at runtime
+                import yaml
+            except Exception:  # pragma: no cover - optional dependency
+                from genecoder.plugin_manager import yaml as yaml_module
+                if yaml_module is None:
+                    raise
+                yaml = yaml_module
+            data = yaml.safe_load(text)
+        if not isinstance(data, Sequence):
+            raise ValueError("quality profile must be a list")
+        return [float(x) for x in data]
+    return [float(x) for x in value.split(",") if x]
+
 
 # Preset parameter profiles for :class:`IlluminaChannel`.
 ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
@@ -130,6 +159,11 @@ class IlluminaChannel(BaseSimulator):
             coverage = int(data.get("coverage", coverage))
             quality_profile = data.get("quality_profile", quality_profile)
             context_errors = data.get("context_errors", context_errors)
+
+        if isinstance(coverage, str):
+            coverage = int(coverage)
+        if isinstance(quality_profile, str):
+            quality_profile = _parse_quality_profile(quality_profile)
 
         super().__init__(
             substitution_rate=substitution_rate,

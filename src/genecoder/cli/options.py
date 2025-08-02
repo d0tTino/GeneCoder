@@ -24,6 +24,8 @@ class ChannelOptions:
     processes: int | None = None
     batch_workers: int | None = None
     simulator_specs: list[tuple[str, dict[str, object]]] | None = None
+    coverage: int | None = None
+    quality_profile: Sequence[float] | None = None
     illumina_depth: int | None = None
     nanopore_depth: int | None = None
     illumina_quality: Sequence[float] | None = None
@@ -191,6 +193,8 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         processes=args.processes,
         batch_workers=args.batch_workers,
         simulator_specs=sim_specs,
+        coverage=args.coverage,
+        quality_profile=_parse_quality(args.quality_profile),
         illumina_depth=args.illumina_depth,
         nanopore_depth=args.nanopore_depth,
         illumina_quality=_parse_quality(args.illumina_quality),
