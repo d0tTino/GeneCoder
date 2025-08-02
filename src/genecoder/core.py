@@ -3,7 +3,7 @@ from __future__ import annotations
 """Simple encode/ECC/channel/decode pipeline utilities."""
 
 from pathlib import Path
-from typing import Any, Mapping, Tuple, Dict
+from typing import Any, Mapping, Tuple, Dict, List
 from difflib import SequenceMatcher
 
 from .gc_constrained_encoder import calculate_gc_content
@@ -29,13 +29,46 @@ def _count_errors(original: str, mutated: str) -> tuple[int, int, int]:
     return subs, ins, dels
 
 
+def _gc_distribution(sequence: str, window: int = 50) -> List[float]:
+    """Return GC content for non-overlapping windows in ``sequence``."""
+
+    values: List[float] = []
+    for i in range(0, len(sequence), window):
+        chunk = sequence[i : i + window]
+        if not chunk:
+            break
+        gc = sum(1 for base in chunk if base in "GCgc") / len(chunk)
+        values.append(gc)
+    return values
+
+
+def _homopolymer_runs(sequence: str) -> List[int]:
+    """Return counts of homopolymer runs by length for ``sequence``."""
+
+    if not sequence:
+        return []
+    counts: Dict[int, int] = {}
+    current = sequence[0]
+    run = 1
+    for base in sequence[1:]:
+        if base == current:
+            run += 1
+        else:
+            counts[run] = counts.get(run, 0) + 1
+            current = base
+            run = 1
+    counts[run] = counts.get(run, 0) + 1
+    max_run = max(counts)
+    return [counts.get(i, 0) for i in range(1, max_run + 1)]
+
+
 def run_pipeline(
     codec: str,
     fec: str | None,
     channel: str | None,
     input_path: str,
     output_path: str,
-) -> Tuple[bytes, Dict[str, float | int]]:
+) -> Tuple[bytes, Dict[str, Any]]:
     """Process ``input_path`` through the selected codec, FEC and channel.
 
     The decoded bytes are written to ``output_path`` and also returned.
@@ -49,7 +82,8 @@ def run_pipeline(
     if channel and channel != "none" and channel not in SIMULATOR_REGISTRY:
         raise ValueError(f"Unknown channel: {channel}")
 
-    data = Path(input_path).read_bytes()
+    original_data = Path(input_path).read_bytes()
+    data = original_data
 
     fec_info: Mapping[str, Any] | None = None
     if fec:
@@ -64,6 +98,8 @@ def run_pipeline(
 
     gc_content = calculate_gc_content(dna)
     max_homopolymer = get_max_homopolymer_length(dna)
+    gc_dist = _gc_distribution(dna)
+    hp_runs = _homopolymer_runs(dna)
 
     decoded_any = CODEC_REGISTRY[codec]["decode"](dna)
     assert isinstance(decoded_any, (bytes, bytearray))
@@ -74,15 +110,21 @@ def run_pipeline(
         decoded, _ = FEC_REGISTRY[fec]["decode"](decoded, fec_info)
 
     Path(output_path).write_bytes(decoded)
-    metrics: Dict[str, float | int] = {
+    success = 1.0 if decoded == original_data else 0.0
+    metrics: Dict[str, Any] = {
+        "gc_distribution": gc_dist,
         "gc_content": gc_content,
         "max_homopolymer": max_homopolymer,
+        "homopolymer_runs": hp_runs,
+        "ecc_success_rates": {fec: success} if fec else {},
+        "decode_success_rate": success,
     }
     if subs is not None and ins is not None and dels is not None:
-
-        metrics.update({
-            "substitutions": subs,
-            "insertions": ins,
-            "deletions": dels,
-        })
+        metrics.update(
+            {
+                "substitutions": subs,
+                "insertions": ins,
+                "deletions": dels,
+            }
+        )
     return decoded, metrics
