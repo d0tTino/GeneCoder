@@ -47,3 +47,21 @@ mpiexec -hostfile hosts -n 4 genecli channel run configs/mpi_demo.yaml
 ```
 
 All nodes must have GeneCoder, `mpi4py` and an MPI runtime (MPICH or OpenMPI) installed. MPI support is entirely optional—for local and offline use the pipeline can instead rely on threads or processes as described in [parallel execution](parallel.md).
+
+## Encoding Pipeline and `parallel_map`
+
+The `parallel_map` utility can now dispatch work across MPI ranks:
+
+```python
+from genecoder.parallel import parallel_map
+
+results = parallel_map(task, items, workers=4, use_mpi=True)
+```
+
+The high-level `pipeline` CLI exposes the same capability via `--mpi-workers`:
+
+```bash
+mpiexec -n 4 genecli pipeline input.bin output.bin --codec base4_direct --mpi-workers 4
+```
+
+Specify a worker count that matches the `-n` argument passed to `mpiexec`.

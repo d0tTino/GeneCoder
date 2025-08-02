@@ -12,6 +12,7 @@ from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES
 
 from genecoder.core import run_pipeline
+from genecoder.parallel import parallel_map
 from genecoder.plugin_manager import (
     CODEC_REGISTRY,
     FEC_REGISTRY,
@@ -155,6 +156,12 @@ def register_subcommand(
         default=None,
         help="Deletion rate/probability for the selected channel",
     )
+    parser.add_argument(
+        "--mpi-workers",
+        type=int,
+        default=None,
+        help="Distribute encoding tasks across MPI workers",
+    )
 
     parser.set_defaults(func=_handle_command)
 
@@ -196,12 +203,23 @@ def _handle_command(args: argparse.Namespace) -> None:
     if channel is None:
         channel = "none"
 
-    if channel_params:
-        metrics = _run_with_params(
-            codec, fec, channel, channel_params, args.input, args.output
-        )
+    def _execute() -> Dict[str, Any]:
+        if channel_params:
+            return _run_with_params(
+                codec, fec, channel, channel_params, args.input, args.output
+            )
+        _, m = run_pipeline(codec, fec, channel, args.input, args.output)
+        return cast(Dict[str, Any], m)
+
+    if args.mpi_workers:
+        metrics = parallel_map(
+            lambda _: _execute(),
+            [None],
+            workers=args.mpi_workers,
+            use_mpi=True,
+        )[0]
     else:
-        _, metrics = run_pipeline(codec, fec, channel, args.input, args.output)
+        metrics = _execute()
 
     metrics_path = Path(str(args.output) + ".json")
     metrics_path.write_text(json.dumps({"metrics": metrics}))
