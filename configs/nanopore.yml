@@ -1,1 +1,27 @@
-error_rate: 0.05
+minion:
+  error_rate: 0.12
+  substitution_rate: 0.02
+  insertion_rate: 0.04
+  deletion_rate: 0.06
+  insertion_profile:
+    5: 0.08
+  deletion_profile:
+    5: 0.12
+promethion:
+  error_rate: 0.08
+  substitution_rate: 0.015
+  insertion_rate: 0.02
+  deletion_rate: 0.045
+  insertion_profile:
+    5: 0.04
+  deletion_profile:
+    5: 0.09
+r10:
+  error_rate: 0.05
+  substitution_rate: 0.01
+  insertion_rate: 0.02
+  deletion_rate: 0.03
+  insertion_profile:
+    5: 0.03
+  deletion_profile:
+    5: 0.06
