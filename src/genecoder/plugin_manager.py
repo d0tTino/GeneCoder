@@ -21,7 +21,12 @@ else:
     yaml = yaml_module
 
 
-from importlib.metadata import entry_points, EntryPoints
+from importlib.metadata import (
+    entry_points,
+    EntryPoints,
+    version as get_pkg_version,
+    PackageNotFoundError,
+)
 import logging
 import pkgutil
 
@@ -221,8 +226,29 @@ def install_registry_plugins(url: str | None = None) -> None:
 
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", install_target])
+            version_req = entry.get("version") if isinstance(entry, dict) else None
+            if version_req:
+                pkg_name = str(entry.get("package") or spec).split("==")[0]
+                if _SAFE_PKG_RE.fullmatch(pkg_name):
+                    try:
+                        installed_version = get_pkg_version(pkg_name)
+                    except PackageNotFoundError:
+                        logger.error("Version mismatch for plugin %s", pkg_name)
+                        raise ValueError("Version mismatch")
+                    if installed_version != str(version_req):
+                        logger.error(
+                            "Version mismatch for plugin %s (expected %s, got %s)",
+                            pkg_name,
+                            version_req,
+                            installed_version,
+                        )
+                        raise ValueError("Version mismatch")
         except Exception as exc:  # pragma: no cover - install error path
-            logger.warning("Failed to install plugin %s from registry: %s", spec, exc)
+            if isinstance(exc, ValueError):
+                raise
+            logger.warning(
+                "Failed to install plugin %s from registry: %s", spec, exc
+            )
         finally:
             if pkg_path is not None:
                 try:
