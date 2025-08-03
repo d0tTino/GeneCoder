@@ -309,6 +309,20 @@ class NanoporeDNArSimChannel(NanoporeChannel):
             )
         raise RuntimeError("fallback")
 
+    def with_profile(self, profile: str) -> "NanoporeDNArSimChannel":
+        """Return a new channel configured to use ``profile``."""
+
+        return type(self)(
+            self.error_rate,
+            profile,
+            substitution_rate=self.substitution_rate,
+            insertion_rate=self.insertion_rate,
+            deletion_rate=self.deletion_rate,
+            coverage=self.coverage,
+            quality_profile=self.quality_profile,
+            context_errors=self.context_errors,
+        )
+
     @staticmethod
     def _simulate_fallback(sequence: str, error_rate: float, rng: random.Random) -> str:
         from typing import cast

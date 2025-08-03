@@ -1,14 +1,17 @@
 
 from genecoder.simulators.illumina import IlluminaInSilicoSeqChannel
 import genecoder.simulators.illumina as illumina
+import genecoder.random_utils as random_utils
 
 
 def test_fallback_deterministic(monkeypatch):
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
     monkeypatch.setattr(illumina.shutil, "which", lambda _: None)
+    random_utils._RNG = None
     channel = IlluminaInSilicoSeqChannel(error_rate=0.2)
     first = channel.simulate("ACGTACGTACGT")
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
+    random_utils._RNG = None
     second = channel.simulate("ACGTACGTACGT")
     assert first == second == "ACGTCCCTTCGT"
 

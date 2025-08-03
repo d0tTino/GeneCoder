@@ -41,6 +41,16 @@ class Simulator(ABC):
     def simulate(self, sequence: str) -> str:
         """Return a possibly corrupted version of ``sequence``."""
 
+    def with_profile(self, profile: str) -> "Simulator":
+        """Return a copy of the simulator configured for ``profile``.
+
+        Implementations should override this method if they support
+        applying external error profiles. The default implementation
+        raises :class:`NotImplementedError`.
+        """
+
+        raise NotImplementedError
+
 
 class Visualizer(ABC):
     """Abstract base class for sequence visualizers."""
