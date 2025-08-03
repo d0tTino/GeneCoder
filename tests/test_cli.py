@@ -437,6 +437,10 @@ def test_channel_command_probabilities(temp_dir: Path, small_fasta_file: Path) -
         str(out_file),
         "--sub-prob",
         "0.5",
+        "--ins-prob",
+        "0.25",
+        "--del-prob",
+        "0.25",
         "--seed",
         "1",
         "--min-length",
@@ -449,6 +453,7 @@ def test_channel_command_probabilities(temp_dir: Path, small_fasta_file: Path) -
     original_seq = from_fasta(small_fasta_file.read_text())[0][1]
     new_seq = from_fasta(out_file.read_text())[0][1]
     assert new_seq != original_seq
+    assert len(new_seq) != len(original_seq)
 
 
 def test_channel_missing_input(temp_dir: Path) -> None:

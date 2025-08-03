@@ -123,24 +123,24 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
 10. **Introduce channel errors before decoding**
 
-   ```bash
-   genecli channel --input-file encoded.fasta --output-file corrupted.fasta \
-       --sub-prob 0.02
-   genecli decode corrupted.fasta --output-file decoded.bin
-   ```
+```bash
+genecli channel --input-file encoded.fasta --output-file corrupted.fasta \
+    --sub-prob 0.02 --ins-prob 0.01 --del-prob 0.01
+genecli decode corrupted.fasta --output-file decoded.bin
+```
 
-   Set the environment variable `GENECODER_SIM_SEED` to an integer to make the
-   simulated substitutions deterministic across runs.
+Set the environment variable `GENECODER_SIM_SEED` to an integer to make the
+simulated substitutions and indels deterministic across runs.
 
 11. **Encode, corrupt and decode a file with automatic extensions**
 
-   ```bash
-   genecli encode --input-files hello.jpg --output-dir encoded \
-       --method base4_direct --auto-ext
-   genecli channel --input-file encoded/hello.jpg.dna --output-file corrupted.dna \
-       --sub-prob 0.01
-   genecli decode corrupted.dna --output-dir decoded --auto-ext
-   ```
+```bash
+genecli encode --input-files hello.jpg --output-dir encoded \
+    --method base4_direct --auto-ext
+genecli channel --input-file encoded/hello.jpg.dna --output-file corrupted.dna \
+    --sub-prob 0.01 --ins-prob 0.01 --del-prob 0.01
+genecli decode corrupted.dna --output-dir decoded --auto-ext
+```
 
    Verify the round-trip checksum:
 
