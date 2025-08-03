@@ -11,6 +11,13 @@ def test_adjust_gc_balance_increases_gc():
     assert calculate_gc_content(fixed) >= 0.4
 
 
+def test_adjust_gc_balance_long_sequence():
+    seq = "AT" * 5000
+    fixed = adjust_gc_balance(seq, 0.4, 0.6, rng=random.Random(0))
+    assert 0.4 <= calculate_gc_content(fixed) <= 0.6
+    assert len(fixed) == len(seq)
+
+
 def test_limit_homopolymers_breaks_runs():
     seq = "AAAAAA"
     fixed = limit_homopolymers(seq, 2, rng=random.Random(0))
@@ -52,5 +59,19 @@ def test_fix_sequence_enforces_gc_and_homopolymer_limits_high_gc() -> None:
     )
     assert 0.4 <= calculate_gc_content(fixed) <= 0.6
     assert get_max_homopolymer_length(fixed) <= 2
+    assert len(fixed) == len(seq)
+
+
+def test_fix_sequence_handles_long_input() -> None:
+    seq = "A" * 1000
+    fixed = fix_sequence(
+        seq,
+        target_gc_min=0.4,
+        target_gc_max=0.6,
+        max_homopolymer=4,
+        rng=random.Random(0),
+    )
+    assert 0.4 <= calculate_gc_content(fixed) <= 0.6
+    assert get_max_homopolymer_length(fixed) <= 4
     assert len(fixed) == len(seq)
 
