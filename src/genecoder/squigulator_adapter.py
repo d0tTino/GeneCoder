@@ -6,7 +6,8 @@ from typing import Callable
 
 from .api import Simulator
 from .random_utils import make_rng
-from .nanopore_sim import _simulate_adapter, _run_external
+from .nanopore_sim import _simulate_adapter
+from .simulator_utils import _run_external
 from .simulators import register_simulator as _register_simulator
 
 

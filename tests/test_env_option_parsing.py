@@ -1,6 +1,6 @@
 import pytest
 
-from genecoder.nanopore_sim import _parse_env_options
+from genecoder.simulator_utils import _parse_env_options
 
 
 def test_valid_options(monkeypatch):

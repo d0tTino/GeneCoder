@@ -28,11 +28,8 @@ from .base import BaseSimulator
 from ..random_utils import make_rng
 from ..api import Simulator
 from ..error_simulation import _random_substitution, NUCLEOTIDES
-from ..nanopore_sim import (
-    simulate_d2sim,
-    _run_external,
-    _parse_env_options,
-)
+from ..nanopore_sim import simulate_d2sim
+from ..simulator_utils import _run_external, _parse_env_options
 from . import register_simulator as _register_simulator
 
 __all__ = [
