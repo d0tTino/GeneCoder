@@ -12,6 +12,23 @@ The configuration at `configs/pipeline_metrics.yaml` shows how to run the pipeli
 For deployment instructions including building the React dashboard see the
 [deployment guide](docs/deployment.md).
 
+## End-to-End CLI Example
+
+Run encoding, simulation, and decoding with default settings:
+
+```bash
+# Encode a sample file
+genecli encode --input-files tests/data/sample.txt --output-file encoded/message.fasta
+
+# Simulate sequencing noise using an existing config
+genecli channel run configs/channel_demo.yaml
+
+# Decode back to the original text
+genecli decode --input-files simulated.fasta --output-file decoded.txt
+```
+
+The `configs/channel_demo.yaml` configuration mixes basic synthesis constraints with an Illumina simulator.
+
 ## Introductory notebooks
 
 Introductory Jupyter notebooks with encoding and decoding examples are available in the [notebooks/](notebooks) directory. A small series of lessons covers the basics:
