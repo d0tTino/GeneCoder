@@ -78,6 +78,26 @@ def test_simulate_errors_empty_sequence():
     )
 
 
+def test_simulate_errors_rate_approximation():
+    """Verify that observed error rates roughly match the configured probabilities."""
+    seq = "ACGT" * 250  # length 1000
+
+    rng = random.Random(0)
+    mutated = simulate_errors(seq, substitution_prob=0.1, rng=rng)
+    subs = sum(1 for a, b in zip(seq, mutated) if a != b)
+    assert abs(subs / len(seq) - 0.1) < 0.03
+
+    rng = random.Random(0)
+    mutated = simulate_errors(seq, insertion_prob=0.05, rng=rng)
+    ins = len(mutated) - len(seq)
+    assert abs(ins / len(seq) - 0.05) < 0.03
+
+    rng = random.Random(0)
+    mutated = simulate_errors(seq, deletion_prob=0.02, rng=rng)
+    dels = len(seq) - len(mutated)
+    assert abs(dels / len(seq) - 0.02) < 0.03
+
+
 @pytest.mark.parametrize(
     "kw,value",
     [

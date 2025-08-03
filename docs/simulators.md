@@ -4,8 +4,8 @@ GeneCoder supports both built-in error models and adapters to external nanopore 
 
 ## Built-in simulators
 
-- **simple** — random substitution errors. Use `genecli channel --sub-prob` or
-  `--simulator simple`.
+- **simple** — random substitutions. Use `genecli channel --sub-prob`
+  (and optionally `--ins-prob`/`--del-prob`) or `--simulator simple`.
 - **indel** — introduces insertions and deletions in addition to substitutions.
 - **none** — disable simulation (the default).
 - **illumina** — simple Illumina read errors. Customize rates with
@@ -94,11 +94,11 @@ sudo make install
 
 ## Command-line usage
 
-Apply simple substitutions with a chosen probability using the ``channel`` command:
+Apply substitutions and indels with chosen probabilities using the ``channel`` command:
 
 ```bash
 genecli channel --input-file input.fasta --output-file corrupted.fasta \
-    --sub-prob 0.02
+    --sub-prob 0.02 --ins-prob 0.01 --del-prob 0.01
 genecli decode corrupted.fasta --output-file decoded.bin <other options>
 ```
 
