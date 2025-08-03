@@ -23,12 +23,8 @@ except Exception:  # pragma: no cover - fallback when numba missing
         return wrapper
 
 from ..random_utils import make_rng
-from ..nanopore_sim import (
-    simulate_d2sim,
-    simulate_desp,
-    _run_external,
-    _parse_env_options,
-)
+from ..nanopore_sim import simulate_d2sim, simulate_desp
+from ..simulator_utils import _run_external, _parse_env_options
 from ..api import Simulator
 from .base import BaseChannel
 from ..error_simulation import (

@@ -2,6 +2,7 @@ import pytest
 
 from genecoder import d2sim_adapter, desp_adapter, insilicoseq_adapter, nanopore_sim
 import genecoder.simulators.illumina as illumina
+import genecoder.random_utils as random_utils
 
 ADAPTERS = {
     "d2sim": d2sim_adapter.simulate_d2sim,
@@ -15,6 +16,7 @@ def test_simulate_adapters_use_run_external(monkeypatch, name):
     func = ADAPTERS[name]
     which_called = []
     run_called = []
+    monkeypatch.setattr(random_utils, "_RNG", None)
 
     def fake_which(target: str) -> str:
         which_called.append(target)
@@ -35,4 +37,28 @@ def test_simulate_adapters_use_run_external(monkeypatch, name):
     assert result == f"{name}-result"
     assert which_called == [name]
     assert run_called == [([name, "-e", "0.05"], "ACGT")]
+
+
+@pytest.mark.parametrize("name", ADAPTERS.keys())
+def test_simulate_adapters_env_options(monkeypatch, name):
+    func = ADAPTERS[name]
+    run_called = []
+    env_var = f"GENECODER_{name.upper()}_OPTIONS"
+    monkeypatch.setenv(env_var, "--foo bar")
+    monkeypatch.setattr(random_utils, "_RNG", None)
+
+    def fake_run(cmd, seq):
+        run_called.append((cmd, seq))
+        return "ok"
+
+    if name == "insilicoseq":
+        monkeypatch.setattr(illumina.shutil, "which", lambda t: "/usr/bin/" + t)
+        monkeypatch.setattr(illumina, "_run_external", fake_run)
+    else:
+        monkeypatch.setattr(nanopore_sim.shutil, "which", lambda t: "/usr/bin/" + t)
+        monkeypatch.setattr(nanopore_sim, "_run_external", fake_run)
+
+    result = func("ACGT")
+    assert result == "ok"
+    assert run_called == [([name, "-e", "0.05", "--foo", "bar"], "ACGT")]
 
