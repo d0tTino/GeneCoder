@@ -5,11 +5,18 @@ import random
 from typing import Callable
 
 from .random_utils import make_rng
-
 from .api import Simulator
 from .simulators import register_simulator as _register_simulator
 
-__all__ = ["introduce_errors", "apply_substitutions", "apply_insertions", "apply_deletions", "Channel", "register"]
+__all__ = [
+    "simulate_errors",
+    "introduce_errors",
+    "apply_substitutions",
+    "apply_insertions",
+    "apply_deletions",
+    "Channel",
+    "register",
+]
 
 NUCLEOTIDES = ["A", "T", "C", "G"]
 
@@ -20,7 +27,7 @@ def _random_substitution(nucleotide: str, rng: random.Random) -> str:
     return rng.choice(choices)
 
 
-def introduce_errors(
+def simulate_errors(
     sequence: str,
     substitution_prob: float = 0.0,
     insertion_prob: float = 0.0,
@@ -84,19 +91,23 @@ def introduce_errors(
     return "".join(mutated)
 
 
+# Backwards compatibility alias
+introduce_errors = simulate_errors
+
+
 def apply_substitutions(sequence: str, prob: float, rng: random.Random | None = None) -> str:
     """Apply random substitutions to ``sequence`` with probability ``prob``."""
-    return introduce_errors(sequence, substitution_prob=prob, rng=rng)
+    return simulate_errors(sequence, substitution_prob=prob, rng=rng)
 
 
 def apply_insertions(sequence: str, prob: float, rng: random.Random | None = None) -> str:
     """Insert random nucleotides into ``sequence`` with probability ``prob``."""
-    return introduce_errors(sequence, insertion_prob=prob, rng=rng)
+    return simulate_errors(sequence, insertion_prob=prob, rng=rng)
 
 
 def apply_deletions(sequence: str, prob: float, rng: random.Random | None = None) -> str:
     """Delete nucleotides from ``sequence`` with probability ``prob``."""
-    return introduce_errors(sequence, deletion_prob=prob, rng=rng)
+    return simulate_errors(sequence, deletion_prob=prob, rng=rng)
 
 
 
@@ -109,13 +120,25 @@ class Channel(Simulator):
         substitution_prob: float = 0.0,
         insertion_prob: float = 0.0,
         deletion_prob: float = 0.0,
+        error_rate: float | None = None,
     ) -> None:
+        if error_rate is not None:
+            substitution_prob = error_rate
         self.substitution_prob = substitution_prob
         self.insertion_prob = insertion_prob
         self.deletion_prob = deletion_prob
 
+    # compatibility with older API expecting ``error_rate``
+    @property
+    def error_rate(self) -> float:
+        return self.substitution_prob
+
+    @error_rate.setter
+    def error_rate(self, value: float) -> None:
+        self.substitution_prob = value
+
     def simulate(self, sequence: str) -> str:
-        return introduce_errors(
+        return simulate_errors(
             sequence,
             substitution_prob=self.substitution_prob,
             insertion_prob=self.insertion_prob,
@@ -127,6 +150,7 @@ class Channel(Simulator):
 def register(
     registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
-    """Register the insertion/deletion error simulator."""
+    """Register built-in error simulators."""
 
+    registrar("simple", Channel(substitution_prob=0.05))
     registrar("indel", Channel())
