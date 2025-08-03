@@ -1,6 +1,7 @@
 import pytest
 
 from genecoder import d2sim_adapter, desp_adapter, insilicoseq_adapter, nanopore_sim
+import genecoder.simulators.illumina as illumina
 
 ADAPTERS = {
     "d2sim": d2sim_adapter.simulate_d2sim,
@@ -23,8 +24,12 @@ def test_simulate_adapters_use_run_external(monkeypatch, name):
         run_called.append((cmd, seq))
         return f"{name}-result"
 
-    monkeypatch.setattr(nanopore_sim.shutil, "which", fake_which)
-    monkeypatch.setattr(nanopore_sim, "_run_external", fake_run)
+    if name == "insilicoseq":
+        monkeypatch.setattr(illumina.shutil, "which", fake_which)
+        monkeypatch.setattr(illumina, "_run_external", fake_run)
+    else:
+        monkeypatch.setattr(nanopore_sim.shutil, "which", fake_which)
+        monkeypatch.setattr(nanopore_sim, "_run_external", fake_run)
 
     result = func("ACGT")
     assert result == f"{name}-result"

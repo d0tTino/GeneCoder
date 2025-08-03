@@ -4,11 +4,12 @@ import random
 import pytest
 
 from genecoder import insilicoseq_adapter, desp_adapter, nanopore_sim
+import genecoder.simulators.illumina as illumina
 
 ADAPTERS = {
     "insilicoseq": (
         insilicoseq_adapter.simulate_insilicoseq,
-        insilicoseq_adapter._InSilicoSeq,
+        None,
         "insilicoseq",
     ),
     "desp": (
@@ -33,8 +34,12 @@ def test_run_external(monkeypatch, name):
         run_called.append((command, seq))
         return "external"
 
-    monkeypatch.setattr(nanopore_sim.shutil, "which", fake_which)
-    monkeypatch.setattr(nanopore_sim, "_run_external", fake_run)
+    if name == "insilicoseq":
+        monkeypatch.setattr(illumina.shutil, "which", fake_which)
+        monkeypatch.setattr(illumina, "_run_external", fake_run)
+    else:
+        monkeypatch.setattr(nanopore_sim.shutil, "which", fake_which)
+        monkeypatch.setattr(nanopore_sim, "_run_external", fake_run)
 
     result = func("ACGT")
     assert result == "external"
@@ -48,18 +53,38 @@ def test_fall_back(monkeypatch, name):
     which_called = []
     errors_called = []
 
-    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda t: which_called.append(t) or None)
-    monkeypatch.setattr(
-        nanopore_sim,
-        "simulate_errors",
-        lambda seq, rate, rng=None: errors_called.append((seq, rate, rng)) or "fallback",
-    )
-    monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
+    if name == "insilicoseq":
+        monkeypatch.setattr(
+            illumina.shutil, "which", lambda t: which_called.append(t) or None
+        )
+        monkeypatch.setattr(
+            illumina,
+            "_run_external",
+            lambda *_: (_ for _ in ()).throw(AssertionError("_run_external should not be called")),
+        )
+        monkeypatch.setattr(
+            illumina.IlluminaChannel,
+            "simulate",
+            lambda self, s: errors_called.append((self, s)) or "fallback",
+        )
+    else:
+        monkeypatch.setattr(
+            nanopore_sim.shutil, "which", lambda t: which_called.append(t) or None
+        )
+        monkeypatch.setattr(
+            nanopore_sim,
+            "simulate_errors",
+            lambda seq, rate, rng=None: errors_called.append((seq, rate, rng))
+            or "fallback",
+        )
+        monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
 
     result = func("ACGT", error_rate=0.1)
     assert result == "fallback"
     assert which_called == [cmd]
-    assert errors_called and isinstance(errors_called[0][2], random.Random)
+    assert errors_called
+    if name != "insilicoseq":
+        assert isinstance(errors_called[0][2], random.Random)
 
 
 @pytest.mark.parametrize("name", ADAPTERS.keys())
@@ -69,18 +94,36 @@ def test_external_error(monkeypatch, caplog, name):
     run_called = []
     errors_called = []
 
-    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda t: which_called.append(t) or "/usr/bin/" + t)
+    if name == "insilicoseq":
+        monkeypatch.setattr(
+            illumina.shutil, "which", lambda t: which_called.append(t) or "/usr/bin/" + t
+        )
 
-    def fake_run(command, seq):
-        run_called.append((command, seq))
-        raise subprocess.CalledProcessError(1, command)
+        def fake_run(command, seq):
+            run_called.append((command, seq))
+            raise subprocess.CalledProcessError(1, command)
 
-    monkeypatch.setattr(nanopore_sim, "_run_external", fake_run)
-    monkeypatch.setattr(
-        nanopore_sim,
-        "simulate_errors",
-        lambda s, r, rng=None: errors_called.append((s, r, rng)) or "fallback",
-    )
+        monkeypatch.setattr(illumina, "_run_external", fake_run)
+        monkeypatch.setattr(
+            illumina.IlluminaChannel,
+            "simulate",
+            lambda self, s: errors_called.append((self, s)) or "fallback",
+        )
+    else:
+        monkeypatch.setattr(
+            nanopore_sim.shutil, "which", lambda t: which_called.append(t) or "/usr/bin/" + t
+        )
+
+        def fake_run(command, seq):
+            run_called.append((command, seq))
+            raise subprocess.CalledProcessError(1, command)
+
+        monkeypatch.setattr(nanopore_sim, "_run_external", fake_run)
+        monkeypatch.setattr(
+            nanopore_sim,
+            "simulate_errors",
+            lambda s, r, rng=None: errors_called.append((s, r, rng)) or "fallback",
+        )
 
     with caplog.at_level(logging.WARNING):
         result = func("ACGT", error_rate=0.2)
@@ -88,7 +131,9 @@ def test_external_error(monkeypatch, caplog, name):
     assert result == "fallback"
     assert which_called == [cmd]
     assert run_called == [([cmd, "-e", "0.2"], "ACGT")]
-    assert errors_called and isinstance(errors_called[0][2], random.Random)
+    assert errors_called
+    if name != "insilicoseq":
+        assert isinstance(errors_called[0][2], random.Random)
     assert any("falling back" in rec.message for rec in caplog.records)
 
 
@@ -96,23 +141,40 @@ def test_external_error(monkeypatch, caplog, name):
 def test_command_not_found_warning(monkeypatch, caplog, name):
     func, cls, cmd = ADAPTERS[name]
     errors_called = []
-    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda t: None)
 
-    def boom(*_):
-        raise AssertionError("_run_external should not be called")
+    if name == "insilicoseq":
+        monkeypatch.setattr(illumina.shutil, "which", lambda t: None)
 
-    monkeypatch.setattr(nanopore_sim, "_run_external", boom)
-    monkeypatch.setattr(
-        nanopore_sim,
-        "simulate_errors",
-        lambda seq, rate, rng=None: errors_called.append((seq, rate, rng)) or "fallback",
-    )
+        def boom(*_):
+            raise AssertionError("_run_external should not be called")
+
+        monkeypatch.setattr(illumina, "_run_external", boom)
+        monkeypatch.setattr(
+            illumina.IlluminaChannel,
+            "simulate",
+            lambda self, s: errors_called.append((self, s)) or "fallback",
+        )
+    else:
+        monkeypatch.setattr(nanopore_sim.shutil, "which", lambda t: None)
+
+        def boom(*_):
+            raise AssertionError("_run_external should not be called")
+
+        monkeypatch.setattr(nanopore_sim, "_run_external", boom)
+        monkeypatch.setattr(
+            nanopore_sim,
+            "simulate_errors",
+            lambda seq, rate, rng=None: errors_called.append((seq, rate, rng))
+            or "fallback",
+        )
 
     with caplog.at_level(logging.WARNING):
         result = func("ACGT")
 
     assert result == "fallback"
-    assert errors_called and isinstance(errors_called[0][2], random.Random)
+    assert errors_called
+    if name != "insilicoseq":
+        assert isinstance(errors_called[0][2], random.Random)
     assert any(
         rec.levelno == logging.WARNING and "not found" in rec.message for rec in caplog.records
     )
@@ -121,6 +183,8 @@ def test_command_not_found_warning(monkeypatch, caplog, name):
 @pytest.mark.parametrize("name", ADAPTERS.keys())
 def test_class_run(monkeypatch, name):
     func, cls, cmd = ADAPTERS[name]
+    if cls is None:
+        pytest.skip("no direct command helper for insilicoseq")
     called = []
 
     def fake_run_external(c, seq):
@@ -128,7 +192,8 @@ def test_class_run(monkeypatch, name):
         return "ok"
 
     monkeypatch.setattr(cls, "command", cmd)
-    monkeypatch.setattr(insilicoseq_adapter if name == "insilicoseq" else desp_adapter, "_run_external", fake_run_external)
+    target_module = insilicoseq_adapter if name == "insilicoseq" else desp_adapter
+    monkeypatch.setattr(target_module, "_run_external", fake_run_external)
 
     result = cls.run("ACGT")
     assert result == "ok"
