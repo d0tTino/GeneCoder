@@ -24,7 +24,6 @@ def test_load_builtin_plugins_populates_registries() -> None:
         "dnarsim",
         "squigulator",
         "desp",
-        "insilicoseq",
         "nanopore",
         "none",
         "simple",

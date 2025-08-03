@@ -39,6 +39,7 @@ __all__ = [
     "IlluminaChannel",
     "IlluminaD2SimChannel",
     "IlluminaInSilicoSeqChannel",
+    "simulate_insilicoseq",
     "register",
     "ILLUMINA_PROFILES",
 ]
@@ -239,26 +240,31 @@ class IlluminaInSilicoSeqChannel(Simulator):
 
     def __init__(self, error_rate: float = 0.05) -> None:
         self.error_rate = error_rate
-        self._fallback = IlluminaChannel(substitution_rate=error_rate)
 
     def simulate(self, sequence: str) -> str:
-        cmd = "insilicoseq"
-        if shutil.which(cmd):
-            cmd_list = [cmd, "-e", str(self.error_rate)]
-            try:
-                cmd_list += _parse_env_options(cmd)
-                return _run_external(cmd_list, sequence)
-            except (ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
-                logging.getLogger(__name__).warning(
-                    "%s failed: %s; falling back to simple Illumina model",
-                    cmd,
-                    exc,
-                )
-        else:
+        return simulate_insilicoseq(sequence, error_rate=self.error_rate)
+
+
+def simulate_insilicoseq(sequence: str, error_rate: float = 0.05) -> str:
+    """Use the ``insilicoseq`` CLI if available, else fall back to ``IlluminaChannel``."""
+
+    cmd = "insilicoseq"
+    if shutil.which(cmd):
+        cmd_list = [cmd, "-e", str(error_rate)]
+        try:
+            cmd_list += _parse_env_options(cmd)
+            return _run_external(cmd_list, sequence)
+        except (ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
             logging.getLogger(__name__).warning(
-                "%s not found; falling back to simple Illumina model", cmd
+                "%s failed: %s; falling back to simple Illumina model",
+                cmd,
+                exc,
             )
-        return self._fallback.simulate(sequence)
+    else:
+        logging.getLogger(__name__).warning(
+            "%s not found; falling back to simple Illumina model", cmd
+        )
+    return IlluminaChannel(substitution_rate=error_rate).simulate(sequence)
 
 
 def register(

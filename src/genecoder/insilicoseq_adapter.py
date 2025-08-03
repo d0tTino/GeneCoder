@@ -5,20 +5,11 @@ import random
 from typing import Callable
 
 from .api import Simulator
-from .random_utils import make_rng
-from .nanopore_sim import _simulate_adapter, _run_external
+from .simulators.illumina import (
+    IlluminaInSilicoSeqChannel as _IlluminaInSilicoSeqChannel,
+    simulate_insilicoseq as _simulate_insilicoseq,
+)
 from .simulators import register_simulator as _register_simulator
-
-
-class _InSilicoSeq:
-    """Internal helper to invoke the ``iss`` binary."""
-
-    command = "iss"
-
-    @staticmethod
-    def run(sequence: str) -> str:
-        """Run ``iss`` on ``sequence`` via :func:`_run_external`."""
-        return _run_external(_InSilicoSeq.command, sequence)
 
 
 def simulate_insilicoseq(
@@ -26,22 +17,19 @@ def simulate_insilicoseq(
     error_rate: float = 0.05,
     rng: random.Random | None = None,
 ) -> str:
-    """Use ``InSilicoSeq`` if available, else fall back to :func:`simulate_errors`."""
+    """Use ``InSilicoSeq`` if available, else fall back to ``IlluminaChannel``.
 
-    if rng is None:
-        rng = make_rng()
+    The ``rng`` parameter is accepted for API compatibility but ignored.
+    """
 
-    return _simulate_adapter("insilicoseq", sequence, error_rate, rng)
+    return _simulate_insilicoseq(sequence, error_rate=error_rate)
 
 
-class InSilicoSeqChannel(Simulator):
+class InSilicoSeqChannel(_IlluminaInSilicoSeqChannel):
     """Channel wrapper for the optional ``InSilicoSeq`` simulator."""
 
     def __init__(self, error_rate: float = 0.05) -> None:
-        self.error_rate = error_rate
-
-    def simulate(self, sequence: str) -> str:
-        return simulate_insilicoseq(sequence, error_rate=self.error_rate, rng=make_rng())
+        super().__init__(error_rate=error_rate)
 
 
 def register(
