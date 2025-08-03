@@ -1,11 +1,11 @@
 import random
 import pytest
-from genecoder.error_simulation import introduce_errors
+from genecoder.error_simulation import simulate_errors
 
 
 def test_deterministic_substitutions():
     rng = random.Random(42)
-    result = introduce_errors(
+    result = simulate_errors(
         "AAAA",
         substitution_prob=1.0,
         insertion_prob=0.0,
@@ -17,7 +17,7 @@ def test_deterministic_substitutions():
 
 def test_deterministic_insertions():
     rng = random.Random(0)
-    result = introduce_errors(
+    result = simulate_errors(
         "AT",
         substitution_prob=0.0,
         insertion_prob=1.0,
@@ -29,7 +29,7 @@ def test_deterministic_insertions():
 
 def test_deterministic_deletions():
     rng = random.Random(1)
-    result = introduce_errors(
+    result = simulate_errors(
         "ATGC",
         substitution_prob=0.0,
         insertion_prob=0.0,
@@ -53,9 +53,9 @@ def test_apply_functions_and_edge_cases():
     assert apply_deletions("ATGC", prob=1.0, rng=rng) == ""
 
 
-def test_introduce_errors_combined_operations():
+def test_simulate_errors_combined_operations():
     rng = random.Random(1)
-    result = introduce_errors(
+    result = simulate_errors(
         "AT",
         substitution_prob=0.3,
         insertion_prob=0.3,
@@ -65,9 +65,9 @@ def test_introduce_errors_combined_operations():
     assert result == "TG"
 
 
-def test_introduce_errors_empty_sequence():
+def test_simulate_errors_empty_sequence():
     assert (
-        introduce_errors(
+        simulate_errors(
             "",
             substitution_prob=1.0,
             insertion_prob=0.0,
@@ -89,15 +89,15 @@ def test_introduce_errors_empty_sequence():
         ("deletion_prob", 1.1),
     ],
 )
-def test_introduce_errors_invalid_probabilities(kw: str, value: float) -> None:
+def test_simulate_errors_invalid_probabilities(kw: str, value: float) -> None:
     kwargs = {kw: value, "rng": random.Random(0)}
     with pytest.raises(ValueError):
-        introduce_errors("A", **kwargs)
+        simulate_errors("A", **kwargs)
 
 
-def test_introduce_errors_probability_sum_exceeds_one() -> None:
+def test_simulate_errors_probability_sum_exceeds_one() -> None:
     with pytest.raises(ValueError):
-        introduce_errors(
+        simulate_errors(
             "A",
             substitution_prob=0.6,
             insertion_prob=0.3,

@@ -27,7 +27,7 @@ from .simulators import register_simulator as _register_simulator
 logger = logging.getLogger(__name__)
 
 from .random_utils import make_rng
-from .channel_sim import simulate_errors
+from .error_simulation import simulate_errors
 from .formats import from_fasta, to_fasta
 
 

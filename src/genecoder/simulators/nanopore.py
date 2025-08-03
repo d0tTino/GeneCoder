@@ -46,7 +46,9 @@ __all__ = [
 ]
 
 # Preset parameter profiles for :class:`NanoporeChannel` loaded from YAML.
-_DEFAULT_NANOPORE_PROFILES: dict[str, dict[str, float | int]] = {
+_DEFAULT_NANOPORE_PROFILES: dict[
+    str, dict[str, float | int | Dict[int, float]]
+] = {
     "minion": {
         "error_rate": 0.12,
         "substitution_rate": 0.02,
@@ -68,7 +70,7 @@ _DEFAULT_NANOPORE_PROFILES: dict[str, dict[str, float | int]] = {
 }
 
 try:  # pragma: no cover - optional dependency
-    import yaml  # type: ignore
+    import yaml
 
     _cfg_path = Path(__file__).resolve().parents[3] / "configs" / "nanopore.yml"
     with open(_cfg_path, "r", encoding="utf-8") as _fh:
