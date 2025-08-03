@@ -52,6 +52,11 @@ class DNArSimChannel(Simulator):
             profile=self.profile,
         )
 
+    def with_profile(self, profile: str) -> "DNArSimChannel":
+        """Return a new channel configured to use ``profile``."""
+
+        return type(self)(error_rate=self.error_rate, profile=profile)
+
 
 def register(
     registrar: Callable[[str, Simulator], None] = _register_simulator,

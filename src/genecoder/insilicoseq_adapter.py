@@ -16,20 +16,23 @@ def simulate_insilicoseq(
     sequence: str,
     error_rate: float = 0.05,
     rng: random.Random | None = None,
+    profile: str | None = None,
 ) -> str:
     """Use ``InSilicoSeq`` if available, else fall back to ``IlluminaChannel``.
 
     The ``rng`` parameter is accepted for API compatibility but ignored.
     """
 
-    return _simulate_insilicoseq(sequence, error_rate=error_rate)
+    return _simulate_insilicoseq(sequence, error_rate=error_rate, profile=profile)
 
 
 class InSilicoSeqChannel(_IlluminaInSilicoSeqChannel):
     """Channel wrapper for the optional ``InSilicoSeq`` simulator."""
 
-    def __init__(self, error_rate: float = 0.05) -> None:
-        super().__init__(error_rate=error_rate)
+    def __init__(
+        self, error_rate: float = 0.05, profile: str | None = None
+    ) -> None:
+        super().__init__(error_rate=error_rate, profile=profile)
 
 
 def register(

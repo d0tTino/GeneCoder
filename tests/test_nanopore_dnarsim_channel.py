@@ -1,5 +1,6 @@
 from genecoder.simulators.nanopore import NanoporeDNArSimChannel
 import genecoder.simulators.nanopore as nanopore
+import genecoder.random_utils as random_utils
 import logging
 import random
 
@@ -7,9 +8,11 @@ import random
 def test_fallback_deterministic(monkeypatch):
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
     monkeypatch.setattr(nanopore.shutil, "which", lambda _: None)
+    random_utils._RNG = None
     ch = NanoporeDNArSimChannel(error_rate=0.2)
     first = ch.simulate("ACGTACGTACGT")
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
+    random_utils._RNG = None
     second = ch.simulate("ACGTACGTACGT")
     assert first == second == "ACGAGTACCGT"
 

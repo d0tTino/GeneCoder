@@ -238,19 +238,31 @@ class IlluminaD2SimChannel(Simulator):
 class IlluminaInSilicoSeqChannel(Simulator):
     """Use the ``insilicoseq`` CLI with a simple fallback."""
 
-    def __init__(self, error_rate: float = 0.05) -> None:
+    def __init__(self, error_rate: float = 0.05, profile: str | None = None) -> None:
         self.error_rate = error_rate
+        self.profile = profile
 
     def simulate(self, sequence: str) -> str:
-        return simulate_insilicoseq(sequence, error_rate=self.error_rate)
+        return simulate_insilicoseq(
+            sequence, error_rate=self.error_rate, profile=self.profile
+        )
+
+    def with_profile(self, profile: str) -> "IlluminaInSilicoSeqChannel":
+        """Return a new channel configured to use ``profile``."""
+
+        return type(self)(error_rate=self.error_rate, profile=profile)
 
 
-def simulate_insilicoseq(sequence: str, error_rate: float = 0.05) -> str:
+def simulate_insilicoseq(
+    sequence: str, error_rate: float = 0.05, profile: str | None = None
+) -> str:
     """Use the ``insilicoseq`` CLI if available, else fall back to ``IlluminaChannel``."""
 
     cmd = "insilicoseq"
     if shutil.which(cmd):
         cmd_list = [cmd, "-e", str(error_rate)]
+        if profile:
+            cmd_list += ["-p", profile]
         try:
             cmd_list += _parse_env_options(cmd)
             return _run_external(cmd_list, sequence)
