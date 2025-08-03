@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import random
-from .gc_constrained_encoder import calculate_gc_content
 
 __all__ = ["adjust_gc_balance", "limit_homopolymers", "fix_sequence"]
 
@@ -19,21 +18,25 @@ def adjust_gc_balance(
     if rng is None:
         rng = random.Random()
     seq = list(sequence.upper())
-    gc = calculate_gc_content("".join(seq))
+    length = len(seq)
+    gc_count = sum(1 for b in seq if b in {"G", "C"})
+    gc = gc_count / length if length else 0.0
     while gc < target_gc_min:
         idxs = [i for i, b in enumerate(seq) if b in {"A", "T"}]
         if not idxs:
             break
         i = rng.choice(idxs)
         seq[i] = rng.choice(["G", "C"])
-        gc = calculate_gc_content("".join(seq))
+        gc_count += 1
+        gc = gc_count / length
     while gc > target_gc_max:
         idxs = [i for i, b in enumerate(seq) if b in {"G", "C"}]
         if not idxs:
             break
         i = rng.choice(idxs)
         seq[i] = rng.choice(["A", "T"])
-        gc = calculate_gc_content("".join(seq))
+        gc_count -= 1
+        gc = gc_count / length
     return "".join(seq)
 
 
