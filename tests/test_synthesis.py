@@ -37,6 +37,22 @@ def test_validate_sequence_fail_homopolymer() -> None:
     assert not validate_sequence("AAACCC", constraints)
 
 
+def test_validate_sequence_gc_boundaries_accept() -> None:
+    constraints = SynthesisConstraints(
+        min_length=5, max_length=10, max_homopolymer=2, gc_min=0.4, gc_max=0.6
+    )
+    assert validate_sequence("GCATA", constraints)  # 40% GC
+    assert validate_sequence("GCCAT", constraints)  # 60% GC
+
+
+def test_validate_sequence_gc_outside_reject() -> None:
+    constraints = SynthesisConstraints(
+        min_length=5, max_length=10, max_homopolymer=2, gc_min=0.4, gc_max=0.6
+    )
+    assert not validate_sequence("GAATT", constraints)  # 20% GC
+    assert not validate_sequence("GGCCA", constraints)  # 80% GC
+
+
 def test_constraints_invalid_min_length() -> None:
     with pytest.raises(ValueError):
         SynthesisConstraints(min_length=0, max_length=10)
