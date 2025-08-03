@@ -7,6 +7,51 @@ function receives a callback used to add the implementation to the appropriate
 registry. GeneCoder looks only at packages installed in your current Python
 environment when loading plugins.
 
+## Quick Start
+
+Create a minimal codec plugin in three steps:
+
+1. **Project layout**
+
+   ```text
+   mycodec/
+   ├── pyproject.toml
+   └── mycodec/
+       └── __init__.py
+   ```
+
+2. **Declare an entry point** in `pyproject.toml`:
+
+   ```toml
+   [project.entry-points."genecoder.plugins"]
+   mycodec = "mycodec"
+   ```
+
+3. **Implement the codec and register it** in `mycodec/__init__.py`:
+
+   ```python
+   from genecoder.api import Codec
+
+   class MyCodec(Codec):
+       def encode(self, data: bytes) -> str:
+           return data.decode().upper()
+
+       def decode(self, text: str) -> bytes:
+           return text.lower().encode()
+
+   def register(register_codec):
+       register_codec("mycodec", MyCodec)
+   ```
+
+Install the package and load plugins to make it available:
+
+```bash
+pip install ./mycodec
+python -c "from genecoder.plugins import load_plugins; load_plugins()"
+```
+
+See [`plugins-examples`](../plugins-examples/) for complete reference implementations.
+
 ## Entry Point Groups
 
 The callback passed to `register()` depends on the entry point group used:
