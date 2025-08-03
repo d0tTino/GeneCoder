@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import pytest
+import random
 from tests.test_cli import run_cli_command
 
 
@@ -89,3 +90,55 @@ def test_cli_coverage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     )
     assert result.returncode == 0, result.stderr
     assert called == [(None, 5)]
+
+
+def _count_mutations(channel, seq: str, replicates: int = 100, seed: int = 42) -> list[int]:
+    counts = [0] * len(seq)
+    for i in range(replicates):
+        rng = random.Random(seed + i)
+        mutated = channel._mutate_read(seq, channel.quality_profile, rng)
+        for idx, (a, b) in enumerate(zip(seq, mutated)):
+            if a != b:
+                counts[idx] += 1
+    return counts
+
+
+def test_per_base_quality_profile_mutation_rates() -> None:
+    from genecoder.simulators.illumina import IlluminaChannel
+
+    seq = "AAAAA"
+    base = IlluminaChannel(
+        substitution_rate=0.2, insertion_rate=0.0, deletion_rate=0.0, read_length=len(seq)
+    )
+    quality = IlluminaChannel(
+        substitution_rate=0.2,
+        insertion_rate=0.0,
+        deletion_rate=0.0,
+        read_length=len(seq),
+        quality_profile=[0.0, 0.0, 1.0, 0.0, 0.0],
+    )
+    base_counts = _count_mutations(base, seq)
+    quality_counts = _count_mutations(quality, seq)
+    assert quality_counts[2] == 100  # third base always mutates
+    assert base_counts[2] < 100
+    assert quality_counts[0] == 0 < base_counts[0]
+
+
+def test_context_specific_errors_mutation_rates() -> None:
+    from genecoder.simulators.illumina import IlluminaChannel
+
+    seq = "AAAAA"
+    base = IlluminaChannel(
+        substitution_rate=0.2, insertion_rate=0.0, deletion_rate=0.0, read_length=len(seq)
+    )
+    context = IlluminaChannel(
+        substitution_rate=0.2,
+        insertion_rate=0.0,
+        deletion_rate=0.0,
+        read_length=len(seq),
+        context_errors={"AA": 0.0},
+    )
+    base_counts = _count_mutations(base, seq)
+    context_counts = _count_mutations(context, seq)
+    assert all(c == 0 for c in context_counts[1:])
+    assert all(c > 0 for c in base_counts[1:])
