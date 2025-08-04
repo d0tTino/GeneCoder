@@ -65,3 +65,27 @@ def test_fountain_degree_distribution_params():
     hist_default = degree_hist(encoded_default, info_default)
     hist_custom = degree_hist(encoded_custom, info_custom)
     assert hist_default != hist_custom
+
+
+def test_fountain_decode_degree_distribution_override():
+    data = b"distribution" * 20
+    encoded, info = encode_data_fountain(
+        data, chunk_size=3, redundancy=1.0, seed=0
+    )
+
+    def degree_hist(c: float, delta: float) -> dict[int, int]:
+        k = info["k"]
+        chunk_size = info["chunk_size"]
+        droplet_size = chunk_size + 4
+        cdf = _robust_soliton_cdf(k, c=c, delta=delta)
+        hist: dict[int, int] = {}
+        for i in range(0, len(encoded), droplet_size):
+            seed = int.from_bytes(encoded[i : i + 4], "big")
+            rnd = random.Random(seed)
+            degree = _sample_degree(cdf, rnd)
+            hist[degree] = hist.get(degree, 0) + 1
+        return hist
+
+    hist_default = degree_hist(info["c"], info["delta"])
+    hist_override = degree_hist(info["c"] * 2, info["delta"] / 2)
+    assert hist_default != hist_override
