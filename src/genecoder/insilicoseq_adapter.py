@@ -12,6 +12,16 @@ from .simulators.illumina import (
 from .simulators import register_simulator as _register_simulator
 
 
+MISEQ_PROFILE = "MiSeq"
+HISEQ_PROFILE = "HiSeq"
+
+# Mapping of user friendly preset names to ``insilicoseq`` profile strings.
+INSILICOSEQ_PROFILES = {
+    "miseq": MISEQ_PROFILE,
+    "hiseq": HISEQ_PROFILE,
+}
+
+
 def simulate_insilicoseq(
     sequence: str,
     error_rate: float = 0.05,
@@ -23,6 +33,8 @@ def simulate_insilicoseq(
     The ``rng`` parameter is accepted for API compatibility but ignored.
     """
 
+    if profile:
+        profile = INSILICOSEQ_PROFILES.get(profile.lower(), profile)
     return _simulate_insilicoseq(sequence, error_rate=error_rate, profile=profile)
 
 
@@ -32,6 +44,8 @@ class InSilicoSeqChannel(_IlluminaInSilicoSeqChannel):
     def __init__(
         self, error_rate: float = 0.05, profile: str | None = None
     ) -> None:
+        if profile:
+            profile = INSILICOSEQ_PROFILES.get(profile.lower(), profile)
         super().__init__(error_rate=error_rate, profile=profile)
 
 
