@@ -25,7 +25,17 @@ _HAS_PYFINITE = True  # compatibility with older tests
 
 
 def _robust_soliton_cdf(k: int, c: float = 0.1, delta: float = 0.5) -> list[float]:
-    """Return the cumulative distribution for the robust soliton."""
+    """Return the cumulative distribution for the robust soliton.
+
+    Parameters
+    ----------
+    k:
+        Number of source symbols.
+    c:
+        Scaling factor controlling the expected ripple size.
+    delta:
+        Failure probability of the distribution.
+    """
     if k <= 0:
         return [1.0]
 
@@ -74,6 +84,10 @@ def encode_data_fountain(
     delta: float = 0.5,
 ) -> Tuple[bytes, Any]:
     """Encode ``data`` using an LT fountain scheme.
+
+    The ``c`` and ``delta`` parameters control the robust soliton distribution
+    used when selecting droplet degrees. They are forwarded directly to
+    :func:`_robust_soliton_cdf`.
 
     Parameters
     ----------
@@ -157,10 +171,12 @@ def decode_data_fountain(
         Mapping returned alongside the encoded data.
     c:
         Override for the robust soliton ``c`` parameter. If not provided, the
-        value stored in ``info`` (or the default) is used.
+        value stored in ``info`` (or the default) is used. Forwarded to
+        :func:`_robust_soliton_cdf`.
     delta:
         Override for the robust soliton ``delta`` parameter. If not provided,
-        the value stored in ``info`` (or the default) is used.
+        the value stored in ``info`` (or the default) is used. Forwarded to
+        :func:`_robust_soliton_cdf`.
     """
 
     chunk_size = int(info["chunk_size"])
