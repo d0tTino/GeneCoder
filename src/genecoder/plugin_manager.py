@@ -7,6 +7,7 @@ import os
 import sys
 import subprocess
 import urllib.request
+from urllib.parse import urlparse
 import tempfile
 from pathlib import Path
 import importlib
@@ -124,13 +125,29 @@ def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer]) ->
 
 
 
-def install_registry_plugins(url: str | None = None) -> None:
-    """Install plugin packages listed in a YAML registry at ``url``."""
+def install_registry_plugins(url: str | None = None, offline: bool | None = None) -> None:
+    """Install plugin packages listed in a YAML registry at ``url``.
+
+    When *offline* is ``True`` or the ``GENECODER_OFFLINE`` environment
+    variable is set, network access is disabled and the registry must point to a
+    local file path or ``file://`` URL. Attempting to access remote resources
+    in offline mode raises :class:`RuntimeError` with a clear message.
+    """
+
+    if offline is None:
+        offline = bool(os.getenv("GENECODER_OFFLINE"))
 
     if url is None:
         url = os.getenv("GENECODER_PLUGIN_REGISTRY_URL")
     if not url:
         return
+
+    def _is_remote(target: str) -> bool:
+        return target.startswith("http://") or target.startswith("https://")
+
+    def _read_local(path_str: str) -> bytes:
+        path = urlparse(path_str).path if path_str.startswith("file://") else path_str
+        return Path(path).read_bytes()
 
     yaml_module = yaml
     if yaml_module is None:
@@ -147,9 +164,18 @@ def install_registry_plugins(url: str | None = None) -> None:
         return
 
     try:
-        with urllib.request.urlopen(url, timeout=30) as response:
-            raw = response.read()
+        if _is_remote(url):
+            if offline:
+                msg = f"Offline mode forbids fetching registry {url}"
+                logger.error(msg)
+                raise RuntimeError(msg)
+            with urllib.request.urlopen(url, timeout=30) as response:
+                raw = response.read()
+        else:
+            raw = _read_local(url)
     except Exception as exc:
+        if isinstance(exc, RuntimeError):
+            raise
         logger.warning("Failed to fetch plugin registry %s: %s", url, exc)
         return
 
@@ -183,9 +209,21 @@ def install_registry_plugins(url: str | None = None) -> None:
         pkg_path = None
         if checksum or sig_b64:
             try:
-                with urllib.request.urlopen(spec, timeout=30) as resp:
-                    pkg_bytes = resp.read()
+                path = (
+                    urlparse(spec).path if spec.startswith("file://") else spec
+                )
+                if Path(path).exists():
+                    pkg_bytes = _read_local(spec)
+                else:
+                    if offline:
+                        msg = f"Offline mode forbids downloading plugin {spec}"
+                        logger.error(msg)
+                        raise RuntimeError(msg)
+                    with urllib.request.urlopen(spec, timeout=30) as resp:
+                        pkg_bytes = resp.read()
             except Exception as exc:  # pragma: no cover - download error path
+                if isinstance(exc, RuntimeError):
+                    raise
                 logger.warning("Failed to download plugin %s: %s", spec, exc)
                 raise
 
@@ -226,6 +264,10 @@ def install_registry_plugins(url: str | None = None) -> None:
             tmp.close()
             install_target = pkg_path
 
+        if offline and not (spec.startswith("file://") or Path(spec).exists()):
+            msg = f"Offline mode forbids installing plugin {spec}"
+            logger.error(msg)
+            raise RuntimeError(msg)
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", install_target])
             version_req = entry.get("version") if isinstance(entry, dict) else None

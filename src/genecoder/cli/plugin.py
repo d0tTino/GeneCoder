@@ -63,6 +63,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         action="store_true",
         help="Allow downloading and installing packages from the registry",
     )
+    reg_parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Read registry from a local file and disable network access",
+    )
     reg_parser.set_defaults(func=_handle_install_registry)
 
 
@@ -179,7 +184,7 @@ def _handle_install_registry(args: argparse.Namespace) -> None:
         logger.error("Registry installation requires --allow-registry")
         raise SystemExit(1)
 
-    plugins.install_registry_plugins()
+    plugins.install_registry_plugins(offline=args.offline)
 
 
 
