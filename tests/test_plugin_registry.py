@@ -145,6 +145,38 @@ def test_registry_install_offline_local(tmp_path: Path, monkeypatch: pytest.Monk
     ]
 
 
+def test_registry_install_offline_local_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    pkg_path = tmp_path / "pkg.whl"
+    pkg_bytes = b"PKG"
+    pkg_path.write_bytes(pkg_bytes)
+    checksum = plugins.compute_checksum(pkg_bytes)
+
+    registry = tmp_path / "registry.yaml"
+    registry.write_text(
+        "packages:\n  - spec: {pkg}\n    checksum: {chk}\n".format(
+            pkg=pkg_path.as_uri(), chk=checksum
+        )
+    )
+
+    installs: list[list[str]] = []
+
+    def fake_urlopen(*args, **kwargs):  # pragma: no cover - should not be used
+        raise AssertionError("network access attempted")
+
+    monkeypatch.setenv("GENECODER_OFFLINE", "1")
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+
+    plugins.install_registry_plugins(registry)
+
+    assert installs and installs[0][:4] == [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+    ]
+
+
 def test_registry_offline_remote_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
     with pytest.raises(RuntimeError, match="Offline mode forbids fetching registry"):

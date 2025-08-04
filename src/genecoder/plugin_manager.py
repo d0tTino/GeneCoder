@@ -125,14 +125,21 @@ def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer]) ->
 
 
 
-def install_registry_plugins(url: str | None = None, offline: bool | None = None) -> None:
+def install_registry_plugins(
+    url: str | os.PathLike[str] | None = None, offline: bool | None = None
+) -> None:
     """Install plugin packages listed in a YAML registry at ``url``.
 
-    When *offline* is ``True`` or the ``GENECODER_OFFLINE`` environment
-    variable is set, network access is disabled and the registry must point to a
-    local file path or ``file://`` URL. Attempting to access remote resources
-    in offline mode raises :class:`RuntimeError` with a clear message.
+    The ``url`` argument may be an HTTP(S) address, a ``file://`` URL or a plain
+    filesystem path. When *offline* is ``True`` or the ``GENECODER_OFFLINE``
+    environment variable is set, all network access is disabled and the
+    registry must reside on the local filesystem. Any attempt to reach a remote
+    resource in offline mode raises :class:`RuntimeError` with a descriptive
+    message.
     """
+
+    if isinstance(url, os.PathLike):
+        url = os.fspath(url)
 
     if offline is None:
         offline = bool(os.getenv("GENECODER_OFFLINE"))
