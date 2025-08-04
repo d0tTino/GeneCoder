@@ -194,6 +194,9 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
    override the chosen profile. Custom parameters can also be loaded from YAML files
    using `--illumina-profile-file` or `--nanopore-profile-file`.
 
+   The optional `insilicoseq` simulator accepts the same Illumina presets via its
+   `--profile` flag, e.g. `--simulator insilicoseq --profile miseq`.
+
    The same configuration can be provided via YAML:
 
    ```yaml

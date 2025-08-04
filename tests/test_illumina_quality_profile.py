@@ -142,3 +142,22 @@ def test_context_specific_errors_mutation_rates() -> None:
     context_counts = _count_mutations(context, seq)
     assert all(c == 0 for c in context_counts[1:])
     assert all(c > 0 for c in base_counts[1:])
+
+
+@pytest.mark.parametrize(
+    "preset, expected",
+    [("miseq", "MiSeq"), ("hiseq", "HiSeq")],
+)
+def test_insilicoseq_presets(monkeypatch: pytest.MonkeyPatch, preset: str, expected: str) -> None:
+    from genecoder import insilicoseq_adapter
+
+    called: list[str | None] = []
+
+    def fake_sim(seq: str, error_rate: float = 0.05, profile: str | None = None) -> str:
+        called.append(profile)
+        return seq
+
+    monkeypatch.setattr(insilicoseq_adapter, "_simulate_insilicoseq", fake_sim)
+
+    insilicoseq_adapter.simulate_insilicoseq("ACGT", profile=preset)
+    assert called == [expected]
