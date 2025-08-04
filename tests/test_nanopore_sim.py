@@ -118,7 +118,7 @@ def test_adapters_fall_back(monkeypatch, name):
     monkeypatch.setattr(
         nanopore_sim,
         "simulate_errors",
-        lambda seq, rate, rng=None: errors_called.append((seq, rate, rng)) or "fallback",
+        lambda seq, **kwargs: errors_called.append((seq, kwargs.get("rng"))) or "fallback",
 
     )
     monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")
@@ -126,7 +126,7 @@ def test_adapters_fall_back(monkeypatch, name):
     result = func("ACGT", error_rate=0.1)
     assert result == "fallback"
     assert which_called == [cmd]
-    assert errors_called and isinstance(errors_called[0][2], random.Random)
+    assert errors_called and isinstance(errors_called[0][1], random.Random)
 
 
 @pytest.mark.parametrize("name", ADAPTERS.keys())
@@ -146,7 +146,7 @@ def test_adapters_external_error(monkeypatch, caplog, name):
     monkeypatch.setattr(
         nanopore_sim,
         "simulate_errors",
-        lambda s, r, rng=None: errors_called.append((s, r, rng)) or "fallback",
+        lambda s, **kwargs: errors_called.append((s, kwargs.get("rng"))) or "fallback",
     )
 
     with caplog.at_level(logging.WARNING):
@@ -156,7 +156,7 @@ def test_adapters_external_error(monkeypatch, caplog, name):
     assert which_called == [cmd]
     expected = ([cmd, "-e", "0.2"], "ACGT")
     assert run_called == [expected]
-    assert errors_called and isinstance(errors_called[0][2], random.Random)
+    assert errors_called and isinstance(errors_called[0][1], random.Random)
     assert any("falling back" in rec.message for rec in caplog.records)
 
 
@@ -175,7 +175,7 @@ def test_adapters_invalid_output(monkeypatch, caplog, name):
     monkeypatch.setattr(
         nanopore_sim,
         "simulate_errors",
-        lambda s, r, rng=None: errors_called.append((s, r, rng)) or "fallback",
+        lambda s, **kwargs: errors_called.append((s, kwargs.get("rng"))) or "fallback",
     )
 
     with caplog.at_level(logging.WARNING):
@@ -183,7 +183,7 @@ def test_adapters_invalid_output(monkeypatch, caplog, name):
 
     assert result == "fallback"
     assert which_called == [cmd]
-    assert errors_called and isinstance(errors_called[0][2], random.Random)
+    assert errors_called and isinstance(errors_called[0][1], random.Random)
     assert any("falling back" in rec.message for rec in caplog.records)
 
 
@@ -201,7 +201,7 @@ def test_adapters_command_not_found_warning(monkeypatch, caplog, name):
     monkeypatch.setattr(
         nanopore_sim,
         "simulate_errors",
-        lambda seq, rate, rng=None: errors_called.append((seq, rate, rng))
+        lambda seq, **kwargs: errors_called.append((seq, kwargs.get("rng")))
         or "fallback",
     )
 
@@ -209,7 +209,7 @@ def test_adapters_command_not_found_warning(monkeypatch, caplog, name):
         result = func("ACGT")
 
     assert result == "fallback"
-    assert errors_called and isinstance(errors_called[0][2], random.Random)
+    assert errors_called and isinstance(errors_called[0][1], random.Random)
     assert any(
         rec.levelno == logging.WARNING and "not found" in rec.message
         for rec in caplog.records
@@ -306,3 +306,62 @@ def test_homopolymers_increase_deletions(monkeypatch):
     homopoly_del = _avg_deletions(homopoly, channel, monkeypatch)
     balanced_del = _avg_deletions(balanced, channel, monkeypatch)
     assert homopoly_del > balanced_del
+
+
+def _count_changes(original: str, mutated: str) -> tuple[int, int, int]:
+    n, m = len(original), len(mutated)
+    dp = [[0] * (m + 1) for _ in range(n + 1)]
+    for i in range(n + 1):
+        dp[i][0] = i
+    for j in range(m + 1):
+        dp[0][j] = j
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            if original[i - 1] == mutated[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1]
+            else:
+                dp[i][j] = 1 + min(
+                    dp[i - 1][j],  # deletion
+                    dp[i][j - 1],  # insertion
+                    dp[i - 1][j - 1],  # substitution
+                )
+    i, j = n, m
+    subs = ins = dele = 0
+    while i > 0 or j > 0:
+        if i > 0 and j > 0 and original[i - 1] == mutated[j - 1]:
+            i -= 1
+            j -= 1
+        elif i > 0 and j > 0 and dp[i][j] == dp[i - 1][j - 1] + 1:
+            subs += 1
+            i -= 1
+            j -= 1
+        elif j > 0 and dp[i][j] == dp[i][j - 1] + 1:
+            ins += 1
+            j -= 1
+        else:
+            dele += 1
+            i -= 1
+    return subs, ins, dele
+
+
+def test_dnarsim_rate_table_distribution(monkeypatch):
+    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda _: None)
+    profile = "r9"
+    rates = nanopore_sim.DNARSIM_RATE_TABLES[profile]
+    seq = "ACGT" * 25
+    trials = 200
+    sub_total = ins_total = del_total = 0
+    for i in range(trials):
+        monkeypatch.setenv("GENECODER_SIM_SEED", str(i))
+        mutated = nanopore_sim.simulate_dnarsim(seq, profile=profile)
+        s, ins, d = _count_changes(seq, mutated)
+        sub_total += s
+        ins_total += ins
+        del_total += d
+    length = len(seq) * trials
+    sub_rate = sub_total / length
+    ins_rate = ins_total / length
+    del_rate = del_total / length
+    assert abs(sub_rate - rates["substitution_rate"]) < 0.02
+    assert abs(ins_rate - rates["insertion_rate"]) < 0.02
+    assert abs(del_rate - rates["deletion_rate"]) < 0.02

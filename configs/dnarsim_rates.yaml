@@ -1,0 +1,4 @@
+r9:
+  substitution_rate: 0.1
+  insertion_rate: 0.05
+  deletion_rate: 0.02
