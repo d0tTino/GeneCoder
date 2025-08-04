@@ -5,6 +5,7 @@ import random
 import shutil
 import subprocess
 import logging
+from pathlib import Path
 from typing import Callable, Sequence
 
 from .simulator_utils import _parse_env_options, _run_external
@@ -27,12 +28,35 @@ from .random_utils import make_rng
 from .error_simulation import simulate_errors
 
 
+try:  # pragma: no cover - optional dependency
+    import yaml
+
+    _rates_path = Path(__file__).resolve().parents[2] / "configs" / "dnarsim_rates.yaml"
+    with open(_rates_path, "r", encoding="utf-8") as _fh:
+        _rates_data = yaml.safe_load(_fh) or {}
+    if isinstance(_rates_data, dict):
+        DNARSIM_RATE_TABLES: dict[str, dict[str, float]] = {
+            str(name): {
+                "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
+                "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
+                "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
+            }
+            for name, tbl in _rates_data.items()
+            if isinstance(tbl, dict)
+        }
+    else:  # pragma: no cover - unexpected structure
+        DNARSIM_RATE_TABLES = {}
+except Exception:  # pragma: no cover - fallback when yaml missing
+    DNARSIM_RATE_TABLES = {}
+
+
 def _simulate_adapter(
     command: str,
     sequence: str,
     error_rate: float,
     rng: random.Random | None,
     extra_args: Sequence[str] | None = None,
+    rate_table: dict[str, float] | None = None,
 ) -> str:
 
     """Return ``sequence`` processed by an external ``command`` if available."""
@@ -61,7 +85,15 @@ def _simulate_adapter(
     # falling back to :func:`simulate_errors` so calls remain reproducible
     if rng is None:
         rng = make_rng()
-    return simulate_errors(sequence, error_rate, rng=rng)
+    if rate_table:
+        return simulate_errors(
+            sequence,
+            substitution_prob=rate_table.get("substitution_rate", 0.0),
+            insertion_prob=rate_table.get("insertion_rate", 0.0),
+            deletion_prob=rate_table.get("deletion_rate", 0.0),
+            rng=rng,
+        )
+    return simulate_errors(sequence, substitution_prob=error_rate, rng=rng)
 
 
 
@@ -101,7 +133,8 @@ def simulate_dnarsim(
         rng = make_rng()
 
     extra = ["-p", profile] if profile else None
-    return _simulate_adapter("dnarsim", sequence, error_rate, rng, extra)
+    rate_table = DNARSIM_RATE_TABLES.get(profile) if profile else None
+    return _simulate_adapter("dnarsim", sequence, error_rate, rng, extra, rate_table)
 
 
 def simulate_squigulator(
