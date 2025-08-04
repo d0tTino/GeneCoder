@@ -252,10 +252,12 @@ Set the `GENECODER_PLUGIN_REGISTRY_URL` environment variable to point to that
 registry file and run the install command below. The path may be an HTTP(S)
 address or a local `file://` URL. When the variable is unset no network
 requests are made and GeneCoder loads only plugins already present in the
-current Python environment.
+current Python environment. Pass `--offline` or set `GENECODER_OFFLINE=1` to
+force offline mode; the registry must then be a local file and any attempt to
+reach the network results in a clear error.
 
 ```bash
-genecli plugin install-registry --allow-registry
+genecli plugin install-registry --allow-registry [--offline]
 ```
 
 The command reads the `packages` array from the YAML document and installs each
@@ -347,7 +349,7 @@ Secure installation with public‑key verification:
 ```bash
 export GENECODER_PLUGIN_REGISTRY_URL=./configs/registry.yaml
 export GENECODER_PLUGIN_PUBLIC_KEY=/path/to/public.pem
-genecli plugin install-registry --allow-registry
+genecli plugin install-registry --allow-registry --offline
 ```
 ## Simulator Environment Variables
 

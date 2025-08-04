@@ -114,6 +114,43 @@ def test_registry_unreachable(monkeypatch: pytest.MonkeyPatch, caplog: pytest.Lo
     assert "Failed to fetch plugin registry" in caplog.text
 
 
+def test_registry_install_offline_local(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pkg_path = tmp_path / "pkg.whl"
+    pkg_bytes = b"PKG"
+    pkg_path.write_bytes(pkg_bytes)
+    checksum = plugins.compute_checksum(pkg_bytes)
+
+    registry = tmp_path / "registry.yaml"
+    registry.write_text(
+        "packages:\n  - spec: {pkg}\n    checksum: {chk}\n".format(
+            pkg=pkg_path.as_uri(), chk=checksum
+        )
+    )
+
+    installs: list[list[str]] = []
+
+    def fake_urlopen(*args, **kwargs):  # pragma: no cover - should not be used
+        raise AssertionError("network access attempted")
+
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
+
+    plugins.install_registry_plugins(str(registry), offline=True)
+
+    assert installs and installs[0][:4] == [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+    ]
+
+
+def test_registry_offline_remote_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+    with pytest.raises(RuntimeError, match="Offline mode forbids fetching registry"):
+        plugins.install_registry_plugins("https://example.com/plugins.yaml", offline=True)
+
+
 def _urlopen_via_httpx(client: httpx.Client) -> Callable[[str], DummyResponse]:
     """Return a urlopen replacement using ``client``."""
 
