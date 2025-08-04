@@ -65,7 +65,13 @@ def _xor_into(target: bytearray, src: bytes | bytearray) -> None:
 
 
 def encode_data_fountain(
-    data: bytes, chunk_size: int = 4, *, seed: int = 0, redundancy: float = 2.0
+    data: bytes,
+    chunk_size: int = 4,
+    *,
+    seed: int = 0,
+    redundancy: float = 2.0,
+    c: float = 0.1,
+    delta: float = 0.5,
 ) -> Tuple[bytes, Any]:
     """Encode ``data`` using an LT fountain scheme.
 
@@ -79,6 +85,11 @@ def encode_data_fountain(
         Base seed for droplet generation.
     redundancy:
         Number of droplets to emit relative to ``k`` (the number of chunks).
+    c:
+        Scaling factor controlling the expected ripple size of the robust
+        soliton distribution.
+    delta:
+        Failure probability for the robust soliton distribution.
     """
 
     try:
@@ -88,7 +99,16 @@ def encode_data_fountain(
         raise ImportError("pyfinite is required") from exc
 
     if not data:
-        return b"", {"chunk_size": chunk_size, "orig_len": 0, "k": 0}
+        return (
+            b"",
+            {
+                "chunk_size": chunk_size,
+                "orig_len": 0,
+                "k": 0,
+                "c": c,
+                "delta": delta,
+            },
+        )
 
     k = math.ceil(len(data) / chunk_size)
     blocks = [
@@ -96,7 +116,7 @@ def encode_data_fountain(
         for i in range(0, len(data), chunk_size)
     ]
     num_droplets = max(k, int(k * redundancy))
-    cdf = _robust_soliton_cdf(k)
+    cdf = _robust_soliton_cdf(k, c=c, delta=delta)
     droplets: list[bytes] = []
     for i in range(num_droplets):
         droplet_seed = seed + i
@@ -114,18 +134,43 @@ def encode_data_fountain(
         "orig_len": len(data),
         "k": k,
         "seed": seed,
+        "c": c,
+        "delta": delta,
     }
     return encoded, info
 
 
-def decode_data_fountain(encoded: bytes, info: Mapping[str, int]) -> Tuple[bytes, int]:
-    """Decode bytes produced by :func:`encode_data_fountain`."""
+def decode_data_fountain(
+    encoded: bytes,
+    info: Mapping[str, Any],
+    *,
+    c: float | None = None,
+    delta: float | None = None,
+) -> Tuple[bytes, int]:
+    """Decode bytes produced by :func:`encode_data_fountain`.
+
+    Parameters
+    ----------
+    encoded:
+        Bytes emitted by :func:`encode_data_fountain`.
+    info:
+        Mapping returned alongside the encoded data.
+    c:
+        Override for the robust soliton ``c`` parameter. If not provided, the
+        value stored in ``info`` (or the default) is used.
+    delta:
+        Override for the robust soliton ``delta`` parameter. If not provided,
+        the value stored in ``info`` (or the default) is used.
+    """
 
     chunk_size = int(info["chunk_size"])
     orig_len = int(info["orig_len"])
     k = int(info.get("k", 0))
     if k == 0:
         return b"", 0
+
+    c = float(info.get("c", 0.1)) if c is None else c
+    delta = float(info.get("delta", 0.5)) if delta is None else delta
 
     droplet_size = chunk_size + 4
     droplets = [
@@ -136,7 +181,7 @@ def decode_data_fountain(encoded: bytes, info: Mapping[str, int]) -> Tuple[bytes
         for i in range(0, len(encoded), droplet_size)
     ]
 
-    cdf = _robust_soliton_cdf(k)
+    cdf = _robust_soliton_cdf(k, c=c, delta=delta)
     equations: list[tuple[list[int], bytearray]] = []
     for seed, payload in droplets:
         rnd = random.Random(seed)
@@ -183,14 +228,30 @@ class FountainFEC(FEC):
         chunk_size: int = 4,
         seed: int = 0,
         redundancy: float = 2.0,
+        c: float = 0.1,
+        delta: float = 0.5,
         **kwargs: Any,
-    ) -> Tuple[bytes, Mapping[str, int]]:  # noqa: ANN401
-        return encode_data_fountain(data, chunk_size, seed=seed, redundancy=redundancy)
+    ) -> Tuple[bytes, Mapping[str, Any]]:  # noqa: ANN401
+        return encode_data_fountain(
+            data,
+            chunk_size,
+            seed=seed,
+            redundancy=redundancy,
+            c=c,
+            delta=delta,
+        )
 
     def decode(
-        self, encoded: bytes, info: Mapping[str, int], /, **kwargs: Any
+        self,
+        encoded: bytes,
+        info: Mapping[str, Any],
+        /,
+        *,
+        c: float | None = None,
+        delta: float | None = None,
+        **kwargs: Any,
     ) -> Tuple[bytes, int]:  # noqa: ANN401
-        return decode_data_fountain(encoded, info)
+        return decode_data_fountain(encoded, info, c=c, delta=delta)
 
 
 from typing import Callable
