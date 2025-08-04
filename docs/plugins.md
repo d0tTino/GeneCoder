@@ -250,11 +250,11 @@ Registered codecs and simulators appear in the respective registries once
 GeneCoder can install a set of third-party packages listed in a YAML registry.
 Set the `GENECODER_PLUGIN_REGISTRY_URL` environment variable to point to that
 registry file and run the install command below. The path may be an HTTP(S)
-address or a local `file://` URL. When the variable is unset no network
-requests are made and GeneCoder loads only plugins already present in the
-current Python environment. Pass `--offline` or set `GENECODER_OFFLINE=1` to
-force offline mode; the registry must then be a local file and any attempt to
-reach the network results in a clear error.
+address, a local `file://` URL or a plain filesystem path. When the variable is
+unset no network requests are made and GeneCoder loads only plugins already
+present in the current Python environment. Pass `--offline` or set
+`GENECODER_OFFLINE=1` to force offline mode; the registry must then reside on
+disk and any attempt to reach the network results in a clear error message.
 
 ```bash
 genecli plugin install-registry --allow-registry [--offline]
