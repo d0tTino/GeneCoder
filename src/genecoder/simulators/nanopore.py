@@ -71,12 +71,30 @@ try:  # pragma: no cover - optional dependency
     _cfg_path = Path(__file__).resolve().parents[3] / "configs" / "nanopore.yml"
     with open(_cfg_path, "r", encoding="utf-8") as _fh:
         _data = yaml.safe_load(_fh) or {}
+
+    from typing import Any
+
+    def _parse_profile(params: dict[str, Any]) -> dict[str, Any]:
+        parsed: dict[str, Any] = {}
+        for key, value in params.items():
+            if key in {"insertion_profile", "deletion_profile"} and isinstance(value, dict):
+                parsed[key] = {int(k): float(v) for k, v in value.items()}
+            elif key in {"context_insertions", "context_deletions"} and isinstance(value, dict):
+                parsed[key] = {
+                    str(ctx).upper(): {int(r): float(p) for r, p in prof.items()}
+                    for ctx, prof in value.items()
+                    if isinstance(prof, dict)
+                }
+            else:
+                parsed[key] = value
+        return parsed
+
     if isinstance(_data, dict):
         NANOPORE_PROFILES: dict[
             str,
             dict[str, float | int | Dict[int, float] | Dict[str, Dict[int, float]]],
         ] = {
-            str(name): params
+            str(name): _parse_profile(params)
             for name, params in _data.items()
             if isinstance(params, dict)
         }
