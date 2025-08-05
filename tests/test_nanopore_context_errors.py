@@ -49,6 +49,8 @@ def test_context_profile_increases_substitutions() -> None:
     )
     base_subs = _count_substitutions(base, seq, runs=200, seed=1)
     ctx_subs = _count_substitutions(ctx, seq, runs=200, seed=1)
+    assert base_subs == 164
+    assert ctx_subs == 239
     assert ctx_subs > base_subs
 
 
@@ -73,6 +75,8 @@ def test_homopolymer_profiles_affect_mutation_counts() -> None:
         runs,
         seed,
     )
+    assert ins_base == 86
+    assert ins_prof == 185
     assert ins_prof > ins_base
 
     _, del_base = _count_ins_del(
@@ -92,6 +96,8 @@ def test_homopolymer_profiles_affect_mutation_counts() -> None:
         runs,
         seed,
     )
+    assert del_base == 84
+    assert del_prof == 183
     assert del_prof > del_base
 
 
