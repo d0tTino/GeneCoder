@@ -43,7 +43,7 @@ __all__ = [
 
 # Preset parameter profiles for :class:`NanoporeChannel` loaded from YAML.
 _DEFAULT_NANOPORE_PROFILES: dict[
-    str, dict[str, float | int | Dict[int, float]]
+    str, dict[str, float | int | Dict[int, float] | Dict[str, Dict[int, float]]]
 ] = {
     "minion": {
         "error_rate": 0.12,
@@ -73,7 +73,8 @@ try:  # pragma: no cover - optional dependency
         _data = yaml.safe_load(_fh) or {}
     if isinstance(_data, dict):
         NANOPORE_PROFILES: dict[
-            str, dict[str, float | int | Dict[int, float]]
+            str,
+            dict[str, float | int | Dict[int, float] | Dict[str, Dict[int, float]]],
         ] = {
             str(name): params
             for name, params in _data.items()
@@ -127,6 +128,8 @@ def _mutate_read_jit(
     context_errors: Dict[str, float],
     insertion_profile: Dict[int, float],
     deletion_profile: Dict[int, float],
+    context_insertions: Dict[str, Dict[int, float]],
+    context_deletions: Dict[str, Dict[int, float]],
 ) -> str:
     mutated = []
     prev = ""
@@ -138,7 +141,13 @@ def _mutate_read_jit(
             run_len = 1
             prev = nt
 
+        ctx = read[idx - 1 : idx + 1].upper() if idx > 0 else ""
+
         del_rate = deletion_profile.get(run_len, deletion_rate)
+        if context_deletions and ctx:
+            ctx_profile = context_deletions.get(ctx)
+            if ctx_profile is not None:
+                del_rate = ctx_profile.get(run_len, ctx_profile.get(1, del_rate))
         del_rate = min(1.0, del_rate)
         if rng.random() < del_rate:
             continue
@@ -146,8 +155,7 @@ def _mutate_read_jit(
         sub_rate = (
             quality[idx] if quality is not None and idx < len(quality) else substitution_rate
         )
-        if context_errors and idx > 0:
-            ctx = read[idx - 1 : idx + 1].upper()
+        if context_errors and ctx:
             sub_rate *= context_errors.get(ctx, 1.0)
 
         if rng.random() < sub_rate:
@@ -155,6 +163,10 @@ def _mutate_read_jit(
 
         mutated.append(nt)
         ins_rate = insertion_profile.get(run_len, insertion_rate)
+        if context_insertions and ctx:
+            ctx_profile = context_insertions.get(ctx)
+            if ctx_profile is not None:
+                ins_rate = ctx_profile.get(run_len, ctx_profile.get(1, ins_rate))
         if rng.random() < ins_rate:
             mutated.append(rng.choice(NUCLEOTIDES))
 
@@ -174,6 +186,8 @@ class NanoporeChannel(BaseChannel):
         coverage: int = 1,
         quality_profile: Sequence[float] | None = None,
         context_errors: Dict[str, float] | None = None,
+        context_insertions: Dict[str, Dict[int, float]] | None = None,
+        context_deletions: Dict[str, Dict[int, float]] | None = None,
         insertion_profile: Dict[int, float] | None = None,
         deletion_profile: Dict[int, float] | None = None,
         profile_path: str | None = None,
@@ -198,6 +212,8 @@ class NanoporeChannel(BaseChannel):
             coverage = int(data.get("coverage", coverage))
             quality_profile = data.get("quality_profile", quality_profile)
             context_errors = data.get("context_errors", context_errors)
+            context_insertions = data.get("context_insertions", context_insertions)
+            context_deletions = data.get("context_deletions", context_deletions)
             insertion_profile = data.get("insertion_profile", insertion_profile)
             deletion_profile = data.get("deletion_profile", deletion_profile)
 
@@ -213,6 +229,14 @@ class NanoporeChannel(BaseChannel):
         )
         self.context_errors = {
             k.upper(): float(v) for k, v in (context_errors or {}).items()
+        }
+        self.context_insertions = {
+            k.upper(): {int(r): float(p) for r, p in v.items()}
+            for k, v in (context_insertions or {}).items()
+        }
+        self.context_deletions = {
+            k.upper(): {int(r): float(p) for r, p in v.items()}
+            for k, v in (context_deletions or {}).items()
         }
         self.insertion_profile = {
             int(k): float(v) for k, v in (insertion_profile or {}).items()
@@ -274,6 +298,8 @@ class NanoporeDNArSimChannel(NanoporeChannel):
         coverage: int = 1,
         quality_profile: Sequence[float] | None = None,
         context_errors: Dict[str, float] | None = None,
+        context_insertions: Dict[str, Dict[int, float]] | None = None,
+        context_deletions: Dict[str, Dict[int, float]] | None = None,
     ) -> None:
         super().__init__(
             error_rate,
@@ -283,6 +309,8 @@ class NanoporeDNArSimChannel(NanoporeChannel):
             coverage=coverage,
             quality_profile=quality_profile,
             context_errors=context_errors,
+            context_insertions=context_insertions,
+            context_deletions=context_deletions,
         )
         self.profile = profile
 
@@ -317,6 +345,8 @@ class NanoporeDNArSimChannel(NanoporeChannel):
             coverage=self.coverage,
             quality_profile=self.quality_profile,
             context_errors=self.context_errors,
+            context_insertions=self.context_insertions,
+            context_deletions=self.context_deletions,
         )
 
     @staticmethod
@@ -361,6 +391,8 @@ def _mutate_read(
             channel.context_errors,
             channel.insertion_profile,
             channel.deletion_profile,
+            channel.context_insertions,
+            channel.context_deletions,
         ),
     )
 

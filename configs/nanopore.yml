@@ -7,6 +7,12 @@ minion:
     5: 0.08
   deletion_profile:
     5: 0.12
+  context_insertions:
+    AA:
+      5: 0.09
+  context_deletions:
+    TT:
+      5: 0.13
 promethion:
   error_rate: 0.08
   substitution_rate: 0.015
@@ -16,6 +22,12 @@ promethion:
     5: 0.04
   deletion_profile:
     5: 0.09
+  context_insertions:
+    AA:
+      5: 0.05
+  context_deletions:
+    TT:
+      5: 0.11
 r10:
   error_rate: 0.05
   substitution_rate: 0.01
@@ -25,3 +37,9 @@ r10:
     5: 0.03
   deletion_profile:
     5: 0.06
+  context_insertions:
+    AA:
+      5: 0.04
+  context_deletions:
+    TT:
+      5: 0.08
