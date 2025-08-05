@@ -93,3 +93,51 @@ def test_homopolymer_profiles_affect_mutation_counts() -> None:
         seed,
     )
     assert del_prof > del_base
+
+
+def test_context_insertion_profile_affect_counts() -> None:
+    seq = "AAT"
+    runs = 200
+    seed = 7
+    ins_base, _ = _count_ins_del(
+        NanoporeChannel(substitution_rate=0.0, insertion_rate=0.0, deletion_rate=0.0),
+        seq,
+        runs,
+        seed,
+    )
+    ins_ctx, _ = _count_ins_del(
+        NanoporeChannel(
+            substitution_rate=0.0,
+            insertion_rate=0.0,
+            deletion_rate=0.0,
+            context_insertions={"AA": {1: 0.9}},
+        ),
+        seq,
+        runs,
+        seed,
+    )
+    assert ins_ctx > ins_base
+
+
+def test_context_deletion_profile_affect_counts() -> None:
+    seq = "TTA"
+    runs = 200
+    seed = 8
+    _, del_base = _count_ins_del(
+        NanoporeChannel(substitution_rate=0.0, insertion_rate=0.0, deletion_rate=0.0),
+        seq,
+        runs,
+        seed,
+    )
+    _, del_ctx = _count_ins_del(
+        NanoporeChannel(
+            substitution_rate=0.0,
+            insertion_rate=0.0,
+            deletion_rate=0.0,
+            context_deletions={"TT": {1: 0.9}},
+        ),
+        seq,
+        runs,
+        seed,
+    )
+    assert del_ctx > del_base
