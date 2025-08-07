@@ -190,9 +190,17 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
    - **Illumina** – `miseq`, `hiseq`
    - **Nanopore** – `minion`, `promethion`
 
-   Select a profile with `--illumina-profile` or `--nanopore-profile`. Individual rate options
-   override the chosen profile. Custom parameters can also be loaded from YAML files
-   using `--illumina-profile-file` or `--nanopore-profile-file`.
+   Use `--profile` to apply a preset without specifying a simulator:
+
+   ```bash
+   genecli channel --profile miseq --input-file encoded.fasta \
+       --output-file channel.fasta
+   ```
+
+   For finer control, select a profile with `--illumina-profile` or
+   `--nanopore-profile`. Individual rate options override the chosen profile.
+   Custom parameters can also be loaded from YAML files using
+   `--illumina-profile-file` or `--nanopore-profile-file`.
 
    The optional `insilicoseq` simulator accepts the same Illumina presets via its
    `--profile` flag, e.g. `--simulator insilicoseq --profile miseq`.

@@ -29,6 +29,14 @@ from .shared import add_single_io_args
 logger = logging.getLogger(__name__)
 
 
+PROFILE_MAP: dict[str, tuple[str, str]] = {
+    "miseq": ("illumina", "miseq"),
+    "hiseq": ("illumina", "hiseq"),
+    "minion": ("nanopore", "minion"),
+    "promethion": ("nanopore", "promethion"),
+}
+
+
 def _load_config(
     path: str,
 ) -> tuple[
@@ -285,6 +293,13 @@ def register_subcommand(
     run_parser.add_argument("config", type=str, help="Path to channel config")
     illumina_profiles = ", ".join(sorted(ILLUMINA_PROFILES))
     nanopore_profiles = ", ".join(sorted(NANOPORE_PROFILES))
+    profile_names = ", ".join(sorted(PROFILE_MAP))
+    run_parser.add_argument(
+        "--profile",
+        choices=sorted(PROFILE_MAP),
+        default=None,
+        help=f"Named sequencing profile to use. Available profiles: {profile_names}",
+    )
     run_parser.add_argument(
         "--illumina-profile",
         type=str,
@@ -342,6 +357,12 @@ def register_subcommand(
             "--config",
             type=str,
             help="YAML/JSON config defining simulators, synthesis and pipeline",
+        )
+        target.add_argument(
+            "--profile",
+            choices=sorted(PROFILE_MAP),
+            default=None,
+            help="Named sequencing profile to use",
         )
         target.add_argument("--sub-prob", type=float, default=0.0, help="Substitution probability per nucleotide")
         target.add_argument("--ins-prob", type=float, default=0.0, help="Insertion probability after each nucleotide")
@@ -442,7 +463,14 @@ def run_channel(args: argparse.Namespace) -> None:
         nanopore_profile=opts.nanopore_profile,
     )
     simulators = opts.simulator_specs
-    if simulators is None:
+    if opts.profile:
+        sim_name, prof = PROFILE_MAP[opts.profile]
+        simulators = [(sim_name, {})]
+        if sim_name == "illumina":
+            opts.illumina_profile = prof
+        else:
+            opts.nanopore_profile = prof
+    elif simulators is None:
         simulators = [(name, {}) for name in opts.simulators]
 
     if opts.decay_rate is not None:
@@ -536,6 +564,14 @@ def _handle_run(args: argparse.Namespace) -> None:
     except Exception as exc:  # pragma: no cover - config error handling
         logger.error(str(exc))
         raise SystemExit(1)
+
+    if args.profile is not None:
+        sim_name, preset = PROFILE_MAP[args.profile]
+        simulators = [(sim_name, {})]
+        if sim_name == "illumina":
+            cfg.illumina_profile = preset
+        else:
+            cfg.nanopore_profile = preset
 
     if args.illumina_profile is not None:
         cfg.illumina_profile = args.illumina_profile
