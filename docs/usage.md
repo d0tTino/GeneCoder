@@ -417,12 +417,19 @@ The GUI exposes encoding options, error correction choices and displays metrics 
 
 ### Launching the Streamlit Dashboard
 
-The dashboard visualizes simulation output stored in a JSON file. Install the `gui` group and run:
+The dashboard visualizes simulation output stored in a JSON file.
+Generate a sample set of metrics by running the provided pipeline demo
+configuration and then launch the Streamlit interface:
 
 ```bash
 poetry install --with gui --no-interaction
-genecli dashboard results.json
+GENECODER_METRICS_PATH=examples/pipeline_metrics.json \
+    genecli bundle run configs/pipeline_demo.yaml
+genecli dashboard examples/pipeline_metrics.json
 ```
+
+This encodes and decodes `examples/pipeline_demo_input.txt`, stores metrics in
+`examples/pipeline_metrics.json` and opens the dashboard with the results.
 
 The interface plots GC content distribution, homopolymer histograms, and ECC success-rate bar charts. It also displays the overall decode success percentage derived from the metrics file. When substitution, insertion and deletion counts are present, they are shown as a simple bar chart.
 
