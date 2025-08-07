@@ -38,6 +38,7 @@ class ChannelOptions:
     nanopore_sub_rate: float | None = None
     nanopore_ins_rate: float | None = None
     nanopore_del_rate: float | None = None
+    profile: str | None = None
     illumina_profile: str | None = None
     nanopore_profile: str | None = None
     illumina_profile_file: str | None = None
@@ -90,18 +91,22 @@ def _parse_context(value: str | None) -> Dict[str, float] | None:
 
 
 def _validate_simulator_prob_args(
-    simulators: Sequence[str], sub_prob: float, ins_prob: float, del_prob: float
+    simulators: Sequence[str],
+    sub_prob: float,
+    ins_prob: float,
+    del_prob: float,
+    profile: str | None,
 ) -> None:
-    """Ensure that simulator and probability arguments are valid."""
+    """Ensure that simulator, profile and probability arguments are valid."""
 
     prob_specified = any([sub_prob, ins_prob, del_prob])
-    if simulators and prob_specified:
+    if (simulators or profile) and prob_specified:
         raise ValueError(
-            "Probability options cannot be combined with --simulator or --config"
+            "Probability options cannot be combined with --simulator, --profile or --config"
         )
-    if not simulators and not prob_specified:
+    if not simulators and not prob_specified and profile is None:
         raise ValueError(
-            "At least one simulator or probability option must be specified"
+            "At least one simulator, profile or probability option must be specified"
         )
 
 
@@ -168,7 +173,7 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
             args.decay_rate = extra.get("decay_rate")
 
     _validate_simulator_prob_args(
-        simulators, args.sub_prob, args.ins_prob, args.del_prob
+        simulators, args.sub_prob, args.ins_prob, args.del_prob, getattr(args, "profile", None)
     )
     if args.min_length <= 0:
         raise ValueError("min_length must be greater than 0")
@@ -207,6 +212,7 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         nanopore_sub_rate=args.nanopore_sub_rate,
         nanopore_ins_rate=args.nanopore_ins_rate,
         nanopore_del_rate=args.nanopore_del_rate,
+        profile=getattr(args, "profile", None),
         illumina_profile=args.illumina_profile,
         nanopore_profile=args.nanopore_profile,
         illumina_profile_file=args.illumina_profile_file,
