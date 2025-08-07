@@ -39,6 +39,7 @@ __all__ = [
     "NanoporeDNArSimChannel",
     "register",
     "NANOPORE_PROFILES",
+    "DNARSIM_RATE_TABLES",
 ]
 
 # Preset parameter profiles for :class:`NanoporeChannel` loaded from YAML.
@@ -68,8 +69,8 @@ _DEFAULT_NANOPORE_PROFILES: dict[
 try:  # pragma: no cover - optional dependency
     import yaml
 
-    _cfg_path = Path(__file__).resolve().parents[3] / "configs" / "nanopore.yml"
-    with open(_cfg_path, "r", encoding="utf-8") as _fh:
+    _cfg_dir = Path(__file__).resolve().parents[3] / "configs"
+    with open(_cfg_dir / "nanopore.yml", "r", encoding="utf-8") as _fh:
         _data = yaml.safe_load(_fh) or {}
 
     from typing import Any
@@ -100,8 +101,25 @@ try:  # pragma: no cover - optional dependency
         }
     else:  # pragma: no cover - unexpected structure
         NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
+
+    with open(_cfg_dir / "dnarsim_rates.yaml", "r", encoding="utf-8") as _fh:
+        _rates_data = yaml.safe_load(_fh) or {}
+    if isinstance(_rates_data, dict):
+        DNARSIM_RATE_TABLES: dict[str, dict[str, float]] = {
+            str(name): {
+                "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
+                "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
+                "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
+            }
+            for name, tbl in _rates_data.items()
+            if isinstance(tbl, dict)
+        }
+        NANOPORE_PROFILES.update(DNARSIM_RATE_TABLES)
+    else:  # pragma: no cover - unexpected structure
+        DNARSIM_RATE_TABLES = {}
 except Exception:  # pragma: no cover - fallback when yaml missing
     NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
+    DNARSIM_RATE_TABLES = {}
 
 
 @njit(cache=True, forceobj=True)  # type: ignore[misc]
@@ -331,6 +349,12 @@ class NanoporeDNArSimChannel(NanoporeChannel):
             context_deletions=context_deletions,
         )
         self.profile = profile
+        if profile:
+            rates = DNARSIM_RATE_TABLES.get(profile)
+            if rates:
+                self.substitution_rate = rates.get("substitution_rate", self.substitution_rate)
+                self.insertion_rate = rates.get("insertion_rate", self.insertion_rate)
+                self.deletion_rate = rates.get("deletion_rate", self.deletion_rate)
 
     def _simulate_cli(self, sequence: str) -> str:
         cmd = "dnarsim"
@@ -353,13 +377,9 @@ class NanoporeDNArSimChannel(NanoporeChannel):
 
     def with_profile(self, profile: str) -> "NanoporeDNArSimChannel":
         """Return a new channel configured to use ``profile``."""
-
         return type(self)(
             self.error_rate,
             profile,
-            substitution_rate=self.substitution_rate,
-            insertion_rate=self.insertion_rate,
-            deletion_rate=self.deletion_rate,
             coverage=self.coverage,
             quality_profile=self.quality_profile,
             context_errors=self.context_errors,
