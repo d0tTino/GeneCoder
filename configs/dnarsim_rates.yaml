@@ -1,4 +1,12 @@
 r9:
-  substitution_rate: 0.1
-  insertion_rate: 0.05
-  deletion_rate: 0.02
+  substitution_rate: 0.09
+  insertion_rate: 0.03
+  deletion_rate: 0.04
+"r10.3":
+  substitution_rate: 0.06
+  insertion_rate: 0.02
+  deletion_rate: 0.035
+"r10.4":
+  substitution_rate: 0.045
+  insertion_rate: 0.015
+  deletion_rate: 0.025

@@ -188,7 +188,7 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
    Named sequencing profiles are available:
 
    - **Illumina** – `miseq`, `hiseq`
-   - **Nanopore** – `minion`, `promethion`
+   - **Nanopore** – `minion`, `promethion`, `r10`, `r9`, `r10.3`, `r10.4`
 
    Use `--profile` to apply a preset without specifying a simulator:
 
