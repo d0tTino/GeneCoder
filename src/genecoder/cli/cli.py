@@ -2,6 +2,8 @@ import argparse
 import logging
 import sys
 
+from genecoder.random_utils import reset_rng
+
 from genecoder import __version__
 from genecoder.plugin_manager import init_plugins
 # simulators are imported lazily by subcommands that need them
@@ -131,6 +133,7 @@ def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None, prog: str | None = None) -> None:
+    reset_rng()
     parser = build_parser(prog)
     args = parser.parse_args(argv)
 

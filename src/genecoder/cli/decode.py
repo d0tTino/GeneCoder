@@ -223,12 +223,18 @@ def process_single_decode(
         if args.simulator != "none":
             from genecoder.simulators import simulate_reads
 
-            sequence_from_fasta = simulate_reads(
-                sequence_from_fasta, args.simulator
-            )
-            logger.info(
-                f"Applied {args.simulator} simulator before decoding."
-            )
+            external_sims = {"d2sim", "dnarsim", "squigulator", "desp"}
+            if args.simulator in external_sims:
+                logger.warning(
+                    "%s simulation skipped during decode", args.simulator
+                )
+            else:
+                sequence_from_fasta = simulate_reads(
+                    sequence_from_fasta, args.simulator
+                )
+                logger.info(
+                    "Applied %s simulator before decoding.", args.simulator
+                )
 
 
         options = build_decoding_options(args)

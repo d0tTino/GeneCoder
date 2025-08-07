@@ -20,6 +20,8 @@ _DEF_METRICS: dict[str, Any] = {
     "substitutions": None,
     "insertions": None,
     "deletions": None,
+    "coverage": None,
+    "constraint_violations": None,
 }
 
 
@@ -119,6 +121,20 @@ def main(results_path: str | None = None) -> None:
         st.bar_chart(counts)
     else:
         st.write("No error count data.")
+
+    st.header("Coverage")
+    coverage = data.get("coverage")
+    if isinstance(coverage, int):
+        st.bar_chart({"Coverage": coverage})
+    else:
+        st.write("No coverage data.")
+
+    st.header("Constraint Violations")
+    violations = data.get("constraint_violations")
+    if isinstance(violations, int):
+        st.bar_chart({"Violations": violations})
+    else:
+        st.write("No constraint violation data.")
 
 
 def launch(results_path: str) -> None:

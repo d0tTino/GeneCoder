@@ -118,7 +118,7 @@ def test_adapters_fall_back(monkeypatch, name):
     monkeypatch.setattr(
         nanopore_sim,
         "simulate_errors",
-        lambda seq, **kwargs: errors_called.append((seq, kwargs.get("rng"))) or "fallback",
+        lambda seq, rate, rng=None: errors_called.append((seq, rng)) or "fallback",
 
     )
     monkeypatch.setattr(nanopore_sim, "_run_external", lambda *_: "boom")

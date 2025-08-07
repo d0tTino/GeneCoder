@@ -93,3 +93,23 @@ def test_display_ecc_and_decode_metric(
     label, value = dummy_streamlit["metric"][0][0][:2]
     assert label == "Decode Success"
     assert value == "85.00%"
+
+
+def test_display_coverage_and_constraint_metrics(
+    tmp_path: Path, dummy_streamlit: dict[str, list]
+) -> None:
+    data = {
+        "coverage": 7,
+        "constraint_violations": 2,
+    }
+    path = tmp_path / "metrics.json"
+    path.write_text(json.dumps(data))
+
+    mod = importlib.reload(importlib.import_module("genecoder.dashboard"))
+    mod.main(str(path))
+
+    # Ensure coverage and constraint violation charts are rendered
+    assert dummy_streamlit["bar_chart"], "bar_chart not called"
+    charts = [args[0] for args, _ in dummy_streamlit["bar_chart"]]
+    assert {"Coverage": 7} in charts
+    assert {"Violations": 2} in charts

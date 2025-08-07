@@ -2,6 +2,7 @@ import pytest
 
 from genecoder.simulators.illumina import IlluminaChannel
 from genecoder.error_simulation import Channel as ErrorChannel
+from genecoder.random_utils import reset_rng
 
 
 @pytest.mark.parametrize("seed", [0, 1, 2])
@@ -22,9 +23,11 @@ from genecoder.error_simulation import Channel as ErrorChannel
 )
 def test_reproducible_simulation(monkeypatch, channel_cls, args, sequence, seed):
     monkeypatch.setenv("GENECODER_SIM_SEED", str(seed))
+    reset_rng()
     channel = channel_cls(**args)
     first = channel.simulate(sequence)
     monkeypatch.setenv("GENECODER_SIM_SEED", str(seed))
+    reset_rng()
     channel = channel_cls(**args)
     second = channel.simulate(sequence)
     assert first == second
