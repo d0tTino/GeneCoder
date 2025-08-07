@@ -28,6 +28,8 @@ def aggregate_metrics(root: Path) -> dict[str, Any]:
     total_subs = 0
     total_ins = 0
     total_dels = 0
+    total_cov = 0
+    total_viol = 0
     bpn_values: list[float] = []
     for manifest in parse_manifests(root):
         total_files += 1
@@ -51,6 +53,12 @@ def aggregate_metrics(root: Path) -> dict[str, Any]:
             d = metrics.get("deletions")
             if isinstance(d, int):
                 total_dels += d
+            cov = metrics.get("coverage")
+            if isinstance(cov, int):
+                total_cov += cov
+            viol = metrics.get("constraint_violations")
+            if isinstance(viol, int):
+                total_viol += viol
     avg_bpn = sum(bpn_values) / len(bpn_values) if bpn_values else 0.0
     return {
         "files": total_files,
@@ -60,4 +68,6 @@ def aggregate_metrics(root: Path) -> dict[str, Any]:
         "total_substitutions": total_subs,
         "total_insertions": total_ins,
         "total_deletions": total_dels,
+        "total_coverage": total_cov,
+        "total_constraint_violations": total_viol,
     }

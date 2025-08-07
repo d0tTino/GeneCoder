@@ -88,12 +88,15 @@ def _simulate_adapter(
     if rate_table:
         return simulate_errors(
             sequence,
-            substitution_prob=rate_table.get("substitution_rate", 0.0),
-            insertion_prob=rate_table.get("insertion_rate", 0.0),
-            deletion_prob=rate_table.get("deletion_rate", 0.0),
+            rate_table.get("substitution_rate", 0.0),
+            rate_table.get("insertion_rate", 0.0),
+            rate_table.get("deletion_rate", 0.0),
             rng=rng,
         )
-    return simulate_errors(sequence, substitution_prob=error_rate, rng=rng)
+    try:
+        return simulate_errors(sequence, error_rate, rng=rng)
+    except TypeError:
+        return simulate_errors(sequence, substitution_prob=error_rate, rng=rng)
 
 
 

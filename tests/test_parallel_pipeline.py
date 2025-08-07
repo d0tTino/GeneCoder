@@ -9,6 +9,7 @@ from genecoder.channel_sim import Channel
 from genecoder.channel_config import ChannelConfig
 from genecoder.simulators.pipeline import ChannelPipeline
 from genecoder.channels.base import BaseChannel
+from genecoder.random_utils import reset_rng
 
 
 def test_parallel_pipeline_deterministic(
@@ -18,8 +19,10 @@ def test_parallel_pipeline_deterministic(
     monkeypatch.setenv("GENECODER_METRICS_PATH", str(tmp_path / "m.json"))
     pipeline = ChannelPipeline([Channel(0.1), Channel(0.2)])
     seq = "ACGTACGTACGT"
+    reset_rng()
     serial = pipeline.simulate(seq)
     cfg_threads = ChannelConfig(parallel=True, workers=2)
+    reset_rng()
     parallel = pipeline.simulate(seq, config=cfg_threads)
 
     assert serial == parallel

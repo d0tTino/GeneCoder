@@ -131,4 +131,4 @@ def test_cli_decode_simulator_missing_binary(tmp_path: Path, caplog) -> None:
         process_single_decode(
             str(tmp_path / "enc.fasta"), str(tmp_path / "out.bin"), dec_args
         )
-    assert any("falling back" in rec.message for rec in caplog.records)
+    assert any("simulation skipped" in rec.message for rec in caplog.records)

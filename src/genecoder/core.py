@@ -92,9 +92,17 @@ def run_pipeline(
     dna = CODEC_REGISTRY[codec]["encode"](data)
     orig_dna = dna
     subs = ins = dels = None
+    coverage = None
     if channel and channel != "none":
-        dna = SIMULATOR_REGISTRY[channel].simulate(dna)
+        sim = SIMULATOR_REGISTRY[channel]
+        dna = sim.simulate(dna)
         subs, ins, dels = _count_errors(orig_dna, dna)
+        cov_func = getattr(sim, "get_coverage", None)
+        if callable(cov_func):
+            try:
+                coverage = int(cov_func(orig_dna))
+            except Exception:
+                coverage = None
 
     gc_content = calculate_gc_content(dna)
     max_homopolymer = get_max_homopolymer_length(dna)
@@ -111,6 +119,15 @@ def run_pipeline(
 
     Path(output_path).write_bytes(decoded)
     success = 1.0 if decoded == original_data else 0.0
+    constraint_violations = 0
+    try:
+        from .synthesis import validate_sequence
+
+        if not validate_sequence(dna):
+            constraint_violations = 1
+    except Exception:
+        constraint_violations = 0
+
     metrics: Dict[str, Any] = {
         "gc_distribution": gc_dist,
         "gc_content": gc_content,
@@ -118,6 +135,8 @@ def run_pipeline(
         "homopolymer_runs": hp_runs,
         "ecc_success_rates": {fec: success} if fec else {},
         "decode_success_rate": success,
+        "coverage": coverage,
+        "constraint_violations": constraint_violations,
     }
     if subs is not None and ins is not None and dels is not None:
         metrics.update(

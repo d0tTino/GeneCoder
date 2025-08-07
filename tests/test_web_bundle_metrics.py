@@ -36,6 +36,8 @@ def test_bundle_metrics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
                 "substitutions": 2,
                 "insertions": 1,
                 "deletions": 1,
+                "coverage": 5,
+                "constraint_violations": 1,
             },
         })
     )
@@ -49,4 +51,6 @@ def test_bundle_metrics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     assert data["total_substitutions"] == 2
     assert data["total_insertions"] == 1
     assert data["total_deletions"] == 1
+    assert data["total_coverage"] == 5
+    assert data["total_constraint_violations"] == 1
 
