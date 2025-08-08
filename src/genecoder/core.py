@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Mapping, Tuple, Dict, List
-from difflib import SequenceMatcher
 
 from .gc_constrained_encoder import calculate_gc_content
 from .utils import get_max_homopolymer_length
@@ -15,18 +14,33 @@ from .simulators import SIMULATOR_REGISTRY
 __all__ = ["run_pipeline"]
 
 
-def _count_errors(original: str, mutated: str) -> tuple[int, int, int]:
-    """Return substitution, insertion and deletion counts."""
+
+def _levenshtein_counts(original: str, mutated: str) -> tuple[int, int, int]:
+    """Return substitution, insertion and deletion counts using Levenshtein ops."""
+    try:  # Prefer the optimized python-Levenshtein package if available
+        from Levenshtein import editops  # type: ignore
+
+        ops = editops(original, mutated)
+        get_tag = lambda op: op[0]  # noqa: E731
+    except Exception:  # pragma: no cover - fallback to rapidfuzz
+        from rapidfuzz.distance import Levenshtein as RF
+
+        ops = RF.editops(original, mutated)
+        get_tag = lambda op: op.tag  # noqa: E731
+
     subs = ins = dels = 0
-    sm = SequenceMatcher(None, original, mutated)
-    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+    for op in ops:
+        tag = get_tag(op)
         if tag == "replace":
-            subs += max(i2 - i1, j2 - j1)
-        elif tag == "delete":
-            dels += i2 - i1
+            subs += 1
         elif tag == "insert":
-            ins += j2 - j1
+            ins += 1
+        elif tag == "delete":
+            dels += 1
     return subs, ins, dels
+
+
+_count_errors = _levenshtein_counts
 
 
 def _gc_distribution(sequence: str, window: int = 50) -> List[float]:
@@ -96,7 +110,7 @@ def run_pipeline(
     if channel and channel != "none":
         sim = SIMULATOR_REGISTRY[channel]
         dna = sim.simulate(dna)
-        subs, ins, dels = _count_errors(orig_dna, dna)
+        subs, ins, dels = _levenshtein_counts(orig_dna, dna)
         cov_func = getattr(sim, "get_coverage", None)
         if callable(cov_func):
             try:
