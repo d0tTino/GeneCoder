@@ -1,7 +1,7 @@
 """Wrapper for the optional d2sim nanopore simulator."""
 from __future__ import annotations
 
-from typing import Callable, Sequence, Dict, Iterable
+from typing import Callable, Sequence, Dict, Iterable, Mapping
 import random
 import shutil
 import subprocess
@@ -114,12 +114,48 @@ try:  # pragma: no cover - optional dependency
             for name, tbl in _rates_data.items()
             if isinstance(tbl, dict)
         }
-        NANOPORE_PROFILES.update(DNARSIM_RATE_TABLES)
+        NANOPORE_PROFILES.update(DNARSIM_RATE_TABLES)  # type: ignore[arg-type]
     else:  # pragma: no cover - unexpected structure
         DNARSIM_RATE_TABLES = {}
 except Exception:  # pragma: no cover - fallback when yaml missing
     NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
     DNARSIM_RATE_TABLES = {}
+
+
+def _validate_rate(name: str, rate: float | int) -> float:
+    try:
+        value = float(rate)
+    except (TypeError, ValueError):
+        raise ValueError(f"{name} must be a number between 0 and 1") from None
+    if not 0.0 <= value <= 1.0:
+        raise ValueError(f"{name} must be between 0 and 1")
+    return value
+
+
+def _validate_indel_profile(
+    profile: Mapping[int, float] | None, name: str
+) -> Dict[int, float]:
+    validated: Dict[int, float] = {}
+    for run_len, prob in (profile or {}).items():
+        try:
+            rl = int(run_len)
+        except (TypeError, ValueError):
+            raise ValueError(f"{name} run lengths must be integers") from None
+        validated[rl] = _validate_rate(f"{name}[{rl}]", prob)
+    return validated
+
+
+def _validate_context_profiles(
+    profiles: Mapping[str, Mapping[int, float]] | None, name: str
+) -> Dict[str, Dict[int, float]]:
+    validated: Dict[str, Dict[int, float]] = {}
+    for ctx, prof in (profiles or {}).items():
+        if not isinstance(prof, Mapping):
+            raise ValueError(
+                f"{name}[{ctx}] must be a mapping of run lengths to probabilities"
+            )
+        validated[str(ctx).upper()] = _validate_indel_profile(prof, f"{name}[{ctx}]")
+    return validated
 
 
 @njit(cache=True, forceobj=True)  # type: ignore[misc]
@@ -252,6 +288,23 @@ class NanoporeChannel(BaseChannel):
             context_deletions = data.get("context_deletions", context_deletions)
             insertion_profile = data.get("insertion_profile", insertion_profile)
             deletion_profile = data.get("deletion_profile", deletion_profile)
+        error_rate = _validate_rate("error_rate", error_rate)
+        substitution_rate = _validate_rate("substitution_rate", substitution_rate)
+        insertion_rate = _validate_rate("insertion_rate", insertion_rate)
+        deletion_rate = _validate_rate("deletion_rate", deletion_rate)
+
+        context_insertions = _validate_context_profiles(
+            context_insertions, "context_insertions"
+        )
+        context_deletions = _validate_context_profiles(
+            context_deletions, "context_deletions"
+        )
+        insertion_profile = _validate_indel_profile(
+            insertion_profile, "insertion_profile"
+        )
+        deletion_profile = _validate_indel_profile(
+            deletion_profile, "deletion_profile"
+        )
 
         super().__init__(
             substitution_rate=substitution_rate,
@@ -266,20 +319,10 @@ class NanoporeChannel(BaseChannel):
         self.context_errors = {
             k.upper(): float(v) for k, v in (context_errors or {}).items()
         }
-        self.context_insertions = {
-            k.upper(): {int(r): float(p) for r, p in v.items()}
-            for k, v in (context_insertions or {}).items()
-        }
-        self.context_deletions = {
-            k.upper(): {int(r): float(p) for r, p in v.items()}
-            for k, v in (context_deletions or {}).items()
-        }
-        self.insertion_profile = {
-            int(k): float(v) for k, v in (insertion_profile or {}).items()
-        }
-        self.deletion_profile = {
-            int(k): float(v) for k, v in (deletion_profile or {}).items()
-        }
+        self.context_insertions = context_insertions
+        self.context_deletions = context_deletions
+        self.insertion_profile = insertion_profile
+        self.deletion_profile = deletion_profile
 
     def simulate(self, sequence: str) -> str:
         rng = make_rng()
