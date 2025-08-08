@@ -129,8 +129,9 @@ genecli channel --input-file encoded.fasta --output-file corrupted.fasta \
 genecli decode corrupted.fasta --output-file decoded.bin
 ```
 
-Set the environment variable `GENECODER_SIM_SEED` to an integer to make the
-simulated substitutions and indels deterministic across runs.
+Pass `--seed <int>` to `genecli encode`, `genecli decode`, or `genecli pipeline`
+to seed random components for reproducible runs.  Alternatively set the
+`GENECODER_SIM_SEED` environment variable.
 
 11. **Encode, corrupt and decode a file with automatic extensions**
 

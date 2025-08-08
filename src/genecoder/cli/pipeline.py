@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, cast
 
@@ -157,6 +158,12 @@ def register_subcommand(
         help="Deletion rate/probability for the selected channel",
     )
     parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed for random components to ensure reproducible runs.",
+    )
+    parser.add_argument(
         "--mpi-workers",
         type=int,
         default=None,
@@ -167,6 +174,8 @@ def register_subcommand(
 
 
 def _handle_command(args: argparse.Namespace) -> None:
+    if args.seed is not None:
+        os.environ["GENECODER_SIM_SEED"] = str(args.seed)
     cfg_codec = cfg_fec = cfg_channel = None
     cfg_params: Dict[str, Any] = {}
 

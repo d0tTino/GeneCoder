@@ -33,6 +33,7 @@ class EncodingOptions:
     gc_max: float
     max_homopolymer: int
     alphabet: str = "base4"
+    seed: int | None = None
 
 
 @dataclass
@@ -44,3 +45,4 @@ class DecodingOptions:
     k_value: int
     parity_rule: str
     alphabet: str
+    seed: int | None = None
