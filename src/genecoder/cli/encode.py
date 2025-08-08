@@ -575,6 +575,12 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         action="store_true",
         help="Use DNA Chisel for constraint fixing when available.",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed for random components to ensure reproducible runs.",
+    )
     parser.set_defaults(func=_handle_command)
 
 
@@ -633,5 +639,7 @@ def encode_files(args: argparse.Namespace) -> list[tuple[str, str] | None]:
 
 
 def _handle_command(args: argparse.Namespace) -> None:
+    if args.seed is not None:
+        os.environ["GENECODER_SIM_SEED"] = str(args.seed)
     encode_files(args)
 

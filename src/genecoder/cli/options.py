@@ -128,6 +128,7 @@ def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
         gc_max=args.gc_max,
         max_homopolymer=args.max_homopolymer,
         alphabet=getattr(args, "alphabet", "base4"),
+        seed=getattr(args, "seed", None),
     )
 
 
@@ -140,6 +141,7 @@ def build_decoding_options(args: argparse.Namespace) -> DecodingOptions:
         k_value=args.k_value,
         parity_rule=args.parity_rule,
         alphabet=getattr(args, "alphabet", "base4"),
+        seed=getattr(args, "seed", None),
     )
 
 
