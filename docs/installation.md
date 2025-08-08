@@ -19,6 +19,10 @@ GUI and web functionality are not installed by default. Add them with
 
 ## Optional Extras
 
+GeneCoder exposes several optional extras to keep the default installation
+lightweight. Each extra installs only the dependencies needed for specific
+features, such as additional codecs or development tools.
+
 GUI and web functionality are optional. Install their dependencies with Poetry's
 `--with` flag:
 
