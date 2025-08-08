@@ -1,7 +1,8 @@
 """Simple Illumina sequencing simulator."""
 from __future__ import annotations
 
-from typing import Callable, Sequence, Dict, Iterable
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Iterable, Mapping, Sequence
 from pathlib import Path
 import json
 import random
@@ -34,6 +35,7 @@ from . import register_simulator as _register_simulator
 
 __all__ = [
     "IlluminaChannel",
+    "IlluminaProfile",
     "IlluminaD2SimChannel",
     "IlluminaInSilicoSeqChannel",
     "simulate_insilicoseq",
@@ -68,6 +70,53 @@ def _parse_quality_profile(value: str) -> Sequence[float]:
     return [float(x) for x in value.split(",") if x]
 
 
+@dataclass
+class IlluminaProfile:
+    """Parameters controlling Illumina simulation behaviour."""
+
+    substitution_rate: float
+    insertion_rate: float
+    deletion_rate: float
+    read_length: int
+    coverage: int
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("substitution_rate", self.substitution_rate),
+            ("insertion_rate", self.insertion_rate),
+            ("deletion_rate", self.deletion_rate),
+        ):
+            if not 0 <= value <= 1:
+                raise ValueError(f"{name} must be between 0 and 1")
+        if self.read_length <= 0:
+            raise ValueError("read_length must be positive")
+        if self.coverage <= 0:
+            raise ValueError("coverage must be positive")
+
+
+_REQUIRED_KEYS = {
+    "substitution_rate",
+    "insertion_rate",
+    "deletion_rate",
+    "read_length",
+    "coverage",
+}
+
+
+def _validate_profile(data: Mapping[str, Any]) -> IlluminaProfile:
+    missing = _REQUIRED_KEYS - data.keys()
+    if missing:
+        keys = ", ".join(sorted(missing))
+        raise ValueError(f"Illumina profile missing required key(s): {keys}")
+    return IlluminaProfile(
+        substitution_rate=float(data["substitution_rate"]),
+        insertion_rate=float(data["insertion_rate"]),
+        deletion_rate=float(data["deletion_rate"]),
+        read_length=int(data["read_length"]),
+        coverage=int(data["coverage"]),
+    )
+
+
 # Preset parameter profiles for :class:`IlluminaChannel`.
 ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
     "miseq": {
@@ -75,18 +124,21 @@ ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
         "insertion_rate": 0.0001,
         "deletion_rate": 0.0001,
         "read_length": 250,
+        "coverage": 1,
     },
     "hiseq": {
         "substitution_rate": 0.0005,
         "insertion_rate": 0.00005,
         "deletion_rate": 0.00005,
         "read_length": 150,
+        "coverage": 1,
     },
     "novaseq": {
         "substitution_rate": 0.0003,
         "insertion_rate": 0.00003,
         "deletion_rate": 0.00003,
         "read_length": 150,
+        "coverage": 1,
     },
 }
 
@@ -150,16 +202,30 @@ class IlluminaChannel(BaseSimulator):
                 data = yaml.safe_load(fh) or {}
             if not isinstance(data, dict):
                 raise ValueError("Profile file must map keys to values")
-            substitution_rate = float(data.get("substitution_rate", substitution_rate))
-            insertion_rate = float(data.get("insertion_rate", insertion_rate))
-            deletion_rate = float(data.get("deletion_rate", deletion_rate))
-            read_length = int(data.get("read_length", read_length))
-            coverage = int(data.get("coverage", coverage))
+            profile = _validate_profile(data)
+            substitution_rate = profile.substitution_rate
+            insertion_rate = profile.insertion_rate
+            deletion_rate = profile.deletion_rate
+            read_length = profile.read_length
+            coverage = profile.coverage
             quality_profile = data.get("quality_profile", quality_profile)
             context_errors = data.get("context_errors", context_errors)
+        else:
+            profile = _validate_profile(
+                {
+                    "substitution_rate": substitution_rate,
+                    "insertion_rate": insertion_rate,
+                    "deletion_rate": deletion_rate,
+                    "read_length": read_length,
+                    "coverage": coverage,
+                }
+            )
+            substitution_rate = profile.substitution_rate
+            insertion_rate = profile.insertion_rate
+            deletion_rate = profile.deletion_rate
+            read_length = profile.read_length
+            coverage = profile.coverage
 
-        if isinstance(coverage, str):
-            coverage = int(coverage)
         if isinstance(quality_profile, str):
             quality_profile = _parse_quality_profile(quality_profile)
 

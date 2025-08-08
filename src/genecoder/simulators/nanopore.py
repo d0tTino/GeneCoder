@@ -349,12 +349,9 @@ class NanoporeDNArSimChannel(NanoporeChannel):
             context_deletions=context_deletions,
         )
         self.profile = profile
-        if profile:
-            rates = DNARSIM_RATE_TABLES.get(profile)
-            if rates:
-                self.substitution_rate = rates.get("substitution_rate", self.substitution_rate)
-                self.insertion_rate = rates.get("insertion_rate", self.insertion_rate)
-                self.deletion_rate = rates.get("deletion_rate", self.deletion_rate)
+        self._profile_rates: dict[str, float] = (
+            DNARSIM_RATE_TABLES.get(profile) if profile else {}
+        )
 
     def _simulate_cli(self, sequence: str) -> str:
         cmd = "dnarsim"
@@ -395,6 +392,8 @@ class NanoporeDNArSimChannel(NanoporeChannel):
 
 
     def simulate(self, sequence: str) -> str:
+        from typing import cast
+
         rng = make_rng()
         quality = self.quality_profile
         coverage = max(1, self.get_coverage(sequence))
@@ -403,9 +402,33 @@ class NanoporeDNArSimChannel(NanoporeChannel):
         for _ in range(coverage):
             try:
                 base = self._simulate_cli(sequence)
+                sub = self.substitution_rate
+                ins = self.insertion_rate
+                dele = self.deletion_rate
             except Exception:
                 base = self._simulate_fallback(sequence, self.error_rate, rng)
-            reads.append(_mutate_read(base, quality, rng, self))
+                rates = self._profile_rates
+                sub = rates.get("substitution_rate", self.substitution_rate)
+                ins = rates.get("insertion_rate", self.insertion_rate)
+                dele = rates.get("deletion_rate", self.deletion_rate)
+            reads.append(
+                cast(
+                    str,
+                    _mutate_read_jit(
+                        base,
+                        quality,
+                        rng,
+                        sub,
+                        ins,
+                        dele,
+                        self.context_errors,
+                        self.insertion_profile,
+                        self.deletion_profile,
+                        self.context_insertions,
+                        self.context_deletions,
+                    ),
+                )
+            )
 
         if coverage == 1:
             return reads[0]
