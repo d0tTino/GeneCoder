@@ -50,6 +50,52 @@ except Exception:  # pragma: no cover - fallback when yaml missing
     DNARSIM_RATE_TABLES = {}
 
 
+def _simulate_homopolymer_errors(
+    sequence: str,
+    substitution_prob: float = 0.0,
+    insertion_prob: float = 0.0,
+    deletion_prob: float = 0.0,
+    rng: random.Random | None = None,
+) -> str:
+    """Simulate errors with indel rates weighted by homopolymer length."""
+
+    if rng is None:
+        rng = make_rng()
+
+    if insertion_prob == 0.0 and deletion_prob == 0.0:
+        try:
+            return simulate_errors(sequence, substitution_prob, rng=rng)
+        except TypeError:
+            return simulate_errors(
+                sequence, substitution_prob=substitution_prob, rng=rng
+            )
+
+    mutated: list[str] = []
+    i = 0
+    seq_len = len(sequence)
+    while i < seq_len:
+        nt = sequence[i]
+        j = i + 1
+        while j < seq_len and sequence[j] == nt:
+            j += 1
+        run_len = j - i
+        factor = run_len / 4.0 if run_len >= 4 else 1.0
+        ins_p = min(1.0, insertion_prob * factor)
+        del_p = min(1.0, deletion_prob * factor)
+        run_seq = sequence[i:j]
+        mutated.append(
+            simulate_errors(
+                run_seq,
+                substitution_prob,
+                ins_p,
+                del_p,
+                rng=rng,
+            )
+        )
+        i = j
+    return "".join(mutated)
+
+
 def _simulate_adapter(
     command: str,
     sequence: str,
@@ -86,17 +132,19 @@ def _simulate_adapter(
     if rng is None:
         rng = make_rng()
     if rate_table:
-        return simulate_errors(
+        return _simulate_homopolymer_errors(
             sequence,
             rate_table.get("substitution_rate", 0.0),
             rate_table.get("insertion_rate", 0.0),
             rate_table.get("deletion_rate", 0.0),
-            rng=rng,
+            rng,
         )
     try:
-        return simulate_errors(sequence, error_rate, rng=rng)
+        return _simulate_homopolymer_errors(sequence, error_rate, rng=rng)
     except TypeError:
-        return simulate_errors(sequence, substitution_prob=error_rate, rng=rng)
+        return _simulate_homopolymer_errors(
+            sequence, substitution_prob=error_rate, rng=rng
+        )
 
 
 
