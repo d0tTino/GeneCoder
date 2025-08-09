@@ -232,6 +232,22 @@ local packages. The CLI and GUI behave the same way when these variables are
 unset or empty, making this the recommended configuration for air‑gapped
 systems.
 
+## Installing Registry Plugins Offline
+
+Use the :func:`genecoder.plugin_manager.install_registry_plugins` helper with
+``offline=True`` to install plugins from a local registry without network
+access. Supplying a remote URL in this mode raises ``RuntimeError`` to prevent
+accidental downloads.
+
+```python
+from genecoder import plugin_manager as plugins
+
+plugins.install_registry_plugins("/path/to/registry.yaml", offline=True)
+```
+
+This flag is also honored when the ``GENECODER_OFFLINE`` environment variable
+is set.
+
 ## Plugin Verification
 
 Plugin registries record a `checksum` or `signature` for every wheel. The
