@@ -1,6 +1,22 @@
 import random
 import pytest
 from genecoder.error_simulation import simulate_errors
+from genecoder.random_utils import reset_rng
+
+
+def test_deterministic_default_rng(monkeypatch):
+    monkeypatch.setenv("GENECODER_SIM_SEED", "123")
+    reset_rng()
+    try:
+        result = simulate_errors(
+            "AAAA",
+            substitution_prob=1.0,
+            insertion_prob=0.0,
+            deletion_prob=0.0,
+        )
+        assert result == "CCTT"
+    finally:
+        reset_rng()
 
 
 def test_deterministic_substitutions():
