@@ -99,7 +99,7 @@ def test_display_coverage_and_constraint_metrics(
     tmp_path: Path, dummy_streamlit: dict[str, list]
 ) -> None:
     data = {
-        "coverage": 7,
+        "coverage_distribution": [1, 3, 2],
         "constraint_violations": 2,
     }
     path = tmp_path / "metrics.json"
@@ -108,8 +108,8 @@ def test_display_coverage_and_constraint_metrics(
     mod = importlib.reload(importlib.import_module("genecoder.dashboard"))
     mod.main(str(path))
 
-    # Ensure coverage and constraint violation charts are rendered
+    # Ensure coverage distribution and constraint violation charts are rendered
     assert dummy_streamlit["bar_chart"], "bar_chart not called"
     charts = [args[0] for args, _ in dummy_streamlit["bar_chart"]]
-    assert {"Coverage": 7} in charts
+    assert [1, 3, 2] in charts
     assert {"Violations": 2} in charts
