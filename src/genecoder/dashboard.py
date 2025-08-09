@@ -21,6 +21,7 @@ _DEF_METRICS: dict[str, Any] = {
     "insertions": None,
     "deletions": None,
     "coverage": None,
+    "coverage_distribution": [],
     "constraint_violations": None,
 }
 
@@ -122,12 +123,16 @@ def main(results_path: str | None = None) -> None:
     else:
         st.write("No error count data.")
 
-    st.header("Coverage")
-    coverage = data.get("coverage")
-    if isinstance(coverage, int):
-        st.bar_chart({"Coverage": coverage})
+    st.header("Read Coverage")
+    cov_dist = data.get("coverage_distribution")
+    if isinstance(cov_dist, list) and cov_dist:
+        st.bar_chart(cov_dist)
     else:
-        st.write("No coverage data.")
+        coverage = data.get("coverage")
+        if isinstance(coverage, int):
+            st.bar_chart({"Coverage": coverage})
+        else:
+            st.write("No coverage data.")
 
     st.header("Constraint Violations")
     violations = data.get("constraint_violations")
