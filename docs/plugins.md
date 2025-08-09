@@ -1,11 +1,11 @@
 # Plugin System
 
 GeneCoder discovers additional functionality using Python entry points. Any
-package can expose entry points under `genecoder.plugins`, `genecoder.fec` or
-`genecoder.simulators` that point to modules with a `register` function. The
-function receives a callback used to add the implementation to the appropriate
-registry. GeneCoder looks only at packages installed in your current Python
-environment when loading plugins.
+package can expose entry points under `genecoder.plugins`, `genecoder.fec`,
+`genecoder.simulators` or `genecoder.visualizers` that point to modules with a
+`register` function. The function receives a callback used to add the
+implementation to the appropriate registry. GeneCoder looks only at packages
+installed in your current Python environment when loading plugins.
 
 ## Quick Start
 
@@ -67,6 +67,8 @@ The callback passed to `register()` depends on the entry point group used:
   `register_fec(name, FECClass)`.
 - **Simulators** register under `genecoder.simulators` and call
   `register_simulator(name, SimulatorInstance)`.
+- **Visualizers** register under `genecoder.visualizers` and call
+  `register_visualizer(name, VisualizerClass)`.
 
 See the packages in [`plugins-examples`](../plugins-examples/) for working
 implementations of each entry point group.
@@ -141,7 +143,9 @@ the :class:`genecoder.api.Simulator` interface.
 
 Visualizer plugins register under `genecoder.visualizers` with a
 `register_visualizer` callback. The class should implement the
-``genecoder.api.Visualizer`` interface.
+``genecoder.api.Visualizer`` interface. See
+[`plugins-examples/example_visualizer`](../plugins-examples/example_visualizer/)
+for a minimal implementation.
 
 ```toml
 [project.entry-points."genecoder.visualizers"]
@@ -206,6 +210,7 @@ minimal packages showing how each entry point group works:
 - `example_codec` – registers a codec using `register_codec("example", ExampleCodec)`.
 - `example_fec` – registers a FEC backend via `register_fec("example", ExampleFEC)`.
 - `example_simulator` – registers a simulator with `register_simulator("example", PassthroughChannel())`.
+- `example_visualizer` – registers a visualizer with `register_visualizer("example", ExampleVisualizer)`.
 - `advanced_fec` – registers LDPC helper functions under `genecoder.fec`.
 - `example_package_plugin` – demonstrates a small plugin that exposes simple
   encode/decode functions through `genecoder.plugins`.
@@ -228,9 +233,10 @@ Follow these steps to try the example codec plugin:
    print("example" in CODEC_REGISTRY)
    ```
 
-Swap `example_codec` for `example_fec` or `example_simulator` to explore the
-other entry point groups. Install any of these packages with
-`pip install ./plugins-examples/<name>` to experiment locally.
+Swap `example_codec` for `example_fec`, `example_simulator` or
+`example_visualizer` to explore the other entry point groups. Install any of
+these packages with `pip install ./plugins-examples/<name>` to experiment
+locally.
 
 Run `scripts/scaffold_plugin.sh <name>` to create a new plugin project. The
 generated template registers an entry point and includes a README explaining
