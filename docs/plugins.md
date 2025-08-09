@@ -9,9 +9,11 @@ environment when loading plugins.
 
 ## Quick Start
 
-Create a minimal codec plugin in three steps:
+Create a minimal codec plugin in four steps:
 
-1. **Project layout**
+1. **Project layout** – see
+   [`plugins-examples/example_codec`](../plugins-examples/example_codec/) for a
+   working package.
 
    ```text
    mycodec/
@@ -20,14 +22,16 @@ Create a minimal codec plugin in three steps:
        └── __init__.py
    ```
 
-2. **Declare an entry point** in `pyproject.toml`:
+2. **Declare an entry point** in `pyproject.toml` (see
+   [`plugins-examples/example_codec/pyproject.toml`](../plugins-examples/example_codec/pyproject.toml)):
 
    ```toml
    [project.entry-points."genecoder.plugins"]
    mycodec = "mycodec"
    ```
 
-3. **Implement the codec and register it** in `mycodec/__init__.py`:
+3. **Implement the codec and register it** in `mycodec/__init__.py` (see
+   [`plugins-examples/example_codec/example_codec/__init__.py`](../plugins-examples/example_codec/example_codec/__init__.py)):
 
    ```python
    from genecoder.api import Codec
@@ -43,12 +47,13 @@ Create a minimal codec plugin in three steps:
        register_codec("mycodec", MyCodec)
    ```
 
-Install the package and load plugins to make it available:
+4. **Install the package and invoke the codec through the CLI**:
 
-```bash
-pip install ./mycodec
-python -c "from genecoder.plugins import load_plugins; load_plugins()"
-```
+   ```bash
+   pip install ./mycodec
+   genecli plugin list          # shows installed plugins
+   genecli encode --method mycodec --input-files data.txt --output-file out.fasta
+   ```
 
 See [`plugins-examples`](../plugins-examples/) for complete reference implementations.
 
