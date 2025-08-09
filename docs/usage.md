@@ -42,6 +42,7 @@ poetry install --no-interaction
 * `--output-dir` – directory for batch operations.
 * `--fec` – optional [FEC](glossary.md#forward-error-correction-fec) method (`triple_repeat`, `hamming_7_4`, `reed_solomon`, `ldpc`, `fountain`).
 * `--auto-ext` – save encoded files with a `.dna` suffix and decode back to the original extension.
+* `--seed` – seed random number generators for reproducible simulations.
 
 See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
@@ -129,9 +130,9 @@ genecli channel --input-file encoded.fasta --output-file corrupted.fasta \
 genecli decode corrupted.fasta --output-file decoded.bin
 ```
 
-Pass `--seed <int>` to `genecli encode`, `genecli decode`, or `genecli pipeline`
-to seed random components for reproducible runs.  Alternatively set the
-`GENECODER_SIM_SEED` environment variable.
+Pass `--seed <int>` to `genecli encode`, `genecli decode`, `genecli channel`, or
+`genecli pipeline` to seed random components for reproducible runs.
+Alternatively set the `GENECODER_SIM_SEED` environment variable.
 
 11. **Encode, corrupt and decode a file with automatic extensions**
 
@@ -202,6 +203,28 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
    `--nanopore-profile`. Individual rate options override the chosen profile.
    Custom parameters can also be loaded from YAML files using
    `--illumina-profile-file` or `--nanopore-profile-file`.
+
+   Illumina profile files should list `substitution_rate`, `insertion_rate`,
+   `deletion_rate`, `coverage`, and `read_length`:
+
+   ```yaml
+   substitution_rate: 0.01
+   insertion_rate: 0.002
+   deletion_rate: 0.003
+   coverage: 2
+   read_length: 100
+   ```
+
+   Nanopore profile files provide `error_rate`, `substitution_rate`,
+   `insertion_rate`, `deletion_rate`, and `coverage`:
+
+   ```yaml
+   error_rate: 0.15
+   substitution_rate: 0.02
+   insertion_rate: 0.03
+   deletion_rate: 0.04
+   coverage: 3
+   ```
 
    The optional `insilicoseq` simulator accepts the same Illumina presets via its
    `--profile` flag, e.g. `--simulator insilicoseq --profile miseq`.
