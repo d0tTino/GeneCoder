@@ -43,6 +43,7 @@ def test_example_plugins_registered(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.syspath_prepend(str(root / "example_codec"))
     monkeypatch.syspath_prepend(str(root / "example_fec"))
     monkeypatch.syspath_prepend(str(root / "example_simulator"))
+    monkeypatch.syspath_prepend(str(root / "example_visualizer"))
 
     def fake_entry_points(*, group: str | None = None) -> list[EntryPoint]:
         if group == "genecoder.plugins":
@@ -51,6 +52,8 @@ def test_example_plugins_registered(monkeypatch: pytest.MonkeyPatch) -> None:
             return [EntryPoint(name="example", value="example_fec", group=group)]
         if group == "genecoder.simulators":
             return [EntryPoint(name="example", value="example_simulator", group=group)]
+        if group == "genecoder.visualizers":
+            return [EntryPoint(name="example", value="example_visualizer", group=group)]
         return []
 
     monkeypatch.setattr(plugins, "entry_points", fake_entry_points)
@@ -58,6 +61,7 @@ def test_example_plugins_registered(monkeypatch: pytest.MonkeyPatch) -> None:
     plugins.CODEC_REGISTRY.clear()
     plugins.FEC_REGISTRY.clear()
     plugins.SIMULATOR_REGISTRY.clear()
+    plugins.VISUALIZER_REGISTRY.clear()
 
     plugins.load_plugins()
 
@@ -65,6 +69,7 @@ def test_example_plugins_registered(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "example" in plugins.CODEC_REGISTRY
     assert "example" in plugins.FEC_REGISTRY
     assert "example" in plugins.SIMULATOR_REGISTRY
+    assert "example" in plugins.VISUALIZER_REGISTRY
 
 
 def test_load_plugins_idempotent() -> None:

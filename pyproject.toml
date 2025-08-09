@@ -20,6 +20,7 @@ files = [
     "plugins-examples/example_codec/example_codec",
     "plugins-examples/example_fec/example_fec",
     "plugins-examples/example_simulator/example_simulator",
+    "plugins-examples/example_visualizer/example_visualizer",
     "plugins-examples/example_package_plugin/example_plugin",
     "plugins-examples/advanced_fec/advanced_fec",
 ]
