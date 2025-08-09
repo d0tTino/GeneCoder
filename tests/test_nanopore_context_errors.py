@@ -1,6 +1,8 @@
 import random
+import logging
 
 from genecoder.simulators.nanopore import NanoporeChannel, _mutate_read
+from genecoder import nanopore_sim
 
 
 def _count_substitutions(channel: NanoporeChannel, sequence: str, runs: int, seed: int) -> int:
@@ -147,3 +149,32 @@ def test_context_deletion_profile_affect_counts() -> None:
         seed,
     )
     assert del_ctx > del_base
+
+
+def test_homopolymer_weighting_in_fallback() -> None:
+    runs = 200
+    seed = 21
+    table = {"substitution_rate": 0.0, "insertion_rate": 0.1, "deletion_rate": 0.1}
+
+    def simulate_many(seq: str) -> tuple[int, int]:
+        rng = random.Random(seed)
+        ins = dels = 0
+        for _ in range(runs):
+            mutated = nanopore_sim._simulate_adapter(
+                "dnarsim", seq, 0.0, rng, rate_table=table
+            )
+            if len(mutated) > len(seq):
+                ins += 1
+            elif len(mutated) < len(seq):
+                dels += 1
+        return ins, dels
+
+    nanopore_sim.logger.setLevel(logging.ERROR)
+    ins_short, del_short = simulate_many("AAA")
+    ins_long, del_long = simulate_many("AAAAAA")
+    assert ins_short == 45
+    assert del_short == 44
+    assert ins_long == 54
+    assert del_long == 86
+    assert ins_long > ins_short
+    assert del_long > del_short
