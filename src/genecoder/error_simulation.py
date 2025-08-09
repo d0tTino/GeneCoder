@@ -70,7 +70,7 @@ def simulate_errors(
         raise ValueError("sum of error probabilities must not exceed 1")
 
     if rng is None:
-        rng = random.Random()
+        rng = make_rng()
 
     mutated: list[str] = []
     for nt in sequence:
