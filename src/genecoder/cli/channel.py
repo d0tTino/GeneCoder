@@ -541,6 +541,8 @@ def run_channel(args: argparse.Namespace) -> None:
                 new_params["deletion_prob"] = opts.del_rate
         if name == "simple" and opts.sub_rate is not None:
             new_params["error_rate"] = opts.sub_rate
+        if name == "illumina_builtin" and opts.sub_rate is not None:
+            new_params["error_rate"] = opts.sub_rate
         updated.append((name, new_params))
     simulators = updated
 

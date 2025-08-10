@@ -393,7 +393,7 @@ class NanoporeDNArSimChannel(NanoporeChannel):
         )
         self.profile = profile
         self._profile_rates: dict[str, float] = (
-            DNARSIM_RATE_TABLES.get(profile) if profile else {}
+            DNARSIM_RATE_TABLES.get(profile, {}) if profile else {}
         )
 
     def _simulate_cli(self, sequence: str) -> str:
