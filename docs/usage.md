@@ -183,11 +183,19 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
    Apply multiple simulators and enforce synthesis constraints:
 
    ```bash
-   genecli channel --input-file encoded.fasta \
-       --output-file channel.fasta --simulator simple --simulator indel
-   ```
+    genecli channel --input-file encoded.fasta \
+        --output-file channel.fasta --simulator simple --simulator indel
+    ```
 
-   Named sequencing profiles are available:
+    A built-in Illumina-like model focuses on substitutions and can be
+    configured via ``--sub-rate``:
+
+    ```bash
+    genecli channel --input-file encoded.fasta \
+        --output-file channel.fasta --simulator illumina_builtin --sub-rate 0.01
+    ```
+
+    Named sequencing profiles are available:
 
    - **Illumina** – `miseq`, `hiseq`
    - **Nanopore** – `minion`, `promethion`, `r10`, `r9`, `r10.3`, `r10.4`

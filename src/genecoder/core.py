@@ -18,15 +18,20 @@ __all__ = ["run_pipeline"]
 def _levenshtein_counts(original: str, mutated: str) -> tuple[int, int, int]:
     """Return substitution, insertion and deletion counts using Levenshtein ops."""
     try:  # Prefer the optimized python-Levenshtein package if available
-        from Levenshtein import editops  # type: ignore
+        from Levenshtein import editops
 
         ops = editops(original, mutated)
-        get_tag = lambda op: op[0]  # noqa: E731
+
+        def get_tag(op: Any) -> str:  # noqa: D401,ANN401
+            return str(op[0])
+
     except Exception:  # pragma: no cover - fallback to rapidfuzz
         from rapidfuzz.distance import Levenshtein as RF
 
         ops = RF.editops(original, mutated)
-        get_tag = lambda op: op.tag  # noqa: E731
+
+        def get_tag(op: Any) -> str:  # noqa: D401,ANN401
+            return str(op.tag)
 
     subs = ins = dels = 0
     for op in ops:
