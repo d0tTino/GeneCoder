@@ -311,6 +311,12 @@ async def dashboard_metrics(
     gc = calculate_gc_content(seq)
     max_hp = get_max_homopolymer_length(seq)
     gc_data = calculate_windowed_gc_content(seq, req.window_size, req.step_size)
+    _, gc_values = gc_data
+    gc_var = (
+        sum((v - gc) ** 2 for v in gc_values) / len(gc_values)
+        if gc_values
+        else 0.0
+    )
     hp_regions = identify_homopolymer_regions(seq, req.min_homopolymer_len)
     buf = generate_sequence_analysis_plot(gc_data, hp_regions, len(seq))
     plot_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
@@ -329,6 +335,7 @@ async def dashboard_metrics(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {
         "gc_content": gc,
+        "gc_variance": gc_var,
         "max_homopolymer": max_hp,
         "error_rate": ber,
         "plot": plot_b64,

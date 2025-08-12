@@ -127,6 +127,11 @@ def run_pipeline(
     max_homopolymer = get_max_homopolymer_length(dna)
     gc_dist = _gc_distribution(dna)
     hp_runs = _homopolymer_runs(dna)
+    gc_variance = (
+        sum((val - gc_content) ** 2 for val in gc_dist) / len(gc_dist)
+        if gc_dist
+        else 0.0
+    )
 
     decoded_any = CODEC_REGISTRY[codec]["decode"](dna)
     assert isinstance(decoded_any, (bytes, bytearray))
@@ -150,6 +155,7 @@ def run_pipeline(
     metrics: Dict[str, Any] = {
         "gc_distribution": gc_dist,
         "gc_content": gc_content,
+        "gc_variance": gc_variance,
         "max_homopolymer": max_homopolymer,
         "homopolymer_runs": hp_runs,
         "ecc_success_rates": {fec: success} if fec else {},

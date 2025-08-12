@@ -103,5 +103,6 @@ def test_pipeline_manifest_metrics(tmp_path: Path) -> None:
 
     loaded = dashboard._load_metrics(str(manifest_path))
     assert loaded["gc_content"] == metrics["gc_content"]
+    assert loaded["gc_variance"] == metrics["gc_variance"]
     assert loaded["max_homopolymer"] == metrics["max_homopolymer"]
 

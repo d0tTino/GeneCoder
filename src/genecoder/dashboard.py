@@ -13,6 +13,7 @@ import streamlit as st
 _DEF_METRICS: dict[str, Any] = {
     "gc_distribution": [],
     "gc_content": None,
+    "gc_variance": None,
     "max_homopolymer": None,
     "homopolymer_runs": [],
     "ecc_success_rates": {},
@@ -81,8 +82,11 @@ def main(results_path: str | None = None) -> None:
         st.write("No GC distribution data.")
 
     gc_content = data.get("gc_content")
+    gc_variance = data.get("gc_variance")
     if isinstance(gc_content, (int, float)):
-        st.metric("Average GC Content", f"{float(gc_content):.2%}")
+        st.metric("GC Mean", f"{float(gc_content):.2%}")
+    if isinstance(gc_variance, (int, float)):
+        st.metric("GC Variance", f"{float(gc_variance):.4f}")
 
     max_hp = data.get("max_homopolymer")
     if isinstance(max_hp, (int, float)):

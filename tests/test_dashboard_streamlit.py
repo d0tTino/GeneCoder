@@ -15,6 +15,7 @@ def test_dashboard_cli_starts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     data = {
         "gc_distribution": [0.5],
         "gc_content": 0.5,
+        "gc_variance": 0.0,
         "homopolymer_runs": [1],
         "ecc_success_rates": {"hamming": 1.0},
         "decode_success_rate": 1.0,
