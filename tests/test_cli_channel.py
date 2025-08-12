@@ -442,3 +442,49 @@ def test_channel_cli_wrong_type(tmp_path: Path) -> None:
     assert result.returncode != 0
     assert "'simulators' must be a list" in result.stderr
 
+
+def test_cli_channel_profile_selection(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    input_fasta = tmp_path / "in_profile.fasta"
+    create_fasta(input_fasta)
+    output_fasta = tmp_path / "out_profile.fasta"
+
+    from genecoder.simulators.illumina import IlluminaChannel, ILLUMINA_PROFILES
+
+    called: list[tuple[float, float, float]] = []
+
+    def fake_simulate(self: IlluminaChannel, seq: str) -> str:
+        called.append((self.substitution_rate, self.insertion_rate, self.deletion_rate))
+        return seq
+
+    monkeypatch.setattr(IlluminaChannel, "simulate", fake_simulate)
+
+    env = os.environ.copy()
+    from pathlib import Path as _Path
+    src_path = _Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    result = run_cli_command(
+        [
+            "channel",
+            "apply",
+            "--input-file",
+            str(input_fasta),
+            "--output-file",
+            str(output_fasta),
+            "--profile",
+            "miseq",
+            "--min-length",
+            "1",
+        ],
+        env=env,
+    )
+    assert result.returncode == 0, result.stderr
+    expected = ILLUMINA_PROFILES["miseq"]
+    assert called == [
+        (
+            expected["substitution_rate"],
+            expected["insertion_rate"],
+            expected["deletion_rate"],
+        )
+    ]
