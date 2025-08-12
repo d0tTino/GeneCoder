@@ -57,6 +57,42 @@ Create a minimal codec plugin in four steps:
 
 See [`plugins-examples`](../plugins-examples/) for complete reference implementations.
 
+### Step-by-step Example
+
+The `scripts/scaffold_plugin.sh` helper creates a minimal project ready for
+customization. Replace `mycodec` with your desired package name:
+
+```bash
+./scripts/scaffold_plugin.sh mycodec
+```
+
+The script writes a small `plugin.py` containing a `register` function. After
+adding your encode/decode logic the module may look like:
+
+```python
+# mycodec/mycodec/plugin.py
+from genecoder.api import Codec
+
+class MyCodec(Codec):
+    def encode(self, data: bytes) -> str:
+        return data.decode().upper()
+
+    def decode(self, text: str) -> bytes:
+        return text.lower().encode()
+
+def register(register_plugin):
+    register_plugin("mycodec", MyCodec())
+```
+
+Build and install the wheel locally, then verify registration through the CLI:
+
+```bash
+cd mycodec
+python -m build
+pip install dist/mycodec-*.whl
+genecli plugin list   # confirms the plugin is available
+```
+
 ## Entry Point Groups
 
 The callback passed to `register()` depends on the entry point group used:
@@ -266,6 +302,12 @@ unset no network requests are made and GeneCoder loads only plugins already
 present in the current Python environment. Pass `--offline` or set
 `GENECODER_OFFLINE=1` to force offline mode; the registry must then reside on
 disk and any attempt to reach the network results in a clear error message.
+
+The `install-registry` subcommand requires an explicit opt-in via
+`--allow-registry`. This flag confirms you trust the registry source and want
+GeneCoder to download and install the listed packages. Supply `--offline` when
+all wheels and the registry file are available locally to prevent any network
+access.
 
 ```bash
 genecli plugin install-registry --allow-registry [--offline]
