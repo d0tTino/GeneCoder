@@ -41,6 +41,7 @@ class ChannelOptions:
     profile: str | None = None
     illumina_profile: str | None = None
     nanopore_profile: str | None = None
+    indel_profile: str | None = None
     illumina_profile_file: str | None = None
     nanopore_profile_file: str | None = None
     sub_rate: float | None = None
@@ -217,6 +218,7 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         profile=getattr(args, "profile", None),
         illumina_profile=args.illumina_profile,
         nanopore_profile=args.nanopore_profile,
+        indel_profile=getattr(args, "indel_profile", None),
         illumina_profile_file=args.illumina_profile_file,
         nanopore_profile_file=args.nanopore_profile_file,
         sub_rate=args.sub_rate,

@@ -22,6 +22,7 @@ from genecoder.metrics import metrics
 from genecoder.parallel import parallel_map
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES
+from genecoder.error_simulation import INDEL_PROFILES
 from genecoder.simulators.decay import DegradationChannel
 from .options import ChannelOptions, build_channel_options
 from .shared import add_single_io_args
@@ -415,6 +416,7 @@ def register_subcommand(
         target.add_argument("--nanopore-del-rate", type=float, default=None, help="Deletion rate for Nanopore reads")
         target.add_argument("--nanopore-profile", type=str, default=None, help="Named Nanopore profile to use")
         target.add_argument("--nanopore-profile-file", type=str, default=None, help="YAML file with Nanopore simulator parameters")
+        target.add_argument("--indel-profile", type=str, default=None, help="Named indel profile to use")
         target.add_argument(
             "--decay-rate",
             type=float,
@@ -535,6 +537,11 @@ def run_channel(args: argparse.Namespace) -> None:
             if opts.nanopore_del_rate is not None:
                 new_params["deletion_rate"] = opts.nanopore_del_rate
         if name == "indel":
+            if opts.indel_profile is not None:
+                if opts.indel_profile not in INDEL_PROFILES:
+                    logger.error("Unknown indel profile: %s", opts.indel_profile)
+                    raise SystemExit(1)
+                new_params.setdefault("profile", opts.indel_profile)
             if opts.sub_rate is not None:
                 new_params["substitution_prob"] = opts.sub_rate
             if opts.ins_rate is not None:
@@ -581,6 +588,13 @@ def _handle_run(args: argparse.Namespace) -> None:
         cfg.illumina_profile = args.illumina_profile
     if args.nanopore_profile is not None:
         cfg.nanopore_profile = args.nanopore_profile
+    if args.indel_profile is not None:
+        if args.indel_profile not in INDEL_PROFILES:
+            logger.error("Unknown indel profile: %s", args.indel_profile)
+            raise SystemExit(1)
+        for name, params in simulators:
+            if name == "indel":
+                params.setdefault("profile", args.indel_profile)
     if args.illumina_profile_file is not None:
         prof = _load_profile_file(args.illumina_profile_file)
         for name, params in simulators:
@@ -627,6 +641,10 @@ def _handle_list_profiles(_: argparse.Namespace) -> None:
 
     print("Nanopore profiles:")
     for name in sorted(NANOPORE_PROFILES):
+        print(f"  {name}")
+
+    print("Indel profiles:")
+    for name in sorted(INDEL_PROFILES):
         print(f"  {name}")
 
 
