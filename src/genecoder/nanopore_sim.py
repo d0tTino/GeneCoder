@@ -17,6 +17,7 @@ __all__ = [
     "simulate_desp",
     "simulate_reads",
     "Channel",
+    "DNARSIM_RATE_TABLES",
 ]
 
 from .api import Simulator
@@ -83,15 +84,22 @@ def _simulate_homopolymer_errors(
         ins_p = min(1.0, insertion_prob * factor)
         del_p = min(1.0, deletion_prob * factor)
         run_seq = sequence[i:j]
-        mutated.append(
-            simulate_errors(
-                run_seq,
-                substitution_prob,
-                ins_p,
-                del_p,
-                rng=rng,
+        try:
+            mutated.append(
+                simulate_errors(
+                    run_seq,
+                    substitution_prob,
+                    ins_p,
+                    del_p,
+                    rng=rng,
+                )
             )
-        )
+        except TypeError:
+            mutated.append(
+                simulate_errors(
+                    run_seq, substitution_prob=substitution_prob, rng=rng
+                )
+            )
         i = j
     return "".join(mutated)
 
