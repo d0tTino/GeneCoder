@@ -55,3 +55,23 @@ def test_nanopore_profile_file(tmp_path: Path) -> None:
     assert ch.deletion_rate == params["deletion_rate"]
     assert ch.coverage == params["coverage"]
 
+
+def test_named_profiles() -> None:
+    illumina_params = ILLUMINA_PROFILES["hiseq"]
+    illumina = IlluminaChannel(profile="hiseq")
+    assert illumina.substitution_rate == illumina_params["substitution_rate"]
+    assert illumina.insertion_rate == illumina_params["insertion_rate"]
+    nanopore_params = NANOPORE_PROFILES["minion"]
+    nanopore = NanoporeChannel(profile="minion")
+    assert nanopore.error_rate == nanopore_params["error_rate"]
+    assert nanopore.insertion_rate == nanopore_params["insertion_rate"]
+
+
+def test_profile_fallback() -> None:
+    default_illumina = IlluminaChannel()
+    unknown_illumina = IlluminaChannel(profile="unknown")
+    assert unknown_illumina.substitution_rate == default_illumina.substitution_rate
+    default_nanopore = NanoporeChannel()
+    unknown_nanopore = NanoporeChannel(profile="unknown")
+    assert unknown_nanopore.error_rate == default_nanopore.error_rate
+
