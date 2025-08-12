@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Any, Iterable
+from typing import Callable, Dict, Any, Iterable, TypeVar
 from types import ModuleType
 
 import os
@@ -65,58 +65,53 @@ def _validate_spec(spec: str) -> None:
 
 from .api import Codec, FEC, Simulator
 
+T = TypeVar("T")
+
+
+def _coerce_plugin(
+    obj: T | type[T], expected: type[T], methods: Iterable[str], kind: str
+) -> T:
+    """Return ``obj`` as an instance of ``expected`` ensuring required methods."""
+
+    if isinstance(obj, type):
+        if not issubclass(obj, expected):
+            raise TypeError(f"{kind} must subclass {expected.__name__}")
+        instance: T = obj()
+    else:
+        if not isinstance(obj, expected):
+            raise TypeError(f"{kind} must subclass {expected.__name__}")
+        instance = obj
+    for method in methods:
+        if not callable(getattr(instance, method, None)):
+            raise TypeError(f"{kind} missing required method {method}")
+    return instance
+
 
 def register_codec(name: str, codec: Codec | type[Codec]) -> None:
     """Register a codec implementation under ``name``."""
 
-    if isinstance(codec, type):
-        if not issubclass(codec, Codec):
-            raise TypeError("codec must subclass Codec")
-        inst = codec()
-    else:
-        if not isinstance(codec, Codec):
-            raise TypeError("codec must subclass Codec")
-        inst = codec
-
+    inst = _coerce_plugin(codec, Codec, ("encode", "decode"), "codec")
     CODEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
 
 
 def register_fec(name: str, fec: FEC | type[FEC]) -> None:
     """Register a FEC backend under ``name``."""
 
-    if isinstance(fec, type):
-        if not issubclass(fec, FEC):
-            raise TypeError("FEC must subclass FEC")
-        inst = fec()
-    else:
-        if not isinstance(fec, FEC):
-            raise TypeError("FEC must subclass FEC")
-        inst = fec
-
+    inst = _coerce_plugin(fec, FEC, ("encode", "decode"), "FEC")
     FEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
 
 
-def register_simulator(name: str, channel: Simulator) -> None:
+def register_simulator(name: str, channel: Simulator | type[Simulator]) -> None:
     """Register a read simulator under ``name``."""
 
-    if not isinstance(channel, Simulator):
-        raise TypeError("simulator must subclass Simulator")
-
-    _register_simulator(name, channel)
+    inst = _coerce_plugin(channel, Simulator, ("simulate",), "simulator")
+    _register_simulator(name, inst)
 
 
 def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer]) -> None:
     """Register a visualizer under ``name``."""
 
-    if isinstance(visualizer, type):
-        if not issubclass(visualizer, Visualizer):
-            raise TypeError("visualizer must subclass Visualizer")
-        inst = visualizer()
-    else:
-        if not isinstance(visualizer, Visualizer):
-            raise TypeError("visualizer must subclass Visualizer")
-        inst = visualizer
-
+    inst = _coerce_plugin(visualizer, Visualizer, ("visualize",), "visualizer")
     VISUALIZER_REGISTRY[name] = inst.visualize
 
 
