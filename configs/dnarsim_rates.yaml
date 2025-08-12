@@ -1,3 +1,4 @@
+# Calibrated error rates for common Oxford Nanopore Technologies chemistries.
 r9:
   substitution_rate: 0.09
   insertion_rate: 0.03
