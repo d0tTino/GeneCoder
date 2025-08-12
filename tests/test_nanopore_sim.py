@@ -149,7 +149,7 @@ def test_adapters_external_error(monkeypatch, caplog, name):
         lambda s, **kwargs: errors_called.append((s, kwargs.get("rng"))) or "fallback",
     )
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.WARNING, logger=nanopore_sim.__name__):
         result = func("ACGT", error_rate=0.2)
 
     assert result == "fallback"
@@ -178,7 +178,7 @@ def test_adapters_invalid_output(monkeypatch, caplog, name):
         lambda s, **kwargs: errors_called.append((s, kwargs.get("rng"))) or "fallback",
     )
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.WARNING, logger=nanopore_sim.__name__):
         result = func("ACGT")
 
     assert result == "fallback"
@@ -205,7 +205,7 @@ def test_adapters_command_not_found_warning(monkeypatch, caplog, name):
         or "fallback",
     )
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.WARNING, logger=nanopore_sim.__name__):
         result = func("ACGT")
 
     assert result == "fallback"

@@ -262,8 +262,19 @@ class NanoporeChannel(BaseChannel):
         context_deletions: Dict[str, Dict[int, float]] | None = None,
         insertion_profile: Dict[int, float] | None = None,
         deletion_profile: Dict[int, float] | None = None,
+        profile: str | None = None,
         profile_path: str | None = None,
     ) -> None:
+        if profile is not None:
+            params = NANOPORE_PROFILES.get(profile.lower())
+            if params is not None:
+                error_rate = float(params.get("error_rate", error_rate))
+                substitution_rate = float(
+                    params.get("substitution_rate", substitution_rate)
+                )
+                insertion_rate = float(params.get("insertion_rate", insertion_rate))
+                deletion_rate = float(params.get("deletion_rate", deletion_rate))
+                coverage = int(params.get("coverage", coverage))
         if profile_path is not None:
             try:
                 import yaml
@@ -341,6 +352,24 @@ class NanoporeChannel(BaseChannel):
             return reads[0]
         return _consensus(reads)
 
+    def with_profile(self, profile: str) -> "NanoporeChannel":
+        """Return a new channel configured to use ``profile``.
+
+        Unknown profiles leave the channel unchanged.
+        """
+
+        if profile.lower() not in NANOPORE_PROFILES:
+            return self
+        return type(self)(
+            profile=profile,
+            quality_profile=self.quality_profile,
+            context_errors=dict(self.context_errors),
+            context_insertions=self.context_insertions,
+            context_deletions=self.context_deletions,
+            insertion_profile=self.insertion_profile,
+            deletion_profile=self.deletion_profile,
+        )
+
 
 class NanoporeDeSPChannel(NanoporeChannel):
     """Channel wrapper using the external ``desp`` simulator."""
@@ -390,6 +419,7 @@ class NanoporeDNArSimChannel(NanoporeChannel):
             context_errors=context_errors,
             context_insertions=context_insertions,
             context_deletions=context_deletions,
+            profile=profile,
         )
         self.profile = profile
         self._profile_rates: dict[str, float] = (

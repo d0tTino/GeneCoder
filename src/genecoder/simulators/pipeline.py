@@ -43,15 +43,19 @@ class ChannelPipeline(BaseChannel):
 
         from ..dnarsim_adapter import DNArSimChannel
         from ..insilicoseq_adapter import InSilicoSeqChannel
+        from ..simulators.illumina import IlluminaChannel
+        from ..simulators.nanopore import NanoporeChannel
 
         channels = []
         for ch in self.channels:
-            if config.illumina_profile is not None and isinstance(
-                ch, InSilicoSeqChannel
+            if (
+                config.illumina_profile is not None
+                and isinstance(ch, (InSilicoSeqChannel, IlluminaChannel))
             ):
                 ch = ch.with_profile(config.illumina_profile)
-            elif config.nanopore_profile is not None and isinstance(
-                ch, DNArSimChannel
+            elif (
+                config.nanopore_profile is not None
+                and isinstance(ch, (DNArSimChannel, NanoporeChannel))
             ):
                 ch = ch.with_profile(config.nanopore_profile)
             channels.append(ch)

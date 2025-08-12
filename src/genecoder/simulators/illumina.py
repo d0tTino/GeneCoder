@@ -140,6 +140,13 @@ ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
         "read_length": 150,
         "coverage": 1,
     },
+    "nova": {
+        "substitution_rate": 0.0003,
+        "insertion_rate": 0.00003,
+        "deletion_rate": 0.00003,
+        "read_length": 150,
+        "coverage": 1,
+    },
 }
 
 
@@ -187,8 +194,23 @@ class IlluminaChannel(BaseSimulator):
         read_length: int = 150,
         quality_profile: Sequence[float] | None = None,
         context_errors: Dict[str, float] | None = None,
+        profile: str | None = None,
         profile_path: str | None = None,
     ) -> None:
+        if profile is not None:
+            params = ILLUMINA_PROFILES.get(profile.lower())
+            if params is not None:
+                substitution_rate = float(
+                    params.get("substitution_rate", substitution_rate)
+                )
+                insertion_rate = float(
+                    params.get("insertion_rate", insertion_rate)
+                )
+                deletion_rate = float(
+                    params.get("deletion_rate", deletion_rate)
+                )
+                read_length = int(params.get("read_length", read_length))
+                coverage = int(params.get("coverage", coverage))
         if profile_path is not None:
             try:
                 import yaml
@@ -286,6 +308,20 @@ class IlluminaChannel(BaseSimulator):
         if coverage == 1:
             return reads[0]
         return self._consensus(reads)
+
+    def with_profile(self, profile: str) -> "IlluminaChannel":
+        """Return a new channel configured to use ``profile``.
+
+        Unknown profiles leave the channel unchanged.
+        """
+
+        if profile.lower() not in ILLUMINA_PROFILES:
+            return self
+        return type(self)(
+            profile=profile,
+            quality_profile=self.quality_profile,
+            context_errors=dict(self.context_errors),
+        )
 
 
 class IlluminaD2SimChannel(Simulator):

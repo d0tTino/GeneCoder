@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 PROFILE_MAP: dict[str, tuple[str, str]] = {
     "miseq": ("illumina", "miseq"),
     "hiseq": ("illumina", "hiseq"),
+    "novaseq": ("illumina", "novaseq"),
+    "nova": ("illumina", "nova"),
     "minion": ("nanopore", "minion"),
     "promethion": ("nanopore", "promethion"),
 }
