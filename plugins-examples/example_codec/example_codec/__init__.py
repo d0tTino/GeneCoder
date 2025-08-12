@@ -3,10 +3,10 @@ from genecoder.api import Codec
 
 
 class ExampleCodec(Codec):  # type: ignore[misc]
-    def encode(self, data: bytes) -> str:
+    def encode(self, data: bytes, /, **kwargs: object) -> str:
         return data.hex()
 
-    def decode(self, text: str) -> bytes:
+    def decode(self, text: str, /, **kwargs: object) -> bytes:
         return bytes.fromhex(text)
 
 

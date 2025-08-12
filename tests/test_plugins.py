@@ -11,21 +11,23 @@ def test_external_plugin_package(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     (pkg / "__init__.py").write_text("")
     (pkg / "ext.py").write_text(
         """
-from typing import Callable, Mapping, Tuple
+from typing import Callable, Mapping, Tuple, Any
 from genecoder.api import Codec, FEC
 
 class ExtCodec(Codec):
-    def encode(self, data: bytes) -> str:
+    def encode(self, data: bytes, /, **kwargs: Any) -> str:
         return 'Y'
 
-    def decode(self, text: str) -> bytes:
+    def decode(self, text: str, /, **kwargs: Any) -> bytes:
         return b'Y'
 
 class ExtFEC(FEC):
-    def encode(self, data: bytes) -> Tuple[bytes, Mapping[str, int]]:
+    def encode(self, data: bytes, /, **kwargs: Any) -> Tuple[bytes, Mapping[str, int]]:
         return data + b'ZZ', {'n': 2}
 
-    def decode(self, encoded: bytes, info: Mapping[str, int]) -> Tuple[bytes, int]:
+    def decode(
+        self, encoded: bytes, info: Mapping[str, int], /, **kwargs: Any
+    ) -> Tuple[bytes, int]:
         return encoded[:-info['n']], info['n']
 
 def register(register_codec: Callable[[str, type[Codec]], None]):

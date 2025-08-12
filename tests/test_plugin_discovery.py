@@ -8,14 +8,14 @@ def test_load_plugins_from_local_package(tmp_path, monkeypatch):
     (pkg / "__init__.py").write_text("")
     (pkg / "tmp_codec.py").write_text(
         """
-from typing import Callable
+from typing import Callable, Any
 from genecoder.api import Codec
 
 class TmpCodec(Codec):
-    def encode(self, data: bytes) -> str:
+    def encode(self, data: bytes, /, **kwargs: Any) -> str:
         return 'X'
 
-    def decode(self, text: str) -> bytes:
+    def decode(self, text: str, /, **kwargs: Any) -> bytes:
         return b'X'
 
 def register(register_codec: Callable[[str, type[Codec]], None]):

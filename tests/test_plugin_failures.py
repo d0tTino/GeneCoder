@@ -70,14 +70,14 @@ def test_duplicate_names(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, mode: 
     mod1 = tmp_path / "m1.py"
     mod1.write_text(
         """
-from typing import Callable
+from typing import Callable, Any
 from genecoder.api import Codec
 
 class CodecOne(Codec):
-    def encode(self, data: bytes) -> str:
+    def encode(self, data: bytes, /, **kwargs: Any) -> str:
         return "one"
 
-    def decode(self, text: str) -> bytes:
+    def decode(self, text: str, /, **kwargs: Any) -> bytes:
         return b"one"
 
 def register(register_codec: Callable[[str, type[Codec]], None]) -> None:
@@ -87,14 +87,14 @@ def register(register_codec: Callable[[str, type[Codec]], None]) -> None:
     mod2 = tmp_path / "m2.py"
     mod2.write_text(
         """
-from typing import Callable
+from typing import Callable, Any
 from genecoder.api import Codec
 
 class CodecTwo(Codec):
-    def encode(self, data: bytes) -> str:
+    def encode(self, data: bytes, /, **kwargs: Any) -> str:
         return "two"
 
-    def decode(self, text: str) -> bytes:
+    def decode(self, text: str, /, **kwargs: Any) -> bytes:
         return b"two"
 
 def register(register_codec: Callable[[str, type[Codec]], None]) -> None:

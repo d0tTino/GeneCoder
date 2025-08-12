@@ -9,13 +9,14 @@ def test_class_based_plugins(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     codec_mod = tmp_path / "cmod.py"
     codec_mod.write_text(
         """
+from typing import Any
 from genecoder.codecs import BaseCodec
 
 class DummyCodec(BaseCodec):
-    def encode(self, data: bytes, /) -> str:
+    def encode(self, data: bytes, /, **kwargs: Any) -> str:
         return data.decode()[::-1]
 
-    def decode(self, encoded: str, /) -> bytes:
+    def decode(self, encoded: str, /, **kwargs: Any) -> bytes:
         return encoded[::-1].encode()
 
 def register(register_codec):
@@ -30,10 +31,10 @@ from typing import Mapping, Any
 from genecoder.codecs import BaseFEC
 
 class DummyFEC(BaseFEC):
-    def encode(self, data: bytes, /) -> tuple[bytes, Mapping[str, Any]]:
+    def encode(self, data: bytes, /, **kwargs: Any) -> tuple[bytes, Mapping[str, Any]]:
         return data + b'x', {}
 
-    def decode(self, encoded: bytes, info: Mapping[str, Any], /) -> tuple[bytes, int]:
+    def decode(self, encoded: bytes, info: Mapping[str, Any], /, **kwargs: Any) -> tuple[bytes, int]:
         return encoded[:-1], 0
 
 def register(register_fec):
