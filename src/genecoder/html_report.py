@@ -37,7 +37,12 @@ def generate_html_report(manifest_path: str) -> str:
     gc_content = metrics.get("gc_content")
     if isinstance(gc_content, (int, float)):
         html_lines.append(
-            f"<p><strong>GC Content:</strong> {float(gc_content) * 100:.2f}%</p>"
+            f"<p><strong>GC Mean:</strong> {float(gc_content) * 100:.2f}%</p>"
+        )
+    gc_variance = metrics.get("gc_variance")
+    if isinstance(gc_variance, (int, float)):
+        html_lines.append(
+            f"<p><strong>GC Variance:</strong> {float(gc_variance):.4f}</p>"
         )
 
     max_hp: int | float | None = metrics.get("max_homopolymer")

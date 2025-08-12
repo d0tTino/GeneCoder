@@ -169,12 +169,16 @@ def test_homopolymer_weighting_in_fallback() -> None:
                 dels += 1
         return ins, dels
 
-    nanopore_sim.logger.setLevel(logging.ERROR)
-    ins_short, del_short = simulate_many("AAA")
-    ins_long, del_long = simulate_many("AAAAAA")
-    assert ins_short == 45
-    assert del_short == 44
-    assert ins_long == 54
-    assert del_long == 86
-    assert ins_long > ins_short
-    assert del_long > del_short
+    prev_level = nanopore_sim.logger.level
+    try:
+        nanopore_sim.logger.setLevel(logging.ERROR)
+        ins_short, del_short = simulate_many("AAA")
+        ins_long, del_long = simulate_many("AAAAAA")
+        assert ins_short == 45
+        assert del_short == 44
+        assert ins_long == 54
+        assert del_long == 86
+        assert ins_long > ins_short
+        assert del_long > del_short
+    finally:
+        nanopore_sim.logger.setLevel(prev_level)

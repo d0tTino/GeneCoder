@@ -11,6 +11,7 @@ def _make_manifest(path: Path) -> Path:
         "encoding_parameters": {"method": "base4_direct"},
         "metrics": {
             "gc_content": 0.5,
+            "gc_variance": 0.01,
             "max_homopolymer": 4,
             "ecc_success_rates": {"rs": 0.9},
         },
@@ -23,6 +24,7 @@ def test_generate_html_report(tmp_path: Path) -> None:
     manifest = _make_manifest(tmp_path / "m.json")
     html = generate_html_report(str(manifest))
     assert "50.00%" in html
+    assert "GC Variance" in html
     assert "Max Homopolymer Length" in html
     assert "rs" in html
 
@@ -33,3 +35,4 @@ def test_cli_html_report_stdout(tmp_path: Path) -> None:
     assert result.returncode == 0
     assert "GeneCoder Summary Report" in result.stdout
     assert "50.00%" in result.stdout
+    assert "GC Variance" in result.stdout

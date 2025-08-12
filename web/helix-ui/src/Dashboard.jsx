@@ -52,7 +52,8 @@ export default function Dashboard() {
       <button onClick={decodeDeepdna}>DeepDNA Decode</button>
       {data && (
         <div>
-          <p>GC Content: {(data.gc_content * 100).toFixed(2)}%</p>
+          <p>GC Mean: {(data.gc_content * 100).toFixed(2)}%</p>
+          <p>GC Variance: {data.gc_variance.toFixed(4)}</p>
           <p>Max Homopolymer: {data.max_homopolymer}</p>
           <p>Error Rate: {(data.error_rate * 100).toFixed(2)}%</p>
           <img src={`data:image/png;base64,${data.plot}`} style={{ maxWidth: '100%' }} />
