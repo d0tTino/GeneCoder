@@ -16,9 +16,27 @@ __all__ = [
     "apply_deletions",
     "Channel",
     "register",
+    "INDEL_PROFILES",
 ]
 
 NUCLEOTIDES = ["A", "T", "C", "G"]
+
+
+# Preset substitution/indel probability profiles for :class:`Channel`.
+INDEL_PROFILES: dict[str, dict[str, float]] = {
+    # Typical Illumina error characteristics favour substitutions over indels.
+    "illumina": {
+        "substitution_prob": 0.002,
+        "insertion_prob": 0.0001,
+        "deletion_prob": 0.0001,
+    },
+    # Nanopore devices tend to produce higher indel rates.
+    "nanopore": {
+        "substitution_prob": 0.01,
+        "insertion_prob": 0.02,
+        "deletion_prob": 0.02,
+    },
+}
 
 
 def _random_substitution(nucleotide: str, rng: random.Random) -> str:
@@ -121,7 +139,14 @@ class Channel(Simulator):
         insertion_prob: float = 0.0,
         deletion_prob: float = 0.0,
         error_rate: float | None = None,
+        profile: str | None = None,
     ) -> None:
+        if profile is not None:
+            params = INDEL_PROFILES.get(profile.lower())
+            if params is not None:
+                substitution_prob = params["substitution_prob"]
+                insertion_prob = params["insertion_prob"]
+                deletion_prob = params["deletion_prob"]
         if error_rate is not None:
             substitution_prob = error_rate
         self.substitution_prob = substitution_prob
@@ -145,6 +170,17 @@ class Channel(Simulator):
             deletion_prob=self.deletion_prob,
             rng=make_rng(),
         )
+
+    def with_profile(self, profile: str) -> "Channel":
+        """Return a new channel configured to use ``profile``."""
+
+        if profile.lower() not in INDEL_PROFILES:
+            return type(self)(
+                substitution_prob=self.substitution_prob,
+                insertion_prob=self.insertion_prob,
+                deletion_prob=self.deletion_prob,
+            )
+        return type(self)(profile=profile)
 
 
 def register(

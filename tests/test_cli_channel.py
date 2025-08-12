@@ -189,6 +189,52 @@ def test_cli_indel_rates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     assert called == [(0.1, 0.2, 0.05)]
 
 
+def test_cli_indel_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    input_fasta = tmp_path / "in_indel_profile.fasta"
+    create_fasta(input_fasta)
+    output_fasta = tmp_path / "out_indel_profile.fasta"
+    called: list[tuple[float, float, float]] = []
+
+    from genecoder.error_simulation import Channel as IndelChannel, INDEL_PROFILES
+
+    def fake_simulate(self: IndelChannel, seq: str) -> str:
+        called.append((self.substitution_prob, self.insertion_prob, self.deletion_prob))
+        return seq
+
+    monkeypatch.setattr(IndelChannel, "simulate", fake_simulate)
+
+    env = os.environ.copy()
+    from pathlib import Path as _Path
+    src_path = _Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    result = run_cli_command(
+        [
+            "channel",
+            "apply",
+            "--input-file",
+            str(input_fasta),
+            "--output-file",
+            str(output_fasta),
+            "--simulator",
+            "indel",
+            "--indel-profile",
+            "illumina",
+            "--min-length",
+            "1",
+        ],
+        env=env,
+    )
+    assert result.returncode == 0, result.stderr
+    prof = INDEL_PROFILES["illumina"]
+    assert called == [(
+        prof["substitution_prob"],
+        prof["insertion_prob"],
+        prof["deletion_prob"],
+    )]
+
+
 def test_channel_cli_yaml(tmp_path: Path) -> None:
     input_fasta = tmp_path / "in.fasta"
     create_fasta(input_fasta)
