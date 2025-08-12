@@ -28,6 +28,11 @@ class Codec(ABC):
             Raw byte payload to be encoded.
         **kwargs:
             Optional codec specific parameters.
+
+        Returns
+        -------
+        Any
+            Encoded representation of the input bytes.
         """
 
     @abstractmethod
@@ -40,6 +45,11 @@ class Codec(ABC):
             The encoded object returned by :meth:`encode`.
         **kwargs:
             Optional codec specific parameters.
+
+        Returns
+        -------
+        bytes
+            The original byte payload.
         """
 
 
@@ -56,6 +66,11 @@ class FEC(ABC):
             Payload bytes to protect.
         **kwargs:
             Backend specific options.
+
+        Returns
+        -------
+        tuple[bytes, Mapping[str, Any]]
+            Tuple of encoded bytes and auxiliary information.
         """
 
     @abstractmethod
@@ -70,6 +85,11 @@ class FEC(ABC):
             Auxiliary information returned by :meth:`encode`.
         **kwargs:
             Backend specific options.
+
+        Returns
+        -------
+        tuple[bytes, int]
+            The recovered payload and number of corrected errors.
         """
 
 
@@ -78,7 +98,18 @@ class Simulator(ABC):
 
     @abstractmethod
     def simulate(self, sequence: str) -> str:
-        """Return a possibly corrupted version of ``sequence``."""
+        """Return a possibly corrupted version of ``sequence``.
+
+        Parameters
+        ----------
+        sequence:
+            Input DNA sequence.
+
+        Returns
+        -------
+        str
+            Simulated read sequence.
+        """
 
     def with_profile(self, profile: str) -> "Simulator":
         """Return a copy of the simulator configured for ``profile``.
@@ -87,6 +118,16 @@ class Simulator(ABC):
         external error profiles.  The default implementation raises
         :class:`NotImplementedError` to signal that the feature is not
         available.
+
+        Parameters
+        ----------
+        profile:
+            Identifier for the error profile.
+
+        Returns
+        -------
+        Simulator
+            A simulator instance configured with the requested profile.
         """
 
         raise NotImplementedError
@@ -105,5 +146,10 @@ class Visualizer(ABC):
             DNA sequence or other result object to visualise.
         **kwargs:
             Optional visualisation parameters.
+
+        Returns
+        -------
+        Any
+            The visualisation object produced by the implementation.
         """
 

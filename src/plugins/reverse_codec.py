@@ -8,10 +8,10 @@ from genecoder.api import Codec
 class ReverseCodec(Codec):  # type: ignore[misc]
     """Simple byte-reversing codec."""
 
-    def encode(self, data: bytes, /) -> str:
+    def encode(self, data: bytes, /, **kwargs: object) -> str:
         return data[::-1].decode("utf-8")
 
-    def decode(self, encoded: str, /) -> bytes:
+    def decode(self, encoded: str, /, **kwargs: object) -> bytes:
         return encoded[::-1].encode("utf-8")
 
 

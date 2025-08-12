@@ -1,12 +1,14 @@
-from typing import Callable, Mapping, Any
+from typing import Callable, Mapping
 from genecoder.api import FEC
 
 
 class ExampleFEC(FEC):  # type: ignore[misc]
-    def encode(self, data: bytes) -> tuple[bytes, Mapping[str, Any]]:
+    def encode(self, data: bytes, /, **kwargs: object) -> tuple[bytes, Mapping[str, object]]:
         return data, {}
 
-    def decode(self, encoded: bytes, info: Mapping[str, Any]) -> tuple[bytes, int]:
+    def decode(
+        self, encoded: bytes, info: Mapping[str, object], /, **kwargs: object
+    ) -> tuple[bytes, int]:
         return encoded, 0
 
 

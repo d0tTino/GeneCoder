@@ -12,6 +12,7 @@ import tempfile
 from pathlib import Path
 import importlib
 import re
+import inspect
 
 yaml: ModuleType | None
 try:  # optional dependency
@@ -68,6 +69,39 @@ from .api import Codec, FEC, Simulator
 T = TypeVar("T")
 
 
+def _check_signature(
+    impl: Callable[..., Any], base: Callable[..., Any], *, kind: str, method: str
+) -> None:
+    """Validate that ``impl`` can accept the parameters of ``base``."""
+
+    base_sig = inspect.signature(base)
+    params = list(base_sig.parameters.values())
+    if params and params[0].name == "self":
+        params = params[1:]
+    base_sig = base_sig.replace(parameters=params)
+
+    impl_sig = inspect.signature(impl)
+
+    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params):
+        if not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in impl_sig.parameters.values()):
+            raise TypeError(f"{kind} {method} must accept **kwargs")
+
+    dummy_args = [
+        object()
+        for p in params
+        if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    ]
+    dummy_kwargs = {
+        p.name: object()
+        for p in params
+        if p.kind == inspect.Parameter.KEYWORD_ONLY
+    }
+    try:
+        impl_sig.bind(*dummy_args, **dummy_kwargs)
+    except TypeError as exc:
+        raise TypeError(f"{kind} {method} has incompatible signature: {exc}") from exc
+
+
 def _coerce_plugin(
     obj: T | type[T], expected: type[T], methods: Iterable[str], kind: str
 ) -> T:
@@ -84,6 +118,9 @@ def _coerce_plugin(
     for method in methods:
         if not callable(getattr(instance, method, None)):
             raise TypeError(f"{kind} missing required method {method}")
+        _check_signature(
+            getattr(instance, method), getattr(expected, method), kind=kind, method=method
+        )
     return instance
 
 
