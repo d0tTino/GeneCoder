@@ -65,6 +65,8 @@ def test_named_profiles() -> None:
     nanopore = NanoporeChannel(profile="minion")
     assert nanopore.error_rate == nanopore_params["error_rate"]
     assert nanopore.insertion_rate == nanopore_params["insertion_rate"]
+    assert nanopore.context_insertions == nanopore_params.get("context_insertions", {})
+    assert nanopore.context_deletions == nanopore_params.get("context_deletions", {})
 
 
 def test_profile_fallback() -> None:
