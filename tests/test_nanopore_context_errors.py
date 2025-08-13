@@ -1,7 +1,11 @@
 import random
 import logging
 
-from genecoder.simulators.nanopore import NanoporeChannel, _mutate_read
+from genecoder.simulators.nanopore import (
+    NANOPORE_PROFILES,
+    NanoporeChannel,
+    _mutate_read,
+)
 from genecoder import nanopore_sim
 
 
@@ -149,6 +153,48 @@ def test_context_deletion_profile_affect_counts() -> None:
         seed,
     )
     assert del_ctx > del_base
+
+
+def test_profile_context_insertion_affects_counts() -> None:
+    seq = "AAT"
+    runs = 200
+    seed = 30
+    prof = NanoporeChannel(profile="minion")
+    prof.insertion_rate = 0.0
+    prof.deletion_rate = 0.0
+    prof.context_deletions = {}
+
+    base_params = dict(NANOPORE_PROFILES["minion"])
+    base_params.pop("context_insertions", None)
+    base_params.pop("context_deletions", None)
+    base = NanoporeChannel(**base_params)
+    base.insertion_rate = 0.0
+    base.deletion_rate = 0.0
+
+    ins_prof, _ = _count_ins_del(prof, seq, runs, seed)
+    ins_base, _ = _count_ins_del(base, seq, runs, seed)
+    assert ins_prof > ins_base
+
+
+def test_profile_context_deletion_affects_counts() -> None:
+    seq = "TTA"
+    runs = 200
+    seed = 31
+    prof = NanoporeChannel(profile="minion")
+    prof.insertion_rate = 0.0
+    prof.deletion_rate = 0.0
+    prof.context_insertions = {}
+
+    base_params = dict(NANOPORE_PROFILES["minion"])
+    base_params.pop("context_insertions", None)
+    base_params.pop("context_deletions", None)
+    base = NanoporeChannel(**base_params)
+    base.insertion_rate = 0.0
+    base.deletion_rate = 0.0
+
+    _, del_prof = _count_ins_del(prof, seq, runs, seed)
+    _, del_base = _count_ins_del(base, seq, runs, seed)
+    assert del_prof > del_base
 
 
 def test_homopolymer_weighting_in_fallback() -> None:

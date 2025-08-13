@@ -275,6 +275,20 @@ class NanoporeChannel(BaseChannel):
                 insertion_rate = float(params.get("insertion_rate", insertion_rate))
                 deletion_rate = float(params.get("deletion_rate", deletion_rate))
                 coverage = int(params.get("coverage", coverage))
+                quality_profile = params.get("quality_profile", quality_profile)
+                context_errors = params.get("context_errors", context_errors)
+                context_insertions = params.get(
+                    "context_insertions", context_insertions
+                )
+                context_deletions = params.get(
+                    "context_deletions", context_deletions
+                )
+                insertion_profile = params.get(
+                    "insertion_profile", insertion_profile
+                )
+                deletion_profile = params.get(
+                    "deletion_profile", deletion_profile
+                )
         if profile_path is not None:
             try:
                 import yaml
