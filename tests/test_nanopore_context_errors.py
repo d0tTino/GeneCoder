@@ -155,6 +155,50 @@ def test_context_deletion_profile_affect_counts() -> None:
     assert del_ctx > del_base
 
 
+def test_context_insertion_run_length_specific() -> None:
+    seq = "AAT"
+    runs = 50
+    seed = 9
+    ch_high = NanoporeChannel(
+        substitution_rate=0.0,
+        insertion_rate=0.0,
+        deletion_rate=0.0,
+        context_insertions={"AA": {2: 1.0}},
+    )
+    ch_low = NanoporeChannel(
+        substitution_rate=0.0,
+        insertion_rate=0.0,
+        deletion_rate=0.0,
+        context_insertions={"AA": {2: 0.0}},
+    )
+    ins_high, _ = _count_ins_del(ch_high, seq, runs, seed)
+    ins_low, _ = _count_ins_del(ch_low, seq, runs, seed)
+    assert ins_high == runs
+    assert ins_low == 0
+
+
+def test_context_deletion_run_length_specific() -> None:
+    seq = "TTA"
+    runs = 50
+    seed = 10
+    ch_high = NanoporeChannel(
+        substitution_rate=0.0,
+        insertion_rate=0.0,
+        deletion_rate=0.0,
+        context_deletions={"TT": {2: 1.0}},
+    )
+    ch_low = NanoporeChannel(
+        substitution_rate=0.0,
+        insertion_rate=0.0,
+        deletion_rate=0.0,
+        context_deletions={"TT": {2: 0.0}},
+    )
+    _, del_high = _count_ins_del(ch_high, seq, runs, seed)
+    _, del_low = _count_ins_del(ch_low, seq, runs, seed)
+    assert del_high == runs
+    assert del_low == 0
+
+
 def test_profile_context_insertion_affects_counts() -> None:
     seq = "AAT"
     runs = 200

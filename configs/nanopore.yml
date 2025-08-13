@@ -10,9 +10,11 @@ minion:
   context_insertions:
     AA:
       1: 0.9
+      2: 0.8
   context_deletions:
     TT:
       1: 0.9
+      2: 0.85
 promethion:
   error_rate: 0.08
   substitution_rate: 0.015
@@ -25,9 +27,11 @@ promethion:
   context_insertions:
     AA:
       1: 0.05
+      2: 0.03
   context_deletions:
     TT:
       1: 0.11
+      2: 0.07
 r10:
   error_rate: 0.05
   substitution_rate: 0.01
@@ -40,6 +44,8 @@ r10:
   context_insertions:
     AA:
       1: 0.04
+      2: 0.02
   context_deletions:
     TT:
       1: 0.08
+      2: 0.05
