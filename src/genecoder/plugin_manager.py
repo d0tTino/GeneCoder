@@ -293,9 +293,15 @@ def install_registry_plugins(
                 logger.error("Invalid signature for plugin %s", spec)
                 raise ValueError("Invalid signature")
 
-            if checksum and digest != str(checksum):
-                logger.error("Checksum mismatch for plugin %s", spec)
-                raise ValueError("Checksum mismatch")
+            if checksum:
+                try:
+                    expected = plugin_security.decode_checksum(str(checksum))
+                except ValueError:
+                    logger.error("Invalid checksum for plugin %s", spec)
+                    raise ValueError("Invalid checksum")
+                if digest != expected:
+                    logger.error("Checksum mismatch for plugin %s", spec)
+                    raise ValueError("Checksum mismatch")
 
             tmp = tempfile.NamedTemporaryFile(delete=False)
             pkg_path = tmp.name
