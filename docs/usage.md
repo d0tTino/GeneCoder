@@ -134,6 +134,29 @@ Pass `--seed <int>` to `genecli encode`, `genecli decode`, `genecli channel`, or
 `genecli pipeline` to seed random components for reproducible runs.
 Alternatively set the `GENECODER_SIM_SEED` environment variable.
 
+### Reproducible pipelines
+
+Setting `GENECODER_SIM_SEED` ensures that every random component—from
+constraint fixers to Illumina and Nanopore simulators—uses the same seed.
+Running the same encode→channel→decode command twice with the variable set
+produces byte‑identical results.
+
+```bash
+export GENECODER_SIM_SEED=123
+genecli pipeline input.bin out1.bin --codec base4_direct --channel illumina --profile miseq
+genecli pipeline input.bin out2.bin --codec base4_direct --channel illumina --profile miseq
+cmp out1.bin out2.bin   # files match
+```
+
+The same seed works across other profiles, for example Nanopore's `minion`:
+
+```bash
+export GENECODER_SIM_SEED=123
+genecli pipeline input.bin out1.bin --codec base4_direct --channel nanopore --profile minion
+genecli pipeline input.bin out2.bin --codec base4_direct --channel nanopore --profile minion
+cmp out1.bin out2.bin   # files match
+```
+
 11. **Encode, corrupt and decode a file with automatic extensions**
 
 ```bash
