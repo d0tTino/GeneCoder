@@ -195,10 +195,17 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
         --output-file channel.fasta --simulator illumina_builtin --sub-rate 0.01
     ```
 
-    Named sequencing profiles are available:
+   Named sequencing profiles are available:
 
    - **Illumina** – `miseq`, `hiseq`, `novaseq` (alias `nova`)
    - **Nanopore** – `minion`, `promethion`, `r10`, `r9`, `r10.3`, `r10.4`
+   - **Indel** – `illumina`, `nanopore`
+
+   List available options at any time:
+
+   ```bash
+   genecli channel profiles
+   ```
 
    Use `--profile` to apply a preset without specifying a simulator:
 
@@ -207,10 +214,26 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
        --output-file channel.fasta
    ```
 
-   For finer control, select a profile with `--illumina-profile` or
-   `--nanopore-profile`. Individual rate options override the chosen profile.
-   Custom parameters can also be loaded from YAML files using
+   For finer control, select a profile with `--illumina-profile`,
+   `--nanopore-profile`, or `--indel-profile`. Individual rate options override
+   the chosen profile. Custom parameters can also be loaded from YAML files using
    `--illumina-profile-file` or `--nanopore-profile-file`.
+
+   Example end-to-end runs with each preset:
+
+   | Profile | Command |
+   | ------- | ------- |
+   | miseq | `genecli channel --profile miseq --input-file encoded.fasta --output-file miseq.fasta` |
+   | hiseq | `genecli channel --profile hiseq --input-file encoded.fasta --output-file hiseq.fasta` |
+   | novaseq | `genecli channel --profile novaseq --input-file encoded.fasta --output-file novaseq.fasta` |
+   | minion | `genecli channel --profile minion --input-file encoded.fasta --output-file minion.fasta` |
+   | promethion | `genecli channel --profile promethion --input-file encoded.fasta --output-file promethion.fasta` |
+   | r10 | `genecli channel --nanopore-profile r10 --input-file encoded.fasta --output-file r10.fasta` |
+   | r9 | `genecli channel --nanopore-profile r9 --input-file encoded.fasta --output-file r9.fasta` |
+   | r10.3 | `genecli channel --nanopore-profile r10.3 --input-file encoded.fasta --output-file r10_3.fasta` |
+   | r10.4 | `genecli channel --nanopore-profile r10.4 --input-file encoded.fasta --output-file r10_4.fasta` |
+   | indel illumina | `genecli channel --indel-profile illumina --input-file encoded.fasta --output-file indel_illumina.fasta` |
+   | indel nanopore | `genecli channel --indel-profile nanopore --input-file encoded.fasta --output-file indel_nanopore.fasta` |
 
    Illumina profile files should list `substitution_rate`, `insertion_rate`,
    `deletion_rate`, `coverage`, and `read_length`:

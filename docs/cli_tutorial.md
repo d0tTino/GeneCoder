@@ -59,5 +59,27 @@ genecli channel apply --input-file seq.fasta --output-file corrupted.fasta \
 
 Built-in channel profiles include:
 
-- **Illumina** – `miseq`, `hiseq`
-- **Nanopore** – `minion`, `promethion`
+- **Illumina** – `miseq`, `hiseq`, `novaseq` (alias `nova`)
+- **Nanopore** – `minion`, `promethion`, `r10`, `r9`, `r10.3`, `r10.4`
+- **Indel** – `illumina`, `nanopore`
+
+List all available profiles:
+
+```bash
+genecli channel profiles
+```
+
+Apply a preset directly:
+
+```bash
+genecli channel --profile miseq --input-file seq.fasta --output-file out.fasta
+```
+
+Chemistry-specific options can be selected with `--illumina-profile`,
+`--nanopore-profile`, or `--indel-profile`:
+
+```bash
+genecli channel --nanopore-profile r10.4 --input-file seq.fasta --output-file out.fasta
+```
+
+See the usage guide for commands covering every profile.
