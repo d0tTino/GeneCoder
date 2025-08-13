@@ -210,55 +210,63 @@ class IlluminaChannel(BaseSimulator):
 
     def __init__(
         self,
-        substitution_rate: float = 0.001,
-        insertion_rate: float = 0.0001,
-        deletion_rate: float = 0.0001,
-        coverage: int = 1,
-        read_length: int = 150,
+        substitution_rate: float | None = None,
+        insertion_rate: float | None = None,
+        deletion_rate: float | None = None,
+        coverage: int | None = None,
+        read_length: int | None = None,
         quality_profile: Sequence[float] | None = None,
         context_errors: Dict[str, float] | None = None,
         profile: str | None = None,
-        profile_path: str | None = None,
     ) -> None:
+        profile_data: Mapping[str, Any] = {}
         if profile is not None:
-            params = ILLUMINA_PROFILES.get(profile.lower())
-            if params is not None:
-                substitution_rate = float(
-                    params.get("substitution_rate", substitution_rate)
-                )
-                insertion_rate = float(
-                    params.get("insertion_rate", insertion_rate)
-                )
-                deletion_rate = float(
-                    params.get("deletion_rate", deletion_rate)
-                )
-                read_length = int(params.get("read_length", read_length))
-                coverage = int(params.get("coverage", coverage))
-        if profile_path is not None:
-            data = _load_profile_file(profile_path) or {}
-            profile = _validate_profile(data)
-            substitution_rate = profile.substitution_rate
-            insertion_rate = profile.insertion_rate
-            deletion_rate = profile.deletion_rate
-            read_length = profile.read_length
-            coverage = profile.coverage
-            quality_profile = data.get("quality_profile", quality_profile)
-            context_errors = data.get("context_errors", context_errors)
-        else:
-            profile = _validate_profile(
-                {
-                    "substitution_rate": substitution_rate,
-                    "insertion_rate": insertion_rate,
-                    "deletion_rate": deletion_rate,
-                    "read_length": read_length,
-                    "coverage": coverage,
-                }
-            )
-            substitution_rate = profile.substitution_rate
-            insertion_rate = profile.insertion_rate
-            deletion_rate = profile.deletion_rate
-            read_length = profile.read_length
-            coverage = profile.coverage
+            path = Path(profile)
+            if path.is_file():
+                profile_data = _load_profile_file(path) or {}
+            else:
+                profile_data = ILLUMINA_PROFILES.get(profile.lower(), {})
+
+        substitution_rate = float(
+            substitution_rate
+            if substitution_rate is not None
+            else profile_data.get("substitution_rate", 0.001)
+        )
+        insertion_rate = float(
+            insertion_rate
+            if insertion_rate is not None
+            else profile_data.get("insertion_rate", 0.0001)
+        )
+        deletion_rate = float(
+            deletion_rate
+            if deletion_rate is not None
+            else profile_data.get("deletion_rate", 0.0001)
+        )
+        read_length = int(
+            read_length
+            if read_length is not None
+            else profile_data.get("read_length", 150)
+        )
+        coverage = int(
+            coverage if coverage is not None else profile_data.get("coverage", 1)
+        )
+        quality_profile = profile_data.get("quality_profile", quality_profile)
+        context_errors = profile_data.get("context_errors", context_errors)
+
+        profile_obj = _validate_profile(
+            {
+                "substitution_rate": substitution_rate,
+                "insertion_rate": insertion_rate,
+                "deletion_rate": deletion_rate,
+                "read_length": read_length,
+                "coverage": coverage,
+            }
+        )
+        substitution_rate = profile_obj.substitution_rate
+        insertion_rate = profile_obj.insertion_rate
+        deletion_rate = profile_obj.deletion_rate
+        read_length = profile_obj.read_length
+        coverage = profile_obj.coverage
 
         if isinstance(quality_profile, str):
             quality_profile = _parse_quality_profile(quality_profile)
@@ -327,12 +335,18 @@ class IlluminaChannel(BaseSimulator):
         Unknown profiles leave the channel unchanged.
         """
 
-        if profile.lower() not in ILLUMINA_PROFILES:
+        path = Path(profile)
+        if not path.is_file() and profile.lower() not in ILLUMINA_PROFILES:
             return self
         return type(self)(
-            profile=profile,
+            substitution_rate=self.substitution_rate,
+            insertion_rate=self.insertion_rate,
+            deletion_rate=self.deletion_rate,
+            coverage=self.coverage,
+            read_length=self.read_length,
             quality_profile=self.quality_profile,
             context_errors=dict(self.context_errors),
+            profile=profile,
         )
 
 
