@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import random
 
+from .random_utils import make_rng
+
 __all__ = ["adjust_gc_balance", "limit_homopolymers", "fix_sequence"]
 
 
@@ -15,8 +17,12 @@ def adjust_gc_balance(
     rng: random.Random | None = None,
 ) -> str:
     """Return ``sequence`` adjusted so its GC content falls within bounds."""
+    if target_gc_min > target_gc_max:
+        msg = "target_gc_min cannot exceed target_gc_max"
+        raise ValueError(msg)
+
     if rng is None:
-        rng = random.Random()
+        rng = make_rng()
     seq = list(sequence.upper())
     length = len(seq)
     gc_count = sum(1 for b in seq if b in {"G", "C"})
@@ -47,10 +53,12 @@ def limit_homopolymers(
     rng: random.Random | None = None,
 ) -> str:
     """Return ``sequence`` with runs longer than ``max_len`` disrupted."""
-    if rng is None:
-        rng = random.Random()
     if max_len < 1:
-        return sequence
+        msg = "max_len must be at least 1"
+        raise ValueError(msg)
+
+    if rng is None:
+        rng = make_rng()
     seq = list(sequence.upper())
     i = 0
     while i < len(seq):
@@ -82,6 +90,16 @@ def fix_sequence(
     rng: random.Random | None = None,
 ) -> str:
     """Return ``sequence`` adjusted for GC content and homopolymers."""
+    if target_gc_min > target_gc_max:
+        msg = "target_gc_min cannot exceed target_gc_max"
+        raise ValueError(msg)
+    if max_homopolymer < 1:
+        msg = "max_homopolymer must be at least 1"
+        raise ValueError(msg)
+
+    if rng is None:
+        rng = make_rng()
+
     seq = adjust_gc_balance(sequence, target_gc_min, target_gc_max, rng=rng)
     seq = limit_homopolymers(seq, max_homopolymer, rng=rng)
     # Breaking up long homopolymers can skew the GC ratio slightly. Run a final
