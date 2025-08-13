@@ -195,3 +195,65 @@ def test_cli_decode_simulator_failure(tmp_path: Path, sim_name: str) -> None:
     out_file = tmp_path / "in.txt_decoded.bin"
     assert out_file.exists()
     assert out_file.read_text().startswith("failure")
+
+
+def test_cli_decode_simulator_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    env = os.environ.copy()
+    src_path = Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    input_file = tmp_path / "in.txt"
+    input_file.write_text("profile test")
+
+    enc_res = run_cli_command(
+        [
+            "encode",
+            "--input-files",
+            str(input_file),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--fec",
+            "triple_repeat",
+        ],
+        env=env,
+    )
+    assert enc_res.returncode == 0, enc_res.stderr
+    fasta_file = tmp_path / "in.txt.fasta"
+    assert fasta_file.exists()
+
+    called: list[str] = []
+
+    import genecoder.simulators.illumina as illumina
+
+    monkeypatch.setattr(illumina.IlluminaChannel, "simulate", lambda self, seq: seq)
+
+    def fake_with_profile(self: illumina.IlluminaChannel, profile: str):
+        called.append(profile)
+        return self
+
+    monkeypatch.setattr(illumina.IlluminaChannel, "with_profile", fake_with_profile)
+
+    dec_res = run_cli_command(
+        [
+            "decode",
+            "--input-files",
+            str(fasta_file),
+            "--output-dir",
+            str(tmp_path),
+            "--method",
+            "base4_direct",
+            "--simulator",
+            "illumina",
+            "--profile",
+            "miseq",
+        ],
+        env=env,
+    )
+    assert dec_res.returncode == 0, dec_res.stderr
+    out_file = tmp_path / "in.txt_decoded.bin"
+    assert out_file.exists()
+    assert out_file.read_text() == "profile test"
+    assert called == ["miseq"]
