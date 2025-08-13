@@ -249,7 +249,12 @@ SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random | None], str]]
 }
 
 
-def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> str:
+def simulate_reads(
+    sequence: str,
+    simulator: str,
+    error_rate: float = 0.05,
+    profile: str | None = None,
+) -> str:
     """Return ``sequence`` processed by the named simulator.
 
     .. deprecated:: 0.2
@@ -266,7 +271,9 @@ def simulate_reads(sequence: str, simulator: str, error_rate: float = 0.05) -> s
 
     from .simulators import simulate_reads as _simulate_reads
 
-    return _simulate_reads(sequence, simulator, error_rate=error_rate)
+    return _simulate_reads(
+        sequence, simulator, error_rate=error_rate, profile=profile
+    )
 
 
 class Channel(Simulator):

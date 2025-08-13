@@ -14,6 +14,8 @@ from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import decode_data_with_hamming
 from genecoder.plugin_manager import FEC_REGISTRY
 from genecoder.simulators import SIMULATOR_REGISTRY
+from genecoder.simulators.illumina import ILLUMINA_PROFILES
+from genecoder.simulators.nanopore import NANOPORE_PROFILES
 from genecoder.formats import from_fasta
 from genecoder.utils import get_alphabet_maps
 from ..options import DecodingOptions
@@ -229,9 +231,15 @@ def process_single_decode(
                     "%s simulation skipped during decode", args.simulator
                 )
             else:
-                sequence_from_fasta = simulate_reads(
-                    sequence_from_fasta, args.simulator
-                )
+                try:
+                    sequence_from_fasta = simulate_reads(
+                        sequence_from_fasta,
+                        args.simulator,
+                        profile=args.profile,
+                    )
+                except ValueError as exc:
+                    logger.error("%s", exc)
+                    raise SystemExit(1)
                 logger.info(
                     "Applied %s simulator before decoding.", args.simulator
                 )
@@ -373,6 +381,13 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         default="none",
         choices=sim_choices,
         help="Apply an external simulator before decoding (default: none).",
+    )
+    profile_names = sorted(set(ILLUMINA_PROFILES) | set(NANOPORE_PROFILES))
+    parser.add_argument(
+        "--profile",
+        choices=profile_names,
+        default=None,
+        help="Named sequencing profile to use with built-in simulators.",
     )
     parser.add_argument(
         "--d2sim-options",

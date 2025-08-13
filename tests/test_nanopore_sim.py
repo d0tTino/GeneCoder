@@ -271,8 +271,13 @@ def test_register_returns_channels():
 def test_simulate_reads_wrapper_deprecated(monkeypatch):
     called = []
 
-    def fake_sim(seq: str, sim: str, error_rate: float = 0.05) -> str:
-        called.append((seq, sim, error_rate))
+    def fake_sim(
+        seq: str,
+        sim: str,
+        error_rate: float = 0.05,
+        profile: str | None = None,
+    ) -> str:
+        called.append((seq, sim, error_rate, profile))
         return "wrapped"
 
     monkeypatch.setattr(
@@ -281,10 +286,12 @@ def test_simulate_reads_wrapper_deprecated(monkeypatch):
     )
 
     with pytest.deprecated_call():
-        result = nanopore_sim.simulate_reads("ACGT", "none", error_rate=0.2)
+        result = nanopore_sim.simulate_reads(
+            "ACGT", "none", error_rate=0.2, profile="r9"
+        )
 
     assert result == "wrapped"
-    assert called == [("ACGT", "none", 0.2)]
+    assert called == [("ACGT", "none", 0.2, "r9")]
 
 from genecoder.simulators.nanopore import NanoporeDNArSimChannel
 
