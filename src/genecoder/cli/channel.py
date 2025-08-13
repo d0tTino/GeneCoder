@@ -492,16 +492,7 @@ def run_channel(args: argparse.Namespace) -> None:
                 new_params.setdefault("quality_profile", opts.quality_profile)
         if name == "illumina":
             if opts.illumina_profile:
-                prof = ILLUMINA_PROFILES.get(opts.illumina_profile)
-                if prof is None:
-                    logger.error("Unknown Illumina profile: %s", opts.illumina_profile)
-                    raise SystemExit(1)
-                for k, v in prof.items():
-                    new_params.setdefault(k, v)
-            if opts.illumina_profile_file:
-                file_params = _load_profile_file(opts.illumina_profile_file)
-                for k, v in file_params.items():
-                    new_params.setdefault(k, v)
+                new_params.setdefault("profile", opts.illumina_profile)
             if opts.illumina_depth is not None:
                 new_params["coverage"] = opts.illumina_depth
             if opts.illumina_quality is not None:
@@ -587,15 +578,7 @@ def _handle_run(args: argparse.Namespace) -> None:
             cfg.nanopore_profile = preset
 
     if args.illumina_profile is not None:
-        path = Path(args.illumina_profile)
-        if path.is_file():
-            prof = _load_profile_file(str(path))
-            for name, params in simulators:
-                if name == "illumina":
-                    for k, v in prof.items():
-                        params.setdefault(k, v)
-        else:
-            cfg.illumina_profile = args.illumina_profile
+        cfg.illumina_profile = args.illumina_profile
     if args.nanopore_profile is not None:
         cfg.nanopore_profile = args.nanopore_profile
     if args.indel_profile is not None:

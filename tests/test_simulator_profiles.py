@@ -30,7 +30,7 @@ def test_illumina_profile_file(tmp_path: Path) -> None:
     }
     prof = tmp_path / "illumina.yml"
     prof.write_text(yaml.safe_dump(params))
-    ch = IlluminaChannel(profile_path=str(prof))
+    ch = IlluminaChannel(profile=str(prof))
     assert ch.substitution_rate == params["substitution_rate"]
     assert ch.insertion_rate == params["insertion_rate"]
     assert ch.deletion_rate == params["deletion_rate"]
