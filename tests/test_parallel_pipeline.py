@@ -42,7 +42,7 @@ class _DelayChannel(BaseChannel):
 def test_parallel_pipeline_concurrent(tmp_path: Path) -> None:
     pipeline = ChannelPipeline([_DelayChannel(0.1)])
     os.environ["GENECODER_METRICS_PATH"] = str(tmp_path / "m.json")
-    seqs = ["AAAA", "TTTT"]
+    seqs = ["AAAA", "TTTT", "CCCC", "GGGG"]
 
     start = time.perf_counter()
     for s in seqs:
@@ -62,7 +62,7 @@ def test_parallel_pipeline_multi_channel_concurrent(tmp_path: Path) -> None:
     """Ensure multiple sequences run concurrently when parallel=True."""
     pipeline = ChannelPipeline([_DelayChannel(0.1)])
     os.environ["GENECODER_METRICS_PATH"] = str(tmp_path / "m.json")
-    seqs = ["AAAA", "CCCC", "GGGG"]
+    seqs = ["AAAA", "CCCC", "GGGG", "TTTT", "ACAC", "TGTG"]
 
     start = time.perf_counter()
     for s in seqs:

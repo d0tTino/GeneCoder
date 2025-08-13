@@ -42,84 +42,8 @@ __all__ = [
     "DNARSIM_RATE_TABLES",
 ]
 
-# Preset parameter profiles for :class:`NanoporeChannel` loaded from YAML.
-_DEFAULT_NANOPORE_PROFILES: dict[
-    str, dict[str, float | int | Dict[int, float] | Dict[str, Dict[int, float]]]
-] = {
-    "minion": {
-        "error_rate": 0.12,
-        "substitution_rate": 0.02,
-        "insertion_rate": 0.04,
-        "deletion_rate": 0.06,
-    },
-    "promethion": {
-        "error_rate": 0.08,
-        "substitution_rate": 0.015,
-        "insertion_rate": 0.02,
-        "deletion_rate": 0.045,
-    },
-    "r10": {
-        "error_rate": 0.05,
-        "substitution_rate": 0.01,
-        "insertion_rate": 0.02,
-        "deletion_rate": 0.03,
-    },
-}
-
-try:  # pragma: no cover - optional dependency
-    import yaml
-
-    _cfg_dir = Path(__file__).resolve().parents[3] / "configs"
-    with open(_cfg_dir / "nanopore.yml", "r", encoding="utf-8") as _fh:
-        _data = yaml.safe_load(_fh) or {}
-
-    from typing import Any
-
-    def _parse_profile(params: dict[str, Any]) -> dict[str, Any]:
-        parsed: dict[str, Any] = {}
-        for key, value in params.items():
-            if key in {"insertion_profile", "deletion_profile"} and isinstance(value, dict):
-                parsed[key] = {int(k): float(v) for k, v in value.items()}
-            elif key in {"context_insertions", "context_deletions"} and isinstance(value, dict):
-                parsed[key] = {
-                    str(ctx).upper(): {int(r): float(p) for r, p in prof.items()}
-                    for ctx, prof in value.items()
-                    if isinstance(prof, dict)
-                }
-            else:
-                parsed[key] = value
-        return parsed
-
-    if isinstance(_data, dict):
-        NANOPORE_PROFILES: dict[
-            str,
-            dict[str, float | int | Dict[int, float] | Dict[str, Dict[int, float]]],
-        ] = {
-            str(name): _parse_profile(params)
-            for name, params in _data.items()
-            if isinstance(params, dict)
-        }
-    else:  # pragma: no cover - unexpected structure
-        NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
-
-    with open(_cfg_dir / "dnarsim_rates.yaml", "r", encoding="utf-8") as _fh:
-        _rates_data = yaml.safe_load(_fh) or {}
-    if isinstance(_rates_data, dict):
-        DNARSIM_RATE_TABLES: dict[str, dict[str, float]] = {
-            str(name): {
-                "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
-                "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
-                "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
-            }
-            for name, tbl in _rates_data.items()
-            if isinstance(tbl, dict)
-        }
-        NANOPORE_PROFILES.update(DNARSIM_RATE_TABLES)  # type: ignore[arg-type]
-    else:  # pragma: no cover - unexpected structure
-        DNARSIM_RATE_TABLES = {}
-except Exception:  # pragma: no cover - fallback when yaml missing
-    NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
-    DNARSIM_RATE_TABLES = {}
+# ---------------------------------------------------------------------------
+# Validation helpers
 
 
 def _validate_rate(name: str, rate: float | int) -> float:
@@ -156,6 +80,84 @@ def _validate_context_profiles(
             )
         validated[str(ctx).upper()] = _validate_indel_profile(prof, f"{name}[{ctx}]")
     return validated
+
+# ---------------------------------------------------------------------------
+# Preset parameter profiles for :class:`NanoporeChannel` loaded from YAML.
+_DEFAULT_NANOPORE_PROFILES: dict[
+    str, dict[str, float | int | Dict[int, float] | Dict[str, Dict[int, float]]]
+] = {
+    "minion": {
+        "error_rate": 0.12,
+        "substitution_rate": 0.02,
+        "insertion_rate": 0.04,
+        "deletion_rate": 0.06,
+    },
+    "promethion": {
+        "error_rate": 0.08,
+        "substitution_rate": 0.015,
+        "insertion_rate": 0.02,
+        "deletion_rate": 0.045,
+    },
+    "r10": {
+        "error_rate": 0.05,
+        "substitution_rate": 0.01,
+        "insertion_rate": 0.02,
+        "deletion_rate": 0.03,
+    },
+}
+
+try:  # pragma: no cover - optional dependency
+    import yaml
+
+    _cfg_dir = Path(__file__).resolve().parents[3] / "configs"
+    with open(_cfg_dir / "nanopore.yml", "r", encoding="utf-8") as _fh:
+        _data = yaml.safe_load(_fh) or {}
+
+    from typing import Any
+
+    def _parse_profile(params: dict[str, Any]) -> dict[str, Any]:
+        parsed: dict[str, Any] = {}
+        for key, value in params.items():
+            if key in {"insertion_profile", "deletion_profile"}:
+                prof = value if isinstance(value, Mapping) else None
+                parsed[key] = _validate_indel_profile(prof, key)
+            elif key in {"context_insertions", "context_deletions"}:
+                prof = value if isinstance(value, Mapping) else None
+                parsed[key] = _validate_context_profiles(prof, key)
+            else:
+                parsed[key] = value
+        return parsed
+
+    if isinstance(_data, dict):
+        NANOPORE_PROFILES: dict[
+            str,
+            dict[str, float | int | Dict[int, float] | Dict[str, Dict[int, float]]],
+        ] = {
+            str(name): _parse_profile(params)
+            for name, params in _data.items()
+            if isinstance(params, dict)
+        }
+    else:  # pragma: no cover - unexpected structure
+        NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
+
+    with open(_cfg_dir / "dnarsim_rates.yaml", "r", encoding="utf-8") as _fh:
+        _rates_data = yaml.safe_load(_fh) or {}
+    if isinstance(_rates_data, dict):
+        DNARSIM_RATE_TABLES: dict[str, dict[str, float]] = {
+            str(name): {
+                "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
+                "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
+                "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
+            }
+            for name, tbl in _rates_data.items()
+            if isinstance(tbl, dict)
+        }
+        NANOPORE_PROFILES.update(DNARSIM_RATE_TABLES)  # type: ignore[arg-type]
+    else:  # pragma: no cover - unexpected structure
+        DNARSIM_RATE_TABLES = {}
+except Exception:  # pragma: no cover - fallback when yaml missing
+    NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
+    DNARSIM_RATE_TABLES = {}
 
 
 @njit(cache=True, forceobj=True)  # type: ignore[misc]
