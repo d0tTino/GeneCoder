@@ -1,4 +1,5 @@
 import pytest
+import json
 import yaml
 from pathlib import Path
 
@@ -18,6 +19,21 @@ def test_valid_profile_file(tmp_path: Path) -> None:
     ch = IlluminaChannel(profile_path=str(prof))
     assert ch.read_length == 100
     assert ch.coverage == 2
+
+
+def test_valid_profile_file_json(tmp_path: Path) -> None:
+    params = {
+        "substitution_rate": 0.01,
+        "insertion_rate": 0.02,
+        "deletion_rate": 0.03,
+        "read_length": 120,
+        "coverage": 3,
+    }
+    prof = tmp_path / "good.json"
+    prof.write_text(json.dumps(params))
+    ch = IlluminaChannel(profile_path=str(prof))
+    assert ch.read_length == 120
+    assert ch.coverage == 3
 
 
 @pytest.mark.parametrize(

@@ -117,6 +117,29 @@ def _validate_profile(data: Mapping[str, Any]) -> IlluminaProfile:
     )
 
 
+# Load profile parameters from a JSON or YAML file
+def _load_profile_file(path: str | Path) -> Mapping[str, Any]:
+    """Return profile parameters loaded from ``path``.
+
+    The file may be JSON or YAML and must map keys to values.
+    """
+    text = Path(path).read_text(encoding="utf-8")
+    try:
+        data: Any = json.loads(text)
+    except json.JSONDecodeError:
+        try:  # Optional at runtime
+            import yaml
+        except Exception:  # pragma: no cover - optional dependency
+            from genecoder.plugin_manager import yaml as yaml_module
+            if yaml_module is None:
+                raise
+            yaml = yaml_module
+        data = yaml.safe_load(text) or {}
+    if not isinstance(data, Mapping):
+        raise ValueError("Profile file must map keys to values")
+    return data
+
+
 # Preset parameter profiles for :class:`IlluminaChannel`.
 ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
     "miseq": {
@@ -212,18 +235,7 @@ class IlluminaChannel(BaseSimulator):
                 read_length = int(params.get("read_length", read_length))
                 coverage = int(params.get("coverage", coverage))
         if profile_path is not None:
-            try:
-                import yaml
-            except Exception:  # pragma: no cover - optional dependency
-                from genecoder.plugin_manager import yaml as yaml_module
-                if yaml_module is None:
-                    raise
-                yaml = yaml_module
-
-            with open(profile_path, "r", encoding="utf-8") as fh:
-                data = yaml.safe_load(fh) or {}
-            if not isinstance(data, dict):
-                raise ValueError("Profile file must map keys to values")
+            data = _load_profile_file(profile_path) or {}
             profile = _validate_profile(data)
             substitution_rate = profile.substitution_rate
             insertion_rate = profile.insertion_rate
