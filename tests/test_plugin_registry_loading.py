@@ -1,5 +1,6 @@
 import base64
 from pathlib import Path
+import logging
 
 import pytest
 
@@ -117,3 +118,54 @@ def test_registry_entry_missing_signature_checksum(
 
     with pytest.raises(ValueError):
         plugins.install_registry_plugins("https://example.com/plugins.yaml")
+
+
+def test_load_plugins_with_base64_checksum(monkeypatch: pytest.MonkeyPatch) -> None:
+    pkg = b"PKG"
+    hex_digest = plugins.compute_checksum(pkg)
+    checksum_b64 = base64.b64encode(bytes.fromhex(hex_digest)).decode()
+
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum_b64}\n"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkg.whl":
+            return DummyResponse(pkg)
+        raise AssertionError(url)
+
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+    monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
+
+    plugins.install_registry_plugins("https://example.com/plugins.yaml")
+
+
+def test_registry_base64_checksum_mismatch(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    pkg = b"PKG"
+    wrong_checksum = base64.b64encode(b"WRONG").decode()
+
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                f"  - spec: https://example.com/pkg.whl\n    checksum: {wrong_checksum}\n"
+            ).encode()
+            return DummyResponse(data)
+        elif url == "https://example.com/pkg.whl":
+            return DummyResponse(pkg)
+        raise AssertionError(url)
+
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+
+    with pytest.raises(ValueError, match="Checksum mismatch"):
+        with caplog.at_level(logging.ERROR):
+            plugins.install_registry_plugins("https://example.com/plugins.yaml")
+    assert "Checksum mismatch for plugin https://example.com/pkg.whl" in caplog.text
