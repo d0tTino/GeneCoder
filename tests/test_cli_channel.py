@@ -1,6 +1,6 @@
-import json
 import os
 import argparse
+import json
 from pathlib import Path
 
 import pytest
@@ -97,6 +97,130 @@ def test_cli_illumina_rates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     )
     assert result.returncode == 0, result.stderr
     assert called == [(0.2, 0.3, 0.1)]
+
+
+def test_cli_illumina_profile_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    input_fasta = tmp_path / "in_profile_path.fasta"
+    create_fasta(input_fasta)
+    output_fasta = tmp_path / "out_profile_path.fasta"
+    profile = tmp_path / "illumina.json"
+    params = {
+        "substitution_rate": 0.11,
+        "insertion_rate": 0.02,
+        "deletion_rate": 0.03,
+        "read_length": 110,
+        "coverage": 2,
+    }
+    profile.write_text(json.dumps(params))
+    called: list[tuple[float, float, float, int, int]] = []
+
+    from genecoder.simulators.illumina import IlluminaChannel
+
+    def fake_simulate(self: IlluminaChannel, seq: str) -> str:
+        called.append(
+            (
+                self.substitution_rate,
+                self.insertion_rate,
+                self.deletion_rate,
+                self.read_length,
+                self.coverage,
+            )
+        )
+        return seq
+
+    monkeypatch.setattr(IlluminaChannel, "simulate", fake_simulate)
+
+    env = os.environ.copy()
+    from pathlib import Path as _Path
+    src_path = _Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    result = run_cli_command(
+        [
+            "channel",
+            "apply",
+            "--input-file",
+            str(input_fasta),
+            "--output-file",
+            str(output_fasta),
+            "--simulator",
+            "illumina",
+            "--illumina-profile",
+            str(profile),
+            "--min-length",
+            "1",
+        ],
+        env=env,
+    )
+    assert result.returncode == 0, result.stderr
+    assert called == [
+        (
+            params["substitution_rate"],
+            params["insertion_rate"],
+            params["deletion_rate"],
+            params["read_length"],
+            params["coverage"],
+        )
+    ]
+
+
+def test_cli_illumina_profile_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    input_fasta = tmp_path / "in_profile_name.fasta"
+    create_fasta(input_fasta)
+    output_fasta = tmp_path / "out_profile_name.fasta"
+    called: list[tuple[float, float, float, int, int]] = []
+
+    from genecoder.simulators.illumina import IlluminaChannel, ILLUMINA_PROFILES
+
+    def fake_simulate(self: IlluminaChannel, seq: str) -> str:
+        called.append(
+            (
+                self.substitution_rate,
+                self.insertion_rate,
+                self.deletion_rate,
+                self.read_length,
+                self.coverage,
+            )
+        )
+        return seq
+
+    monkeypatch.setattr(IlluminaChannel, "simulate", fake_simulate)
+
+    env = os.environ.copy()
+    from pathlib import Path as _Path
+    src_path = _Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    result = run_cli_command(
+        [
+            "channel",
+            "apply",
+            "--input-file",
+            str(input_fasta),
+            "--output-file",
+            str(output_fasta),
+            "--simulator",
+            "illumina",
+            "--illumina-profile",
+            "miseq",
+            "--min-length",
+            "1",
+        ],
+        env=env,
+    )
+    assert result.returncode == 0, result.stderr
+    params = ILLUMINA_PROFILES["miseq"]
+    assert called == [
+        (
+            params["substitution_rate"],
+            params["insertion_rate"],
+            params["deletion_rate"],
+            params["read_length"],
+            params["coverage"],
+        )
+    ]
 
 
 def test_cli_nanopore_rates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

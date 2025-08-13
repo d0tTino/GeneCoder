@@ -115,24 +115,25 @@ def _load_config(
 
 
 def _load_profile_file(path: str) -> Dict[str, Any]:
-    """Return parameters from YAML ``path``."""
+    """Return parameters from JSON or YAML ``path``."""
+    text = Path(path).read_text(encoding="utf-8")
     try:
-        import yaml
-    except Exception:  # pragma: no cover - optional dependency
-        from genecoder.plugin_manager import yaml as yaml_module
-        if yaml_module is None:
-            raise
-        yaml = yaml_module
-
-    with open(path, "r", encoding="utf-8") as fh:
+        data: Any = json.loads(text)
+    except json.JSONDecodeError:
+        try:  # Optional at runtime
+            import yaml
+        except Exception:  # pragma: no cover - optional dependency
+            from genecoder.plugin_manager import yaml as yaml_module
+            if yaml_module is None:
+                raise
+            yaml = yaml_module
         try:
-            data = yaml.safe_load(fh) or {}
+            data = yaml.safe_load(text)
         except Exception as exc:  # pragma: no cover - invalid YAML path
-            raise ValueError(f"Invalid YAML in {path}: {exc}") from exc
-
+            raise ValueError(f"Invalid profile in {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ValueError("Profile file must map keys to values")
-    return data
+    return data or {}
 
 
 def _apply_simulators(
@@ -307,13 +308,10 @@ def register_subcommand(
         "--illumina-profile",
         type=str,
         default=None,
-        help=f"Named Illumina profile to use. Available profiles: {illumina_profiles}",
-    )
-    run_parser.add_argument(
-        "--illumina-profile-file",
-        type=str,
-        default=None,
-        help="YAML file with Illumina simulator parameters",
+        help=(
+            "Named Illumina profile or path to JSON/YAML file. "
+            f"Available profiles: {illumina_profiles}"
+        ),
     )
     run_parser.add_argument(
         "--nanopore-profile",
@@ -406,8 +404,12 @@ def register_subcommand(
         target.add_argument("--illumina-sub-rate", type=float, default=None, help="Substitution rate for Illumina reads")
         target.add_argument("--illumina-ins-rate", type=float, default=None, help="Insertion rate for Illumina reads")
         target.add_argument("--illumina-del-rate", type=float, default=None, help="Deletion rate for Illumina reads")
-        target.add_argument("--illumina-profile", type=str, default=None, help="Named Illumina profile to use")
-        target.add_argument("--illumina-profile-file", type=str, default=None, help="YAML file with Illumina simulator parameters")
+        target.add_argument(
+            "--illumina-profile",
+            type=str,
+            default=None,
+            help="Named Illumina profile or path to JSON/YAML file",
+        )
         target.add_argument("--nanopore-depth", type=int, default=None, help="Coverage depth for Nanopore reads")
         target.add_argument("--nanopore-quality", type=str, default=None, help="Comma-separated quality profile or path to JSON")
         target.add_argument("--nanopore-context", type=str, default=None, help="Path to JSON/YAML context error map")
@@ -585,7 +587,15 @@ def _handle_run(args: argparse.Namespace) -> None:
             cfg.nanopore_profile = preset
 
     if args.illumina_profile is not None:
-        cfg.illumina_profile = args.illumina_profile
+        path = Path(args.illumina_profile)
+        if path.is_file():
+            prof = _load_profile_file(str(path))
+            for name, params in simulators:
+                if name == "illumina":
+                    for k, v in prof.items():
+                        params.setdefault(k, v)
+        else:
+            cfg.illumina_profile = args.illumina_profile
     if args.nanopore_profile is not None:
         cfg.nanopore_profile = args.nanopore_profile
     if args.indel_profile is not None:
@@ -595,12 +605,6 @@ def _handle_run(args: argparse.Namespace) -> None:
         for name, params in simulators:
             if name == "indel":
                 params.setdefault("profile", args.indel_profile)
-    if args.illumina_profile_file is not None:
-        prof = _load_profile_file(args.illumina_profile_file)
-        for name, params in simulators:
-            if name == "illumina":
-                for k, v in prof.items():
-                    params.setdefault(k, v)
     if args.nanopore_profile_file is not None:
         prof = _load_profile_file(args.nanopore_profile_file)
         for name, params in simulators:

@@ -188,6 +188,13 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         raise ValueError("Cannot specify both --threads and --processes")
     if args.batch_workers is not None and args.batch_workers <= 0:
         raise ValueError("batch_workers must be greater than 0")
+    illumina_profile = args.illumina_profile
+    illumina_profile_file = None
+    if illumina_profile is not None:
+        from pathlib import Path
+        if Path(illumina_profile).is_file():
+            illumina_profile_file = illumina_profile
+            illumina_profile = None
 
     return ChannelOptions(
         simulators=simulators,
@@ -216,10 +223,10 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         nanopore_ins_rate=args.nanopore_ins_rate,
         nanopore_del_rate=args.nanopore_del_rate,
         profile=getattr(args, "profile", None),
-        illumina_profile=args.illumina_profile,
+        illumina_profile=illumina_profile,
         nanopore_profile=args.nanopore_profile,
         indel_profile=getattr(args, "indel_profile", None),
-        illumina_profile_file=args.illumina_profile_file,
+        illumina_profile_file=illumina_profile_file,
         nanopore_profile_file=args.nanopore_profile_file,
         sub_rate=args.sub_rate,
         ins_rate=args.ins_rate,
