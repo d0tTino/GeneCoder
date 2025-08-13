@@ -1,13 +1,28 @@
 from __future__ import annotations
 
-"""Streamlit dashboard for simulation metrics."""
+"""Streamlit dashboard for simulation metrics.
+
+This module can render one or more metrics files. When multiple files are
+provided, GC distributions are overlaid and ECC success rates are shown
+side-by-side for easier comparison between datasets.
+"""
 
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import IO, Any, Iterable
 
-import streamlit as st
+try:  # pragma: no cover - optional dependency for tests
+    import streamlit as st
+except Exception:  # pragma: no cover - gracefully degrade if missing
+    st = None  # type: ignore[assignment]
+
+try:  # pragma: no cover - optional plotting dependencies
+    import pandas as pd
+    import altair as alt
+except Exception:  # pragma: no cover
+    pd = None  # type: ignore[assignment]
+    alt = None  # type: ignore[assignment]
 
 
 _DEF_METRICS: dict[str, Any] = {
@@ -49,110 +64,197 @@ def _calc_decode_success(data: dict[str, Any]) -> float | None:
     return None
 
 
-def _load_metrics(path: str) -> dict[str, Any]:
+def _load_metrics(src: str | Path | IO[str]) -> dict[str, Any]:
+    """Load metrics from ``src`` which may be a path or file-like object."""
+
     try:
-        with open(path, "r", encoding="utf-8") as fh:
-            data = json.load(fh)
+        if hasattr(src, "read"):
+            data = json.load(src)
+            name = getattr(src, "name", "uploaded")
+        else:
+            name = str(src)
+            with open(src, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
         if isinstance(data, dict):
             metrics = data.get("metrics")
             if isinstance(metrics, dict):
                 return metrics
             return data
-    except Exception as exc:  # pragma: no cover - I/O errors are surfaced in UI
-        st.error(f"Failed to load {path}: {exc}")
+    except Exception as exc:  # pragma: no cover - surfaced in UI
+        if st:  # pragma: no cover - only used in dashboard
+            st.error(f"Failed to load {name}: {exc}")
+        else:
+            print(f"Failed to load {name}: {exc}")
     return {}
 
 
-def main(results_path: str | None = None) -> None:
-    """Render the dashboard from ``results_path``."""
-    if results_path is None and len(sys.argv) > 1:
-        results_path = sys.argv[1]
+def _iterable(val: Iterable[str] | str | None) -> list[str]:
+    if val is None:
+        return []
+    if isinstance(val, str):
+        return [val]
+    return list(val)
+
+
+def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: no cover - UI logic
+    """Render the dashboard from one or more metrics files."""
+
+    if st is None:  # pragma: no cover - requires streamlit
+        raise RuntimeError("streamlit is required to run the dashboard")
+
+    paths = _iterable(results_paths) or sys.argv[1:]
+
+    datasets: dict[str, dict[str, Any]] = {}
+    for path in paths:
+        data = {**_DEF_METRICS, **_load_metrics(path)}
+        if data:
+            datasets[Path(path).stem] = data
+
+    sidebar = getattr(st, "sidebar", st)
+    file_uploader = getattr(sidebar, "file_uploader", lambda *a, **k: [])
+    uploaded = file_uploader("Add metrics files", type="json", accept_multiple_files=True)
+    for up in uploaded or []:
+        data = {**_DEF_METRICS, **_load_metrics(up)}
+        datasets[Path(up.name).stem] = data
 
     st.title("GeneCoder Dashboard")
-    if not results_path:
-        st.write("No results file provided.")
+    if not datasets:
+        st.write("No results files provided.")
         return
 
-    data = {**_DEF_METRICS, **_load_metrics(results_path)}
+    names = list(datasets.keys())
+    multiselect = getattr(sidebar, "multiselect", lambda *a, **k: names)
+    selected = multiselect("Datasets", names, default=names)
+    if not selected:
+        st.write("No datasets selected.")
+        return
 
     st.header("GC Distribution")
-    if data["gc_distribution"]:
-        st.bar_chart(data["gc_distribution"])
+    if alt and pd and hasattr(st, "altair_chart"):
+        rows: list[dict[str, Any]] = []
+        for name in selected:
+            dist = datasets[name].get("gc_distribution")
+            if isinstance(dist, list) and dist:
+                for i, val in enumerate(dist):
+                    rows.append({"Bin": i, "Count": val, "Dataset": name})
+        if rows:
+            df = pd.DataFrame(rows)
+            chart = (
+                alt.Chart(df)
+                .mark_bar(opacity=0.5)
+                .encode(x="Bin:Q", y="Count:Q", color="Dataset:N")
+            )
+            st.altair_chart(chart, use_container_width=True)
+        else:
+            st.write("No GC distribution data.")
     else:
-        st.write("No GC distribution data.")
-
-    gc_content = data.get("gc_content")
-    gc_variance = data.get("gc_variance")
-    if isinstance(gc_content, (int, float)):
-        st.metric("GC Mean", f"{float(gc_content):.2%}")
-    if isinstance(gc_variance, (int, float)):
-        st.metric("GC Variance", f"{float(gc_variance):.4f}")
-
-    max_hp = data.get("max_homopolymer")
-    if isinstance(max_hp, (int, float)):
-        st.metric("Max Homopolymer Length", f"{int(max_hp)}")
-
-    st.header("Homopolymer Runs")
-    if data["homopolymer_runs"]:
-        st.bar_chart(data["homopolymer_runs"])
-    else:
-        st.write("No homopolymer data.")
+        if len(selected) == 1 and datasets[selected[0]]["gc_distribution"]:
+            st.bar_chart(datasets[selected[0]]["gc_distribution"])
+        else:
+            st.write("Install pandas and altair for multi-file GC charts.")
 
     st.header("ECC Success Rates")
-    ecc = data["ecc_success_rates"]
-    if isinstance(ecc, dict) and ecc:
-        st.bar_chart({k: float(v) for k, v in ecc.items()})
+    ecc_rows: list[dict[str, Any]] = []
+    for name in selected:
+        ecc = datasets[name].get("ecc_success_rates")
+        if isinstance(ecc, dict) and ecc:
+            for k, v in ecc.items():
+                try:
+                    ecc_rows.append({"ECC": k, "Dataset": name, "Rate": float(v)})
+                except Exception:
+                    pass
+    if ecc_rows:
+        if pd and len({r["Dataset"] for r in ecc_rows}) > 1:
+            df = pd.DataFrame(ecc_rows).pivot(index="ECC", columns="Dataset", values="Rate")
+            st.bar_chart(df)
+        else:
+            chart: dict[str, float] = {}
+            for row in ecc_rows:
+                if row["Dataset"] in selected:
+                    chart[row["ECC"]] = row["Rate"]
+            if chart:
+                st.bar_chart(chart)
+            else:
+                st.write("No ECC success rate data.")
     else:
         st.write("No ECC success rate data.")
 
-    decode_rate = _calc_decode_success(data)
-    if decode_rate is not None:
-        st.metric("Decode Success", f"{decode_rate:.2%}")
-    else:
-        st.write("No decode success metric.")
+    for name in selected:
+        data = datasets[name]
+        section = getattr(st, "subheader", getattr(st, "header", lambda *a, **k: None))
+        section(name)
 
-    st.header("Error Counts")
-    subs = data.get("substitutions")
-    ins = data.get("insertions")
-    dels = data.get("deletions")
-    counts = {}
-    if isinstance(subs, int):
-        counts["Substitutions"] = subs
-    if isinstance(ins, int):
-        counts["Insertions"] = ins
-    if isinstance(dels, int):
-        counts["Deletions"] = dels
-    if counts:
-        st.bar_chart(counts)
-    else:
-        st.write("No error count data.")
+        gc_content = data.get("gc_content")
+        gc_variance = data.get("gc_variance")
+        columns = getattr(st, "columns", lambda n: [st] * n)
+        cols = columns(2)
+        if isinstance(gc_content, (int, float)):
+            cols[0].metric("GC Mean", f"{float(gc_content):.2%}")
+        if isinstance(gc_variance, (int, float)):
+            cols[1].metric("GC Variance", f"{float(gc_variance):.4f}")
 
-    st.header("Read Coverage")
-    cov_dist = data.get("coverage_distribution")
-    if isinstance(cov_dist, list) and cov_dist:
-        st.bar_chart(cov_dist)
-    else:
-        coverage = data.get("coverage")
-        if isinstance(coverage, int):
-            st.bar_chart({"Coverage": coverage})
+        max_hp = data.get("max_homopolymer")
+        if isinstance(max_hp, (int, float)):
+            st.metric("Max Homopolymer Length", f"{int(max_hp)}")
+
+        subheader = getattr(st, "subheader", getattr(st, "header", lambda *a, **k: None))
+        subheader("Homopolymer Runs")
+        if data["homopolymer_runs"]:
+            st.bar_chart(data["homopolymer_runs"])
         else:
-            st.write("No coverage data.")
+            st.write("No homopolymer data.")
 
-    st.header("Constraint Violations")
-    violations = data.get("constraint_violations")
-    if isinstance(violations, int):
-        st.bar_chart({"Violations": violations})
-    else:
-        st.write("No constraint violation data.")
+        decode_rate = _calc_decode_success(data)
+        if decode_rate is not None:
+            st.metric("Decode Success", f"{decode_rate:.2%}")
+        else:
+            st.write("No decode success metric.")
+
+        subheader("Error Counts")
+        subs = data.get("substitutions")
+        ins = data.get("insertions")
+        dels = data.get("deletions")
+        counts: dict[str, int] = {}
+        if isinstance(subs, int):
+            counts["Substitutions"] = subs
+        if isinstance(ins, int):
+            counts["Insertions"] = ins
+        if isinstance(dels, int):
+            counts["Deletions"] = dels
+        if counts:
+            st.bar_chart(counts)
+        else:
+            st.write("No error count data.")
+
+        subheader("Read Coverage")
+        cov_dist = data.get("coverage_distribution")
+        if isinstance(cov_dist, list) and cov_dist:
+            st.bar_chart(cov_dist)
+        else:
+            coverage = data.get("coverage")
+            if isinstance(coverage, int):
+                st.bar_chart({"Coverage": coverage})
+            else:
+                st.write("No coverage data.")
+
+        subheader("Constraint Violations")
+        violations = data.get("constraint_violations")
+        if isinstance(violations, int):
+            st.bar_chart({"Violations": violations})
+        else:
+            st.write("No constraint violation data.")
 
 
-def launch(results_path: str) -> None:
-    """Start the Streamlit server for ``results_path``."""
+def launch(*results_paths: str) -> None:  # pragma: no cover - UI startup
+    """Start the Streamlit server for ``results_paths``."""
+
+    if st is None:  # pragma: no cover - requires streamlit
+        raise RuntimeError("streamlit is required to launch the dashboard")
+
     import streamlit.web.bootstrap as bootstrap
 
-    bootstrap.run(Path(__file__).as_posix(), False, [results_path], {})
+    bootstrap.run(Path(__file__).as_posix(), False, list(results_paths), {})
 
 
 if __name__ == "__main__":  # pragma: no cover - manual invocation
-    path = sys.argv[1] if len(sys.argv) > 1 else ""
-    launch(path)
+    launch(*sys.argv[1:])

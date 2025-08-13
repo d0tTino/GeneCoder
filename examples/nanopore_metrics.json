@@ -1,0 +1,15 @@
+{
+  "gc_distribution": [0.10, 0.20, 0.30, 0.40],
+  "gc_content": 0.35,
+  "gc_variance": 0.0150,
+  "max_homopolymer": 6,
+  "homopolymer_runs": [1, 1, 2, 3],
+  "ecc_success_rates": {
+    "rs": 0.88,
+    "bch": 0.85
+  },
+  "decode_success_rate": 0.82,
+  "substitutions": 3,
+  "insertions": 2,
+  "deletions": 1
+}
