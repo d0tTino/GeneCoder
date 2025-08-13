@@ -46,3 +46,16 @@ genecli dashboard examples/dashboard_metrics.json
 ```
 
 The dashboard visualizes the sample metrics file and plots GC distribution, homopolymer statistics and decode success rates.
+
+## Comparing Illumina and Nanopore Runs
+
+The dashboard accepts multiple metrics files, allowing side-by-side comparison
+of different sequencing technologies. Launch it with two results files to
+overlay GC distributions and group ECC success rates:
+
+```bash
+genecli dashboard examples/illumina_metrics.json examples/nanopore_metrics.json
+```
+
+The combined view highlights differences such as error profiles or GC balance
+between Illumina and Nanopore simulations.
