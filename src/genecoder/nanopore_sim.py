@@ -98,6 +98,8 @@ def _simulate_homopolymer_errors(
     substitution_prob: float = 0.0,
     insertion_prob: float = 0.0,
     deletion_prob: float = 0.0,
+    insertion_profile: Mapping[int, float] | None = None,
+    deletion_profile: Mapping[int, float] | None = None,
     rng: random.Random | None = None,
 ) -> str:
     """Simulate errors with indel rates weighted by homopolymer length."""
@@ -123,8 +125,16 @@ def _simulate_homopolymer_errors(
             j += 1
         run_len = j - i
         factor = run_len / 4.0 if run_len >= 4 else 1.0
-        ins_p = min(1.0, insertion_prob * factor)
-        del_p = min(1.0, deletion_prob * factor)
+        base_ins = insertion_prob * factor
+        base_del = deletion_prob * factor
+        if insertion_profile:
+            ins_p = min(1.0, insertion_profile.get(run_len, base_ins))
+        else:
+            ins_p = min(1.0, base_ins)
+        if deletion_profile:
+            del_p = min(1.0, deletion_profile.get(run_len, base_del))
+        else:
+            del_p = min(1.0, base_del)
         run_seq = sequence[i:j]
         try:
             mutated.append(
@@ -182,17 +192,13 @@ def _simulate_adapter(
     if rng is None:
         rng = make_rng()
     if rate_table:
-        has_profiles = any(
+        insertion_prof = rate_table.get("insertion_profile")
+        deletion_prof = rate_table.get("deletion_profile")
+        has_context_profiles = any(
             key in rate_table
-            for key in (
-                "context_errors",
-                "insertion_profile",
-                "deletion_profile",
-                "context_insertions",
-                "context_deletions",
-            )
+            for key in ("context_errors", "context_insertions", "context_deletions")
         )
-        if has_profiles:
+        if has_context_profiles:
             from .simulators.nanopore import NanoporeChannel, _mutate_read
 
             channel = NanoporeChannel(
@@ -200,8 +206,8 @@ def _simulate_adapter(
                 insertion_rate=float(rate_table.get("insertion_rate", 0.0)),
                 deletion_rate=float(rate_table.get("deletion_rate", 0.0)),
                 context_errors=rate_table.get("context_errors"),
-                insertion_profile=rate_table.get("insertion_profile"),
-                deletion_profile=rate_table.get("deletion_profile"),
+                insertion_profile=insertion_prof,
+                deletion_profile=deletion_prof,
                 context_insertions=rate_table.get("context_insertions"),
                 context_deletions=rate_table.get("context_deletions"),
             )
@@ -211,6 +217,8 @@ def _simulate_adapter(
             float(rate_table.get("substitution_rate", 0.0)),
             float(rate_table.get("insertion_rate", 0.0)),
             float(rate_table.get("deletion_rate", 0.0)),
+            insertion_prof,
+            deletion_prof,
             rng,
         )
     try:

@@ -434,3 +434,57 @@ def test_dnarsim_homopolymer_insertion_profile(monkeypatch):
         if len(mutated) > len(seq):
             ins_prof += 1
     assert ins_prof > ins_base
+
+
+def test_dnarsim_context_insertion_profile(monkeypatch):
+    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda _: None)
+    seq = "AAT"
+    runs = 200
+    seed = 3
+    orig_ctx = nanopore_sim.DNARSIM_RATE_TABLES["r9"].get("context_insertions")
+    rng1 = random.Random(seed)
+    monkeypatch.setitem(
+        nanopore_sim.DNARSIM_RATE_TABLES["r9"], "context_insertions", {}
+    )
+    ins_base = 0
+    for _ in range(runs):
+        mutated = nanopore_sim.simulate_dnarsim(seq, rng=rng1, profile="r9")
+        if len(mutated) > len(seq):
+            ins_base += 1
+    monkeypatch.setitem(
+        nanopore_sim.DNARSIM_RATE_TABLES["r9"], "context_insertions", orig_ctx
+    )
+    rng2 = random.Random(seed)
+    ins_ctx = 0
+    for _ in range(runs):
+        mutated = nanopore_sim.simulate_dnarsim(seq, rng=rng2, profile="r9")
+        if len(mutated) > len(seq):
+            ins_ctx += 1
+    assert ins_ctx > ins_base
+
+
+def test_dnarsim_context_deletion_profile(monkeypatch):
+    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda _: None)
+    seq = "TTA"
+    runs = 200
+    seed = 4
+    orig_ctx = nanopore_sim.DNARSIM_RATE_TABLES["r9"].get("context_deletions")
+    rng1 = random.Random(seed)
+    monkeypatch.setitem(
+        nanopore_sim.DNARSIM_RATE_TABLES["r9"], "context_deletions", {}
+    )
+    del_base = 0
+    for _ in range(runs):
+        mutated = nanopore_sim.simulate_dnarsim(seq, rng=rng1, profile="r9")
+        if len(mutated) < len(seq):
+            del_base += 1
+    monkeypatch.setitem(
+        nanopore_sim.DNARSIM_RATE_TABLES["r9"], "context_deletions", orig_ctx
+    )
+    rng2 = random.Random(seed)
+    del_ctx = 0
+    for _ in range(runs):
+        mutated = nanopore_sim.simulate_dnarsim(seq, rng=rng2, profile="r9")
+        if len(mutated) < len(seq):
+            del_ctx += 1
+    assert del_ctx > del_base

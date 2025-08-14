@@ -7,6 +7,12 @@ r9:
     AC: 2.0
   insertion_profile:
     5: 0.9
+  context_insertions:
+    AA:
+      2: 0.9
+  context_deletions:
+    TT:
+      2: 0.9
 "r10.3":
   substitution_rate: 0.06
   insertion_rate: 0.02
