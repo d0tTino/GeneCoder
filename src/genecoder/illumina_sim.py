@@ -62,7 +62,7 @@ def _consensus(reads: Sequence[str]) -> str:
                 base = r[i]
                 counts[base] = counts.get(base, 0) + 1
         if counts:
-            result.append(max(counts, key=counts.get))
+            result.append(max(counts, key=lambda b: counts.get(b, 0)))
     return "".join(result)
 
 

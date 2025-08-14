@@ -10,19 +10,23 @@ side-by-side for easier comparison between datasets.
 import json
 import sys
 from pathlib import Path
-from typing import IO, Any, Iterable
+from typing import IO, Any, Iterable, Callable, cast
+from types import ModuleType
 
 try:  # pragma: no cover - optional dependency for tests
-    import streamlit as st
+    import streamlit as _st
 except Exception:  # pragma: no cover - gracefully degrade if missing
-    st = None  # type: ignore[assignment]
+    _st = None
+st = cast(ModuleType | None, _st)
 
 try:  # pragma: no cover - optional plotting dependencies
-    import pandas as pd
-    import altair as alt
+    import pandas as _pd
+    import altair as _alt
 except Exception:  # pragma: no cover
-    pd = None  # type: ignore[assignment]
-    alt = None  # type: ignore[assignment]
+    _pd = None
+    _alt = None
+pd = cast(Any, _pd)
+alt = cast(Any, _alt)
 
 
 _DEF_METRICS: dict[str, Any] = {
@@ -111,7 +115,9 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             datasets[Path(path).stem] = data
 
     sidebar = getattr(st, "sidebar", st)
-    file_uploader = getattr(sidebar, "file_uploader", lambda *a, **k: [])
+    file_uploader: Callable[..., Iterable[Any]] = getattr(
+        sidebar, "file_uploader", lambda *a, **k: []
+    )
     uploaded = file_uploader("Add metrics files", type="json", accept_multiple_files=True)
     for up in uploaded or []:
         data = {**_DEF_METRICS, **_load_metrics(up)}
@@ -139,12 +145,12 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                     rows.append({"Bin": i, "Count": val, "Dataset": name})
         if rows:
             df = pd.DataFrame(rows)
-            chart = (
+            gc_chart = (
                 alt.Chart(df)
                 .mark_bar(opacity=0.5)
                 .encode(x="Bin:Q", y="Count:Q", color="Dataset:N")
             )
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(gc_chart, use_container_width=True)
         else:
             st.write("No GC distribution data.")
     else:
@@ -168,12 +174,12 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             df = pd.DataFrame(ecc_rows).pivot(index="ECC", columns="Dataset", values="Rate")
             st.bar_chart(df)
         else:
-            chart: dict[str, float] = {}
+            ecc_chart: dict[str, float] = {}
             for row in ecc_rows:
                 if row["Dataset"] in selected:
-                    chart[row["ECC"]] = row["Rate"]
-            if chart:
-                st.bar_chart(chart)
+                    ecc_chart[row["ECC"]] = row["Rate"]
+            if ecc_chart:
+                st.bar_chart(ecc_chart)
             else:
                 st.write("No ECC success rate data.")
     else:

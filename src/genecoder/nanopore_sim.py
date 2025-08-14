@@ -303,7 +303,7 @@ def simulate_none(
     return sequence
 
 
-SIMULATOR_ADAPTERS: dict[str, Callable[[str, float, random.Random | None], str]] = {
+SIMULATOR_ADAPTERS: dict[str, Callable[..., str]] = {
 
     "d2sim": simulate_d2sim,
     "dnarsim": simulate_dnarsim,

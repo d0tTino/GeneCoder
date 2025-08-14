@@ -32,7 +32,7 @@ from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
-from genecoder.constraint_fixer import fix_sequence
+from genecoder.constraint_fixer import fix
 from .common import run_tasks
 from typing import Callable, cast
 
@@ -301,7 +301,7 @@ def process_single_encode(
             data_for_encoding, options, header_name
         )
 
-        if os.getenv("GENECODER_DISABLE_FIX") not in {"1", "true", "True"}:
+        if getattr(args, "auto_fix", False) and os.getenv("GENECODER_DISABLE_FIX") not in {"1", "true", "True"}:
             if getattr(args, "fix_chisel", False) and "dnachisel_fixer" in CODEC_REGISTRY:
                 from genecoder.dnachisel_fixer import fix_sequence_dnachisel
 
@@ -312,10 +312,10 @@ def process_single_encode(
                     max_homopolymer=args.max_homopolymer,
                 )
             else:
-                final_encoded_dna_sequence = fix_sequence(
+                final_encoded_dna_sequence = fix(
                     final_encoded_dna_sequence,
-                    target_gc_min=args.gc_min,
-                    target_gc_max=args.gc_max,
+                    gc_min=args.gc_min,
+                    gc_max=args.gc_max,
                     max_homopolymer=args.max_homopolymer,
                 )
 
@@ -569,6 +569,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--mirror",
         action="store_true",
         help="Also output the reverse-complement sequence and launch the visualizer.",
+    )
+    parser.add_argument(
+        "--auto-fix",
+        action="store_true",
+        help="Automatically fix GC and homopolymer constraints before synthesis.",
     )
     parser.add_argument(
         "--fix-chisel",
