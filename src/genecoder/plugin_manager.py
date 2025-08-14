@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Any, Iterable, TypeVar
+from typing import Callable, Dict, Any, Iterable, cast
 from types import ModuleType
 
 import os
@@ -66,8 +66,6 @@ def _validate_spec(spec: str) -> None:
 
 from .api import Codec, FEC, Simulator
 
-T = TypeVar("T")
-
 
 def _check_signature(
     impl: Callable[..., Any], base: Callable[..., Any], *, kind: str, method: str
@@ -103,14 +101,13 @@ def _check_signature(
 
 
 def _coerce_plugin(
-    obj: T | type[T], expected: type[T], methods: Iterable[str], kind: str
-) -> T:
+    obj: object, expected: type[object], methods: Iterable[str], kind: str
+) -> object:
     """Return ``obj`` as an instance of ``expected`` ensuring required methods."""
-
     if isinstance(obj, type):
         if not issubclass(obj, expected):
             raise TypeError(f"{kind} must subclass {expected.__name__}")
-        instance: T = obj()
+        instance: object = obj()
     else:
         if not isinstance(obj, expected):
             raise TypeError(f"{kind} must subclass {expected.__name__}")
@@ -127,28 +124,28 @@ def _coerce_plugin(
 def register_codec(name: str, codec: Codec | type[Codec]) -> None:
     """Register a codec implementation under ``name``."""
 
-    inst = _coerce_plugin(codec, Codec, ("encode", "decode"), "codec")
+    inst = cast(Any, _coerce_plugin(codec, Codec, ("encode", "decode"), "codec"))
     CODEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
 
 
 def register_fec(name: str, fec: FEC | type[FEC]) -> None:
     """Register a FEC backend under ``name``."""
 
-    inst = _coerce_plugin(fec, FEC, ("encode", "decode"), "FEC")
+    inst = cast(Any, _coerce_plugin(fec, FEC, ("encode", "decode"), "FEC"))
     FEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
 
 
 def register_simulator(name: str, channel: Simulator | type[Simulator]) -> None:
     """Register a read simulator under ``name``."""
 
-    inst = _coerce_plugin(channel, Simulator, ("simulate",), "simulator")
+    inst = cast(Any, _coerce_plugin(channel, Simulator, ("simulate",), "simulator"))
     _register_simulator(name, inst)
 
 
 def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer]) -> None:
     """Register a visualizer under ``name``."""
 
-    inst = _coerce_plugin(visualizer, Visualizer, ("visualize",), "visualizer")
+    inst = cast(Any, _coerce_plugin(visualizer, Visualizer, ("visualize",), "visualizer"))
     VISUALIZER_REGISTRY[name] = inst.visualize
 
 

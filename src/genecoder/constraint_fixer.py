@@ -6,7 +6,12 @@ import random
 
 from .random_utils import make_rng
 
-__all__ = ["adjust_gc_balance", "limit_homopolymers", "fix_sequence"]
+__all__ = [
+    "adjust_gc_balance",
+    "limit_homopolymers",
+    "fix_sequence",
+    "fix",
+]
 
 
 def adjust_gc_balance(
@@ -107,3 +112,26 @@ def fix_sequence(
     # bounds.
     seq = adjust_gc_balance(seq, target_gc_min, target_gc_max, rng=rng)
     return seq
+
+
+def fix(
+    sequence: str,
+    *,
+    gc_min: float,
+    gc_max: float,
+    max_homopolymer: int,
+    rng: random.Random | None = None,
+) -> str:
+    """Return ``sequence`` fixed for GC content and homopolymer limits.
+
+    This convenience wrapper uses shorter parameter names to integrate
+    smoothly with the main encoding pipeline.
+    """
+
+    return fix_sequence(
+        sequence,
+        target_gc_min=gc_min,
+        target_gc_max=gc_max,
+        max_homopolymer=max_homopolymer,
+        rng=rng,
+    )

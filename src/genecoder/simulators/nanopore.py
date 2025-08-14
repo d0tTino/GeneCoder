@@ -1,7 +1,7 @@
 """Wrapper for the optional d2sim nanopore simulator."""
 from __future__ import annotations
 
-from typing import Callable, Sequence, Dict, Iterable, Mapping
+from typing import Any, Callable, Sequence, Dict, Iterable, Mapping, cast
 import random
 import shutil
 import subprocess
@@ -113,8 +113,6 @@ try:  # pragma: no cover - optional dependency
     with open(_cfg_dir / "nanopore.yml", "r", encoding="utf-8") as _fh:
         _data = yaml.safe_load(_fh) or {}
 
-    from typing import Any
-
     def _parse_profile(params: dict[str, Any]) -> dict[str, Any]:
         parsed: dict[str, Any] = {}
         for key, value in params.items():
@@ -129,10 +127,7 @@ try:  # pragma: no cover - optional dependency
         return parsed
 
     if isinstance(_data, dict):
-        NANOPORE_PROFILES: dict[
-            str,
-            dict[str, float | int | Dict[int, float] | Dict[str, Dict[int, float]]],
-        ] = {
+        NANOPORE_PROFILES: dict[str, dict[str, Any]] = {
             str(name): _parse_profile(params)
             for name, params in _data.items()
             if isinstance(params, dict)
@@ -140,7 +135,7 @@ try:  # pragma: no cover - optional dependency
     else:  # pragma: no cover - unexpected structure
         NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
 
-    NANOPORE_PROFILES.update(_DNARSIM_RATE_TABLES)  # type: ignore[arg-type]
+    NANOPORE_PROFILES.update(_DNARSIM_RATE_TABLES)
     DNARSIM_RATE_TABLES = _DNARSIM_RATE_TABLES
 except Exception:  # pragma: no cover - fallback when yaml missing
     NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
@@ -257,26 +252,40 @@ class NanoporeChannel(BaseChannel):
         if profile is not None:
             params = NANOPORE_PROFILES.get(profile.lower())
             if params is not None:
-                error_rate = float(params.get("error_rate", error_rate))
+                error_rate = float(cast(float | int, params.get("error_rate", error_rate)))
                 substitution_rate = float(
-                    params.get("substitution_rate", substitution_rate)
+                    cast(float | int, params.get("substitution_rate", substitution_rate))
                 )
-                insertion_rate = float(params.get("insertion_rate", insertion_rate))
-                deletion_rate = float(params.get("deletion_rate", deletion_rate))
-                coverage = int(params.get("coverage", coverage))
-                quality_profile = params.get("quality_profile", quality_profile)
-                context_errors = params.get("context_errors", context_errors)
-                context_insertions = params.get(
-                    "context_insertions", context_insertions
+                insertion_rate = float(
+                    cast(float | int, params.get("insertion_rate", insertion_rate))
                 )
-                context_deletions = params.get(
-                    "context_deletions", context_deletions
+                deletion_rate = float(
+                    cast(float | int, params.get("deletion_rate", deletion_rate))
                 )
-                insertion_profile = params.get(
-                    "insertion_profile", insertion_profile
+                coverage = int(cast(float | int, params.get("coverage", coverage)))
+                quality_profile = cast(
+                    Sequence[float] | None,
+                    params.get("quality_profile", quality_profile),
                 )
-                deletion_profile = params.get(
-                    "deletion_profile", deletion_profile
+                context_errors = cast(
+                    Dict[str, float] | None,
+                    params.get("context_errors", context_errors),
+                )
+                context_insertions = cast(
+                    Dict[str, Dict[int, float]] | None,
+                    params.get("context_insertions", context_insertions),
+                )
+                context_deletions = cast(
+                    Dict[str, Dict[int, float]] | None,
+                    params.get("context_deletions", context_deletions),
+                )
+                insertion_profile = cast(
+                    Dict[int, float] | None,
+                    params.get("insertion_profile", insertion_profile),
+                )
+                deletion_profile = cast(
+                    Dict[int, float] | None,
+                    params.get("deletion_profile", deletion_profile),
                 )
         if profile_path is not None:
             try:
