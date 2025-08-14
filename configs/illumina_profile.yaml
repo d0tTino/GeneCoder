@@ -4,4 +4,4 @@ simulators:
 pipeline:
   illumina_profile: hiseq
   illumina_depth: 1
-  illumina_quality: null
+  illumina_quality_distribution: null
