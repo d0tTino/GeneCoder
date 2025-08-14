@@ -218,6 +218,14 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
         --output-file channel.fasta --simulator illumina_builtin --sub-rate 0.01
     ```
 
+    Coverage depth and per-base quality probabilities may also be provided:
+
+    ```bash
+    genecli channel --input-file encoded.fasta \
+        --output-file channel.fasta --simulator illumina_builtin \
+        --sub-rate 0.01 --illumina-depth 5 --illumina-quality 0.01,0.02
+    ```
+
    Named sequencing profiles are available:
 
    - **Illumina** – `miseq`, `hiseq`, `novaseq` (alias `nova`)

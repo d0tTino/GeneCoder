@@ -543,8 +543,13 @@ def run_channel(args: argparse.Namespace) -> None:
                 new_params["deletion_prob"] = opts.del_rate
         if name == "simple" and opts.sub_rate is not None:
             new_params["error_rate"] = opts.sub_rate
-        if name == "illumina_builtin" and opts.sub_rate is not None:
-            new_params["error_rate"] = opts.sub_rate
+        if name == "illumina_builtin":
+            if opts.sub_rate is not None:
+                new_params["error_rate"] = opts.sub_rate
+            if opts.illumina_depth is not None:
+                new_params["coverage"] = opts.illumina_depth
+            if opts.illumina_quality is not None:
+                new_params["quality_profile"] = opts.illumina_quality
         updated.append((name, new_params))
     simulators = updated
 
