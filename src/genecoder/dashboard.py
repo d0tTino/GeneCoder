@@ -179,6 +179,48 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     else:
         st.write("No ECC success rate data.")
 
+    st.header("Homopolymer Run Distribution")
+    if alt and pd and hasattr(st, "altair_chart"):
+        hp_rows: list[dict[str, Any]] = []
+        for name in selected:
+            runs = datasets[name].get("homopolymer_runs")
+            if isinstance(runs, list) and runs:
+                for i, val in enumerate(runs, 1):
+                    hp_rows.append({"Run Length": i, "Count": val, "Dataset": name})
+        if hp_rows:
+            df = pd.DataFrame(hp_rows)
+            chart = (
+                alt.Chart(df)
+                .mark_bar(opacity=0.5)
+                .encode(x="Run Length:Q", y="Count:Q", color="Dataset:N")
+            )
+            st.altair_chart(chart, use_container_width=True)
+        else:
+            st.write("No homopolymer run data.")
+    else:
+        if len(selected) == 1 and datasets[selected[0]]["homopolymer_runs"]:
+            st.bar_chart(datasets[selected[0]]["homopolymer_runs"])
+        else:
+            st.write("Install pandas and altair for multi-file homopolymer charts.")
+
+    st.header("Error Rates")
+    for label, key in [
+        ("Substitution Rate", "substitutions"),
+        ("Insertion Rate", "insertions"),
+        ("Deletion Rate", "deletions"),
+    ]:
+        rates: dict[str, float] = {}
+        for name in selected:
+            val = datasets[name].get(key)
+            if isinstance(val, (int, float)):
+                rates[name] = float(val)
+        subheader = getattr(st, "subheader", getattr(st, "header", lambda *a, **k: None))
+        subheader(label)
+        if rates:
+            st.bar_chart(rates)
+        else:
+            st.write(f"No {label.lower()} data.")
+
     for name in selected:
         data = datasets[name]
         section = getattr(st, "subheader", getattr(st, "header", lambda *a, **k: None))
@@ -197,34 +239,12 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         if isinstance(max_hp, (int, float)):
             st.metric("Max Homopolymer Length", f"{int(max_hp)}")
 
-        subheader = getattr(st, "subheader", getattr(st, "header", lambda *a, **k: None))
-        subheader("Homopolymer Runs")
-        if data["homopolymer_runs"]:
-            st.bar_chart(data["homopolymer_runs"])
-        else:
-            st.write("No homopolymer data.")
-
         decode_rate = _calc_decode_success(data)
         if decode_rate is not None:
             st.metric("Decode Success", f"{decode_rate:.2%}")
         else:
             st.write("No decode success metric.")
 
-        subheader("Error Counts")
-        subs = data.get("substitutions")
-        ins = data.get("insertions")
-        dels = data.get("deletions")
-        counts: dict[str, int] = {}
-        if isinstance(subs, int):
-            counts["Substitutions"] = subs
-        if isinstance(ins, int):
-            counts["Insertions"] = ins
-        if isinstance(dels, int):
-            counts["Deletions"] = dels
-        if counts:
-            st.bar_chart(counts)
-        else:
-            st.write("No error count data.")
 
         subheader("Read Coverage")
         cov_dist = data.get("coverage_distribution")

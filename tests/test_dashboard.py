@@ -1,5 +1,5 @@
-import json
 import importlib
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -78,21 +78,31 @@ def test_display_ecc_and_decode_metric(
 
     # ECC success rates should be plotted
     assert dummy_streamlit["bar_chart"], "bar_chart not called"
-    ecc_args, _ = dummy_streamlit["bar_chart"][0]
-    assert {"rs": 0.8, "bch": 0.9} == ecc_args[0]
-    assert len(dummy_streamlit["bar_chart"]) >= 2
-    err_args, _ = dummy_streamlit["bar_chart"][1]
-    assert {
-        "Substitutions": 5,
-        "Insertions": 1,
-        "Deletions": 2,
-    } == err_args[0]
+    charts = [args[0] for args, _ in dummy_streamlit["bar_chart"]]
+    assert {"rs": 0.8, "bch": 0.9} in charts
+    assert {"metrics": 5.0} in charts
+    assert {"metrics": 1.0} in charts
+    assert {"metrics": 2.0} in charts
 
     # Decode success metric averages ECC rates
     assert dummy_streamlit["metric"], "metric not called"
     label, value = dummy_streamlit["metric"][0][0][:2]
     assert label == "Decode Success"
     assert value == "85.00%"
+
+
+def test_homopolymer_distribution_chart(
+    tmp_path: Path, dummy_streamlit: dict[str, list]
+) -> None:
+    data = {"homopolymer_runs": [1, 2, 1]}
+    path = tmp_path / "metrics.json"
+    path.write_text(json.dumps(data))
+
+    mod = importlib.reload(importlib.import_module("genecoder.dashboard"))
+    mod.main(str(path))
+
+    charts = [args[0] for args, _ in dummy_streamlit["bar_chart"]]
+    assert [1, 2, 1] in charts
 
 
 def test_display_coverage_and_constraint_metrics(
