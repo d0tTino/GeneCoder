@@ -3,3 +3,5 @@ simulators:
     read_length: 150
 pipeline:
   illumina_profile: hiseq
+  illumina_depth: 1
+  illumina_quality: null
