@@ -3,6 +3,10 @@ r9:
   substitution_rate: 0.09
   insertion_rate: 0.03
   deletion_rate: 0.04
+  context_errors:
+    AC: 2.0
+  insertion_profile:
+    5: 0.9
 "r10.3":
   substitution_rate: 0.06
   insertion_rate: 0.02

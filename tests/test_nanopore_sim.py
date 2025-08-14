@@ -372,3 +372,65 @@ def test_dnarsim_rate_table_distribution(monkeypatch):
     assert abs(sub_rate - rates["substitution_rate"]) < 0.02
     assert abs(ins_rate - rates["insertion_rate"]) < 0.02
     assert abs(del_rate - rates["deletion_rate"]) < 0.02
+
+
+def test_dnarsim_context_errors(monkeypatch):
+    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda _: None)
+    seq = "ACACACAC"
+    runs = 200
+    seed = 1
+    orig_ctx = nanopore_sim.DNARSIM_RATE_TABLES["r9"].get("context_errors")
+    rng1 = random.Random(seed)
+    monkeypatch.setitem(
+        nanopore_sim.DNARSIM_RATE_TABLES["r9"], "context_errors", {}
+    )
+    base = 0
+    for _ in range(runs):
+        mutated = nanopore_sim.simulate_dnarsim(
+            seq, rng=rng1, profile="r9"
+        )
+        base += sum(a != b for a, b in zip(mutated, seq))
+    monkeypatch.setitem(
+        nanopore_sim.DNARSIM_RATE_TABLES["r9"], "context_errors", orig_ctx
+    )
+    rng2 = random.Random(seed)
+    ctx = 0
+    for _ in range(runs):
+        mutated = nanopore_sim.simulate_dnarsim(
+            seq, rng=rng2, profile="r9"
+        )
+        ctx += sum(a != b for a, b in zip(mutated, seq))
+    assert ctx > base
+
+
+def test_dnarsim_homopolymer_insertion_profile(monkeypatch):
+    monkeypatch.setattr(nanopore_sim.shutil, "which", lambda _: None)
+    seq = "AAAAA"
+    runs = 200
+    seed = 2
+    orig_prof = nanopore_sim.DNARSIM_RATE_TABLES["r9"].get(
+        "insertion_profile"
+    )
+    rng1 = random.Random(seed)
+    monkeypatch.setitem(
+        nanopore_sim.DNARSIM_RATE_TABLES["r9"], "insertion_profile", {}
+    )
+    ins_base = 0
+    for _ in range(runs):
+        mutated = nanopore_sim.simulate_dnarsim(
+            seq, rng=rng1, profile="r9"
+        )
+        if len(mutated) > len(seq):
+            ins_base += 1
+    monkeypatch.setitem(
+        nanopore_sim.DNARSIM_RATE_TABLES["r9"], "insertion_profile", orig_prof
+    )
+    rng2 = random.Random(seed)
+    ins_prof = 0
+    for _ in range(runs):
+        mutated = nanopore_sim.simulate_dnarsim(
+            seq, rng=rng2, profile="r9"
+        )
+        if len(mutated) > len(seq):
+            ins_prof += 1
+    assert ins_prof > ins_base

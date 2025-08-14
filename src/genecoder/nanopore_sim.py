@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import logging
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Mapping, Any
 
 from .simulator_utils import _parse_env_options, _run_external
 
@@ -35,15 +35,57 @@ try:  # pragma: no cover - optional dependency
     _rates_path = Path(__file__).resolve().parents[2] / "configs" / "dnarsim_rates.yaml"
     with open(_rates_path, "r", encoding="utf-8") as _fh:
         _rates_data = yaml.safe_load(_fh) or {}
-    if isinstance(_rates_data, dict):
-        DNARSIM_RATE_TABLES: dict[str, dict[str, float]] = {
-            str(name): {
-                "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
-                "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
-                "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
+    def _parse_indel_profile(profile: Mapping[Any, Any] | None) -> dict[int, float]:
+        if not isinstance(profile, Mapping):
+            return {}
+        return {int(k): float(v) for k, v in profile.items()}
+
+    def _parse_context_profiles(
+        profiles: Mapping[Any, Any] | None,
+    ) -> dict[str, dict[int, float]]:
+        result: dict[str, dict[int, float]] = {}
+        if not isinstance(profiles, Mapping):
+            return result
+        for ctx, prof in profiles.items():
+            if isinstance(prof, Mapping):
+                result[str(ctx).upper()] = _parse_indel_profile(prof)
+        return result
+
+    def _parse_rate_table(tbl: Mapping[str, Any]) -> dict[str, Any]:
+        parsed: dict[str, Any] = {
+            "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
+            "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
+            "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
+        }
+        if "context_errors" in tbl and isinstance(tbl["context_errors"], Mapping):
+            parsed["context_errors"] = {
+                str(k).upper(): float(v)
+                for k, v in tbl["context_errors"].items()
+                if isinstance(v, (int, float))
             }
+        if "insertion_profile" in tbl:
+            parsed["insertion_profile"] = _parse_indel_profile(
+                tbl.get("insertion_profile")
+            )
+        if "deletion_profile" in tbl:
+            parsed["deletion_profile"] = _parse_indel_profile(
+                tbl.get("deletion_profile")
+            )
+        if "context_insertions" in tbl:
+            parsed["context_insertions"] = _parse_context_profiles(
+                tbl.get("context_insertions")
+            )
+        if "context_deletions" in tbl:
+            parsed["context_deletions"] = _parse_context_profiles(
+                tbl.get("context_deletions")
+            )
+        return parsed
+
+    if isinstance(_rates_data, dict):
+        DNARSIM_RATE_TABLES: dict[str, dict[str, Any]] = {
+            str(name): _parse_rate_table(tbl)
             for name, tbl in _rates_data.items()
-            if isinstance(tbl, dict)
+            if isinstance(tbl, Mapping)
         }
     else:  # pragma: no cover - unexpected structure
         DNARSIM_RATE_TABLES = {}
@@ -110,7 +152,7 @@ def _simulate_adapter(
     error_rate: float,
     rng: random.Random | None,
     extra_args: Sequence[str] | None = None,
-    rate_table: dict[str, float] | None = None,
+    rate_table: Mapping[str, Any] | None = None,
 ) -> str:
 
     """Return ``sequence`` processed by an external ``command`` if available."""
@@ -140,11 +182,35 @@ def _simulate_adapter(
     if rng is None:
         rng = make_rng()
     if rate_table:
+        has_profiles = any(
+            key in rate_table
+            for key in (
+                "context_errors",
+                "insertion_profile",
+                "deletion_profile",
+                "context_insertions",
+                "context_deletions",
+            )
+        )
+        if has_profiles:
+            from .simulators.nanopore import NanoporeChannel, _mutate_read
+
+            channel = NanoporeChannel(
+                substitution_rate=float(rate_table.get("substitution_rate", 0.0)),
+                insertion_rate=float(rate_table.get("insertion_rate", 0.0)),
+                deletion_rate=float(rate_table.get("deletion_rate", 0.0)),
+                context_errors=rate_table.get("context_errors"),
+                insertion_profile=rate_table.get("insertion_profile"),
+                deletion_profile=rate_table.get("deletion_profile"),
+                context_insertions=rate_table.get("context_insertions"),
+                context_deletions=rate_table.get("context_deletions"),
+            )
+            return _mutate_read(sequence, None, rng, channel)
         return _simulate_homopolymer_errors(
             sequence,
-            rate_table.get("substitution_rate", 0.0),
-            rate_table.get("insertion_rate", 0.0),
-            rate_table.get("deletion_rate", 0.0),
+            float(rate_table.get("substitution_rate", 0.0)),
+            float(rate_table.get("insertion_rate", 0.0)),
+            float(rate_table.get("deletion_rate", 0.0)),
             rng,
         )
     try:
@@ -279,13 +345,24 @@ def simulate_reads(
 class Channel(Simulator):
     """Adapter implementing :class:`BaseChannel` for built-in simulators."""
 
-    def __init__(self, name: str, error_rate: float = 0.05) -> None:
+    def __init__(
+        self, name: str, error_rate: float = 0.05, profile: str | None = None
+    ) -> None:
         self.name = name
         self.error_rate = error_rate
+        self.profile = profile
 
     def simulate(self, sequence: str) -> str:
         adapter = SIMULATOR_ADAPTERS[self.name]
-        return adapter(sequence, self.error_rate, make_rng())
+        rng = make_rng()
+        if self.name == "dnarsim":
+            return adapter(sequence, self.error_rate, rng, self.profile)
+        return adapter(sequence, self.error_rate, rng)
+
+    def with_profile(self, profile: str) -> "Channel":
+        """Return a new channel configured to use ``profile``."""
+
+        return type(self)(self.name, self.error_rate, profile=profile)
 
 
 
