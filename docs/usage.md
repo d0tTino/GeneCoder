@@ -218,7 +218,7 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
         --output-file channel.fasta --simulator illumina_builtin --sub-rate 0.01
     ```
 
-    Coverage depth and per-base quality probabilities may also be provided:
+    Coverage depth and a base-quality distribution may also be provided:
 
     ```bash
     genecli channel --input-file encoded.fasta \

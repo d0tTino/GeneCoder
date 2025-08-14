@@ -547,9 +547,9 @@ def run_channel(args: argparse.Namespace) -> None:
             if opts.sub_rate is not None:
                 new_params["error_rate"] = opts.sub_rate
             if opts.illumina_depth is not None:
-                new_params["coverage"] = opts.illumina_depth
+                new_params["coverage_depth"] = opts.illumina_depth
             if opts.illumina_quality is not None:
-                new_params["quality_profile"] = opts.illumina_quality
+                new_params["quality_distribution"] = opts.illumina_quality
         updated.append((name, new_params))
     simulators = updated
 

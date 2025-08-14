@@ -10,8 +10,8 @@ GeneCoder supports both built-in error models and adapters to external nanopore 
 - **none** — disable simulation (the default).
 - **illumina** — simple Illumina read errors. Customize rates with
   `--illumina-sub-rate`, `--illumina-ins-rate` and `--illumina-del-rate`. Depth
-  and quality can be adjusted using `--illumina-depth`, `--illumina-quality` and
-  `--illumina-context`.
+  and the base-quality distribution can be adjusted using `--illumina-depth`,
+  `--illumina-quality` and `--illumina-context`.
 - **nanopore** — alias for `d2sim`. Customize rates with `--nanopore-sub-rate`,
   `--nanopore-ins-rate` and `--nanopore-del-rate`.
 

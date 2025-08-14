@@ -24,7 +24,8 @@ def _mutate_read(
     substitution_prob: float,
     insertion_prob: float,
     deletion_prob: float,
-    quality: Sequence[float] | None,
+    quality_profile: Sequence[float] | None,
+    quality_distribution: Sequence[float] | None,
     rng: random.Random,
 ) -> str:
     """Return ``sequence`` mutated using the provided probabilities."""
@@ -34,9 +35,12 @@ def _mutate_read(
         if rng.random() < deletion_prob:
             continue
 
-        sub_prob = (
-            quality[idx] if quality is not None and idx < len(quality) else substitution_prob
-        )
+        if quality_profile is not None and idx < len(quality_profile):
+            sub_prob = quality_profile[idx]
+        elif quality_distribution is not None and len(quality_distribution) > 0:
+            sub_prob = rng.choice(quality_distribution)
+        else:
+            sub_prob = substitution_prob
         if rng.random() < sub_prob:
             nt = _random_substitution(nt, rng)
 
@@ -70,8 +74,9 @@ def simulate(
     sequence: str,
     error_rate: float = 0.001,
     rng: random.Random | None = None,
-    coverage: int = 1,
+    coverage_depth: int = 1,
     quality_profile: Sequence[float] | None = None,
+    quality_distribution: Sequence[float] | None = None,
 ) -> str:
     """Return ``sequence`` mutated with Illumina-style errors.
 
@@ -84,12 +89,14 @@ def simulate(
         deletion probabilities are ``error_rate / 100``.
     rng:
         Optional :class:`random.Random` instance for deterministic behaviour.
-    coverage:
+    coverage_depth:
         Number of independent reads to generate. A majority vote consensus
-        is returned when ``coverage`` is greater than one.
+        is returned when ``coverage_depth`` is greater than one.
     quality_profile:
-        Optional list of per-base substitution probabilities. When provided,
-        values override ``error_rate`` at the corresponding positions.
+        Optional list of position-specific substitution probabilities.
+    quality_distribution:
+        Optional list describing a distribution of substitution probabilities
+        to sample for each base when ``quality_profile`` is not provided.
     """
 
     insertion_prob = error_rate / 100.0
@@ -104,11 +111,12 @@ def simulate(
             insertion_prob,
             deletion_prob,
             quality_profile,
+            quality_distribution,
             rng,
         )
-        for _ in range(max(1, coverage))
+        for _ in range(max(1, coverage_depth))
     ]
-    if coverage <= 1:
+    if coverage_depth <= 1:
         return reads[0]
     return _consensus(reads)
 
@@ -119,13 +127,17 @@ class Channel(Simulator):
     def __init__(
         self,
         error_rate: float = 0.001,
-        coverage: int = 1,
+        coverage_depth: int = 1,
         quality_profile: Sequence[float] | None = None,
+        quality_distribution: Sequence[float] | None = None,
     ) -> None:
         self.error_rate = error_rate
-        self.coverage = coverage
+        self.coverage_depth = coverage_depth
         self.quality_profile = (
             tuple(quality_profile) if quality_profile is not None else None
+        )
+        self.quality_distribution = (
+            tuple(quality_distribution) if quality_distribution is not None else None
         )
 
     def simulate(self, sequence: str) -> str:  # pragma: no cover - thin wrapper
@@ -133,8 +145,9 @@ class Channel(Simulator):
             sequence,
             self.error_rate,
             make_rng(),
-            coverage=self.coverage,
+            coverage_depth=self.coverage_depth,
             quality_profile=self.quality_profile,
+            quality_distribution=self.quality_distribution,
         )
 
 
