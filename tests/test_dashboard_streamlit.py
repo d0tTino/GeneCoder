@@ -37,7 +37,7 @@ def test_dashboard_cli_starts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert called
 
 
-def test_dashboard_error_counts_rendered(
+def test_dashboard_error_rates_rendered(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     metrics_file = Path(__file__).parent / "data" / "metrics.json"
@@ -56,4 +56,4 @@ def test_dashboard_error_counts_rendered(
     dash.main(str(results))
 
     assert charts
-    assert charts[-1] == {"Substitutions": 2, "Insertions": 0, "Deletions": 0}
+    assert charts[-3:] == [{"results": 2}, {"results": 0}, {"results": 0}]
