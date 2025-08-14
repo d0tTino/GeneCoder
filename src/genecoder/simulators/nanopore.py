@@ -23,7 +23,7 @@ except Exception:  # pragma: no cover - fallback when numba missing
         return wrapper
 
 from ..random_utils import make_rng
-from ..nanopore_sim import simulate_d2sim, simulate_desp
+from ..nanopore_sim import simulate_d2sim, simulate_desp, DNARSIM_RATE_TABLES as _DNARSIM_RATE_TABLES
 from ..simulator_utils import _run_external, _parse_env_options
 from ..api import Simulator
 from .base import BaseChannel
@@ -140,21 +140,8 @@ try:  # pragma: no cover - optional dependency
     else:  # pragma: no cover - unexpected structure
         NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
 
-    with open(_cfg_dir / "dnarsim_rates.yaml", "r", encoding="utf-8") as _fh:
-        _rates_data = yaml.safe_load(_fh) or {}
-    if isinstance(_rates_data, dict):
-        DNARSIM_RATE_TABLES: dict[str, dict[str, float]] = {
-            str(name): {
-                "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
-                "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
-                "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
-            }
-            for name, tbl in _rates_data.items()
-            if isinstance(tbl, dict)
-        }
-        NANOPORE_PROFILES.update(DNARSIM_RATE_TABLES)  # type: ignore[arg-type]
-    else:  # pragma: no cover - unexpected structure
-        DNARSIM_RATE_TABLES = {}
+    NANOPORE_PROFILES.update(_DNARSIM_RATE_TABLES)  # type: ignore[arg-type]
+    DNARSIM_RATE_TABLES = _DNARSIM_RATE_TABLES
 except Exception:  # pragma: no cover - fallback when yaml missing
     NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
     DNARSIM_RATE_TABLES = {}

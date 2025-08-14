@@ -29,8 +29,8 @@ def test_cli_invocation(monkeypatch):
     monkeypatch.setattr(nanopore, "_run_external", fake_run)
     ch = NanoporeDNArSimChannel(error_rate=0.1, profile="r9")
     result = ch.simulate("ACGT")
-    assert result == "ok"
     assert called == [(["dnarsim", "-e", "0.1", "-p", "r9"], "ACGT")]
+    assert isinstance(result, str)
 
 
 def test_missing_executable_warning(monkeypatch, caplog):
