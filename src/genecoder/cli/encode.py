@@ -302,22 +302,28 @@ def process_single_encode(
         )
 
         if getattr(args, "auto_fix", False) and os.getenv("GENECODER_DISABLE_FIX") not in {"1", "true", "True"}:
+            target_dna = raw_encoded_dna
             if getattr(args, "fix_chisel", False) and "dnachisel_fixer" in CODEC_REGISTRY:
                 from genecoder.dnachisel_fixer import fix_sequence_dnachisel
 
-                final_encoded_dna_sequence = fix_sequence_dnachisel(
-                    final_encoded_dna_sequence,
+                target_dna = fix_sequence_dnachisel(
+                    target_dna,
                     gc_min=args.gc_min,
                     gc_max=args.gc_max,
                     max_homopolymer=args.max_homopolymer,
                 )
             else:
-                final_encoded_dna_sequence = fix(
-                    final_encoded_dna_sequence,
+                target_dna = fix(
+                    target_dna,
                     gc_min=args.gc_min,
                     gc_max=args.gc_max,
                     max_homopolymer=args.max_homopolymer,
                 )
+
+            if args.fec == "triple_repeat":
+                final_encoded_dna_sequence = encode_triple_repeat(target_dna)
+            else:
+                final_encoded_dna_sequence = target_dna
 
         if checksum:
             fasta_header = f"{fasta_header} checksum={checksum}"
