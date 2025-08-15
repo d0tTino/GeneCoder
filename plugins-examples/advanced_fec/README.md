@@ -5,23 +5,28 @@ forward error correction plugin for GeneCoder. It reuses the
 built-in LDPC helpers from the `genecoder.ldpc_codec` module and
 exposes them under the entry point `advanced_ldpc`.
 
-## Installation
+## Step-by-step Usage
 
-Install the package from the repository root:
+1. Install the package from the repository root:
 
-```bash
-pip install ./plugins-examples/advanced_fec
-```
+   ```bash
+   pip install ./plugins-examples/advanced_fec
+   ```
 
-The LDPC implementation relies on optional dependencies. Install
-GeneCoder with the `ldpc` extra to enable them:
+2. Install GeneCoder with LDPC extras so the helper libraries are available:
 
-```bash
-pip install 'genecoder[ldpc]'
-```
+   ```bash
+   pip install 'genecoder[ldpc]'
+   ```
 
-## Usage
+3. Import GeneCoder to load the plugin and confirm registration:
 
-After installation simply import GeneCoder (or invoke the CLI) to
-load the plugin automatically. The new FEC backend will appear in
-`genecoder.plugins.FEC_REGISTRY` under the name `advanced_ldpc`.
+   ```python
+   from genecoder.plugins import load_plugins
+   load_plugins()
+   from genecoder import FEC_REGISTRY
+   print("advanced_ldpc" in FEC_REGISTRY)
+   ```
+
+The package registers an `advanced_ldpc` backend within
+`genecoder.plugins.FEC_REGISTRY`.
