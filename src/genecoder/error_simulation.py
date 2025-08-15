@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import random
+import warnings
 from typing import Callable
 
 from .random_utils import make_rng
@@ -149,18 +150,36 @@ class Channel(Simulator):
                 deletion_prob = params["deletion_prob"]
         if error_rate is not None:
             substitution_prob = error_rate
-        self.substitution_prob = substitution_prob
+        self._substitution_prob = substitution_prob
         self.insertion_prob = insertion_prob
         self.deletion_prob = deletion_prob
+
+    @property
+    def substitution_prob(self) -> float:
+        return self._substitution_prob
+
+    @substitution_prob.setter
+    def substitution_prob(self, value: float) -> None:
+        self._substitution_prob = value
 
     # compatibility with older API expecting ``error_rate``
     @property
     def error_rate(self) -> float:
-        return self.substitution_prob
+        warnings.warn(
+            "Channel.error_rate is deprecated, use substitution_prob instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._substitution_prob
 
     @error_rate.setter
     def error_rate(self, value: float) -> None:
-        self.substitution_prob = value
+        warnings.warn(
+            "Channel.error_rate is deprecated, use substitution_prob instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._substitution_prob = value
 
     def simulate(self, sequence: str) -> str:
         return simulate_errors(

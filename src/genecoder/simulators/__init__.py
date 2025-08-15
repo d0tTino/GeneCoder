@@ -74,6 +74,13 @@ def simulate_reads(
                 f"Simulator '{simulator}' does not support profiles"
             )
 
+    if hasattr(channel, "substitution_prob"):
+        old_rate = getattr(channel, "substitution_prob")
+        setattr(channel, "substitution_prob", error_rate)
+        try:
+            return channel.simulate(sequence)
+        finally:
+            setattr(channel, "substitution_prob", old_rate)
     if hasattr(channel, "error_rate"):
         old_rate = getattr(channel, "error_rate")
         setattr(channel, "error_rate", error_rate)
