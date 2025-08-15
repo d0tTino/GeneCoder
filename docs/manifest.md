@@ -16,3 +16,7 @@ The manifest has three top-level keys:
 `encoding_parameters` must at least contain a `method` field identifying the
 encoder used. Additional keys mirror the options supplied on the CLI or GUI.
 If required keys are missing an error will be raised when creating the manifest.
+
+See the [development roadmap](development_roadmap.md) for planned enhancements
+to the manifest format and the [plugin guide](plugins.md) for ways plugins can
+extend encoding parameters reflected in the manifest.

@@ -22,3 +22,5 @@
    - Continued collaboration with the research community to expand features.
 6. **Documentation Updates**
    - Inline comments in `encoders.py` and `flet_app.py` now point to sections of the Development Vision PDF (Sections III and IV) for added context.
+
+Refer to the [manifest format](manifest.md) for the current encoding metadata structure and the [plugin guide](plugins.md) for extension points that inform future roadmap items.

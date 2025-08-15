@@ -172,41 +172,76 @@ class MyFEC(FEC):
 def register(register_fec):
     register_fec("myfec", MyFEC)
 ```
+## Simulator Plugins
 
-Simulator plugins follow the same pattern using the `genecoder.simulators`
-group with a `register_simulator` callback that receives an object implementing
-the :class:`genecoder.api.Simulator` interface.
+Simulator plugins model sequencing or transmission channels and register under
+`genecoder.simulators`.
 
-Visualizer plugins register under `genecoder.visualizers` with a
-`register_visualizer` callback. The class should implement the
-``genecoder.api.Visualizer`` interface. See
-[`plugins-examples/example_visualizer`](../plugins-examples/example_visualizer/)
-for a minimal implementation.
+1. Add an entry point in `pyproject.toml`:
 
-```toml
-[project.entry-points."genecoder.visualizers"]
-myvis = "my_package.my_vis"
-```
+   ```toml
+   [project.entry-points."genecoder.simulators"]
+   mysim = "my_package.my_sim"
+   ```
 
-```python
-from genecoder.api import Visualizer
+2. Implement a class with a `simulate()` method returning the mutated sequence.
 
-class MyVisualizer(Visualizer):
-    def visualize(self, sequence: str, /, **kwargs):
-        ...
+   ```python
+   from genecoder.api import Simulator
 
-def register(register_visualizer):
-    register_visualizer("myvis", MyVisualizer())
-```
+   class MyChannel(Simulator):
+       def simulate(self, sequence: str) -> str:
+           return sequence
+
+   def register(register_simulator):
+       register_simulator("mysim", MyChannel())
+   ```
+
+See [`plugins-examples/example_simulator`](../plugins-examples/example_simulator/)
+for a passthrough implementation.
+
+## Visualizer Plugins
+
+Visualizer plugins expose custom sequence renderers via
+`genecoder.visualizers`.
+
+1. Declare an entry point:
+
+   ```toml
+   [project.entry-points."genecoder.visualizers"]
+   myvis = "my_package.my_vis"
+   ```
+
+2. Provide a class implementing `visualize()` and register it:
+
+   ```python
+   from genecoder.api import Visualizer
+
+   class MyVisualizer(Visualizer):
+       def visualize(self, sequence: str, /, **kwargs):
+           ...
+
+   def register(register_visualizer):
+       register_visualizer("myvis", MyVisualizer())
+   ```
+
+See [`plugins-examples/example_visualizer`](../plugins-examples/example_visualizer/)
+for a minimal example.
 
 Registered codecs are available via `genecoder.CODEC_REGISTRY` after importing
 GeneCoder.
 
-## Plugin Security
+## Security Recommendations
 
-Installing a plugin runs code from a third-party package. Always verify
-downloads and use registries from trusted sources. GeneCoder can validate a
-wheel's digital signature with
+- Install plugins only from trusted sources.
+- Verify wheel checksums or signatures with
+  :func:`genecoder.plugin_security.verify_signature`.
+- Host registry files over HTTPS and keep them version controlled.
+- Set ``GENECODER_PLUGIN_PUBLIC_KEY`` so the installer can validate
+  signatures automatically.
+
+Installing a plugin runs code from a third-party package. GeneCoder can validate
+wheel signatures with
 :func:`genecoder.plugin_security.verify_signature`, which internally calls
 :func:`genecoder.security.compute_checksum` and raises ``InvalidSignature`` if
 verification fails. Set the ``GENECODER_PLUGIN_PUBLIC_KEY`` environment variable
@@ -441,4 +476,13 @@ curl -X POST http://localhost:8000/catalog/challenge \
 ```
 
 A React page in `web/helix-ui` displays the standings. After building the web assets open `helix-ui/scoreboard.html` (or `dist/scoreboard.html`) in a browser while the server is running to view the leaderboard.
+
+## Troubleshooting
+
+- **Plugin not discovered** – ensure the package is installed and
+  `load_plugins()` has been called.
+- **Entry point missing** – check `[project.entry-points]` in `pyproject.toml`
+  for typos.
+- **Signature verification failed** – confirm `GENECODER_PLUGIN_PUBLIC_KEY`
+  and registry checksums.
 
