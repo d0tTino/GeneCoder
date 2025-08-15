@@ -20,6 +20,7 @@ nav:
       - Vision & Core Concept: vision.md
       - Implemented Features: features.md
       - Technology Stack: technology_stack.md
+  - Migration Guide: migration.md
   - Development:
       - Development Roadmap: development_roadmap.md
       - Development Vision: DEVELOPMENT_VISION.md

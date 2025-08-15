@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 - Refactored ``BaseSimulator`` for shared simulator settings.
 - Added ``BaseChannel`` with common error parameters for simulators.
 - Plugin registry now verifies package checksums before installation.
+- Renamed ``Channel.error_rate`` to ``Channel.substitution_prob``; ``error_rate`` remains
+  as a deprecated alias.
 
 ## [0.1.0] - 2025-06-12
 ### Added

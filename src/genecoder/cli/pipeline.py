@@ -193,7 +193,7 @@ def _handle_command(args: argparse.Namespace) -> None:
             elif channel != "simple":
                 channel_params["substitution_rate"] = args.sub_rate
             else:
-                channel_params["error_rate"] = args.sub_rate
+                channel_params["substitution_prob"] = args.sub_rate
         if args.ins_rate is not None:
             if channel == "indel":
                 channel_params["insertion_prob"] = args.ins_rate

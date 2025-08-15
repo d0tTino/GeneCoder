@@ -542,7 +542,7 @@ def run_channel(args: argparse.Namespace) -> None:
             if opts.del_rate is not None:
                 new_params["deletion_prob"] = opts.del_rate
         if name == "simple" and opts.sub_rate is not None:
-            new_params["error_rate"] = opts.sub_rate
+            new_params["substitution_prob"] = opts.sub_rate
         if name == "illumina_builtin":
             if opts.sub_rate is not None:
                 new_params["error_rate"] = opts.sub_rate
