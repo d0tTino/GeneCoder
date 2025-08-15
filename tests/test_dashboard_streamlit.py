@@ -57,3 +57,29 @@ def test_dashboard_error_rates_rendered(
 
     assert charts
     assert charts[-3:] == [{"results": 2}, {"results": 0}, {"results": 0}]
+
+
+def test_dashboard_homopolymer_chart_rendered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    metrics_file = Path(__file__).parent / "data" / "metrics.json"
+    results = tmp_path / "results.json"
+    results.write_text(metrics_file.read_text())
+
+    charts: list[object] = []
+
+    def capture_bar_chart(data: object, *args: object, **kwargs: object) -> None:  # pragma: no cover - simple capture
+        charts.append(data)
+
+    monkeypatch.setattr(streamlit, "bar_chart", capture_bar_chart)
+
+    from genecoder import dashboard as dash
+
+    # Force fallback chart rendering in case pandas/altair are installed
+    monkeypatch.setattr(dash, "pd", None)
+    monkeypatch.setattr(dash, "alt", None)
+
+    dash.main(str(results))
+
+    assert charts
+    assert [1, 2, 1, 0] in charts

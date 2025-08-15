@@ -525,7 +525,15 @@ genecli dashboard examples/pipeline_metrics.json
 This encodes and decodes `examples/pipeline_demo_input.txt`, stores metrics in
 `examples/pipeline_metrics.json` and opens the dashboard with the results.
 
-The interface plots GC content distribution, homopolymer run distributions, read-coverage distributions, and ECC success-rate bar charts. It also displays the overall decode success percentage derived from the metrics file. When substitution, insertion and deletion metrics are present, they are shown as separate rate charts. The dashboard additionally charts the total number of constraint violations when provided.
+The interface visualizes key metrics:
+
+* GC-content distribution
+* Homopolymer run distribution
+* Read-coverage distribution
+* ECC success-rate bar charts
+* Separate substitution, insertion and deletion rate charts when available
+* Overall decode-success percentage
+* Constraint-violation counts
 
 ![Homopolymer distribution screenshot](images/homopolymer_distribution.svg)
 

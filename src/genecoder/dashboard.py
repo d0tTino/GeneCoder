@@ -210,20 +210,24 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             st.write("Install pandas and altair for multi-file homopolymer charts.")
 
     st.header("Error Rates")
+    subheader = getattr(st, "subheader", getattr(st, "header", lambda *a, **k: None))
     for label, key in [
         ("Substitution Rate", "substitutions"),
         ("Insertion Rate", "insertions"),
         ("Deletion Rate", "deletions"),
     ]:
-        rates: dict[str, float] = {}
+        rate_rows: list[dict[str, Any]] = []
         for name in selected:
             val = datasets[name].get(key)
             if isinstance(val, (int, float)):
-                rates[name] = float(val)
-        subheader = getattr(st, "subheader", getattr(st, "header", lambda *a, **k: None))
+                rate_rows.append({"Dataset": name, "Rate": float(val)})
         subheader(label)
-        if rates:
-            st.bar_chart(rates)
+        if rate_rows:
+            if pd and len({r["Dataset"] for r in rate_rows}) > 1:
+                df = pd.DataFrame(rate_rows).set_index("Dataset")
+                st.bar_chart(df)
+            else:
+                st.bar_chart({r["Dataset"]: r["Rate"] for r in rate_rows})
         else:
             st.write(f"No {label.lower()} data.")
 
