@@ -1,4 +1,11 @@
-"""Utilities to modify DNA sequences to satisfy synthesis constraints."""
+"""Utilities to modify DNA sequences to satisfy synthesis constraints.
+
+This module exposes small helpers for adjusting GC balance and disrupting
+excessive homopolymers.  The high-level :func:`fix` convenience function ties
+these helpers together and is designed for use directly from the main encoding
+pipeline or CLI, allowing sequences to be automatically corrected before they
+are passed along for synthesis.
+"""
 
 from __future__ import annotations
 
