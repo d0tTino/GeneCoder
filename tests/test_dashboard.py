@@ -91,6 +91,14 @@ def test_display_ecc_and_decode_metric(
     assert value == "85.00%"
 
 
+def test_calc_decode_success_fallback() -> None:
+    from genecoder import dashboard
+
+    data = {"ecc_success_rates": {"rs": 0.8, "bch": "x", "hamming": 1.0}}
+    # average of numeric rates 0.8 and 1.0 -> 0.9
+    assert dashboard._calc_decode_success(data) == pytest.approx(0.9)
+
+
 def test_homopolymer_distribution_chart(
     tmp_path: Path, dummy_streamlit: dict[str, list]
 ) -> None:
