@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import base64
 
+from cryptography.exceptions import InvalidSignature
+
 from .security import compute_checksum as _compute_checksum
 
 
@@ -47,10 +49,19 @@ def compute_checksum(
 def verify_signature(
     data: bytes, signature: bytes, public_key: bytes, *, padding_scheme: str = "pkcs1"
 ) -> None:
-    """Raise if *signature* does not verify *data* with *public_key*."""
-    _compute_checksum(
-        data,
-        signature=signature,
-        public_key=public_key,
-        padding_scheme=padding_scheme,
-    )
+    """Raise ``ValueError`` if *signature* fails to verify.
+
+    Parameters are forwarded to :func:`genecoder.security.compute_checksum`.
+    ``InvalidSignature`` from the underlying cryptography library is converted
+    into ``ValueError`` so callers can handle failures uniformly.
+    """
+
+    try:
+        _compute_checksum(
+            data,
+            signature=signature,
+            public_key=public_key,
+            padding_scheme=padding_scheme,
+        )
+    except InvalidSignature as exc:  # pragma: no cover - exercised in tests
+        raise ValueError("Invalid signature") from exc
