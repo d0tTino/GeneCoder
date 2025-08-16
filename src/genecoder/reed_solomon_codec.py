@@ -41,7 +41,13 @@ def _require_reedsolo() -> None:  # pragma: no cover - helper
         )
 
 
-def encode_data_rs(data: bytes, nsym: int = 10) -> Tuple[bytes, int]:
+def encode_data_rs(
+    data: bytes,
+    nsym: int = 10,
+    *,
+    symbol_size: int | None = None,
+    primitive: int | None = None,
+) -> Tuple[bytes, int, int | None, int | None]:
     """Encode ``data`` with Reed--Solomon FEC.
 
     Parameters
@@ -50,20 +56,30 @@ def encode_data_rs(data: bytes, nsym: int = 10) -> Tuple[bytes, int]:
         Byte string to encode.
     nsym:
         Number of parity symbols to append. Defaults to ``10``.
+    symbol_size:
+        Optional symbol size (``c_exp``) in bits.
+    primitive:
+        Optional primitive polynomial value.
 
     Returns
     -------
     tuple
-        ``(encoded_bytes, nsym)`` where ``encoded_bytes`` is the encoded output
-        including parity symbols.
+        ``(encoded_bytes, nsym, symbol_size, primitive)`` where ``encoded_bytes``
+        is the encoded output including parity symbols.
     """
     _require_reedsolo()
-    rs = RSCodec(nsym)
+    rs = RSCodec(nsym, c_exp=symbol_size, prim=primitive)
     encoded = rs.encode(data)
-    return bytes(encoded), nsym
+    return bytes(encoded), nsym, symbol_size, primitive
 
 
-def decode_data_rs(encoded: bytes, nsym: int) -> Tuple[bytes, int]:
+def decode_data_rs(
+    encoded: bytes,
+    nsym: int,
+    *,
+    symbol_size: int | None = None,
+    primitive: int | None = None,
+) -> Tuple[bytes, int]:
     """Decode Reed--Solomon encoded ``encoded`` bytes.
 
     Parameters
@@ -72,6 +88,10 @@ def decode_data_rs(encoded: bytes, nsym: int) -> Tuple[bytes, int]:
         Encoded data including parity symbols.
     nsym:
         Number of parity symbols that were used during encoding.
+    symbol_size:
+        Optional symbol size (``c_exp``) in bits.
+    primitive:
+        Optional primitive polynomial value used during encoding.
 
     Returns
     -------
@@ -85,7 +105,7 @@ def decode_data_rs(encoded: bytes, nsym: int) -> Tuple[bytes, int]:
         If decoding fails due to too many errors.
     """
     _require_reedsolo()
-    rs = RSCodec(nsym)
+    rs = RSCodec(nsym, c_exp=symbol_size, prim=primitive)
     try:
         decoded, _full, err_pos = rs.decode(encoded)
     except ReedSolomonError as exc:  # pragma: no cover - error path
@@ -97,15 +117,41 @@ class ReedSolomonFEC(FEC):
     """Reed--Solomon FEC backend implementing :class:`BaseFEC`."""
 
     def encode(
-        self, data: bytes, /, *, nsym: int = 10, **kwargs: Any
+        self,
+        data: bytes,
+        /,
+        *,
+        nsym: int = 10,
+        symbol_size: int | None = None,
+        primitive: int | None = None,
+        **kwargs: Any,
     ) -> Tuple[bytes, Mapping[str, Any]]:  # noqa: ANN401
-        encoded, used_nsym = encode_data_rs(data, nsym)
-        return encoded, {"nsym": used_nsym}
+        encoded, used_nsym, used_symbol_size, used_primitive = encode_data_rs(
+            data,
+            nsym,
+            symbol_size=symbol_size,
+            primitive=primitive,
+        )
+        info: dict[str, Any] = {"nsym": used_nsym}
+        if used_symbol_size is not None:
+            info["symbol_size"] = used_symbol_size
+        if used_primitive is not None:
+            info["primitive"] = used_primitive
+        return encoded, info
 
     def decode(
-        self, encoded: bytes, info: Mapping[str, Any], /, **kwargs: Any
+        self,
+        encoded: bytes,
+        info: Mapping[str, Any],
+        /,
+        **kwargs: Any,
     ) -> Tuple[bytes, int]:  # noqa: ANN401
-        return decode_data_rs(encoded, int(info["nsym"]))
+        return decode_data_rs(
+            encoded,
+            int(info["nsym"]),
+            symbol_size=int(info.get("symbol_size")) if info.get("symbol_size") is not None else None,
+            primitive=int(info.get("primitive")) if info.get("primitive") is not None else None,
+        )
 
 
 from typing import Callable

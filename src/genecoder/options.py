@@ -34,6 +34,8 @@ class EncodingOptions:
     max_homopolymer: int
     alphabet: str = "base4"
     seed: int | None = None
+    rs_symbol_size: int | None = None
+    rs_primitive: int | None = None
 
 
 @dataclass

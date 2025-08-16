@@ -87,7 +87,13 @@ def run_encoding_pipeline(
                 f"Warning for {input_file_name}: --add-parity is ignored when {options.fec} FEC is applied to binary data."
             )
         enc = FEC_REGISTRY[options.fec]
-        current_input, info = enc["encode"](data)
+        encode_kwargs = {}
+        if options.fec == "reed_solomon":
+            encode_kwargs = {
+                "symbol_size": options.rs_symbol_size,
+                "primitive": options.rs_primitive,
+            }
+        current_input, info = enc["encode"](data, **encode_kwargs)
         header_parts.append(f"fec={options.fec}")
         if info is not None:
             import base64
@@ -496,6 +502,24 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         default=None,
         choices=fec_choices,
         help="Forward Error Correction method to apply.",
+    )
+    parser.add_argument(
+        "--rs-symbol-size",
+        type=int,
+        default=None,
+        help=(
+            "Symbol size (c_exp) for Reed-Solomon FEC. Ignored unless --fec"
+            " reed_solomon."
+        ),
+    )
+    parser.add_argument(
+        "--rs-primitive",
+        type=lambda x: int(x, 0),
+        default=None,
+        help=(
+            "Primitive polynomial for Reed-Solomon FEC. Provide as integer or"
+            " 0x-prefixed hex. Ignored unless --fec reed_solomon."
+        ),
     )
     parser.add_argument(
         "--gc-min",
