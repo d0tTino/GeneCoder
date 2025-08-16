@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import logging
 import os
+import random
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Sequence
 
 from .formats import from_fasta, to_fasta
+from .random_utils import make_rng
+from .error_simulation import simulate_errors
 from .utils import get_temp_dir
 
 logger = logging.getLogger(__name__)
@@ -83,4 +87,34 @@ def _run_external(command: Sequence[str] | str, sequence: str) -> str:
         if not records:
             raise RuntimeError(f"{cmd_list[0]} produced no FASTA output")
         return records[0][1]
+
+
+def _simulate_adapter(
+    command: str,
+    sequence: str,
+    error_rate: float,
+    rng: random.Random | None,
+    extra_args: Sequence[str] | None = None,
+) -> str:
+    """Return ``sequence`` processed by an external ``command`` if available."""
+
+    if shutil.which(command):
+        try:
+            cmd_list = [command, "-e", str(error_rate)]
+            if extra_args:
+                cmd_list += list(extra_args)
+            cmd_list += _parse_env_options(command)
+            return _run_external(cmd_list, sequence)
+        except (ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
+            logger.warning(
+                "%s failed: %s; falling back to simple error model", command, exc
+            )
+    else:
+        logger.warning(
+            "%s not found; falling back to simple error model", command
+        )
+
+    if rng is None:
+        rng = make_rng()
+    return simulate_errors(sequence, error_rate, rng=rng)
 

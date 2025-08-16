@@ -301,7 +301,7 @@ def process_single_encode(
             data_for_encoding, options, header_name
         )
 
-        if getattr(args, "auto_fix", False) and os.getenv("GENECODER_DISABLE_FIX") not in {"1", "true", "True"}:
+        if getattr(args, "auto_fix", True) and os.getenv("GENECODER_DISABLE_FIX") not in {"1", "true", "True"}:
             target_dna = raw_encoded_dna
             if getattr(args, "fix_chisel", False) and "dnachisel_fixer" in CODEC_REGISTRY:
                 from genecoder.dnachisel_fixer import fix_sequence_dnachisel

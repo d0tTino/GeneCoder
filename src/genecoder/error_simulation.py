@@ -209,3 +209,4 @@ def register(
 
     registrar("simple", Channel(substitution_prob=0.05))
     registrar("indel", Channel())
+    registrar("none", Channel())

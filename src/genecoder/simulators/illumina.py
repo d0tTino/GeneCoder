@@ -29,7 +29,7 @@ from .base import BaseSimulator
 from ..random_utils import make_rng
 from ..api import Simulator
 from ..error_simulation import _random_substitution, NUCLEOTIDES
-from ..nanopore_sim import simulate_d2sim
+from ..d2sim_adapter import simulate_d2sim
 from ..simulator_utils import _run_external, _parse_env_options
 from . import register_simulator as _register_simulator
 
@@ -220,38 +220,69 @@ class IlluminaChannel(BaseSimulator):
         profile: str | None = None,
     ) -> None:
         profile_data: Mapping[str, Any] = {}
+        profile_defaults: IlluminaProfile | None = None
         if profile is not None:
             path = Path(profile)
             if path.is_file():
                 profile_data = _load_profile_file(path) or {}
             else:
                 profile_data = ILLUMINA_PROFILES.get(profile.lower(), {})
+            if profile_data:
+                profile_defaults = _validate_profile(profile_data)
 
         substitution_rate = float(
             substitution_rate
             if substitution_rate is not None
-            else profile_data.get("substitution_rate", 0.001)
+            else (
+                profile_defaults.substitution_rate
+                if profile_defaults is not None
+                else 0.001
+            )
         )
         insertion_rate = float(
             insertion_rate
             if insertion_rate is not None
-            else profile_data.get("insertion_rate", 0.0001)
+            else (
+                profile_defaults.insertion_rate
+                if profile_defaults is not None
+                else 0.0001
+            )
         )
         deletion_rate = float(
             deletion_rate
             if deletion_rate is not None
-            else profile_data.get("deletion_rate", 0.0001)
+            else (
+                profile_defaults.deletion_rate
+                if profile_defaults is not None
+                else 0.0001
+            )
         )
         read_length = int(
             read_length
             if read_length is not None
-            else profile_data.get("read_length", 150)
+            else (
+                profile_defaults.read_length
+                if profile_defaults is not None
+                else 150
+            )
         )
         coverage = int(
-            coverage if coverage is not None else profile_data.get("coverage", 1)
+            coverage
+            if coverage is not None
+            else (
+                profile_defaults.coverage if profile_defaults is not None else 1
+            )
         )
-        quality_profile = profile_data.get("quality_profile", quality_profile)
-        context_errors = profile_data.get("context_errors", context_errors)
+        quality_profile = (
+            profile_data.get("quality_profile", quality_profile)
+            if profile_data
+            else quality_profile
+        )
+        context_errors = (
+            profile_data.get("context_errors", context_errors)
+            if profile_data
+            else context_errors
+        )
 
         profile_obj = _validate_profile(
             {

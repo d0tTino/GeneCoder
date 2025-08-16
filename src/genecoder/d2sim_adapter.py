@@ -8,8 +8,7 @@ from .api import Simulator
 from .simulators import register_simulator as _register_simulator
 
 from .random_utils import make_rng
-from .nanopore_sim import _simulate_adapter
-from .simulator_utils import _run_external
+from .simulator_utils import _run_external, _simulate_adapter
 
 
 class _D2SIM:

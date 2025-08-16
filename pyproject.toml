@@ -103,7 +103,7 @@ dnaformer = "genecoder.dnaformer_codec"
 deepdna = "genecoder.deepdna_codec"
 
 [tool.poetry.plugins."genecoder.simulators"]
-nanopore = "genecoder.nanopore_sim"
+nanopore = "genecoder.simulators.nanopore"
 d2sim = "genecoder.d2sim_adapter"
 dnarsim = "genecoder.dnarsim_adapter"
 squigulator = "genecoder.squigulator_adapter"

@@ -5,6 +5,8 @@ from genecoder.simulators.illumina import IlluminaChannel, register as illumina_
 
 
 def test_illumina_registered_and_deterministic(monkeypatch):
+    SIMULATOR_REGISTRY.clear()
+    illumina_register()
     assert "illumina" in SIMULATOR_REGISTRY
     seq = "A" * 50
     monkeypatch.setenv("GENECODER_SIM_SEED", "123")
