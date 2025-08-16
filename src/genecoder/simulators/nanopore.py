@@ -166,6 +166,26 @@ try:  # pragma: no cover - optional dependency
             parsed["context_deletions"] = _validate_context_profiles(
                 tbl.get("context_deletions"), "context_deletions"
             )
+        if "context_indels" in tbl and isinstance(tbl["context_indels"], Mapping):
+            ctx_ins: Dict[str, Dict[int, float]] = {}
+            ctx_del: Dict[str, Dict[int, float]] = {}
+            for ctx, ctx_map in tbl["context_indels"].items():
+                if not isinstance(ctx_map, Mapping):
+                    continue
+                ins_prof = ctx_map.get("insertions") or ctx_map.get("insertion")
+                del_prof = ctx_map.get("deletions") or ctx_map.get("deletion")
+                if ins_prof is not None:
+                    ctx_ins[str(ctx).upper()] = _validate_indel_profile(
+                        ins_prof, f"context_indels[{ctx}].insertions"
+                    )
+                if del_prof is not None:
+                    ctx_del[str(ctx).upper()] = _validate_indel_profile(
+                        del_prof, f"context_indels[{ctx}].deletions"
+                    )
+            if ctx_ins:
+                parsed.setdefault("context_insertions", {}).update(ctx_ins)
+            if ctx_del:
+                parsed.setdefault("context_deletions", {}).update(ctx_del)
         return parsed
 
     if isinstance(_rates_data, dict):

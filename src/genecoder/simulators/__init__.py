@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 from typing import Dict
+import os
 
 from ..api import Simulator
 from .pipeline import ChannelPipeline
+from ..random_utils import reset_rng
 
 SIMULATOR_REGISTRY: Dict[str, Simulator] = {}
 
@@ -70,9 +72,12 @@ def simulate_reads(
                 raise ValueError(f"Unknown Nanopore profile: {profile}")
             channel = channel.with_profile(prof)
         else:
-            raise ValueError(
-                f"Simulator '{simulator}' does not support profiles"
-            )
+                raise ValueError(
+                    f"Simulator '{simulator}' does not support profiles"
+                )
+
+    if os.getenv("GENECODER_SIM_SEED") is not None:
+        reset_rng()
 
     if hasattr(channel, "substitution_prob"):
         old_rate = getattr(channel, "substitution_prob")

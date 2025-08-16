@@ -21,7 +21,7 @@ from genecoder.error_simulation import introduce_errors
 from genecoder.metrics import metrics
 from genecoder.parallel import parallel_map
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
-from genecoder.simulators.nanopore import NANOPORE_PROFILES
+from genecoder.simulators.nanopore import NANOPORE_PROFILES, DNARSIM_RATE_TABLES
 from genecoder.error_simulation import INDEL_PROFILES
 from genecoder.simulators.decay import DegradationChannel
 from .options import ChannelOptions, build_channel_options
@@ -297,6 +297,7 @@ def register_subcommand(
     run_parser.add_argument("config", type=str, help="Path to channel config")
     illumina_profiles = ", ".join(sorted(ILLUMINA_PROFILES))
     nanopore_profiles = ", ".join(sorted(NANOPORE_PROFILES))
+    dnarsim_profiles = ", ".join(sorted(DNARSIM_RATE_TABLES))
     profile_names = ", ".join(sorted(PROFILE_MAP))
     run_parser.add_argument(
         "--profile",
@@ -324,6 +325,12 @@ def register_subcommand(
         type=str,
         default=None,
         help="YAML file with Nanopore simulator parameters",
+    )
+    run_parser.add_argument(
+        "--dnarsim-profile",
+        type=str,
+        default=None,
+        help=f"Named DNArSim profile to use. Available profiles: {dnarsim_profiles}",
     )
     run_parser.add_argument(
         "--decay-rate",
@@ -418,6 +425,7 @@ def register_subcommand(
         target.add_argument("--nanopore-del-rate", type=float, default=None, help="Deletion rate for Nanopore reads")
         target.add_argument("--nanopore-profile", type=str, default=None, help="Named Nanopore profile to use")
         target.add_argument("--nanopore-profile-file", type=str, default=None, help="YAML file with Nanopore simulator parameters")
+        target.add_argument("--dnarsim-profile", type=str, default=None, help="Named DNArSim profile to use")
         target.add_argument("--indel-profile", type=str, default=None, help="Named indel profile to use")
         target.add_argument(
             "--decay-rate",
@@ -529,6 +537,8 @@ def run_channel(args: argparse.Namespace) -> None:
                 new_params["insertion_rate"] = opts.nanopore_ins_rate
             if opts.nanopore_del_rate is not None:
                 new_params["deletion_rate"] = opts.nanopore_del_rate
+            if name == "nanopore_dnarsim" and opts.dnarsim_profile:
+                new_params.setdefault("profile", opts.dnarsim_profile)
         if name == "indel":
             if opts.indel_profile is not None:
                 if opts.indel_profile not in INDEL_PROFILES:
@@ -586,6 +596,10 @@ def _handle_run(args: argparse.Namespace) -> None:
         cfg.illumina_profile = args.illumina_profile
     if args.nanopore_profile is not None:
         cfg.nanopore_profile = args.nanopore_profile
+    if args.dnarsim_profile is not None:
+        for name, params in simulators:
+            if name == "nanopore_dnarsim":
+                params.setdefault("profile", args.dnarsim_profile)
     if args.indel_profile is not None:
         if args.indel_profile not in INDEL_PROFILES:
             logger.error("Unknown indel profile: %s", args.indel_profile)
