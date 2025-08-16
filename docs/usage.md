@@ -230,12 +230,24 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
 
    - **Illumina** – `miseq`, `hiseq`, `novaseq` (alias `nova`)
    - **Nanopore** – `minion`, `promethion`, `r10`, `r9`, `r10.3`, `r10.4`
-   - **Indel** – `illumina`, `nanopore`
 
-   List available options at any time:
+   List available presets:
 
    ```bash
-   genecli channel profiles
+   genecli channel list-profiles
+   ```
+
+   Example output:
+
+   ```text
+   Illumina profiles:
+     hiseq
+     miseq
+     novaseq
+
+   Nanopore profiles:
+     minion
+     promethion
    ```
 
    Use `--profile` to apply a preset without specifying a simulator:

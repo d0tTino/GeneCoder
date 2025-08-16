@@ -2,7 +2,7 @@ from tests.test_cli import run_cli_command
 
 
 def test_cli_profiles_lists() -> None:
-    result = run_cli_command(["profiles"])
+    result = run_cli_command(["channel", "list-profiles"])
     assert result.returncode == 0
     out = result.stdout
     assert "Illumina" in out

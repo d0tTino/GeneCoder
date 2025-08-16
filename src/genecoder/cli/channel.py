@@ -638,7 +638,7 @@ def _handle_run(args: argparse.Namespace) -> None:
     )
 
 
-def _handle_list_profiles(_: argparse.Namespace) -> None:
+def list_profiles() -> None:
     """Print available Illumina and Nanopore profiles."""
 
     print("Illumina profiles:")
@@ -649,17 +649,31 @@ def _handle_list_profiles(_: argparse.Namespace) -> None:
     for name in sorted(NANOPORE_PROFILES):
         print(f"  {name}")
 
-    print("Indel profiles:")
-    for name in sorted(INDEL_PROFILES):
-        print(f"  {name}")
+
+def _handle_list_profiles(_: argparse.Namespace) -> None:
+    """CLI handler for ``list-profiles``."""
+
+    list_profiles()
 
 
 def register_profiles_subcommand(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Register the ``profiles`` subcommand."""
+    """Register the ``channel list-profiles`` subcommand."""
 
-    parser = subparsers.add_parser(
-        "profiles", help="List available sequencing profiles"
+    channel_parser = subparsers.choices.get("channel")
+    if channel_parser is None:  # pragma: no cover - defensive
+        return
+
+    channel_subparsers: argparse._SubParsersAction[argparse.ArgumentParser] | None = None
+    for action in channel_parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            channel_subparsers = action
+            break
+    if channel_subparsers is None:  # pragma: no cover - defensive
+        channel_subparsers = channel_parser.add_subparsers(dest="channel_command")
+
+    parser = channel_subparsers.add_parser(
+        "list-profiles", help="List available sequencing profiles"
     )
     parser.set_defaults(func=_handle_list_profiles)

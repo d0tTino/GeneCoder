@@ -11,7 +11,7 @@ from .encode import run_encoding_pipeline, encode_files
 from .decode import run_decoding_pipeline, decode_files
 from ..core import run_pipeline
 from .cli import main
-from .channel import process_channel, run_channel
+from .channel import process_channel, run_channel, list_profiles
 from .analyze import analyze_files
 from .stats import collect_stats
 
@@ -31,6 +31,7 @@ __all__ = [
     "main",
     "process_channel",
     "run_channel",
+    "list_profiles",
     "collect_stats",
 ]
 
