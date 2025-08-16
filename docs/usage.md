@@ -554,6 +554,7 @@ The interface visualizes key metrics:
 * Read-coverage distribution
 * ECC success-rate bar charts
 * Separate substitution, insertion and deletion rate charts when available
+* Histograms of substitutions, insertions and deletions with toggles per error type
 * Overall decode-success percentage
 * Constraint-violation counts
 
