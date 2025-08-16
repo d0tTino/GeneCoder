@@ -9,6 +9,7 @@ side-by-side for easier comparison between datasets.
 
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import IO, Any, Iterable, Callable, cast
 from types import ModuleType
@@ -98,6 +99,35 @@ def _iterable(val: Iterable[str] | str | None) -> list[str]:
     if isinstance(val, str):
         return [val]
     return list(val)
+
+
+def _calc_error_hist(val: object) -> list[int]:
+    """Return a histogram list from ``val`` if possible.
+
+    ``val`` may be a list of counts or a mapping of count->frequency.
+    The returned list uses the count as the index and the frequency as the
+    value, filling any missing bins with zeros.
+    """
+    if isinstance(val, dict):
+        counts: dict[int, int] = {}
+        for k, v in val.items():
+            try:
+                counts[int(k)] = int(v)
+            except Exception:
+                pass
+    elif isinstance(val, list):
+        counts = Counter()
+        for item in val:
+            try:
+                counts[int(item)] += 1
+            except Exception:
+                pass
+    else:
+        return []
+    if not counts:
+        return []
+    max_bin = max(counts)
+    return [counts.get(i, 0) for i in range(max_bin + 1)]
 
 
 def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: no cover - UI logic
@@ -230,6 +260,45 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                 st.bar_chart({r["Dataset"]: r["Rate"] for r in rate_rows})
         else:
             st.write(f"No {label.lower()} data.")
+
+    st.header("Error Histograms")
+    err_labels = ["Substitutions", "Insertions", "Deletions"]
+    select_err = getattr(sidebar, "multiselect", lambda *a, **k: err_labels)
+    enabled_errs = select_err("Error Types", err_labels, default=err_labels)
+    for label, key in [
+        ("Substitutions", "substitutions"),
+        ("Insertions", "insertions"),
+        ("Deletions", "deletions"),
+    ]:
+        if label not in enabled_errs:
+            continue
+        subheader(f"{label} Histogram")
+        if alt and pd and hasattr(st, "altair_chart"):
+            rows: list[dict[str, Any]] = []
+            for name in selected:
+                hist = _calc_error_hist(datasets[name].get(key))
+                if hist:
+                    for i, val in enumerate(hist):
+                        rows.append({"Errors": i, "Count": val, "Dataset": name})
+            if rows:
+                df = pd.DataFrame(rows)
+                chart = (
+                    alt.Chart(df)
+                    .mark_bar(opacity=0.5)
+                    .encode(x="Errors:Q", y="Count:Q", color="Dataset:N")
+                )
+                st.altair_chart(chart, use_container_width=True)
+            else:
+                st.write(f"No {label.lower()} histogram data.")
+        else:
+            if len(selected) == 1:
+                hist = _calc_error_hist(datasets[selected[0]].get(key))
+                if hist:
+                    st.bar_chart(hist)
+                else:
+                    st.write(f"No {label.lower()} histogram data.")
+            else:
+                st.write("Install pandas and altair for multi-file error histograms.")
 
     for name in selected:
         data = datasets[name]
