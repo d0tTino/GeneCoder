@@ -93,6 +93,39 @@ pip install dist/mycodec-*.whl
 genecli plugin list   # confirms the plugin is available
 ```
 
+## Codec Plugin Walkthrough
+
+1. Start from the sample at
+   [`src/plugins/reverse_codec.py`](../src/plugins/reverse_codec.py). It defines
+   a `ReverseCodec` class and registers it with the plugin system:
+
+   ```python
+   from typing import Callable
+   from genecoder.api import Codec
+
+   class ReverseCodec(Codec):
+       def encode(self, data: bytes, /, **kwargs: object) -> str:
+           return data[::-1].decode("utf-8")
+
+       def decode(self, encoded: str, /, **kwargs: object) -> bytes:
+           return encoded[::-1].encode("utf-8")
+
+   def register(register_codec: Callable[[str, type[Codec]], None]) -> None:
+       register_codec("reverse", ReverseCodec)
+   ```
+
+2. Load the plugin and encode data:
+
+   ```bash
+   python - <<'PY'
+   from genecoder.plugins import load_plugins
+   from genecoder.registry import codec_registry
+   load_plugins()
+   codec = codec_registry["reverse"]()
+   print(codec.encode(b"HELIX"))
+   PY
+   ```
+
 ## Entry Point Groups
 
 The callback passed to `register()` depends on the entry point group used:
@@ -150,32 +183,53 @@ mycodec/
 The `__init__.py` file defines the codec class and the `register`
 function shown above.
 
-To add a custom [FEC](glossary.md#forward-error-correction-fec) implementation you would use the `genecoder.fec` group and
-call the provided `register_fec` callback:
+## FEC Plugin Walkthrough
 
-```toml
-[project.entry-points."genecoder.fec"]
-myfec = "my_package.my_fec"
-```
+1. Declare the entry point in `pyproject.toml`:
 
-```python
-# my_package/my_fec.py
-from genecoder.api import FEC
+   ```toml
+   [project.entry-points."genecoder.fec"]
+   myfec = "my_package.my_fec"
+   ```
 
-class MyFEC(FEC):
-    def encode(self, data: bytes):
-        ...
+2. Implement the FEC class and register it, following the pattern in
+   [`src/plugins/reverse_codec.py`](../src/plugins/reverse_codec.py):
 
-    def decode(self, encoded: bytes, info):
-        ...
+   ```python
+   # my_package/my_fec.py
+   from typing import Callable, Mapping
+   from genecoder.api import FEC
 
-def register(register_fec):
-    register_fec("myfec", MyFEC)
-```
-## Simulator Plugins
+   class MyFEC(FEC):
+       def encode(self, data: bytes, /, **kwargs: object) -> tuple[bytes, Mapping[str, object]]:
+           return data, {}
 
-Simulator plugins model sequencing or transmission channels and register under
-`genecoder.simulators`.
+       def decode(
+           self, encoded: bytes, info: Mapping[str, object], /, **kwargs: object
+       ) -> tuple[bytes, int]:
+           return encoded, 0
+
+   def register(register_fec: Callable[[str, type[FEC]], None]) -> None:
+       register_fec("myfec", MyFEC)
+   ```
+
+3. Exercise the plugin:
+
+   ```bash
+   python - <<'PY'
+   from my_package.my_fec import MyFEC
+   fec = MyFEC()
+   encoded, info = fec.encode(b"HELIX")
+   decoded, errors = fec.decode(encoded, info)
+   print(decoded, errors)
+   PY
+   ```
+
+## Simulator Plugin Walkthrough
+
+Simulator plugins model sequencing or transmission channels and use the same
+registration pattern as
+[`src/plugins/helix_visualizer.py`](../src/plugins/helix_visualizer.py).
 
 1. Add an entry point in `pyproject.toml`:
 
@@ -184,17 +238,28 @@ Simulator plugins model sequencing or transmission channels and register under
    mysim = "my_package.my_sim"
    ```
 
-2. Implement a class with a `simulate()` method returning the mutated sequence.
+2. Implement and register the simulator:
 
    ```python
+   from typing import Callable
    from genecoder.api import Simulator
 
-   class MyChannel(Simulator):
-       def simulate(self, sequence: str) -> str:
+   class PassthroughChannel(Simulator):
+       def simulate(self, sequence: str, /, **kwargs: object) -> str:
            return sequence
 
-   def register(register_simulator):
-       register_simulator("mysim", MyChannel())
+   def register(register_simulator: Callable[[str, Simulator], None]) -> None:
+       register_simulator("mysim", PassthroughChannel())
+   ```
+
+3. Run the simulator:
+
+   ```bash
+   python - <<'PY'
+   from my_package.my_sim import PassthroughChannel
+   sim = PassthroughChannel()
+   print(sim.simulate("ACGT"))
+   PY
    ```
 
 See [`plugins-examples/example_simulator`](../plugins-examples/example_simulator/)

@@ -212,7 +212,11 @@ See [CITATION.cff](CITATION.cff) for citation information.
 
 GeneCoder can be extended through plugins discovered via the
 `genecoder.plugins`, `genecoder.fec` and `genecoder.simulators` entry points.
-See [docs/plugins.md](docs/plugins.md) for details on writing and registering
+See the step-by-step
+[codec](docs/plugins.md#codec-plugin-walkthrough),
+[FEC](docs/plugins.md#fec-plugin-walkthrough) and
+[simulator](docs/plugins.md#simulator-plugin-walkthrough) examples in
+[docs/plugins.md](docs/plugins.md) for details on writing and registering
 new codecs, FEC back-ends or simulators. Plugins are automatically loaded when
 using the CLI or GUI. When using GeneCoder as a library call
 ``genecoder.plugins.load_plugins()`` first to populate the registries.
