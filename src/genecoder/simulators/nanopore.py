@@ -23,7 +23,8 @@ except Exception:  # pragma: no cover - fallback when numba missing
         return wrapper
 
 from ..random_utils import make_rng
-from ..nanopore_sim import simulate_d2sim, simulate_desp, DNARSIM_RATE_TABLES as _DNARSIM_RATE_TABLES
+from ..d2sim_adapter import simulate_d2sim
+from ..desp_adapter import simulate_desp
 from ..simulator_utils import _run_external, _parse_env_options
 from ..api import Simulator
 from .base import BaseChannel
@@ -112,6 +113,8 @@ try:  # pragma: no cover - optional dependency
     _cfg_dir = Path(__file__).resolve().parents[3] / "configs"
     with open(_cfg_dir / "nanopore.yml", "r", encoding="utf-8") as _fh:
         _data = yaml.safe_load(_fh) or {}
+    with open(_cfg_dir / "dnarsim_rates.yaml", "r", encoding="utf-8") as _fh:
+        _rates_data = yaml.safe_load(_fh) or {}
 
     def _parse_profile(params: dict[str, Any]) -> dict[str, Any]:
         parsed: dict[str, Any] = {}
@@ -135,8 +138,46 @@ try:  # pragma: no cover - optional dependency
     else:  # pragma: no cover - unexpected structure
         NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
 
-    NANOPORE_PROFILES.update(_DNARSIM_RATE_TABLES)
-    DNARSIM_RATE_TABLES = _DNARSIM_RATE_TABLES
+    def _parse_rate_table(tbl: Mapping[str, Any]) -> dict[str, Any]:
+        parsed: dict[str, Any] = {
+            "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
+            "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
+            "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
+        }
+        if "context_errors" in tbl and isinstance(tbl["context_errors"], Mapping):
+            parsed["context_errors"] = {
+                str(k).upper(): float(v)
+                for k, v in tbl["context_errors"].items()
+                if isinstance(v, (int, float))
+            }
+        if "insertion_profile" in tbl:
+            parsed["insertion_profile"] = _validate_indel_profile(
+                tbl.get("insertion_profile"), "insertion_profile"
+            )
+        if "deletion_profile" in tbl:
+            parsed["deletion_profile"] = _validate_indel_profile(
+                tbl.get("deletion_profile"), "deletion_profile"
+            )
+        if "context_insertions" in tbl:
+            parsed["context_insertions"] = _validate_context_profiles(
+                tbl.get("context_insertions"), "context_insertions"
+            )
+        if "context_deletions" in tbl:
+            parsed["context_deletions"] = _validate_context_profiles(
+                tbl.get("context_deletions"), "context_deletions"
+            )
+        return parsed
+
+    if isinstance(_rates_data, dict):
+        DNARSIM_RATE_TABLES = {
+            str(name): _parse_rate_table(tbl)
+            for name, tbl in _rates_data.items()
+            if isinstance(tbl, Mapping)
+        }
+    else:  # pragma: no cover - unexpected structure
+        DNARSIM_RATE_TABLES = {}
+
+    NANOPORE_PROFILES.update(DNARSIM_RATE_TABLES)
 except Exception:  # pragma: no cover - fallback when yaml missing
     NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
     DNARSIM_RATE_TABLES = {}
@@ -563,6 +604,7 @@ def _consensus(reads: Iterable[str]) -> str:
 def register(
     registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
+    registrar("nanopore", NanoporeChannel())
     registrar("nanopore_d2sim", NanoporeChannel())
     registrar("nanopore_desp", NanoporeDeSPChannel())
     registrar("nanopore_dnarsim", NanoporeDNArSimChannel())

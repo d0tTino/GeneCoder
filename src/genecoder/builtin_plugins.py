@@ -56,12 +56,14 @@ def register_builtin_plugins() -> None:
 
     _load_and_register(
         [
-            "genecoder.nanopore_sim",
             "genecoder.error_simulation",
             "genecoder.illumina_sim",
             "genecoder.simulators.decay",
             "genecoder.simulators.illumina",
             "genecoder.simulators.nanopore",
+            "genecoder.d2sim_adapter",
+            "genecoder.dnarsim_adapter",
+            "genecoder.squigulator_adapter",
             "genecoder.desp_adapter",
         ],
         register_simulator,
