@@ -1,0 +1,8 @@
+test_profile:
+  substitution_rate: 0.05
+  insertion_rate: 0.02
+  deletion_rate: 0.03
+  context_errors:
+    AA: 0.1
+  insertion_profile:
+    3: 0.2
