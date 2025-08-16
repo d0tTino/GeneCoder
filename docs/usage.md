@@ -41,6 +41,8 @@ poetry install --no-interaction
 * `--output-file` – output path for a single input file.
 * `--output-dir` – directory for batch operations.
 * `--fec` – optional [FEC](glossary.md#forward-error-correction-fec) method (`triple_repeat`, `hamming_7_4`, `reed_solomon`, `ldpc`, `fountain`).
+* `--rs-symbol-size` – symbol size for Reed-Solomon FEC (used with `--fec reed_solomon`).
+* `--rs-primitive` – primitive polynomial for Reed-Solomon FEC (used with `--fec reed_solomon`).
 * `--auto-ext` – save encoded files with a `.dna` suffix and decode back to the original extension.
 * `--seed` – seed random number generators for reproducible simulations.
 
@@ -88,14 +90,22 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --output-dir encoded_hamming/ --method base4_direct --fec hamming_7_4
    ```
 
-6. **Decode a Hamming(7,4) encoded file**
+6. **Encode with Reed–Solomon FEC**
+
+   ```bash
+   genecli encode --input-files path/to/data.bin \
+       --output-dir encoded_rs/ --method base4_direct --fec reed_solomon \
+       --rs-symbol-size 8 --rs-primitive 0x11d
+   ```
+
+7. **Decode a Hamming(7,4) encoded file**
 
    ```bash
    genecli decode --input-files encoded_hamming/important_data.txt.fasta \
        --output-file decoded_important_data.txt --method base4_direct
    ```
 
-7. **Batch encode multiple files using GC-Balanced**
+8. **Batch encode multiple files using GC-Balanced**
 
    ```bash
    genecli encode --input-files file1.txt notes.md image.png \
@@ -103,14 +113,14 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
        --gc-min 0.40 --gc-max 0.60 --max-homopolymer 4
    ```
 
-8. **Batch decode multiple FASTA files**
+9. **Batch decode multiple FASTA files**
 
    ```bash
    genecli decode --input-files gc_encoded_batch/*.fasta \
        --output-dir decoded_batch/ --method gc_balanced
    ```
 
-9. **Stream encode and decode a large file**
+10. **Stream encode and decode a large file**
 
    ```bash
    genecli encode --input-files big.bin --output-file big.fasta \
@@ -122,7 +132,7 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    Streaming operations are **resumable**. Pass `--resume state.json` to
    continue an interrupted encode or decode run.
 
-10. **Introduce channel errors before decoding**
+11. **Introduce channel errors before decoding**
 
 ```bash
 genecli channel --input-file encoded.fasta --output-file corrupted.fasta \
@@ -157,7 +167,7 @@ genecli pipeline input.bin out2.bin --codec base4_direct --channel nanopore --pr
 cmp out1.bin out2.bin   # files match
 ```
 
-11. **Encode, corrupt and decode a file with automatic extensions**
+12. **Encode, corrupt and decode a file with automatic extensions**
 
 ```bash
 genecli encode --input-files hello.jpg --output-dir encoded \
@@ -174,7 +184,7 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
    ```
 
    Add `--checksum` to the encode and decode commands for automatic validation.
-12. **Decode using an external simulator**
+13. **Decode using an external simulator**
 
    The ``--simulator`` option accepts ``d2sim``, ``dnarsim`` or ``squigulator``.
    Install the desired simulator separately and ensure the command is on your
@@ -201,7 +211,7 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
        --output-file decoded.bin --simulator squigulator
    ```
 
-13. **Combine simulators into a channel**
+14. **Combine simulators into a channel**
 
    Apply multiple simulators and enforce synthesis constraints:
 
@@ -313,7 +323,7 @@ genecli channel run config.yml
 genecli channel run config.yml
 ```
 
-14. **Add DNA decay to the channel pipeline**
+15. **Add DNA decay to the channel pipeline**
 
    Simulate long‑term storage by including a ``decay`` stage. ``half_life``
    controls how quickly bases are lost and ``variation`` adds random jitter to
@@ -332,7 +342,7 @@ genecli channel run config.yml
 genecli channel run decay_config.yml
 ```
 
-15. **AI-assisted decoding**
+16. **AI-assisted decoding**
 
    Install the optional `dnaformer` extras to enable a machine learning model
    that can recover sequences with high error rates:
@@ -351,7 +361,7 @@ genecli channel run decay_config.yml
        --method ai
    ```
 
-16. **Run the full pipeline from a YAML file**
+17. **Run the full pipeline from a YAML file**
 
    Create a configuration with the codec, FEC and channel settings:
 

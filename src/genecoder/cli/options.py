@@ -130,6 +130,8 @@ def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
         max_homopolymer=args.max_homopolymer,
         alphabet=getattr(args, "alphabet", "base4"),
         seed=getattr(args, "seed", None),
+        rs_symbol_size=getattr(args, "rs_symbol_size", None),
+        rs_primitive=getattr(args, "rs_primitive", None),
     )
 
 
