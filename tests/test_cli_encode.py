@@ -28,6 +28,7 @@ def _encode_args(stream: bool = False) -> argparse.Namespace:
         mirror=False,
         capsule=None,
         export_csv=None,
+        suppress_constraint_warnings=False,
     )
 
 

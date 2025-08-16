@@ -22,8 +22,11 @@ from genecoder.manifest import generate_manifest
 from genecoder.encoders import (
     encode_base4_direct,
     encode_gc_balanced,
-    calculate_gc_content,
     encode_triple_repeat,
+)
+from genecoder.gc_constrained_encoder import (
+    calculate_gc_content,
+    check_default_constraints,
 )
 from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import encode_data_with_hamming
@@ -205,6 +208,11 @@ def process_single_encode(
     logger.info(
         f"\nProcessing encode for input: {input_file_path} -> output: {output_file_path}"
     )
+    suppress_warnings = (
+        getattr(args, "suppress_constraint_warnings", False)
+        or os.getenv("GENECODER_DISABLE_CONSTRAINT_WARNINGS", "").lower()
+        in {"1", "true"}
+    )
     try:
         if args.stream and args.method == "base4_direct" and args.fec is None:
             sanitized_name = os.path.basename(input_file_path.replace("\\", "/"))
@@ -266,6 +274,26 @@ def process_single_encode(
                 with open(output_file_path, "a", encoding="utf-8") as f_out:
                     f_out.write(to_fasta(rc_seq, rc_header, line_width=80))
                 parsed_records.append((rc_header, rc_seq))
+
+            final_gc, final_hp, _, _ = check_default_constraints(
+                dna_sequence, suppress_warnings
+            )
+            logger.info(f"Final GC content: {final_gc:.2%}")
+            logger.info(f"Final max homopolymer length: {final_hp}")
+            if not suppress_warnings:
+                if not (args.gc_min <= final_gc <= args.gc_max):
+                    logger.warning(
+                        "Final GC content %.2f%% outside requested range [%.2f%%, %.2f%%]",
+                        final_gc * 100,
+                        args.gc_min * 100,
+                        args.gc_max * 100,
+                    )
+                if final_hp > args.max_homopolymer:
+                    logger.warning(
+                        "Final max homopolymer length %d exceeds limit %d",
+                        final_hp,
+                        args.max_homopolymer,
+                    )
 
             return os.path.basename(input_file_path), dna_sequence
 
@@ -384,8 +412,14 @@ def process_single_encode(
             else 0.0
         )
 
-        final_gc = calculate_gc_content(final_encoded_dna_sequence)
-        final_hp = get_max_homopolymer_length(final_encoded_dna_sequence)
+        (
+            final_gc,
+            final_hp,
+            gc_default_bad,
+            hp_default_bad,
+        ) = check_default_constraints(
+            final_encoded_dna_sequence, suppress_warnings
+        )
 
         metrics = {
             "original_size": original_size_bytes,
@@ -394,6 +428,8 @@ def process_single_encode(
             "bits_per_nt": bits_per_nucleotide,
             "final_gc": final_gc,
             "final_max_homopolymer": final_hp,
+            "gc_exceeds_default": gc_default_bad,
+            "homopolymer_exceeds_default": hp_default_bad,
         }
 
         logger.info(f"\n--- Encoding Metrics for {input_file_path} ---")
@@ -414,19 +450,20 @@ def process_single_encode(
 
         logger.info(f"Final GC content: {final_gc:.2%}")
         logger.info(f"Final max homopolymer length: {final_hp}")
-        if not (args.gc_min <= final_gc <= args.gc_max):
-            logger.warning(
-                "Final GC content %.2f%% outside requested range [%.2f%%, %.2f%%]",
-                final_gc * 100,
-                args.gc_min * 100,
-                args.gc_max * 100,
-            )
-        if final_hp > args.max_homopolymer:
-            logger.warning(
-                "Final max homopolymer length %d exceeds limit %d",
-                final_hp,
-                args.max_homopolymer,
-            )
+        if not suppress_warnings:
+            if not (args.gc_min <= final_gc <= args.gc_max):
+                logger.warning(
+                    "Final GC content %.2f%% outside requested range [%.2f%%, %.2f%%]",
+                    final_gc * 100,
+                    args.gc_min * 100,
+                    args.gc_max * 100,
+                )
+            if final_hp > args.max_homopolymer:
+                logger.warning(
+                    "Final max homopolymer length %d exceeds limit %d",
+                    final_hp,
+                    args.max_homopolymer,
+                )
 
         if args.method == "gc_balanced":
             gc_balanced_payload_dna = (
@@ -609,6 +646,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--fix-chisel",
         action="store_true",
         help="Use DNA Chisel for constraint fixing when available.",
+    )
+    parser.add_argument(
+        "--suppress-constraint-warnings",
+        action="store_true",
+        help="Suppress warnings when results exceed default GC or homopolymer limits.",
     )
     parser.add_argument(
         "--seed",

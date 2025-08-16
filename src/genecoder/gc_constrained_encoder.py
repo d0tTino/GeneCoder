@@ -22,6 +22,56 @@ from .utils import check_homopolymer_length, get_max_homopolymer_length
 
 logger = logging.getLogger(__name__)
 
+# Recommended default constraints used by the CLI and other helpers.  These
+# values are exposed so callers can reference a single source of truth when
+# evaluating GC content and homopolymer runs.
+DEFAULT_GC_MIN = 0.45
+DEFAULT_GC_MAX = 0.55
+DEFAULT_MAX_HOMOPOLYMER = 3
+
+
+def check_default_constraints(
+    dna_sequence: str, suppress_warnings: bool = False
+) -> tuple[float, int, bool, bool]:
+    """Return GC/HP metrics and flags indicating violations of defaults.
+
+    Parameters
+    ----------
+    dna_sequence:
+        Sequence to analyse.
+    suppress_warnings:
+        When ``True`` no warnings are logged even if the defaults are
+        exceeded.  The caller is expected to consult the boolean flags in the
+        returned tuple.
+
+    Returns
+    -------
+    Tuple consisting of ``(gc_content, max_homopolymer, gc_violation,
+    homopolymer_violation)``.
+    """
+
+    gc_val = calculate_gc_content(dna_sequence)
+    hp_val = get_max_homopolymer_length(dna_sequence)
+    gc_bad = gc_val < DEFAULT_GC_MIN or gc_val > DEFAULT_GC_MAX
+    hp_bad = hp_val > DEFAULT_MAX_HOMOPOLYMER
+
+    if not suppress_warnings:
+        if gc_bad:
+            logger.warning(
+                "GC content %.2f%% outside recommended range [%.2f%%, %.2f%%]",
+                gc_val * 100,
+                DEFAULT_GC_MIN * 100,
+                DEFAULT_GC_MAX * 100,
+            )
+        if hp_bad:
+            logger.warning(
+                "Max homopolymer length %d exceeds recommended limit %d",
+                hp_val,
+                DEFAULT_MAX_HOMOPOLYMER,
+            )
+
+    return gc_val, hp_val, gc_bad, hp_bad
+
 def calculate_gc_content(dna_sequence: str) -> float:
     """Calculates the GC content of a DNA sequence.
 
