@@ -10,14 +10,42 @@ r9:
   context_insertions:
     AA:
       2: 0.9
+    AAAA:
+      4: 0.5
+    TTTT:
+      4: 0.5
   context_deletions:
     TT:
       2: 0.9
+    AAAA:
+      4: 0.6
+    TTTT:
+      4: 0.6
 "r10.3":
   substitution_rate: 0.06
   insertion_rate: 0.02
   deletion_rate: 0.035
+  context_insertions:
+    AAAA:
+      4: 0.4
+    TTTT:
+      4: 0.4
+  context_deletions:
+    AAAA:
+      4: 0.5
+    TTTT:
+      4: 0.5
 "r10.4":
   substitution_rate: 0.045
   insertion_rate: 0.015
   deletion_rate: 0.025
+  context_insertions:
+    AAAA:
+      4: 0.35
+    TTTT:
+      4: 0.35
+  context_deletions:
+    AAAA:
+      4: 0.45
+    TTTT:
+      4: 0.45
