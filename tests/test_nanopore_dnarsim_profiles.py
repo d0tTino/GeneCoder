@@ -1,0 +1,72 @@
+import pytest
+import yaml
+from pathlib import Path
+import genecoder.simulators.nanopore as nanopore
+from genecoder.simulators.nanopore import NanoporeDNArSimChannel
+import genecoder.random_utils as random_utils
+
+DATA_DIR = Path(__file__).parent / "data"
+
+
+def _error_counts(original: str, mutated: str) -> tuple[int, int, int]:
+    length = min(len(original), len(mutated))
+    subs = sum(1 for a, b in zip(original[:length], mutated[:length]) if a != b)
+    ins = len(mutated) - length
+    dele = len(original) - length
+    return subs, ins, dele
+
+
+def test_parse_valid_rate_table() -> None:
+    data = yaml.safe_load((DATA_DIR / "dnarsim_rates_valid.yaml").read_text())
+    tbl = next(iter(data.values()))
+    parsed = nanopore._parse_rate_table(tbl)
+    assert parsed["substitution_rate"] == pytest.approx(0.05)
+    assert parsed["insertion_rate"] == pytest.approx(0.02)
+    assert parsed["deletion_rate"] == pytest.approx(0.03)
+    assert parsed["context_errors"]["AA"] == pytest.approx(0.1)
+    assert parsed["insertion_profile"][3] == pytest.approx(0.2)
+
+
+def test_parse_invalid_rate_table() -> None:
+    data = yaml.safe_load((DATA_DIR / "dnarsim_rates_invalid.yaml").read_text())
+    tbl = next(iter(data.values()))
+    with pytest.raises(ValueError):
+        nanopore._parse_rate_table(tbl)
+
+
+def test_profile_simulation_statistics(monkeypatch) -> None:
+    data = yaml.safe_load((DATA_DIR / "dnarsim_rates_valid.yaml").read_text())
+    profile_name, tbl = next(iter(data.items()))
+    rates = nanopore._parse_rate_table(tbl)
+    rates.update(
+        {
+            "substitution_rate": 1.0,
+            "insertion_rate": 0.0,
+            "deletion_rate": 0.0,
+            "context_errors": {},
+            "insertion_profile": {},
+            "deletion_profile": {},
+            "context_insertions": {},
+            "context_deletions": {},
+        }
+    )
+    monkeypatch.setattr(nanopore, "DNARSIM_RATE_TABLES", {profile_name: rates})
+    monkeypatch.setattr(nanopore, "NANOPORE_PROFILES", {profile_name: rates})
+    channel = NanoporeDNArSimChannel(error_rate=0.0, profile=profile_name)
+
+    monkeypatch.setattr(nanopore.shutil, "which", lambda _: None)
+    monkeypatch.setenv("GENECODER_SIM_SEED", "1")
+    random_utils._RNG = None
+
+    monkeypatch.setattr(
+        nanopore.NanoporeDNArSimChannel,
+        "_simulate_fallback",
+        staticmethod(lambda seq, rate, rng: seq),
+    )
+
+    seq = "ACGT" * 10
+    mutated = channel.simulate(seq)
+    subs, ins, dele = _error_counts(seq, mutated)
+    assert subs == len(seq)
+    assert ins == 0
+    assert dele == 0

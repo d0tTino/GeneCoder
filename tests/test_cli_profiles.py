@@ -11,3 +11,6 @@ def test_cli_profiles_lists() -> None:
     assert "minion" in out
     assert "novaseq" in out
     assert "r10" in out
+    assert "r9" in out
+    assert "r10.3" in out
+    assert "r10.4" in out

@@ -1,0 +1,4 @@
+bad_profile:
+  substitution_rate: "bad"
+  insertion_profile:
+    A: 0.1
