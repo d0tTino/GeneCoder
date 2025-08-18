@@ -72,7 +72,7 @@ def perform_encoding(data: bytes, options: EncodeOptions) -> EncodeResult:
     elif options.fec_method == "Reed-Solomon":
         if options.add_parity:
             info_msgs.append("Info: 'Add Parity' ignored when Reed-Solomon FEC selected.")
-        current_input, rs_nsym = encode_data_rs(data)
+        current_input, rs_nsym, _, _ = encode_data_rs(data)
 
     should_add_parity = options.add_parity and options.fec_method not in ("Hamming(7,4)", "Reed-Solomon")
 

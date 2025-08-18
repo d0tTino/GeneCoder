@@ -274,14 +274,14 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             continue
         subheader(f"{label} Histogram")
         if alt and pd and hasattr(st, "altair_chart"):
-            rows: list[dict[str, Any]] = []
+            hist_rows: list[dict[str, Any]] = []
             for name in selected:
                 hist = _calc_error_hist(datasets[name].get(key))
                 if hist:
                     for i, val in enumerate(hist):
-                        rows.append({"Errors": i, "Count": val, "Dataset": name})
-            if rows:
-                df = pd.DataFrame(rows)
+                        hist_rows.append({"Errors": i, "Count": val, "Dataset": name})
+            if hist_rows:
+                df = pd.DataFrame(hist_rows)
                 chart = (
                     alt.Chart(df)
                     .mark_bar(opacity=0.5)

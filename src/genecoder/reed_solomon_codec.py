@@ -146,11 +146,13 @@ class ReedSolomonFEC(FEC):
         /,
         **kwargs: Any,
     ) -> Tuple[bytes, int]:  # noqa: ANN401
+        symbol_size_val = info.get("symbol_size")
+        primitive_val = info.get("primitive")
         return decode_data_rs(
             encoded,
             int(info["nsym"]),
-            symbol_size=int(info.get("symbol_size")) if info.get("symbol_size") is not None else None,
-            primitive=int(info.get("primitive")) if info.get("primitive") is not None else None,
+            symbol_size=int(symbol_size_val) if symbol_size_val is not None else None,
+            primitive=int(primitive_val) if primitive_val is not None else None,
         )
 
 
