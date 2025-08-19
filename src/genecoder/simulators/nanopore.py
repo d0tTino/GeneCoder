@@ -82,6 +82,35 @@ def _validate_context_profiles(
         validated[str(ctx).upper()] = _validate_indel_profile(prof, f"{name}[{ctx}]")
     return validated
 
+
+def _split_context_indels(
+    profiles: Mapping[str, Mapping[str, Mapping[int, float]]] | None,
+    name: str,
+) -> tuple[Dict[str, Dict[int, float]], Dict[str, Dict[int, float]]]:
+    """Return separate insertion and deletion context maps.
+
+    ``profiles`` maps contexts to ``{"insertions": {...}, "deletions": {...}}``. This
+    helper validates the nested indel profiles and returns two dictionaries in the
+    same normalized format used internally by the simulator.
+    """
+
+    ctx_ins: Dict[str, Dict[int, float]] = {}
+    ctx_del: Dict[str, Dict[int, float]] = {}
+    for ctx, ctx_map in (profiles or {}).items():
+        if not isinstance(ctx_map, Mapping):
+            continue
+        ins_prof = ctx_map.get("insertions") or ctx_map.get("insertion")
+        del_prof = ctx_map.get("deletions") or ctx_map.get("deletion")
+        if ins_prof is not None:
+            ctx_ins[str(ctx).upper()] = _validate_indel_profile(
+                ins_prof, f"{name}[{ctx}].insertions"
+            )
+        if del_prof is not None:
+            ctx_del[str(ctx).upper()] = _validate_indel_profile(
+                del_prof, f"{name}[{ctx}].deletions"
+            )
+    return ctx_ins, ctx_del
+
 # ---------------------------------------------------------------------------
 # Preset parameter profiles for :class:`NanoporeChannel` loaded from YAML.
 _DEFAULT_NANOPORE_PROFILES: dict[
@@ -125,6 +154,12 @@ try:  # pragma: no cover - optional dependency
             elif key in {"context_insertions", "context_deletions"}:
                 prof = value if isinstance(value, Mapping) else None
                 parsed[key] = _validate_context_profiles(prof, key)
+            elif key == "context_indels" and isinstance(value, Mapping):
+                ctx_ins, ctx_del = _split_context_indels(value, "context_indels")
+                if ctx_ins:
+                    parsed.setdefault("context_insertions", {}).update(ctx_ins)
+                if ctx_del:
+                    parsed.setdefault("context_deletions", {}).update(ctx_del)
             else:
                 parsed[key] = value
         return parsed
@@ -167,21 +202,9 @@ try:  # pragma: no cover - optional dependency
                 tbl.get("context_deletions"), "context_deletions"
             )
         if "context_indels" in tbl and isinstance(tbl["context_indels"], Mapping):
-            ctx_ins: Dict[str, Dict[int, float]] = {}
-            ctx_del: Dict[str, Dict[int, float]] = {}
-            for ctx, ctx_map in tbl["context_indels"].items():
-                if not isinstance(ctx_map, Mapping):
-                    continue
-                ins_prof = ctx_map.get("insertions") or ctx_map.get("insertion")
-                del_prof = ctx_map.get("deletions") or ctx_map.get("deletion")
-                if ins_prof is not None:
-                    ctx_ins[str(ctx).upper()] = _validate_indel_profile(
-                        ins_prof, f"context_indels[{ctx}].insertions"
-                    )
-                if del_prof is not None:
-                    ctx_del[str(ctx).upper()] = _validate_indel_profile(
-                        del_prof, f"context_indels[{ctx}].deletions"
-                    )
+            ctx_ins, ctx_del = _split_context_indels(
+                tbl["context_indels"], "context_indels"
+            )
             if ctx_ins:
                 parsed.setdefault("context_insertions", {}).update(ctx_ins)
             if ctx_del:
@@ -370,6 +393,20 @@ class NanoporeChannel(BaseChannel):
             context_errors = data.get("context_errors", context_errors)
             context_insertions = data.get("context_insertions", context_insertions)
             context_deletions = data.get("context_deletions", context_deletions)
+            if "context_indels" in data:
+                ctx_ins, ctx_del = _split_context_indels(
+                    data.get("context_indels"), "context_indels"
+                )
+                if ctx_ins:
+                    context_insertions = {
+                        **(context_insertions or {}),
+                        **ctx_ins,
+                    }
+                if ctx_del:
+                    context_deletions = {
+                        **(context_deletions or {}),
+                        **ctx_del,
+                    }
             insertion_profile = data.get("insertion_profile", insertion_profile)
             deletion_profile = data.get("deletion_profile", deletion_profile)
         error_rate = _validate_rate("error_rate", error_rate)
