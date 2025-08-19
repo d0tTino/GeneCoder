@@ -37,6 +37,9 @@ PROFILE_MAP: dict[str, tuple[str, str]] = {
     "nova": ("illumina", "nova"),
     "minion": ("nanopore", "minion"),
     "promethion": ("nanopore", "promethion"),
+    "r9": ("nanopore_dnarsim", "r9"),
+    "r10.3": ("nanopore_dnarsim", "r10.3"),
+    "r10.4": ("nanopore_dnarsim", "r10.4"),
 }
 
 
@@ -639,7 +642,7 @@ def _handle_run(args: argparse.Namespace) -> None:
 
 
 def list_profiles() -> None:
-    """Print available Illumina and Nanopore profiles."""
+    """Print available Illumina, Nanopore and DNArSim profiles."""
 
     print("Illumina profiles:")
     for name in sorted(ILLUMINA_PROFILES):
@@ -648,6 +651,11 @@ def list_profiles() -> None:
     print("Nanopore profiles:")
     for name in sorted(NANOPORE_PROFILES):
         print(f"  {name}")
+
+    if DNARSIM_RATE_TABLES:
+        print("DNArSim profiles:")
+        for name in sorted(DNARSIM_RATE_TABLES):
+            print(f"  {name}")
 
 
 def _handle_list_profiles(_: argparse.Namespace) -> None:

@@ -14,12 +14,20 @@ r9:
       4: 0.5
     TTTT:
       4: 0.5
+    CCCC:
+      4: 0.5
+    GGGG:
+      4: 0.5
   context_deletions:
     TT:
       2: 0.9
     AAAA:
       4: 0.6
     TTTT:
+      4: 0.6
+    CCCC:
+      4: 0.6
+    GGGG:
       4: 0.6
 "r10.3":
   substitution_rate: 0.06
@@ -30,10 +38,18 @@ r9:
       4: 0.4
     TTTT:
       4: 0.4
+    CCCC:
+      4: 0.4
+    GGGG:
+      4: 0.4
   context_deletions:
     AAAA:
       4: 0.5
     TTTT:
+      4: 0.5
+    CCCC:
+      4: 0.5
+    GGGG:
       4: 0.5
 "r10.4":
   substitution_rate: 0.045
@@ -44,8 +60,16 @@ r9:
       4: 0.35
     TTTT:
       4: 0.35
+    CCCC:
+      4: 0.35
+    GGGG:
+      4: 0.35
   context_deletions:
     AAAA:
       4: 0.45
     TTTT:
+      4: 0.45
+    CCCC:
+      4: 0.45
+    GGGG:
       4: 0.45
