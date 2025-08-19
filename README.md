@@ -212,6 +212,9 @@ See [CITATION.cff](CITATION.cff) for citation information.
 
 GeneCoder can be extended through plugins discovered via the
 `genecoder.plugins`, `genecoder.fec` and `genecoder.simulators` entry points.
+Sample implementations include
+[`src/plugins/reverse_codec.py`](src/plugins/reverse_codec.py) and
+[`src/plugins/helix_visualizer.py`](src/plugins/helix_visualizer.py).
 See the step-by-step
 [codec](docs/plugins.md#codec-plugin-walkthrough),
 [FEC](docs/plugins.md#fec-plugin-walkthrough) and
