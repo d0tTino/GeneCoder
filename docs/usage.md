@@ -253,11 +253,16 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
    Illumina profiles:
      hiseq
      miseq
+     nova
      novaseq
 
    Nanopore profiles:
      minion
      promethion
+     r10
+     r10.3
+     r10.4
+     r9
    ```
 
    Use `--profile` to apply a preset without specifying a simulator:

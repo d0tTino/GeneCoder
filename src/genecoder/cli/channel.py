@@ -642,7 +642,7 @@ def _handle_run(args: argparse.Namespace) -> None:
 
 
 def list_profiles() -> None:
-    """Print available Illumina, Nanopore and DNArSim profiles."""
+    """Print available Illumina and Nanopore profiles."""
 
     print("Illumina profiles:")
     for name in sorted(ILLUMINA_PROFILES):
@@ -651,11 +651,6 @@ def list_profiles() -> None:
     print("Nanopore profiles:")
     for name in sorted(NANOPORE_PROFILES):
         print(f"  {name}")
-
-    if DNARSIM_RATE_TABLES:
-        print("DNArSim profiles:")
-        for name in sorted(DNARSIM_RATE_TABLES):
-            print(f"  {name}")
 
 
 def _handle_list_profiles(_: argparse.Namespace) -> None:
