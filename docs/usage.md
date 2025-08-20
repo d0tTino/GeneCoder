@@ -41,8 +41,8 @@ poetry install --no-interaction
 * `--output-file` – output path for a single input file.
 * `--output-dir` – directory for batch operations.
 * `--fec` – optional [FEC](glossary.md#forward-error-correction-fec) method (`triple_repeat`, `hamming_7_4`, `reed_solomon`, `ldpc`, `fountain`).
-* `--rs-symbol-size` – symbol size for Reed-Solomon FEC (used with `--fec reed_solomon`).
-* `--rs-primitive` – primitive polynomial for Reed-Solomon FEC (used with `--fec reed_solomon`).
+* `--rs-symbol-size` – symbol size (`c_exp`) for Reed‑Solomon FEC. Only relevant with `--fec reed_solomon`.
+* `--rs-primitive` – primitive polynomial for Reed‑Solomon FEC (integer or `0x`‑prefixed hex). Only used with `--fec reed_solomon`.
 * `--auto-ext` – save encoded files with a `.dna` suffix and decode back to the original extension.
 * `--seed` – seed random number generators for reproducible simulations.
 

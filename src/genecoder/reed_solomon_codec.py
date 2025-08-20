@@ -1,8 +1,9 @@
 """Reed--Solomon encoding and decoding utilities using ``reedsolo``.
 
 This module provides minimal wrappers around the :mod:`reedsolo` library to
-encode and decode byte strings with Reed--Solomon error correction. Only the
-number of parity symbols (``nsym``) is currently exposed as a parameter.
+encode and decode byte strings with Reed--Solomon error correction. The number
+of parity symbols (``nsym``), symbol size (``c_exp``) and primitive polynomial
+can be specified when constructing the codec.
 """
 
 # ruff: noqa: ANN401
@@ -68,9 +69,16 @@ def encode_data_rs(
         is the encoded output including parity symbols.
     """
     _require_reedsolo()
-    rs = RSCodec(nsym, c_exp=symbol_size, prim=primitive)
+    rs_kwargs: dict[str, int] = {}
+    if symbol_size is not None:
+        rs_kwargs["c_exp"] = symbol_size
+    if primitive is not None:
+        rs_kwargs["prim"] = primitive
+    rs = RSCodec(nsym, **rs_kwargs)
     encoded = rs.encode(data)
-    return bytes(encoded), nsym, symbol_size, primitive
+    used_symbol_size = rs_kwargs.get("c_exp", getattr(rs, "c_exp", None))
+    used_primitive = rs_kwargs.get("prim", getattr(rs, "prim", None))
+    return bytes(encoded), nsym, used_symbol_size, used_primitive
 
 
 def decode_data_rs(
@@ -105,7 +113,12 @@ def decode_data_rs(
         If decoding fails due to too many errors.
     """
     _require_reedsolo()
-    rs = RSCodec(nsym, c_exp=symbol_size, prim=primitive)
+    rs_kwargs: dict[str, int] = {}
+    if symbol_size is not None:
+        rs_kwargs["c_exp"] = symbol_size
+    if primitive is not None:
+        rs_kwargs["prim"] = primitive
+    rs = RSCodec(nsym, **rs_kwargs)
     try:
         decoded, _full, err_pos = rs.decode(encoded)
     except ReedSolomonError as exc:  # pragma: no cover - error path
