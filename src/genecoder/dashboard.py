@@ -41,6 +41,9 @@ _DEF_METRICS: dict[str, Any] = {
     "substitutions": None,
     "insertions": None,
     "deletions": None,
+    "substitutions_histogram": [],
+    "insertions_histogram": [],
+    "deletions_histogram": [],
     "coverage": None,
     "coverage_distribution": [],
     "constraint_violations": None,
@@ -141,6 +144,16 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     datasets: dict[str, dict[str, Any]] = {}
     for path in paths:
         data = {**_DEF_METRICS, **_load_metrics(path)}
+        for key in ("substitutions", "insertions", "deletions"):
+            val = data.get(key)
+            rate: float | None = None
+            hist: list[int] = []
+            if isinstance(val, (int, float)):
+                rate = float(val)
+            else:
+                hist = _calc_error_hist(val)
+            data[key] = rate
+            data[f"{key}_histogram"] = hist
         if data:
             datasets[Path(path).stem] = data
 
@@ -151,6 +164,16 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     uploaded = file_uploader("Add metrics files", type="json", accept_multiple_files=True)
     for up in uploaded or []:
         data = {**_DEF_METRICS, **_load_metrics(up)}
+        for key in ("substitutions", "insertions", "deletions"):
+            val = data.get(key)
+            rate: float | None = None
+            hist: list[int] = []
+            if isinstance(val, (int, float)):
+                rate = float(val)
+            else:
+                hist = _calc_error_hist(val)
+            data[key] = rate
+            data[f"{key}_histogram"] = hist
         datasets[Path(up.name).stem] = data
 
     st.title("GeneCoder Dashboard")
@@ -266,9 +289,9 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     select_err = getattr(sidebar, "multiselect", lambda *a, **k: err_labels)
     enabled_errs = select_err("Error Types", err_labels, default=err_labels)
     for label, key in [
-        ("Substitutions", "substitutions"),
-        ("Insertions", "insertions"),
-        ("Deletions", "deletions"),
+        ("Substitutions", "substitutions_histogram"),
+        ("Insertions", "insertions_histogram"),
+        ("Deletions", "deletions_histogram"),
     ]:
         if label not in enabled_errs:
             continue
@@ -276,8 +299,8 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         if alt and pd and hasattr(st, "altair_chart"):
             hist_rows: list[dict[str, Any]] = []
             for name in selected:
-                hist = _calc_error_hist(datasets[name].get(key))
-                if hist:
+                hist = datasets[name].get(key)
+                if isinstance(hist, list) and hist:
                     for i, val in enumerate(hist):
                         hist_rows.append({"Errors": i, "Count": val, "Dataset": name})
             if hist_rows:
@@ -292,8 +315,8 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                 st.write(f"No {label.lower()} histogram data.")
         else:
             if len(selected) == 1:
-                hist = _calc_error_hist(datasets[selected[0]].get(key))
-                if hist:
+                hist = datasets[selected[0]].get(key)
+                if isinstance(hist, list) and hist:
                     st.bar_chart(hist)
                 else:
                     st.write(f"No {label.lower()} histogram data.")
