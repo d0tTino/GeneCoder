@@ -26,7 +26,9 @@ from genecoder.encoders import (
 )
 from genecoder.gc_constrained_encoder import (
     calculate_gc_content,
-    check_default_constraints,
+    DEFAULT_GC_MAX,
+    DEFAULT_GC_MIN,
+    DEFAULT_MAX_HOMOPOLYMER,
 )
 from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import encode_data_with_hamming
@@ -275,12 +277,26 @@ def process_single_encode(
                     f_out.write(to_fasta(rc_seq, rc_header, line_width=80))
                 parsed_records.append((rc_header, rc_seq))
 
-            final_gc, final_hp, _, _ = check_default_constraints(
-                dna_sequence, suppress_warnings
-            )
+            final_gc = calculate_gc_content(dna_sequence)
+            final_hp = get_max_homopolymer_length(dna_sequence)
+            gc_default_bad = final_gc < DEFAULT_GC_MIN or final_gc > DEFAULT_GC_MAX
+            hp_default_bad = final_hp > DEFAULT_MAX_HOMOPOLYMER
             logger.info(f"Final GC content: {final_gc:.2%}")
             logger.info(f"Final max homopolymer length: {final_hp}")
             if not suppress_warnings:
+                if gc_default_bad:
+                    logger.warning(
+                        "GC content %.2f%% outside recommended range [%.2f%%, %.2f%%]",
+                        final_gc * 100,
+                        DEFAULT_GC_MIN * 100,
+                        DEFAULT_GC_MAX * 100,
+                    )
+                if hp_default_bad:
+                    logger.warning(
+                        "Max homopolymer length %d exceeds recommended limit %d",
+                        final_hp,
+                        DEFAULT_MAX_HOMOPOLYMER,
+                    )
                 if not (args.gc_min <= final_gc <= args.gc_max):
                     logger.warning(
                         "Final GC content %.2f%% outside requested range [%.2f%%, %.2f%%]",
@@ -412,14 +428,24 @@ def process_single_encode(
             else 0.0
         )
 
-        (
-            final_gc,
-            final_hp,
-            gc_default_bad,
-            hp_default_bad,
-        ) = check_default_constraints(
-            final_encoded_dna_sequence, suppress_warnings
-        )
+        final_gc = calculate_gc_content(final_encoded_dna_sequence)
+        final_hp = get_max_homopolymer_length(final_encoded_dna_sequence)
+        gc_default_bad = final_gc < DEFAULT_GC_MIN or final_gc > DEFAULT_GC_MAX
+        hp_default_bad = final_hp > DEFAULT_MAX_HOMOPOLYMER
+        if not suppress_warnings:
+            if gc_default_bad:
+                logger.warning(
+                    "GC content %.2f%% outside recommended range [%.2f%%, %.2f%%]",
+                    final_gc * 100,
+                    DEFAULT_GC_MIN * 100,
+                    DEFAULT_GC_MAX * 100,
+                )
+            if hp_default_bad:
+                logger.warning(
+                    "Max homopolymer length %d exceeds recommended limit %d",
+                    final_hp,
+                    DEFAULT_MAX_HOMOPOLYMER,
+                )
 
         metrics = {
             "original_size": original_size_bytes,
