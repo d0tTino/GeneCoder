@@ -23,6 +23,9 @@ def test_encode_gc_warning(
         process_single_encode(str(input_file), str(output_file), args)
     assert any("outside requested range" in rec.message for rec in caplog.records)
     assert not any("exceeds limit" in rec.message for rec in caplog.records)
+    manifest_path = output_file.with_suffix(".manifest.json")
+    data = json.loads(manifest_path.read_text())
+    assert data["metrics"]["gc_exceeds_default"]
 
 
 def test_encode_homopolymer_warning(
@@ -40,6 +43,9 @@ def test_encode_homopolymer_warning(
         process_single_encode(str(input_file), str(output_file), args)
     assert any("exceeds limit" in rec.message for rec in caplog.records)
     assert not any("outside requested range" in rec.message for rec in caplog.records)
+    manifest_path = output_file.with_suffix(".manifest.json")
+    data = json.loads(manifest_path.read_text())
+    assert data["metrics"]["homopolymer_exceeds_default"]
 
 
 def test_encode_default_warnings_manifest(
