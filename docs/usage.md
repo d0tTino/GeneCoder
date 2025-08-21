@@ -563,6 +563,10 @@ The interface visualizes key metrics:
 * Overall decode-success percentage
 * Constraint-violation counts
 
+Use the **Error Types** multiselect in the sidebar to toggle which histograms
+are shown. Each bar chart illustrates how often reads contain a given number of
+substitutions, insertions or deletions.
+
 ![Homopolymer distribution screenshot](images/homopolymer_distribution.svg)
 
 ![Error rate charts screenshot](images/error_rates.svg)

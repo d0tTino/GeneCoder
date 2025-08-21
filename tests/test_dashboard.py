@@ -131,3 +131,21 @@ def test_display_coverage_and_constraint_metrics(
     charts = [args[0] for args, _ in dummy_streamlit["bar_chart"]]
     assert [1, 3, 2] in charts
     assert {"Violations": 2} in charts
+
+
+def test_error_histograms_rendered(
+    tmp_path: Path, dummy_streamlit: dict[str, list]
+) -> None:
+    data = {
+        "substitutions": [0, 1, 1, 2],
+        "insertions": {"0": 2, "1": 1},
+    }
+    path = tmp_path / "metrics.json"
+    path.write_text(json.dumps(data))
+
+    mod = importlib.reload(importlib.import_module("genecoder.dashboard"))
+    mod.main(str(path))
+
+    charts = [args[0] for args, _ in dummy_streamlit["bar_chart"]]
+    assert [1, 2, 1] in charts
+    assert [2, 1] in charts
