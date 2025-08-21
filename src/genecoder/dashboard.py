@@ -133,6 +133,18 @@ def _calc_error_hist(val: object) -> list[int]:
     return [counts.get(i, 0) for i in range(max_bin + 1)]
 
 
+def _split_error_metric(val: object) -> tuple[float | None, list[int]]:
+    """Return a rate and histogram tuple for error metric values."""
+
+    rate: float | None = None
+    hist: list[int] = []
+    if isinstance(val, (int, float)):
+        rate = float(val)
+    else:
+        hist = _calc_error_hist(val)
+    return rate, hist
+
+
 def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: no cover - UI logic
     """Render the dashboard from one or more metrics files."""
 
@@ -145,13 +157,7 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     for path in paths:
         data = {**_DEF_METRICS, **_load_metrics(path)}
         for key in ("substitutions", "insertions", "deletions"):
-            val = data.get(key)
-            rate: float | None = None
-            hist: list[int] = []
-            if isinstance(val, (int, float)):
-                rate = float(val)
-            else:
-                hist = _calc_error_hist(val)
+            rate, hist = _split_error_metric(data.get(key))
             data[key] = rate
             data[f"{key}_histogram"] = hist
         if data:
@@ -165,13 +171,7 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     for up in uploaded or []:
         data = {**_DEF_METRICS, **_load_metrics(up)}
         for key in ("substitutions", "insertions", "deletions"):
-            val = data.get(key)
-            rate: float | None = None
-            hist: list[int] = []
-            if isinstance(val, (int, float)):
-                rate = float(val)
-            else:
-                hist = _calc_error_hist(val)
+            rate, hist = _split_error_metric(data.get(key))
             data[key] = rate
             data[f"{key}_histogram"] = hist
         datasets[Path(up.name).stem] = data
@@ -299,9 +299,9 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         if alt and pd and hasattr(st, "altair_chart"):
             hist_rows: list[dict[str, Any]] = []
             for name in selected:
-                hist = datasets[name].get(key)
-                if isinstance(hist, list) and hist:
-                    for i, val in enumerate(hist):
+                hist_vals = datasets[name].get(key)
+                if isinstance(hist_vals, list) and hist_vals:
+                    for i, val in enumerate(hist_vals):
                         hist_rows.append({"Errors": i, "Count": val, "Dataset": name})
             if hist_rows:
                 df = pd.DataFrame(hist_rows)
@@ -315,9 +315,9 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                 st.write(f"No {label.lower()} histogram data.")
         else:
             if len(selected) == 1:
-                hist = datasets[selected[0]].get(key)
-                if isinstance(hist, list) and hist:
-                    st.bar_chart(hist)
+                hist_vals = datasets[selected[0]].get(key)
+                if isinstance(hist_vals, list) and hist_vals:
+                    st.bar_chart(hist_vals)
                 else:
                     st.write(f"No {label.lower()} histogram data.")
             else:
