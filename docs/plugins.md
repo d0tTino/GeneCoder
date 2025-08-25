@@ -7,9 +7,60 @@ package can expose entry points under `genecoder.plugins`, `genecoder.fec`,
 implementation to the appropriate registry. GeneCoder looks only at packages
 installed in your current Python environment when loading plugins.
 
+## Interface Expectations
+
+Each plugin module must expose a ``register`` function that receives a callback
+for adding implementations to GeneCoder's registries. The plugin then invokes
+that callback with a unique name and the implementation class or instance.
+
+### Encoders
+
+Encoder plugins subclass :class:`genecoder.api.Codec` and implement
+``encode`` and ``decode`` methods:
+
+```python
+from genecoder.api import Codec
+
+class MyCodec(Codec):
+    def encode(self, data: bytes, /, **kwargs: object) -> str:
+        ...
+
+    def decode(self, text: str, /, **kwargs: object) -> bytes:
+        ...
+
+def register(register_codec):
+    register_codec("mycodec", MyCodec)
+```
+
+### Channels
+
+Channel plugins subclass :class:`genecoder.api.Simulator` and implement a
+``simulate`` method:
+
+```python
+from genecoder.api import Simulator
+
+class MyChannel(Simulator):
+    def simulate(self, sequence: str) -> str:
+        ...
+
+def register(register_simulator):
+    register_simulator("mychannel", MyChannel())
+```
+
+### FEC and Visualizers
+
+Forward error correction back-ends implement :class:`genecoder.api.FEC` with
+``encode`` and ``decode`` methods. Visualizer plugins subclass
+:class:`genecoder.api.Visualizer` and provide a ``visualize`` method. Register
+them through ``genecoder.fec`` or ``genecoder.visualizers`` entry points.
+
 ## Quick Start
 
-Create a minimal codec plugin in four steps:
+Create a minimal codec plugin in four steps. Minimal templates for encoders and
+channels live in
+[`plugins-examples/encoder_template`](../plugins-examples/encoder_template/) and
+[`plugins-examples/channel_template`](../plugins-examples/channel_template/):
 
 1. **Project layout** – see
    [`plugins-examples/example_codec`](../plugins-examples/example_codec/) for a
