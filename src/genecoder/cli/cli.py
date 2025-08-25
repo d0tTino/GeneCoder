@@ -6,6 +6,7 @@ from genecoder.random_utils import reset_rng
 
 from genecoder import __version__
 from genecoder.plugin_manager import init_plugins
+from genecoder.options import add_offline_flag, set_offline
 # simulators are imported lazily by subcommands that need them
 
 from typing import Any
@@ -110,6 +111,7 @@ def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"GeneCoder {__version__}")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase output verbosity (can be used multiple times).")
     parser.add_argument("-q", "--quiet", action="count", default=0, help="Decrease output verbosity (can be used multiple times).")
+    add_offline_flag(parser)
     subparsers = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
     encode.register_subcommand(subparsers)
@@ -136,6 +138,7 @@ def main(argv: list[str] | None = None, prog: str | None = None) -> None:
     reset_rng()
     parser = build_parser(prog)
     args = parser.parse_args(argv)
+    set_offline(getattr(args, "offline", False))
 
     level = logging.INFO - (args.verbose * 10) + (args.quiet * 10)
     level = max(logging.DEBUG, min(logging.CRITICAL, level))

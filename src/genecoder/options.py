@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import argparse
+import os
 
 
 @dataclass
@@ -48,3 +50,29 @@ class DecodingOptions:
     parity_rule: str
     alphabet: str
     seed: int | None = None
+
+
+# Offline mode ------------------------------------------------------------
+
+OFFLINE: bool = bool(os.getenv("GENECODER_OFFLINE"))
+
+
+def add_offline_flag(parser: argparse.ArgumentParser) -> None:
+    """Register the ``--offline`` flag on a CLI parser."""
+
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Disable network features and cloud modules",
+    )
+
+
+def set_offline(offline: bool) -> None:
+    """Enable or disable offline mode globally."""
+
+    global OFFLINE
+    OFFLINE = offline
+    if offline:
+        os.environ["GENECODER_OFFLINE"] = "1"
+    else:
+        os.environ.pop("GENECODER_OFFLINE", None)
