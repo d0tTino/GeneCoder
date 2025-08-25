@@ -1,0 +1,17 @@
+GeneCoder incorporates third-party libraries. The following components are licensed
+under MIT or BSD terms. Their original licenses and copyrights are retained by
+their respective authors:
+
+- Cryptography – Apache-2.0 OR BSD-3-Clause
+- PyYAML – MIT License
+- Portalocker – BSD-3-Clause
+- NumPy – BSD License
+- Numba – BSD License
+- PyLDPC – MIT License
+- PyFinite – MIT License
+- HTTPX – BSD-3-Clause
+- Chamaeleo – MIT License
+- FastAPI – MIT License
+- Uvicorn – BSD License
+- Squigulator – MIT License
+- InSilicoSeq – MIT License
