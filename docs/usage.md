@@ -14,7 +14,8 @@ genecli <command> --input-files <path1> [<path2> ...] \
     --method <method_name> [--fec <fec_method>] [options]
 ```
 
-Run `genecli --help` to see all available commands:
+Run `genecli --help` to see all available commands. Use `--offline` to disable
+network features and avoid loading cloud integrations:
 
 ```bash
 genecli --help

@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Header
 
 from genecoder.cli import bundle as bundle_cli
+from genecoder.options import OFFLINE
 
 app = FastAPI()
 
@@ -21,6 +22,8 @@ API_TOKEN: str | None = None
 @app.post("/jobs")  # type: ignore[misc]
 def create_job(job: dict[str, Any], authorization: str | None = Header(None)) -> dict[str, str]:
     """Handle bundle job uploads from tests."""
+    if OFFLINE:
+        raise HTTPException(status_code=503, detail="Offline mode")
     if authorization != f"Bearer {API_TOKEN}":
         raise HTTPException(status_code=401, detail="Invalid token")
 
