@@ -1,0 +1,11 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "genecoder-channel-template"
+version = "0.0.0"
+dependencies = ["genecoder"]
+
+[project.entry-points."genecoder.simulators"]
+template = "channel_template"

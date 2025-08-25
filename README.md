@@ -219,8 +219,10 @@ See the step-by-step
 [codec](docs/plugins.md#codec-plugin-walkthrough),
 [FEC](docs/plugins.md#fec-plugin-walkthrough) and
 [simulator](docs/plugins.md#simulator-plugin-walkthrough) examples in
-[docs/plugins.md](docs/plugins.md) for details on writing and registering
-new codecs, FEC back-ends or simulators. Plugins are automatically loaded when
+[docs/plugins.md](docs/plugins.md) for interface expectations and details on
+writing and registering new codecs, FEC back-ends or simulators. Minimal
+templates live in `plugins-examples/encoder_template` and
+`plugins-examples/channel_template`. Plugins are automatically loaded when
 using the CLI or GUI. When using GeneCoder as a library call
 ``genecoder.plugins.load_plugins()`` first to populate the registries.
 GeneCoder follows an offline-first design: without a registry URL only plugins
