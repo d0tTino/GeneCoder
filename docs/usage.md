@@ -536,7 +536,7 @@ python -m genecoder.flet_app
 
 The GUI exposes encoding options, error correction choices and displays metrics and analysis plots.
 
-### Launching the Streamlit Dashboard
+## Dashboard
 
 The dashboard visualizes simulation output stored in a JSON file.
 Generate a sample set of metrics by running the provided pipeline demo
@@ -556,12 +556,7 @@ The interface visualizes key metrics:
 
 * GC-content distribution
 * Homopolymer run distribution
-* Read-coverage distribution
 * ECC success-rate bar charts
-* Separate substitution, insertion and deletion rate charts when available
-* Histograms of substitutions, insertions and deletions with toggles per error type
-* Overall decode-success percentage
-* Constraint-violation counts
 
 Use the **Error Types** multiselect in the sidebar to toggle which histograms
 are shown. Each bar chart illustrates how often reads contain a given number of
