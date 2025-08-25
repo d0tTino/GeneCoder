@@ -162,6 +162,11 @@ try:  # pragma: no cover - optional dependency
                     parsed.setdefault("context_deletions", {}).update(ctx_del)
             else:
                 parsed[key] = value
+        if "error_rate" not in parsed:
+            sub = float(parsed.get("substitution_rate", 0.0))
+            ins = float(parsed.get("insertion_rate", 0.0))
+            dele = float(parsed.get("deletion_rate", 0.0))
+            parsed["error_rate"] = sub + ins + dele
         return parsed
 
     if isinstance(_data, dict):

@@ -1,1 +1,20 @@
-error_rate: 0.05
+miseq:
+  substitution_rate: 0.001
+  insertion_rate: 0.0001
+  deletion_rate: 0.0001
+  coverage_depth: 1
+hiseq:
+  substitution_rate: 0.0005
+  insertion_rate: 0.00005
+  deletion_rate: 0.00005
+  coverage_depth: 1
+novaseq:
+  substitution_rate: 0.0003
+  insertion_rate: 0.00003
+  deletion_rate: 0.00003
+  coverage_depth: 1
+nova:
+  substitution_rate: 0.0003
+  insertion_rate: 0.00003
+  deletion_rate: 0.00003
+  coverage_depth: 1

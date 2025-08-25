@@ -3,6 +3,7 @@ minion:
   substitution_rate: 0.02
   insertion_rate: 0.04
   deletion_rate: 0.06
+  coverage: 1
   insertion_profile:
     5: 0.08
   deletion_profile:
@@ -20,6 +21,7 @@ promethion:
   substitution_rate: 0.015
   insertion_rate: 0.02
   deletion_rate: 0.045
+  coverage: 1
   insertion_profile:
     5: 0.04
   deletion_profile:
@@ -33,10 +35,11 @@ promethion:
       1: 0.11
       2: 0.07
 r10:
-  error_rate: 0.05
+  error_rate: 0.06
   substitution_rate: 0.01
   insertion_rate: 0.02
   deletion_rate: 0.03
+  coverage: 1
   insertion_profile:
     5: 0.03
   deletion_profile:
