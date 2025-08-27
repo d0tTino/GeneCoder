@@ -47,6 +47,8 @@ VISUALIZER_REGISTRY: Dict[str, Callable[..., Any]] = {}
 
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
 
+_VALID_INTERFACES = {"codec", "FEC", "simulator", "visualizer"}
+
 # re-export for tests
 compute_checksum = plugin_security.compute_checksum
 
@@ -374,6 +376,89 @@ def _load_and_register(
             register(registrar)
 
 
+def _validate_plugin_metadata(meta: object) -> Dict[str, Any]:
+    """Validate plugin metadata structure."""
+
+    if not isinstance(meta, dict):
+        raise TypeError("metadata must be a dict")
+    name = meta.get("name")
+    version = meta.get("version")
+    interfaces = meta.get("interfaces")
+    if not isinstance(name, str) or not name:
+        raise ValueError("missing or invalid name")
+    if not isinstance(version, str) or not version:
+        raise ValueError("missing or invalid version")
+    if not isinstance(interfaces, (list, tuple)) or not interfaces:
+        raise ValueError("missing interfaces")
+    if any(i not in _VALID_INTERFACES for i in interfaces):
+        raise ValueError("unknown interface")
+    return {"name": name, "version": version, "interfaces": list(interfaces)}
+
+
+def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
+    """Discover installed plugins via entry points and local modules."""
+
+    catalog: Dict[str, Dict[str, Any]] = {}
+    failures: list[str] = []
+
+    def _handle_module(module: ModuleType, src: str) -> None:
+        try:
+            meta = _validate_plugin_metadata(getattr(module, "PLUGIN_METADATA", None))
+        except Exception as exc:  # pragma: no cover - invalid metadata
+            failures.append(src)
+            logger.warning("Incompatible plugin %s: %s", src, exc)
+            return
+        name = meta["name"]
+        if name in catalog or name in PLUGIN_CATALOG:
+            failures.append(src)
+            logger.warning("Duplicate plugin name %s from %s", name, src)
+            return
+        catalog[name] = {"version": meta["version"], "interfaces": meta["interfaces"]}
+
+    # discover entry point plugins
+    try:
+        entries = entry_points(group="genecoder.plugins")
+    except TypeError:
+        eps = entry_points()
+        if hasattr(eps, "select"):
+            entries = eps.select(group="genecoder.plugins")
+        elif isinstance(eps, dict):
+            entries = eps.get("genecoder.plugins", EntryPoints())
+        else:  # pragma: no cover - legacy path
+            entries = [ep for ep in eps if getattr(ep, "group", None) == "genecoder.plugins"]
+    for ep in entries:
+        ep_name = getattr(ep, "name", getattr(ep, "value", "unknown"))
+        try:
+            module = ep.load()
+        except Exception as exc:  # pragma: no cover - import failure path
+            failures.append(ep_name)
+            logger.warning("Failed to import plugin %s: %s", ep_name, exc)
+            continue
+        _handle_module(module, ep_name)
+
+    # discover local plugins in a ``plugins`` package
+    try:
+        import plugins as local_pkg  # type: ignore
+    except ModuleNotFoundError:
+        local_pkg = None
+
+    modules: list[ModuleType] = []
+    if local_pkg is not None:
+        modules.append(local_pkg)
+        if hasattr(local_pkg, "__path__"):
+            for _, module_name, _ in pkgutil.iter_modules(local_pkg.__path__):
+                try:
+                    modules.append(importlib.import_module(f"plugins.{module_name}"))
+                except Exception as exc:  # pragma: no cover - import failure path
+                    src = f"local:{module_name}"
+                    failures.append(src)
+                    logger.warning("Failed to import %s: %s", src, exc)
+    for mod in modules:
+        _handle_module(mod, getattr(mod, "__name__", "local"))
+
+    return catalog, failures
+
+
 def load_builtin_plugins() -> None:
     """Load built-in plugins and clear existing registries."""
 
@@ -468,56 +553,57 @@ def load_plugin_catalog(url: str | None = None) -> None:
 
     if url is None:
         url = os.getenv("GENECODER_PLUGIN_CATALOG_URL")
-    if not url:
-        return
-
-    try:
-        with urllib.request.urlopen(url, timeout=30) as response:
-            raw = response.read()
-    except Exception as exc:
-        logger.warning("Failed to fetch plugin catalog %s: %s", url, exc)
-        return
-
-    try:
-        data = json.loads(raw.decode("utf-8"))
-    except Exception:
-        yaml_module = yaml
-        if yaml_module is None:
-            logger.warning("Failed to parse plugin catalog %s", url)
-            return
-        try:
-            data = yaml_module.safe_load(raw) or {}
-        except Exception as exc:
-            logger.warning("Failed to parse plugin catalog %s: %s", url, exc)
-            return
-
-    if isinstance(data, dict):
-        signature = data.get("signature")
-        scheme = data.get("signature_scheme") or data.get("scheme")
-        if signature:
-            if not _verify_catalog_signature(raw, signature, padding_scheme=scheme):
-                logger.warning("Invalid catalog signature for %s", url)
-                return
-        plugins_data = data.get("plugins", data.get("entries", {}))
-    else:
-        plugins_data = data
-
     catalog: Dict[str, Dict[str, Any]] = {}
-    if isinstance(plugins_data, list):
-        for entry in plugins_data:
-            if isinstance(entry, dict) and "name" in entry:
-                meta = {k: v for k, v in entry.items() if k != "name"}
-                catalog[str(entry["name"])] = meta
-    elif isinstance(plugins_data, dict):
-        for name, meta in plugins_data.items():
-            if isinstance(meta, dict):
-                catalog[str(name)] = dict(meta)
-    else:
-        logger.warning("Invalid plugin catalog format from %s", url)
-        return
+
+    if url:
+        try:
+            with urllib.request.urlopen(url, timeout=30) as response:
+                raw = response.read()
+        except Exception as exc:
+            logger.warning("Failed to fetch plugin catalog %s: %s", url, exc)
+            raw = b""
+
+        if raw:
+            try:
+                data = json.loads(raw.decode("utf-8"))
+            except Exception:
+                yaml_module = yaml
+                if yaml_module is None:
+                    logger.warning("Failed to parse plugin catalog %s", url)
+                    data = {}
+                else:
+                    try:
+                        data = yaml_module.safe_load(raw) or {}
+                    except Exception as exc:
+                        logger.warning("Failed to parse plugin catalog %s: %s", url, exc)
+                        data = {}
+            if isinstance(data, dict):
+                signature = data.get("signature")
+                scheme = data.get("signature_scheme") or data.get("scheme")
+                if signature and not _verify_catalog_signature(raw, signature, padding_scheme=scheme):
+                    logger.warning("Invalid catalog signature for %s", url)
+                else:
+                    plugins_data = data.get("plugins", data.get("entries", {}))
+                    if isinstance(plugins_data, list):
+                        for entry in plugins_data:
+                            if isinstance(entry, dict) and "name" in entry:
+                                meta = {k: v for k, v in entry.items() if k != "name"}
+                                catalog[str(entry["name"])] = meta
+                    elif isinstance(plugins_data, dict):
+                        for name, meta in plugins_data.items():
+                            if isinstance(meta, dict):
+                                catalog[str(name)] = dict(meta)
+                    else:
+                        logger.warning("Invalid plugin catalog format from %s", url)
+
+    discovered, failures = _collect_installed_plugins()
+    for name, meta in discovered.items():
+        catalog.setdefault(name, meta)
 
     PLUGIN_CATALOG.clear()
     PLUGIN_CATALOG.update(catalog)
+    if failures:
+        logger.warning("Failed to load plugin metadata: %s", ", ".join(failures))
 
 
 def load_plugins() -> None:
