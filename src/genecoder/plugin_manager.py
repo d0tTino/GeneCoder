@@ -122,28 +122,45 @@ def _coerce_plugin(
 
 
 def register_codec(name: str, codec: Codec | type[Codec]) -> None:
-    """Register a codec implementation under ``name``."""
+    """Register a codec implementation under ``name``.
+
+    If multiple plugins register the same ``name`` the last registration wins.
+    Plugins are discovered in the order built-in, entry-point and then local
+    modules, allowing user supplied plugins to override bundled ones.
+    """
 
     inst = cast(Any, _coerce_plugin(codec, Codec, ("encode", "decode"), "codec"))
     CODEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
 
 
 def register_fec(name: str, fec: FEC | type[FEC]) -> None:
-    """Register a FEC backend under ``name``."""
+    """Register a FEC backend under ``name``.
+
+    Later registrations override earlier ones; discovery follows the same
+    built-in, entry-point then local order as codecs.
+    """
 
     inst = cast(Any, _coerce_plugin(fec, FEC, ("encode", "decode"), "FEC"))
     FEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
 
 
 def register_simulator(name: str, channel: Simulator | type[Simulator]) -> None:
-    """Register a read simulator under ``name``."""
+    """Register a read simulator under ``name``.
+
+    Later registrations with the same ``name`` replace earlier ones.  The
+    discovery order mirrors codecs and FEC backends.
+    """
 
     inst = cast(Any, _coerce_plugin(channel, Simulator, ("simulate",), "simulator"))
     _register_simulator(name, inst)
 
 
 def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer]) -> None:
-    """Register a visualizer under ``name``."""
+    """Register a visualizer under ``name``.
+
+    As with other plugin types, later registrations win and discovery order is
+    built-in first followed by entry-point and local plugins.
+    """
 
     inst = cast(Any, _coerce_plugin(visualizer, Visualizer, ("visualize",), "visualizer"))
     VISUALIZER_REGISTRY[name] = inst.visualize
