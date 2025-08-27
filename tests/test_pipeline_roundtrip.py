@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from genecoder.core import run_pipeline
+from genecoder.pipeline import run_pipeline
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.channel_sim import Channel
@@ -31,38 +31,31 @@ def _setup_simple_channel(rate: float) -> None:
     SIMULATOR_REGISTRY["simple"] = Channel(error_rate=rate)
 
 
-@pytest.mark.skipif(not _HAS_REEDSOLO, reason="reedsolo not installed")
-def test_pipeline_roundtrip_reed_solomon(tmp_path: Path) -> None:
+@pytest.mark.parametrize("fec_backend", ["reed_solomon", "fountain"])
+def test_pipeline_roundtrip(tmp_path: Path, fec_backend: str) -> None:
+    if fec_backend == "reed_solomon" and not _HAS_REEDSOLO:
+        pytest.skip("reedsolo not installed")
+    if fec_backend == "fountain":
+        pytest.importorskip("pyfinite")
+
     init_plugins()
     _register_base_codec()
     _setup_simple_channel(rate=0.1)
 
-    data = b"pipeline RS"
+    data = f"pipeline {fec_backend}".encode()
     inp = tmp_path / "data.bin"
     outp = tmp_path / "out.bin"
     inp.write_bytes(data)
 
-    result, metrics = run_pipeline("base4", "reed_solomon", "simple", str(inp), str(outp))
+    result, metrics, info = run_pipeline("base4", fec_backend, "simple", str(inp), str(outp))
     assert result == data
     assert metrics["gc_content"] >= 0.0
     assert outp.read_bytes() == data
-
-
-def test_pipeline_roundtrip_fountain(tmp_path: Path) -> None:
-    pytest.importorskip("pyfinite")
-    init_plugins()
-    _register_base_codec()
-    _setup_simple_channel(rate=0.1)
-
-    data = b"pipeline fountain"
-    inp = tmp_path / "data.bin"
-    outp = tmp_path / "out.bin"
-    inp.write_bytes(data)
-
-    result, metrics = run_pipeline("base4", "fountain", "simple", str(inp), str(outp))
-    assert result == data
-    assert metrics["gc_content"] >= 0.0
-    assert outp.read_bytes() == data
+    assert info is not None
+    if fec_backend == "reed_solomon":
+        assert "nsym" in info
+    else:
+        assert "seed" in info
 
 
 @pytest.mark.skipif(not _HAS_REEDSOLO, reason="reedsolo not installed")
@@ -78,7 +71,7 @@ def test_pipeline_roundtrip_rs_illumina(
     outp = tmp_path / "out.bin"
     inp.write_bytes(data)
 
-    result, _ = run_pipeline(
+    result, _, _ = run_pipeline(
         "base4",
         "reed_solomon",
         "illumina",
@@ -102,7 +95,7 @@ def test_pipeline_roundtrip_fountain_nanopore(
     outp = tmp_path / "out.bin"
     inp.write_bytes(data)
 
-    result, _ = run_pipeline(
+    result, _, _ = run_pipeline(
         "base4",
         "fountain",
         "nanopore",
