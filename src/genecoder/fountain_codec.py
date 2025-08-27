@@ -80,6 +80,7 @@ def encode_data_fountain(
     *,
     seed: int = 0,
     redundancy: float = 2.0,
+    droplet_count: int | None = None,
     c: float = 0.1,
     delta: float = 0.5,
 ) -> Tuple[bytes, Any]:
@@ -99,6 +100,10 @@ def encode_data_fountain(
         Base seed for droplet generation.
     redundancy:
         Number of droplets to emit relative to ``k`` (the number of chunks).
+        Ignored if ``droplet_count`` is provided.
+    droplet_count:
+        Explicit number of droplets to emit. If ``None`` the value is derived
+        from ``redundancy``.
     c:
         Scaling factor controlling the expected ripple size of the robust
         soliton distribution.
@@ -129,7 +134,11 @@ def encode_data_fountain(
         data[i : i + chunk_size].ljust(chunk_size, b"\x00")
         for i in range(0, len(data), chunk_size)
     ]
-    num_droplets = max(k, int(k * redundancy))
+    num_droplets = (
+        droplet_count
+        if droplet_count is not None
+        else max(k, int(k * redundancy))
+    )
     cdf = _robust_soliton_cdf(k, c=c, delta=delta)
     droplets: list[bytes] = []
     for i in range(num_droplets):
@@ -244,6 +253,7 @@ class FountainFEC(FEC):
         chunk_size: int = 4,
         seed: int = 0,
         redundancy: float = 2.0,
+        droplet_count: int | None = None,
         c: float = 0.1,
         delta: float = 0.5,
         **kwargs: Any,
@@ -253,6 +263,7 @@ class FountainFEC(FEC):
             chunk_size,
             seed=seed,
             redundancy=redundancy,
+            droplet_count=droplet_count,
             c=c,
             delta=delta,
         )

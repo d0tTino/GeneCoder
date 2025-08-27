@@ -3,6 +3,7 @@ import random
 import pytest
 
 pytest.importorskip("pyfinite")
+pytest.importorskip("reedsolo")
 
 from genecoder.fountain_codec import (
     _robust_soliton_cdf,
@@ -10,6 +11,7 @@ from genecoder.fountain_codec import (
     decode_data_fountain,
     encode_data_fountain,
 )
+from genecoder.reed_solomon_codec import encode_data_rs, decode_data_rs
 
 def test_fountain_roundtrip():
     data = b"Fountain test data"
@@ -38,6 +40,47 @@ def test_fountain_erasure_recovery():
     subset = b"".join(droplets[:keep])
     decoded, _ = decode_data_fountain(subset, info)
     assert decoded == data
+
+
+def test_fountain_roundtrip_explicit_droplets():
+    data = b"explicit droplet count"
+    encoded, info = encode_data_fountain(
+        data, chunk_size=3, droplet_count=20, seed=1
+    )
+    decoded, _ = decode_data_fountain(encoded, info)
+    assert decoded == data
+
+
+def test_fountain_droplet_loss_with_explicit_count():
+    data = b"loss scenario" * 4
+    encoded, info = encode_data_fountain(
+        data, chunk_size=4, droplet_count=40, seed=2
+    )
+    droplet_size = info["chunk_size"] + 4
+    droplets = [
+        encoded[i : i + droplet_size] for i in range(0, len(encoded), droplet_size)
+    ]
+    subset = b"".join(droplets[:-10])
+    decoded, _ = decode_data_fountain(subset, info)
+    assert decoded == data
+
+
+def test_fountain_with_reed_solomon_outer_code():
+    data = b"rs outer integration"
+    rs_encoded, nsym, sym_size, prim = encode_data_rs(data, nsym=4)
+    encoded, info = encode_data_fountain(
+        rs_encoded, chunk_size=5, droplet_count=30, seed=3
+    )
+    droplet_size = info["chunk_size"] + 4
+    droplets = [
+        encoded[i : i + droplet_size] for i in range(0, len(encoded), droplet_size)
+    ]
+    subset = b"".join(droplets[:-5])
+    fountain_decoded, _ = decode_data_fountain(subset, info)
+    rs_decoded, _ = decode_data_rs(
+        fountain_decoded, nsym, symbol_size=sym_size, primitive=prim
+    )
+    assert rs_decoded == data
 
 
 def test_fountain_degree_distribution_params():
