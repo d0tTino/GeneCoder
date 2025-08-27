@@ -84,14 +84,17 @@ def _validate_context_profiles(
 
 
 def _split_context_indels(
-    profiles: Mapping[str, Mapping[str, Mapping[int, float]]] | None,
+    profiles: Mapping[str, Mapping[Any, Any]] | None,
     name: str,
 ) -> tuple[Dict[str, Dict[int, float]], Dict[str, Dict[int, float]]]:
     """Return separate insertion and deletion context maps.
 
-    ``profiles`` maps contexts to ``{"insertions": {...}, "deletions": {...}}``. This
-    helper validates the nested indel profiles and returns two dictionaries in the
-    same normalized format used internally by the simulator.
+    ``profiles`` can map contexts either to ``{"insertions": {...}, "deletions": {...}}``
+    or to run-length specific mappings such as ``{5: {"insertions": 0.1}}``. When only a
+    single probability is provided for a run length, it is applied to both insertions
+    and deletions by default. This helper validates the nested indel profiles and
+    returns two dictionaries in the normalized format used internally by the
+    simulator.
     """
 
     ctx_ins: Dict[str, Dict[int, float]] = {}
@@ -99,16 +102,49 @@ def _split_context_indels(
     for ctx, ctx_map in (profiles or {}).items():
         if not isinstance(ctx_map, Mapping):
             continue
-        ins_prof = ctx_map.get("insertions") or ctx_map.get("insertion")
-        del_prof = ctx_map.get("deletions") or ctx_map.get("deletion")
-        if ins_prof is not None:
-            ctx_ins[str(ctx).upper()] = _validate_indel_profile(
-                ins_prof, f"{name}[{ctx}].insertions"
-            )
-        if del_prof is not None:
-            ctx_del[str(ctx).upper()] = _validate_indel_profile(
-                del_prof, f"{name}[{ctx}].deletions"
-            )
+        ctx_key = str(ctx).upper()
+
+        if any(k in {"insertions", "insertion", "deletions", "deletion"} for k in ctx_map):
+            # Traditional format with explicit insertion/deletion maps
+            ins_prof = ctx_map.get("insertions") or ctx_map.get("insertion")
+            del_prof = ctx_map.get("deletions") or ctx_map.get("deletion")
+            if ins_prof is not None:
+                ctx_ins[ctx_key] = _validate_indel_profile(
+                    ins_prof, f"{name}[{ctx}].insertions"
+                )
+            if del_prof is not None:
+                ctx_del[ctx_key] = _validate_indel_profile(
+                    del_prof, f"{name}[{ctx}].deletions"
+                )
+            continue
+
+        # Run-length first format: {context: {run_len: {"insertions": x, ...}}}
+        for run_len, rates in ctx_map.items():
+            try:
+                rl = int(run_len)
+            except (TypeError, ValueError):
+                continue
+            if isinstance(rates, Mapping):
+                ins = rates.get("insertions") or rates.get("insertion")
+                dele = rates.get("deletions") or rates.get("deletion")
+                if ins is None and dele is None:
+                    raise ValueError(
+                        f"{name}[{ctx}][{rl}] must specify insertions or deletions"
+                    )
+                if ins is not None:
+                    val = _validate_rate(
+                        f"{name}[{ctx}][{rl}].insertions", ins
+                    )
+                    ctx_ins.setdefault(ctx_key, {})[rl] = val
+                if dele is not None:
+                    val = _validate_rate(
+                        f"{name}[{ctx}][{rl}].deletions", dele
+                    )
+                    ctx_del.setdefault(ctx_key, {})[rl] = val
+            else:
+                val = _validate_rate(f"{name}[{ctx}][{rl}]", rates)
+                ctx_ins.setdefault(ctx_key, {})[rl] = val
+                ctx_del.setdefault(ctx_key, {})[rl] = val
     return ctx_ins, ctx_del
 
 # ---------------------------------------------------------------------------

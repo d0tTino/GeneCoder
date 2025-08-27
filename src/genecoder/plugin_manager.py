@@ -455,7 +455,7 @@ def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
 
     # discover local plugins in a ``plugins`` package
     try:
-        import plugins as local_pkg  # type: ignore
+        import plugins as local_pkg
     except ModuleNotFoundError:
         local_pkg = None
 

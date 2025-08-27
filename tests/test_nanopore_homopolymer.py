@@ -1,6 +1,10 @@
 import random
 
-from genecoder.simulators.nanopore import NanoporeChannel, _mutate_read
+from genecoder.simulators.nanopore import (
+    NanoporeChannel,
+    _mutate_read,
+    _split_context_indels,
+)
 
 
 def _simulate_many(channel: NanoporeChannel, sequence: str, runs: int = 1000) -> tuple[float, float]:
@@ -36,4 +40,21 @@ def test_deletion_profile_distribution() -> None:
     )
     _, del_rate = _simulate_many(channel, "AAAAA")
     assert 0.4 < del_rate < 0.6
+
+
+def test_long_homopolymer_has_higher_error_rate() -> None:
+    ctx_ins, ctx_del = _split_context_indels(
+        {"AA": {1: 0.05, 5: 0.8}}, "context_indels"
+    )
+    channel = NanoporeChannel(
+        substitution_rate=0.0,
+        insertion_rate=0.0,
+        deletion_rate=0.0,
+        context_insertions=ctx_ins,
+        context_deletions=ctx_del,
+    )
+    short_ins, short_del = _simulate_many(channel, "AA")
+    long_ins, long_del = _simulate_many(channel, "AAAAA")
+    assert long_ins > short_ins
+    assert long_del > short_del
 
