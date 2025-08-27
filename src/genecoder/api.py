@@ -19,7 +19,7 @@ class Codec(ABC):
     """
 
     @abstractmethod
-    def encode(self, data: bytes, /, **kwargs: Any) -> Any:
+    def encode(self, data: bytes, /, **kwargs: Any) -> str:
         """Return an encoded representation of ``data``.
 
         Parameters
@@ -31,18 +31,18 @@ class Codec(ABC):
 
         Returns
         -------
-        Any
-            Encoded representation of the input bytes.
+        str
+            DNA sequence produced from the input bytes.
         """
 
     @abstractmethod
-    def decode(self, encoded: Any, /, **kwargs: Any) -> bytes:
+    def decode(self, encoded: str, /, **kwargs: Any) -> bytes:
         """Decode ``encoded`` back into the original byte sequence.
 
         Parameters
         ----------
         encoded:
-            The encoded object returned by :meth:`encode`.
+            The sequence returned by :meth:`encode`.
         **kwargs:
             Optional codec specific parameters.
 
@@ -54,7 +54,11 @@ class Codec(ABC):
 
 
 class FEC(ABC):
-    """Abstract base class for forward error correction backends."""
+    """Abstract base class for forward error correction backends.
+
+    Implementations must provide matching :meth:`encode` and
+    :meth:`decode` methods as defined below.
+    """
 
     @abstractmethod
     def encode(self, data: bytes, /, **kwargs: Any) -> Tuple[bytes, Mapping[str, Any]]:
@@ -94,7 +98,12 @@ class FEC(ABC):
 
 
 class Simulator(ABC):
-    """Abstract base class for read simulators."""
+    """Abstract base class for read simulators.
+
+    At minimum implementations must define :meth:`simulate`.  The
+    :meth:`with_profile` helper is optional and may be overridden to
+    support external error profiles.
+    """
 
     @abstractmethod
     def simulate(self, sequence: str) -> str:
@@ -134,7 +143,10 @@ class Simulator(ABC):
 
 
 class Visualizer(ABC):
-    """Abstract base class for sequence visualizers."""
+    """Abstract base class for sequence visualizers.
+
+    Implementations must supply a :meth:`visualize` method.
+    """
 
     @abstractmethod
     def visualize(self, sequence: str, /, **kwargs: Any) -> Any:
