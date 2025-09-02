@@ -3,7 +3,7 @@ import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, IO, cast
+from typing import Any, IO, Sequence, cast
 
 try:  # pragma: no cover - optional dependency
     import portalocker
@@ -34,6 +34,8 @@ __all__ = [
     "increment",
     "get_metrics",
     "oligos_per_week",
+    "append_gc_distribution",
+    "append_homopolymer_runs",
 ]
 
 
@@ -98,21 +100,39 @@ class Metrics:
         """Metrics file path, respecting environment overrides."""
         return self._path or _get_metrics_path()
 
-    def increment(self, key: str) -> None:
+    def increment(self, key: str, counts: Sequence[float | int] | None = None) -> None:
         with self._lock:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with portalocker.Lock(self.path, "a+", timeout=10, encoding="utf-8") as fh:
                 metrics = _load(self.path, fh)
-                current = metrics.get(key, 0)
-                if not isinstance(current, int):
-                    current = 0
-                metrics[key] = current + 1
+                if key == "gc_distribution":
+                    if counts is None:
+                        raise ValueError("counts required for gc_distribution")
+                    existing_obj: Any = metrics.get(key, [])
+                    existing = cast(list[float], existing_obj) if isinstance(existing_obj, list) else []
+                    existing.extend(float(c) for c in counts)
+                    metrics[key] = existing
+                elif key == "homopolymer_runs":
+                    if counts is None:
+                        raise ValueError("counts required for homopolymer_runs")
+                    existing_obj: Any = metrics.get(key, [])
+                    existing = cast(list[int], existing_obj) if isinstance(existing_obj, list) else []
+                    if len(existing) < len(counts):
+                        existing.extend([0] * (len(counts) - len(existing)))
+                    for i, c in enumerate(counts):
+                        existing[i] += int(c)
+                    metrics[key] = existing
+                else:
+                    current = metrics.get(key, 0)
+                    if not isinstance(current, int):
+                        current = 0
+                    metrics[key] = current + 1
 
-                if key == "oligos_simulated":
-                    ts_obj: Any = metrics.get("oligos_simulated_ts", [])
-                    ts_list = cast(list[str], ts_obj) if isinstance(ts_obj, list) else []
-                    ts_list.append(datetime.now(timezone.utc).isoformat())
-                    metrics["oligos_simulated_ts"] = ts_list
+                    if key == "oligos_simulated":
+                        ts_obj: Any = metrics.get("oligos_simulated_ts", [])
+                        ts_list = cast(list[str], ts_obj) if isinstance(ts_obj, list) else []
+                        ts_list.append(datetime.now(timezone.utc).isoformat())
+                        metrics["oligos_simulated_ts"] = ts_list
                 _save(self.path, metrics, fh)
 
     def get_metrics(self) -> dict[str, object]:
@@ -145,8 +165,16 @@ class Metrics:
 metrics = Metrics()
 
 
-def increment(key: str) -> None:
-    metrics.increment(key)
+def append_gc_distribution(values: Sequence[float]) -> None:
+    metrics.increment("gc_distribution", values)
+
+
+def append_homopolymer_runs(counts: Sequence[int]) -> None:
+    metrics.increment("homopolymer_runs", counts)
+
+
+def increment(key: str, counts: Sequence[float | int] | None = None) -> None:
+    metrics.increment(key, counts)
 
 
 def get_metrics() -> dict[str, object]:

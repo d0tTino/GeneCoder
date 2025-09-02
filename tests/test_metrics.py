@@ -7,7 +7,11 @@ from tests.test_cli import run_cli_command
 
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
-from genecoder.metrics import Metrics
+from genecoder.metrics import (
+    Metrics,
+    append_gc_distribution,
+    append_homopolymer_runs,
+)
 
 
 def test_encode_increments_metrics(tmp_path: Path, monkeypatch) -> None:
@@ -162,3 +166,15 @@ def test_stats_cli_weekly_counts(tmp_path: Path, monkeypatch) -> None:
     weekly_line = [line for line in out if line.startswith("oligos_per_week:")][0]
     assert "2024-W01" in weekly_line
     assert "2024-W04" in weekly_line
+
+
+def test_metrics_accumulate_across_runs(tmp_path: Path, monkeypatch) -> None:
+    metrics_path = tmp_path / "acc.json"
+    monkeypatch.setenv("GENECODER_METRICS_PATH", str(metrics_path))
+    append_gc_distribution([0.1, 0.2])
+    append_gc_distribution([0.3])
+    append_homopolymer_runs([1, 2])
+    append_homopolymer_runs([2, 1, 1])
+    data = json.loads(metrics_path.read_text())
+    assert data["gc_distribution"] == [0.1, 0.2, 0.3]
+    assert data["homopolymer_runs"] == [3, 3, 1]
