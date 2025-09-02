@@ -25,9 +25,16 @@ def test_dashboard_cli_starts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
     called = False
 
-    def fake_run(path: str, is_hello: bool, args: list[str], flag_options: dict, *, stop_immediately_for_testing: bool = False) -> None:
+    def fake_run(
+        path: str,
+        is_hello: bool,
+        args: list[str],
+        flag_options: dict,
+        *,
+        stop_immediately_for_testing: bool = False,
+    ) -> None:
         nonlocal called
-        assert Path(path).name == "dashboard.py"
+        assert Path(path).name == "dashboard_streamlit.py"
         assert args == [str(results)]
         called = True
 
@@ -37,7 +44,7 @@ def test_dashboard_cli_starts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert called
 
 
-def test_dashboard_error_rates_rendered(
+def test_dashboard_summary_plots_rendered(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     metrics_file = Path(__file__).parent / "data" / "metrics.json"
@@ -46,17 +53,27 @@ def test_dashboard_error_rates_rendered(
 
     charts: list[object] = []
 
-    def capture_bar_chart(data: object, *args: object, **kwargs: object) -> None:  # pragma: no cover - simple capture
+    def capture_bar_chart(
+        data: object, *args: object, **kwargs: object
+    ) -> None:  # pragma: no cover - simple capture
         charts.append(data)
 
     monkeypatch.setattr(streamlit, "bar_chart", capture_bar_chart)
 
-    from genecoder import dashboard as dash
+    from genecoder import dashboard_streamlit as dash
+
+    # Force fallback chart rendering in case pandas/altair are installed
+    monkeypatch.setattr(dash, "pd", None)
+    monkeypatch.setattr(dash, "alt", None)
 
     dash.main(str(results))
 
-    assert charts
-    assert charts[-3:] == [{"results": 2}, {"results": 0}, {"results": 0}]
+    assert charts[:4] == [
+        {"results": 0.0},
+        {"results": pytest.approx(2.0)},
+        {"results": 3.0},
+        {"results": 3.0},
+    ]
 
 
 def test_dashboard_homopolymer_chart_rendered(
@@ -73,7 +90,7 @@ def test_dashboard_homopolymer_chart_rendered(
 
     monkeypatch.setattr(streamlit, "bar_chart", capture_bar_chart)
 
-    from genecoder import dashboard as dash
+    from genecoder import dashboard_streamlit as dash
 
     # Force fallback chart rendering in case pandas/altair are installed
     monkeypatch.setattr(dash, "pd", None)

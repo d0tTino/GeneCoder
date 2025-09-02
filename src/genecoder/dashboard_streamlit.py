@@ -3,7 +3,9 @@ from __future__ import annotations
 """Minimal Streamlit dashboard for common simulation metrics.
 
 The interface visualizes GC content, homopolymer runs, and ECC success rates
-from one or more metrics files produced by the toolkit.
+from one or more metrics files produced by the toolkit.  It also provides
+summary plots showing GC percentage statistics and longest homopolymer runs
+across multiple datasets.
 """
 
 from pathlib import Path
@@ -59,6 +61,35 @@ def _load_metrics(src: str | Path | IO[str]) -> dict[str, Any]:
     return {}
 
 
+def _gc_stats(dist: object) -> tuple[float | None, float | None, float | None]:
+    """Return (min, mean, max) GC percentage from ``dist`` if possible."""
+
+    if isinstance(dist, list) and dist:
+        try:
+            total = float(sum(dist))
+            if total <= 0:
+                return (None, None, None)
+            min_gc = next(i for i, v in enumerate(dist) if v)
+            max_gc = len(dist) - 1 - next(
+                i for i, v in enumerate(reversed(dist)) if v
+            )
+            mean_gc = sum(i * v for i, v in enumerate(dist)) / total
+            return float(min_gc), float(mean_gc), float(max_gc)
+        except Exception:  # pragma: no cover - defensive
+            return (None, None, None)
+    return (None, None, None)
+
+
+def _longest_homopolymer(runs: object) -> float | None:
+    """Return the longest homopolymer length from ``runs`` if possible."""
+
+    if isinstance(runs, list) and runs:
+        for idx, count in reversed(list(enumerate(runs, 1))):
+            if count:
+                return float(idx)
+    return None
+
+
 def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: no cover - UI logic
     """Render the dashboard from one or more metrics files."""
 
@@ -70,7 +101,57 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     datasets: dict[str, dict[str, Any]] = {}
     for path in paths:
         data = {**_DEF_METRICS, **_load_metrics(path)}
-        datasets[path] = data
+        datasets[str(path)] = data
+
+    gc_rows: list[dict[str, float | str]] = []
+    hp_rows: list[dict[str, float | str]] = []
+    for name, data in datasets.items():
+        label = Path(name).stem
+        min_gc, mean_gc, max_gc = _gc_stats(data.get("gc_distribution"))
+        if None not in (min_gc, mean_gc, max_gc):
+            gc_rows.extend(
+                [
+                    {"Run": label, "Metric": "min", "Value": min_gc},
+                    {"Run": label, "Metric": "mean", "Value": mean_gc},
+                    {"Run": label, "Metric": "max", "Value": max_gc},
+                ]
+            )
+        longest = _longest_homopolymer(data.get("homopolymer_runs"))
+        if longest is not None:
+            hp_rows.append({"Run": label, "Value": longest})
+
+    st.header("GC Summary (%)")
+    if gc_rows:
+        if alt and pd:
+            df = pd.DataFrame(gc_rows)
+            chart = (
+                alt.Chart(df)
+                .mark_bar()
+                .encode(x="Run:N", y="Value:Q", color="Metric:N")
+            )
+            st.altair_chart(chart, use_container_width=True)
+        else:  # pragma: no cover - basic fallback
+            for metric in ("min", "mean", "max"):
+                chart_data = {
+                    row["Run"]: row["Value"]
+                    for row in gc_rows
+                    if row["Metric"] == metric
+                }
+                if chart_data:
+                    st.bar_chart(chart_data)
+    else:
+        st.write("No GC summary data.")
+
+    st.header("Longest Homopolymer Runs")
+    if hp_rows:
+        if alt and pd:
+            df = pd.DataFrame(hp_rows)
+            chart = alt.Chart(df).mark_bar().encode(x="Run:N", y="Value:Q")
+            st.altair_chart(chart, use_container_width=True)
+        else:  # pragma: no cover - basic fallback
+            st.bar_chart({row["Run"]: row["Value"] for row in hp_rows})
+    else:
+        st.write("No homopolymer summary data.")
 
     for name, data in datasets.items():
         st.header(Path(name).name)
