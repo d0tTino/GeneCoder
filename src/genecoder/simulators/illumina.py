@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, Iterable, Mapping, Sequence
 from pathlib import Path
 import json
 import random
+import math
 import shutil
 import subprocess
 import logging
@@ -44,6 +45,19 @@ __all__ = [
 ]
 
 
+# Simple Poisson sampler using only the ``random`` module
+def _poisson(lam: float, rng: random.Random) -> int:
+    """Return a Poisson-distributed integer with mean ``lam``."""
+
+    L = math.exp(-lam)
+    k = 0
+    p = 1.0
+    while p > L:
+        k += 1
+        p *= rng.random()
+    return k - 1
+
+
 # Helper to parse quality profiles from strings or files
 def _parse_quality_profile(value: str) -> Sequence[float]:
     """Return a list of floats from ``value``.
@@ -78,7 +92,7 @@ class IlluminaProfile:
     insertion_rate: float
     deletion_rate: float
     read_length: int
-    coverage: int
+    coverage: float
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -113,7 +127,7 @@ def _validate_profile(data: Mapping[str, Any]) -> IlluminaProfile:
         insertion_rate=float(data["insertion_rate"]),
         deletion_rate=float(data["deletion_rate"]),
         read_length=int(data["read_length"]),
-        coverage=int(data["coverage"]),
+        coverage=float(data["coverage"]),
     )
 
 
@@ -213,7 +227,7 @@ class IlluminaChannel(BaseSimulator):
         substitution_rate: float | None = None,
         insertion_rate: float | None = None,
         deletion_rate: float | None = None,
-        coverage: int | None = None,
+        coverage: float | None = None,
         read_length: int | None = None,
         quality_profile: Sequence[float] | None = None,
         context_errors: Dict[str, float] | None = None,
@@ -266,7 +280,7 @@ class IlluminaChannel(BaseSimulator):
                 else 150
             )
         )
-        coverage = int(
+        coverage = float(
             coverage
             if coverage is not None
             else (
@@ -354,7 +368,9 @@ class IlluminaChannel(BaseSimulator):
         read_length = self.get_read_length(sequence)
         read = sequence[:read_length]
         quality = self.get_quality_profile(sequence, read_length)
-        coverage = max(1, self.get_coverage(sequence))
+        coverage = _poisson(self.coverage, rng)
+        if coverage <= 0:
+            return ""
         reads = [self._mutate_read(read, quality, rng) for _ in range(coverage)]
         if coverage == 1:
             return reads[0]

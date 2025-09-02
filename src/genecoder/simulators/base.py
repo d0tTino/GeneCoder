@@ -18,11 +18,11 @@ class BaseChannel(Simulator):
     substitution_rate: float = 0.0
     insertion_rate: float = 0.0
     deletion_rate: float = 0.0
-    coverage: int = 1
+    coverage: float = 1.0
 
     def get_coverage(self, sequence: str) -> int:
         """Hook returning desired coverage for ``sequence``."""
-        return self.coverage
+        return int(self.coverage)
 
     @abstractmethod
     def simulate(self, sequence: str) -> str:  # pragma: no cover - abstract
