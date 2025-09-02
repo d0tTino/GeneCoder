@@ -15,8 +15,8 @@ that callback with a unique name and the implementation class or instance.
 
 ### Encoders
 
-Encoder plugins subclass :class:`genecoder.api.Codec` and implement
-``encode`` and ``decode`` methods:
+Encoder plugins subclass [``genecoder.api.Codec``](api_reference.md#genecoder.api.Codec)
+and implement ``encode`` and ``decode`` methods:
 
 ```python
 from genecoder.api import Codec
@@ -34,8 +34,8 @@ def register(register_codec):
 
 ### Channels
 
-Channel plugins subclass :class:`genecoder.api.Simulator` and implement a
-``simulate`` method:
+Channel plugins subclass [``genecoder.api.Simulator``](api_reference.md#genecoder.api.Simulator)
+and implement a ``simulate`` method:
 
 ```python
 from genecoder.api import Simulator
@@ -48,63 +48,93 @@ def register(register_simulator):
     register_simulator("mychannel", MyChannel())
 ```
 
-### FEC and Visualizers
+### FEC
 
-Forward error correction back-ends implement :class:`genecoder.api.FEC` with
-``encode`` and ``decode`` methods. Visualizer plugins subclass
-:class:`genecoder.api.Visualizer` and provide a ``visualize`` method. Register
-them through ``genecoder.fec`` or ``genecoder.visualizers`` entry points.
+Forward error correction back-ends implement
+[``genecoder.api.FEC``](api_reference.md#genecoder.api.FEC) with ``encode`` and
+``decode`` methods and register through the ``genecoder.fec`` entry point.
 
-## Quick Start
+### Visualizers
 
-Create a minimal codec plugin in four steps. Minimal templates for encoders and
-channels live in
-[`plugins-examples/encoder_template`](../plugins-examples/encoder_template/) and
-[`plugins-examples/channel_template`](../plugins-examples/channel_template/):
+Visualizer plugins subclass
+[``genecoder.api.Visualizer``](api_reference.md#genecoder.api.Visualizer) and
+provide a ``visualize`` method:
 
-1. **Project layout** – see
-   [`plugins-examples/example_codec`](../plugins-examples/example_codec/) for a
-   working package.
+```python
+from genecoder.api import Visualizer
 
-   ```text
-   mycodec/
-   ├── pyproject.toml
-   └── mycodec/
-       └── __init__.py
-   ```
+class MyVisualizer(Visualizer):
+    def visualize(self, data: bytes) -> None:
+        ...
 
-2. **Declare an entry point** in `pyproject.toml` (see
-   [`plugins-examples/example_codec/pyproject.toml`](../plugins-examples/example_codec/pyproject.toml)):
+def register(register_visualizer):
+    register_visualizer("myviz", MyVisualizer())
+```
 
-   ```toml
-   [project.entry-points."genecoder.plugins"]
-   mycodec = "mycodec"
-   ```
+Register visualizers through the ``genecoder.visualizers`` entry point group.
 
-3. **Implement the codec and register it** in `mycodec/__init__.py` (see
-   [`plugins-examples/example_codec/example_codec/__init__.py`](../plugins-examples/example_codec/example_codec/__init__.py)):
+## Writing and Registering Plugins
 
-   ```python
-   from genecoder.api import Codec
+Use entry points to extend GeneCoder with custom encoders, channels or
+visualizers. The general workflow is:
 
-   class MyCodec(Codec):
-       def encode(self, data: bytes) -> str:
-           return data.decode().upper()
-
-       def decode(self, text: str) -> bytes:
-           return text.lower().encode()
-
-   def register(register_codec):
-       register_codec("mycodec", MyCodec)
-   ```
-
-4. **Install the package and invoke the codec through the CLI**:
+1. **Project layout** – start from one of the examples in
+   [`plugins-examples`](../plugins-examples/) such as
+   [`example_codec`](../plugins-examples/example_codec/),
+   [`example_simulator`](../plugins-examples/example_simulator/) or
+   [`example_visualizer`](../plugins-examples/example_visualizer/).
+2. **Declare an entry point** in `pyproject.toml` under the appropriate group
+   (e.g. ``genecoder.plugins`` or ``genecoder.visualizers``).
+3. **Implement the plugin and register it** by defining a ``register`` function
+   that invokes the callback provided by GeneCoder.
+4. **Install the package and verify discovery** with the CLI:
 
    ```bash
-   pip install ./mycodec
-   genecli plugin list          # shows installed plugins
-   genecli encode --method mycodec --input-files data.txt --output-file out.fasta
+   pip install ./myplugin
+   genecli plugin list   # shows installed plugins
    ```
+
+### Encoder Example
+
+```python
+from genecoder.api import Codec
+
+class MyCodec(Codec):
+    def encode(self, data: bytes, /, **kwargs: object) -> str:
+        ...
+
+    def decode(self, text: str, /, **kwargs: object) -> bytes:
+        ...
+
+def register(register_codec):
+    register_codec("mycodec", MyCodec)
+```
+
+### Channel Example
+
+```python
+from genecoder.api import Simulator
+
+class MyChannel(Simulator):
+    def simulate(self, sequence: str) -> str:
+        ...
+
+def register(register_simulator):
+    register_simulator("mychannel", MyChannel())
+```
+
+### Visualizer Example
+
+```python
+from genecoder.api import Visualizer
+
+class MyViz(Visualizer):
+    def visualize(self, data: bytes) -> None:
+        ...
+
+def register(register_visualizer):
+    register_visualizer("myviz", MyViz())
+```
 
 See [`plugins-examples`](../plugins-examples/) for complete reference implementations.
 
