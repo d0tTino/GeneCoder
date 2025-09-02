@@ -10,6 +10,7 @@ in :mod:`configs/illumina.yml`.
 from __future__ import annotations
 
 import random
+import math
 from pathlib import Path
 from typing import Callable, Sequence, Mapping
 
@@ -19,6 +20,18 @@ from .api import Simulator
 from .simulators import register_simulator as _register_simulator
 
 __all__ = ["simulate", "Channel", "register", "ILLUMINA_PROFILES"]
+
+
+def _poisson(lam: float, rng: random.Random) -> int:
+    """Return a Poisson-distributed integer with mean ``lam``."""
+
+    L = math.exp(-lam)
+    k = 0
+    p = 1.0
+    while p > L:
+        k += 1
+        p *= rng.random()
+    return k - 1
 
 
 _DEFAULT_PROFILES: dict[str, dict[str, float | int]] = {
@@ -60,7 +73,7 @@ try:  # pragma: no cover - optional dependency
                 "substitution_rate": float(params.get("substitution_rate", 0.001)),
                 "insertion_rate": float(params.get("insertion_rate", 0.0001)),
                 "deletion_rate": float(params.get("deletion_rate", 0.0001)),
-                "coverage_depth": int(params.get("coverage_depth", 1)),
+                "coverage_depth": float(params.get("coverage_depth", 1)),
             }
             for name, params in _data.items()
             if isinstance(params, Mapping)
@@ -129,7 +142,7 @@ def simulate(
     insertion_rate: float | None = None,
     deletion_rate: float | None = None,
     rng: random.Random | None = None,
-    coverage_depth: int | None = None,
+    coverage_depth: float | None = None,
     quality_profile: Sequence[float] | None = None,
     quality_distribution: Sequence[float] | None = None,
     profile: str | None = None,
@@ -173,15 +186,18 @@ def simulate(
         if deletion_rate is not None
         else prof.get("deletion_rate", 0.0001)
     )
-    coverage_depth = int(
+    coverage_depth = float(
         coverage_depth
         if coverage_depth is not None
-        else int(prof.get("coverage_depth", 1))
+        else float(prof.get("coverage_depth", 1))
     )
 
     if rng is None:
         rng = make_rng()
 
+    coverage = _poisson(coverage_depth, rng)
+    if coverage <= 0:
+        return ""
     reads = [
         _mutate_read(
             sequence,
@@ -192,9 +208,9 @@ def simulate(
             quality_distribution,
             rng,
         )
-        for _ in range(max(1, coverage_depth))
+        for _ in range(coverage)
     ]
-    if coverage_depth <= 1:
+    if coverage == 1:
         return reads[0]
     return _consensus(reads)
 
@@ -208,7 +224,7 @@ class Channel(Simulator):
         *,
         insertion_rate: float | None = None,
         deletion_rate: float | None = None,
-        coverage_depth: int | None = None,
+        coverage_depth: float | None = None,
         quality_profile: Sequence[float] | None = None,
         quality_distribution: Sequence[float] | None = None,
         profile: str | None = None,
@@ -229,10 +245,10 @@ class Channel(Simulator):
             if deletion_rate is not None
             else prof.get("deletion_rate", 0.0001)
         )
-        self.coverage_depth = int(
+        self.coverage_depth = float(
             coverage_depth
             if coverage_depth is not None
-            else int(prof.get("coverage_depth", 1))
+            else float(prof.get("coverage_depth", 1))
         )
         self.quality_profile = (
             tuple(quality_profile) if quality_profile is not None else None

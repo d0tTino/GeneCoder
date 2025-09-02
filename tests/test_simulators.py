@@ -14,9 +14,10 @@ def test_illumina_simulate_seed(monkeypatch):
         insertion_rate=0.1,
         deletion_rate=0.1,
         read_length=10,
+        coverage=5,
     )
     result = ch.simulate("ACGTACGTACGT")
-    assert result == "ATTACTTC"
+    assert result == "TCTGGATTA"
 
 
 def test_nanopore_simulate_fallback_seed() -> None:

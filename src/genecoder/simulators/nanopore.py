@@ -364,7 +364,7 @@ class NanoporeChannel(BaseChannel):
         substitution_rate: float = 0.0,
         insertion_rate: float = 0.0,
         deletion_rate: float = 0.0,
-        coverage: int = 1,
+        coverage: float = 1,
         quality_profile: Sequence[float] | None = None,
         context_errors: Dict[str, float] | None = None,
         context_insertions: Dict[str, Dict[int, float]] | None = None,
@@ -387,7 +387,7 @@ class NanoporeChannel(BaseChannel):
                 deletion_rate = float(
                     cast(float | int, params.get("deletion_rate", deletion_rate))
                 )
-                coverage = int(cast(float | int, params.get("coverage", coverage)))
+                coverage = float(cast(float | int, params.get("coverage", coverage)))
                 quality_profile = cast(
                     Sequence[float] | None,
                     params.get("quality_profile", quality_profile),
@@ -429,7 +429,7 @@ class NanoporeChannel(BaseChannel):
             substitution_rate = float(data.get("substitution_rate", substitution_rate))
             insertion_rate = float(data.get("insertion_rate", insertion_rate))
             deletion_rate = float(data.get("deletion_rate", deletion_rate))
-            coverage = int(data.get("coverage", coverage))
+            coverage = float(data.get("coverage", coverage))
             quality_profile = data.get("quality_profile", quality_profile)
             context_errors = data.get("context_errors", context_errors)
             context_insertions = data.get("context_insertions", context_insertions)
@@ -554,7 +554,7 @@ class NanoporeDNArSimChannel(NanoporeChannel):
         substitution_rate: float = 0.0,
         insertion_rate: float = 0.0,
         deletion_rate: float = 0.0,
-        coverage: int = 1,
+        coverage: float = 1,
         quality_profile: Sequence[float] | None = None,
         context_errors: Dict[str, float] | None = None,
         context_insertions: Dict[str, Dict[int, float]] | None = None,
