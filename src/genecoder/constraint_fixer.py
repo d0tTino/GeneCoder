@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import random
 
+from .gc_constrained_encoder import calculate_gc_content
+from .utils import get_max_homopolymer_length
 from .random_utils import make_rng
 
 __all__ = [
@@ -18,6 +20,7 @@ __all__ = [
     "limit_homopolymers",
     "fix_sequence",
     "fix",
+    "encode",
 ]
 
 
@@ -142,3 +145,26 @@ def fix(
         max_homopolymer=max_homopolymer,
         rng=rng,
     )
+
+
+def encode(
+    sequence: str,
+    *,
+    gc_min: float,
+    gc_max: float,
+    max_homopolymer: int,
+    rng: random.Random | None = None,
+) -> tuple[str, dict[str, float]]:
+    """Return a fixed sequence along with GC and homopolymer metrics."""
+    fixed = fix_sequence(
+        sequence,
+        target_gc_min=gc_min,
+        target_gc_max=gc_max,
+        max_homopolymer=max_homopolymer,
+        rng=rng,
+    )
+    metrics = {
+        "gc_content": calculate_gc_content(fixed),
+        "max_homopolymer": get_max_homopolymer_length(fixed),
+    }
+    return fixed, metrics

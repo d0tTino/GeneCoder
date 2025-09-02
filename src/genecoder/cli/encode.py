@@ -37,7 +37,7 @@ from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
-from genecoder.constraint_fixer import fix
+from genecoder.constraint_fixer import encode as constraint_fix_encode
 from .common import run_tasks
 from typing import Callable, cast
 
@@ -351,6 +351,7 @@ def process_single_encode(
             data_for_encoding, options, header_name
         )
 
+        auto_fix_metrics: dict[str, float] = {}
         if getattr(args, "auto_fix", True) and os.getenv("GENECODER_DISABLE_FIX") not in {"1", "true", "True"}:
             target_dna = raw_encoded_dna
             if getattr(args, "fix_chisel", False) and "dnachisel_fixer" in CODEC_REGISTRY:
@@ -362,13 +363,21 @@ def process_single_encode(
                     gc_max=args.gc_max,
                     max_homopolymer=args.max_homopolymer,
                 )
+                fix_metrics = {
+                    "gc_content": calculate_gc_content(target_dna),
+                    "max_homopolymer": get_max_homopolymer_length(target_dna),
+                }
             else:
-                target_dna = fix(
+                target_dna, fix_metrics = constraint_fix_encode(
                     target_dna,
                     gc_min=args.gc_min,
                     gc_max=args.gc_max,
                     max_homopolymer=args.max_homopolymer,
                 )
+            auto_fix_metrics = {
+                "fixed_gc": fix_metrics["gc_content"],
+                "fixed_max_homopolymer": fix_metrics["max_homopolymer"],
+            }
 
             if args.fec == "triple_repeat":
                 final_encoded_dna_sequence = encode_triple_repeat(target_dna)
@@ -457,6 +466,7 @@ def process_single_encode(
             "gc_exceeds_default": gc_default_bad,
             "homopolymer_exceeds_default": hp_default_bad,
         }
+        metrics.update(auto_fix_metrics)
 
         logger.info(f"\n--- Encoding Metrics for {input_file_path} ---")
         logger.info(f"Original file size: {original_size_bytes} bytes")

@@ -1,3 +1,7 @@
+import argparse
+import json
+import os
+
 import pytest
 
 from genecoder.gc_constrained_encoder import (
@@ -6,12 +10,10 @@ from genecoder.gc_constrained_encoder import (
     get_max_homopolymer_length,
 )
 from genecoder.encoders import encode_base4_direct
-from genecoder.constraint_fixer import fix
+from genecoder.constraint_fixer import encode
 from genecoder.cli.encode import process_single_encode
 from genecoder.formats import from_fasta
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
-import argparse
-import os
 
 
 @pytest.mark.parametrize("which", ["gc", "homopolymer"])
@@ -38,20 +40,24 @@ def test_auto_fix_permits_decode(which) -> None:
     hp = get_max_homopolymer_length(payload)
 
     if which == "gc":
-        fixed_payload = fix(
+        fixed_payload, metrics = encode(
             payload,
             gc_min=gc + 0.1,
             gc_max=1.0,
             max_homopolymer=hp,
         )
+        assert metrics["gc_content"] == calculate_gc_content(fixed_payload)
+        assert metrics["max_homopolymer"] == get_max_homopolymer_length(fixed_payload)
         decode_gc_balanced("0" + fixed_payload, expected_gc_min=gc + 0.1)
     else:
-        fixed_payload = fix(
+        fixed_payload, metrics = encode(
             payload,
             gc_min=0.0,
             gc_max=1.0,
             max_homopolymer=hp - 1,
         )
+        assert metrics["gc_content"] == calculate_gc_content(fixed_payload)
+        assert metrics["max_homopolymer"] == get_max_homopolymer_length(fixed_payload)
         decode_gc_balanced("0" + fixed_payload, expected_max_homopolymer=hp - 1)
 
 
@@ -97,8 +103,14 @@ def test_cli_auto_fix_flag(tmp_path, which) -> None:
     fasta = output_path.read_text(encoding="utf-8")
     records = from_fasta(fasta)
     dna_sequence = records[0][1]
+    manifest_path = tmp_path / "out.manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    metrics = manifest["metrics"]
     os.remove(output_path)
+    os.remove(manifest_path)
 
+    assert "fixed_gc" in metrics
+    assert "fixed_max_homopolymer" in metrics
     if which == "gc":
         decode_gc_balanced("0" + dna_sequence, expected_gc_min=gc + 0.1)
     else:
