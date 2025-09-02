@@ -1,10 +1,81 @@
 import argparse
+import contextlib
+import importlib
+import importlib.util
+import io
 import os
+import sys
+import urllib.request
 from pathlib import Path
+
+import pytest
 
 from genecoder.cli.encode import process_single_encode
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.formats import from_fasta
+from genecoder.reed_solomon_codec import _HAS_REEDSOLO
+
+
+class _Result:
+    def __init__(self, code: int, out: str, err: str) -> None:
+        self.returncode = code
+        self.stdout = out
+        self.stderr = err
+
+
+def run_cli_command(command_args: list[str], env: dict[str, str] | None = None) -> _Result:
+    """Invoke CLI main with arguments and capture output."""
+
+    if env is None:
+        env = os.environ.copy()
+
+    saved_env = os.environ.copy()
+    saved_path = sys.path[:]
+    os.environ.update(env)
+    os.environ.setdefault("GENECODER_DISABLE_FIX", "1")
+
+    import importlib as _importlib
+    import genecoder.plugin_manager as _pm
+    import genecoder.cli.plugin as _plugin_cli
+
+    _pm._initialized = False
+    _orig_urlopen = urllib.request.urlopen
+    _orig_checksum = _pm.compute_checksum
+
+    if "PYTHONPATH" in env:
+        for path in env["PYTHONPATH"].split(os.pathsep):
+            if path and path not in sys.path:
+                sys.path.insert(0, path)
+                sc = Path(path) / "sitecustomize.py"
+                if sc.exists():
+                    spec = importlib.util.spec_from_file_location("sitecustomize", sc)
+                    assert spec and spec.loader
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+
+    from genecoder.cli.cli import main
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    code = 0
+    try:
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            main(command_args)
+    except SystemExit as exc:
+        code = exc.code if isinstance(exc.code, int) else 1
+    except Exception as exc:  # pragma: no cover - CLI error path
+        code = 1
+        print(str(exc), file=stderr)
+    finally:
+        os.environ.clear()
+        os.environ.update(saved_env)
+        sys.path[:] = saved_path
+        _importlib.reload(_plugin_cli)
+        urllib.request.urlopen = _orig_urlopen
+        _pm.urllib.request.urlopen = _orig_urlopen
+        _pm.compute_checksum = _orig_checksum
+
+    return _Result(code, stdout.getvalue(), stderr.getvalue())
 
 
 def _encode_args(stream: bool = False) -> argparse.Namespace:
@@ -74,3 +145,46 @@ def test_process_single_encode_applies_fix(tmp_path: Path) -> None:
     max_hp = get_max_homopolymer_length(seq)
     assert args.gc_min <= gc_val <= args.gc_max
     assert max_hp <= args.max_homopolymer
+
+
+_HAS_PYFINITE = importlib.util.find_spec("pyfinite") is not None
+
+
+@pytest.mark.parametrize(
+    ("fec", "channel"),
+    [
+        pytest.param(
+            "reed_solomon",
+            "illumina",
+            marks=pytest.mark.skipif(
+                not _HAS_REEDSOLO, reason="reedsolo not installed"
+            ),
+        ),
+        pytest.param(
+            "fountain",
+            "nanopore",
+            marks=pytest.mark.skipif(
+                not _HAS_PYFINITE, reason="pyfinite not installed"
+            ),
+        ),
+    ],
+)
+def test_cli_encode_plugins(tmp_path: Path, fec: str, channel: str) -> None:
+    input_file = tmp_path / "data.bin"
+    input_file.write_bytes(b"abc")
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    result = run_cli_command(
+        [
+            "encode",
+            "--input-files",
+            str(input_file),
+            "--output-dir",
+            str(output_dir),
+            "--fec",
+            fec,
+            "--channel",
+            channel,
+        ]
+    )
+    assert result.returncode == 0, result.stderr

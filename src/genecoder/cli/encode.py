@@ -33,6 +33,7 @@ from genecoder.gc_constrained_encoder import (
 from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import encode_data_with_hamming
 from genecoder.plugin_manager import CODEC_REGISTRY, FEC_REGISTRY
+from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.formats import to_fasta, from_fasta
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
@@ -576,6 +577,14 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         choices=fec_choices,
         help="Forward Error Correction method to apply.",
     )
+    chan_choices = sorted(SIMULATOR_REGISTRY.keys()) or None
+    parser.add_argument(
+        "--channel",
+        type=str,
+        default=None,
+        choices=chan_choices,
+        help="Channel simulator to apply.",
+    )
     parser.add_argument(
         "--rs-symbol-size",
         type=int,
@@ -707,6 +716,11 @@ def encode_files(args: argparse.Namespace) -> list[tuple[str, str] | None]:
         header_getter=None,
         allow_capsule=True,
     )
+    if getattr(args, "channel", None) is not None:
+        if args.channel not in SIMULATOR_REGISTRY:
+            logger.error("Unknown channel: %s", args.channel)
+            raise SystemExit(1)
+        SIMULATOR_REGISTRY[args.channel]
     num_input_files = len(args.input_files)
 
     tasks = []

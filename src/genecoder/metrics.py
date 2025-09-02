@@ -108,20 +108,20 @@ class Metrics:
                 if key == "gc_distribution":
                     if counts is None:
                         raise ValueError("counts required for gc_distribution")
-                    existing_obj: Any = metrics.get(key, [])
-                    existing = cast(list[float], existing_obj) if isinstance(existing_obj, list) else []
-                    existing.extend(float(c) for c in counts)
-                    metrics[key] = existing
+                    existing_gc_obj: Any = metrics.get(key, [])
+                    existing_gc = cast(list[float], existing_gc_obj) if isinstance(existing_gc_obj, list) else []
+                    existing_gc.extend(float(c) for c in counts)
+                    metrics[key] = existing_gc
                 elif key == "homopolymer_runs":
                     if counts is None:
                         raise ValueError("counts required for homopolymer_runs")
-                    existing_obj: Any = metrics.get(key, [])
-                    existing = cast(list[int], existing_obj) if isinstance(existing_obj, list) else []
-                    if len(existing) < len(counts):
-                        existing.extend([0] * (len(counts) - len(existing)))
+                    existing_hp_obj: Any = metrics.get(key, [])
+                    existing_hp = cast(list[int], existing_hp_obj) if isinstance(existing_hp_obj, list) else []
+                    if len(existing_hp) < len(counts):
+                        existing_hp.extend([0] * (len(counts) - len(existing_hp)))
                     for i, c in enumerate(counts):
-                        existing[i] += int(c)
-                    metrics[key] = existing
+                        existing_hp[i] += int(c)
+                    metrics[key] = existing_hp
                 else:
                     current = metrics.get(key, 0)
                     if not isinstance(current, int):
