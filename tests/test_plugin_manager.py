@@ -37,4 +37,4 @@ def test_install_registry_bad_spec(monkeypatch: pytest.MonkeyPatch, bad: str) ->
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
 
     with pytest.raises(ValueError):
-        plugins.install_registry_plugins("https://example.com/plugins.yaml")
+        plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)

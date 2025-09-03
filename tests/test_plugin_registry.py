@@ -51,7 +51,7 @@ def test_registry_install(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
 
-    plugins.install_registry_plugins("https://example.com/plugins.yaml")
+    plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
 
     assert len(installs) == 2
     for cmd in installs:
@@ -81,7 +81,7 @@ def test_registry_install_failure(monkeypatch: pytest.MonkeyPatch, caplog: pytes
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
 
     with caplog.at_level(logging.WARNING):
-        plugins.install_registry_plugins("https://example.com/plugins.yaml")
+        plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
 
     assert "Failed to install plugin https://example.com/pkgC.whl from registry" in caplog.text
 
@@ -96,7 +96,7 @@ def test_registry_bad_yaml(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCa
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
 
     with caplog.at_level(logging.WARNING), pytest.raises(ValueError):
-        plugins.install_registry_plugins("https://example.com/plugins.yaml")
+        plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
 
     assert "Failed to parse plugin registry" in caplog.text
 
@@ -109,7 +109,7 @@ def test_registry_unreachable(monkeypatch: pytest.MonkeyPatch, caplog: pytest.Lo
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
 
     with caplog.at_level(logging.WARNING):
-        plugins.install_registry_plugins("https://example.com/plugins.yaml")
+        plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
 
     assert "Failed to fetch plugin registry" in caplog.text
 
@@ -179,8 +179,10 @@ def test_registry_install_offline_local_env(monkeypatch: pytest.MonkeyPatch, tmp
 
 def test_registry_offline_remote_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
-    with pytest.raises(RuntimeError, match="Offline mode forbids fetching registry"):
-        plugins.install_registry_plugins("https://example.com/plugins.yaml", offline=True)
+    with pytest.raises(RuntimeError, match="GENECODER_ALLOW_NETWORK"):
+        plugins.install_registry_plugins(
+            "https://example.com/plugins.yaml", offline=True, allow_network=True
+        )
 
 
 def _urlopen_via_httpx(client: httpx.Client) -> Callable[[str], DummyResponse]:
@@ -215,7 +217,7 @@ def test_registry_install_via_httpx(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(plugins.urllib.request, "urlopen", _urlopen_via_httpx(client))
     monkeypatch.setattr(plugins.subprocess, "check_call", installs.append)
 
-    plugins.install_registry_plugins("https://example.com/plugins.yaml")
+    plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
 
     assert installs and installs[0][:4] == [
         sys.executable,
@@ -284,7 +286,7 @@ def test_registry_network_failure(
     monkeypatch.setattr(plugins, "yaml", FakeYAML)
 
     with caplog.at_level(logging.WARNING):
-        plugins.install_registry_plugins("https://example.com/plugins.yaml")
+        plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
 
     assert (
         "Failed to install plugin https://example.com/pkgD.whl from registry" in caplog.text
@@ -309,7 +311,7 @@ def test_registry_version_match(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
     monkeypatch.setattr(plugins, "get_pkg_version", lambda name: "1.0.0")
 
-    plugins.install_registry_plugins("https://example.com/plugins.yaml")
+    plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
 
     assert installs and installs[0][:4] == [sys.executable, "-m", "pip", "install"]
 
@@ -331,4 +333,4 @@ def test_registry_version_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(plugins, "get_pkg_version", lambda name: "0.9.0")
 
     with pytest.raises(ValueError, match="Version mismatch"):
-        plugins.install_registry_plugins("https://example.com/plugins.yaml")
+        plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)

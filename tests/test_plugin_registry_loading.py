@@ -43,7 +43,7 @@ def test_load_plugins_with_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
     monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
 
-    plugins.install_registry_plugins("https://example.com/plugins.yaml")
+    plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
     plugins.CODEC_REGISTRY.clear()
     plugins.FEC_REGISTRY.clear()
     plugins.SIMULATOR_REGISTRY.clear()
@@ -94,7 +94,7 @@ def test_load_plugins_with_signed_registry(
     monkeypatch.setenv("GENECODER_PLUGIN_PUBLIC_KEY", str(key))
     monkeypatch.setattr(plugins.plugin_security, "compute_checksum", fake_compute)
 
-    plugins.install_registry_plugins("https://example.com/plugins.yaml")
+    plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
     plugins.CODEC_REGISTRY.clear()
     plugins.FEC_REGISTRY.clear()
     plugins.SIMULATOR_REGISTRY.clear()
@@ -119,7 +119,7 @@ def test_registry_entry_missing_signature_checksum(
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
 
     with pytest.raises(ValueError):
-        plugins.install_registry_plugins("https://example.com/plugins.yaml")
+        plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
 
 
 def test_entry_point_plugin_discovery(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -183,7 +183,7 @@ def test_load_plugins_with_base64_checksum(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
     monkeypatch.setattr(plugins, "entry_points", lambda group=None: [])
 
-    plugins.install_registry_plugins("https://example.com/plugins.yaml")
+    plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
 
 
 def test_registry_base64_checksum_mismatch(
@@ -209,5 +209,7 @@ def test_registry_base64_checksum_mismatch(
 
     with pytest.raises(ValueError, match="Checksum mismatch"):
         with caplog.at_level(logging.ERROR):
-            plugins.install_registry_plugins("https://example.com/plugins.yaml")
-    assert "Checksum mismatch for plugin https://example.com/pkg.whl" in caplog.text
+            plugins.install_registry_plugins(
+                "https://example.com/plugins.yaml", allow_network=True
+            )
+        assert "Checksum mismatch for plugin https://example.com/pkg.whl" in caplog.text

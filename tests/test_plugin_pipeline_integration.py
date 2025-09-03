@@ -9,6 +9,8 @@ from importlib.metadata import EntryPoint
 
 import pytest
 
+pytest.importorskip("rapidfuzz")
+
 import genecoder.plugin_manager as plugins
 from genecoder.core import run_pipeline
 

@@ -38,6 +38,7 @@ def test_verify_package_signature_failure(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_verify_package_rsa_pss() -> None:
+    pytest.importorskip("cryptography.hazmat.primitives.asymmetric")
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
