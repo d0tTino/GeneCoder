@@ -21,6 +21,38 @@ genecli decode --input-files simulated.fasta --output-file decoded.txt
 genecli dashboard examples/illumina_metrics.json
 ```
 
+## RaptorQ and Fountain via `genecli pipeline`
+
+Run a full encode → simulate → decode pipeline from a single command.
+The commands below also write metrics for later inspection.
+
+### RaptorQ FEC
+
+```bash
+GENECODER_METRICS_PATH=examples/raptorq_metrics.json \
+  genecli pipeline examples/pipeline_demo_input.txt decoded_raptorq.txt \
+    --codec base4_direct --fec raptorq \
+    --channel illumina --profile hiseq
+```
+
+### Fountain FEC
+
+```bash
+GENECODER_METRICS_PATH=examples/fountain_metrics.json \
+  genecli pipeline examples/pipeline_demo_input.txt decoded_fountain.txt \
+    --codec base4_direct --fec fountain \
+    --channel nanopore --profile r10
+```
+
+**When to choose a scheme**
+
+- **RaptorQ** – optimized for throughput with linear-time algorithms. Internal
+  benchmarks show encode/decode speeds in the tens of MB/s with roughly 1.2×
+  redundancy. Prefer it for large datasets or when compute time matters.
+- **Fountain** – rateless and extremely resilient to erasures but slower
+  (single-digit MB/s) with ~1.5× redundancy. Use it when maximal loss tolerance
+  outweighs speed.
+
 ## Pipeline Configurations
 
 ### Reed–Solomon with Illumina
