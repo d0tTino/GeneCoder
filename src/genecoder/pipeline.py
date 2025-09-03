@@ -5,11 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, Tuple
 
-from .gc_constrained_encoder import calculate_gc_content
-from .plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
-from .simulators import SIMULATOR_REGISTRY
-from .utils import get_max_homopolymer_length
+from .plugin_manager import init_plugins
 from .parallel import parallel_map
+from .core import encode, simulate, decode, metrics as gather_metrics
 
 __all__ = ["SequencePipeline", "run_pipeline"]
 
@@ -121,77 +119,21 @@ def run_pipeline(
 
     init_plugins()
 
-    if codec not in CODEC_REGISTRY:
-        raise ValueError(f"Unknown codec: {codec}")
-    if fec_backend and fec_backend not in FEC_REGISTRY:
-        raise ValueError(f"Unknown FEC: {fec_backend}")
-    if channel and channel != "none" and channel not in SIMULATOR_REGISTRY:
-        raise ValueError(f"Unknown channel: {channel}")
-
     original_data = Path(input_path).read_bytes()
-    data = original_data
-
-    fec_info: Mapping[str, Any] | None = None
-    if fec_backend:
-        data, fec_info = FEC_REGISTRY[fec_backend]["encode"](data)
-
-    dna = CODEC_REGISTRY[codec]["encode"](data)
-    orig_dna = dna
-    subs = ins = dels = None
-    coverage = None
-    if channel and channel != "none":
-        sim = SIMULATOR_REGISTRY[channel]
-        dna = sim.simulate(dna)
-        subs, ins, dels = _levenshtein_counts(orig_dna, dna)
-        cov_func = getattr(sim, "get_coverage", None)
-        if callable(cov_func):
-            try:
-                coverage = int(cov_func(orig_dna))
-            except Exception:
-                coverage = None
-
-    gc_content = calculate_gc_content(dna)
-    max_homopolymer = get_max_homopolymer_length(dna)
-    gc_dist = _gc_distribution(dna)
-    hp_runs = _homopolymer_runs(dna)
-    gc_variance = (
-        sum((val - gc_content) ** 2 for val in gc_dist) / len(gc_dist)
-        if gc_dist
-        else 0.0
-    )
-
-    decoded_any = CODEC_REGISTRY[codec]["decode"](dna)
-    assert isinstance(decoded_any, (bytes, bytearray))
-    decoded = bytes(decoded_any)
-
-    if fec_backend:
-        assert fec_info is not None
-        decoded, _ = FEC_REGISTRY[fec_backend]["decode"](decoded, fec_info)
+    dna, fec_info = encode(codec, fec_backend, original_data)
+    dna, subs, ins, dels, coverage = simulate(channel, dna)
+    decoded = decode(codec, fec_backend, dna, fec_info)
 
     Path(output_path).write_bytes(decoded)
-    success = 1.0 if decoded == original_data else 0.0
-    constraint_violations = 0
-    try:
-        from .synthesis import validate_sequence
-
-        if not validate_sequence(dna):
-            constraint_violations = 1
-    except Exception:
-        constraint_violations = 0
-
-    metrics: Dict[str, Any] = {
-        "gc_distribution": gc_dist,
-        "gc_content": gc_content,
-        "gc_variance": gc_variance,
-        "max_homopolymer": max_homopolymer,
-        "homopolymer_runs": hp_runs,
-        "ecc_success_rates": {fec_backend: success} if fec_backend else {},
-        "decode_success_rate": success,
-        "coverage": coverage,
-        "constraint_violations": constraint_violations,
-    }
-    if subs is not None and ins is not None and dels is not None:
-        metrics.update({"substitutions": subs, "insertions": ins, "deletions": dels})
-
-    return decoded, metrics, fec_info
+    metrics_dict = gather_metrics(
+        dna,
+        original_data,
+        decoded,
+        fec_backend,
+        subs,
+        ins,
+        dels,
+        coverage,
+    )
+    return decoded, metrics_dict, fec_info
 
