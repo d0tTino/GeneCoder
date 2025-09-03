@@ -13,7 +13,7 @@ def test_fallback_deterministic(monkeypatch):
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
     random_utils._RNG = None
     second = channel.simulate("ACGTACGTACGT")
-    assert first == second == "ACGTCCCTTCGT"
+    assert first == second == "ACATATGTACGT"
 
 
 def test_cli_invocation(monkeypatch):

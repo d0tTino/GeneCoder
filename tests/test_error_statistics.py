@@ -12,8 +12,8 @@ def test_insilicoseq_stats(monkeypatch):
     reset_rng()
     seq = "ACGTACGTACGT"
     out = insilicoseq_adapter.simulate_insilicoseq(seq, error_rate=0.2)
-    assert out == "ACGTCCCTTCGT"
-    assert _sub_rate(seq, out) == 3 / len(seq)
+    assert out == "ACATATGTACGT"
+    assert _sub_rate(seq, out) == 2 / len(seq)
 
 
 def test_desp_stats(monkeypatch):

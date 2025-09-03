@@ -20,6 +20,13 @@ from genecoder.raptorq_codec import (
 )
 
 
+@pytest.fixture
+def large_binary_file(tmp_path):
+    data = os.urandom(2_097_152)  # 2 MB to span multiple chunks
+    path = tmp_path / "large.bin"
+    path.write_bytes(data)
+    return path, data
+
 @pytest.mark.parametrize(
     "fec_name,encode_fn,decode_fn,available",
     [

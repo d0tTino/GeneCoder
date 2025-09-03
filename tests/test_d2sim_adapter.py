@@ -1,28 +1,27 @@
+"""Tests for the external d2sim simulator adapter."""
+
+from __future__ import annotations
+
 import random
-import sys
-import types
 
 import pytest
 
-# Stub out the ``cryptography`` package so tests don't require the external
-# dependency for import-time plugin security helpers.
-crypto_mod = types.ModuleType("cryptography")
-crypto_exc = types.ModuleType("cryptography.exceptions")
 
-class InvalidSignature(Exception):
-    pass
+@pytest.fixture()
+def adapter_modules() -> tuple[object, object]:
+    """Provide the d2sim adapter and simulator utilities."""
 
-setattr(crypto_exc, "InvalidSignature", InvalidSignature)
-setattr(crypto_mod, "exceptions", crypto_exc)
-sys.modules["cryptography"] = crypto_mod
-sys.modules["cryptography.exceptions"] = crypto_exc
+    from genecoder import d2sim_adapter
+    from genecoder import simulator_utils
 
-from genecoder import d2sim_adapter
-from genecoder import simulator_utils
+    return d2sim_adapter, simulator_utils
 
 
-def test_simulate_d2sim_success(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_simulate_d2sim_success(
+    adapter_modules: tuple[object, object], monkeypatch: pytest.MonkeyPatch
+) -> None:
     """simulate_d2sim uses external command when available."""
+    d2sim_adapter, simulator_utils = adapter_modules
     monkeypatch.setattr(simulator_utils.shutil, "which", lambda cmd: "/usr/bin/d2sim")
 
     called: dict[str, list[str] | str] = {}
@@ -41,8 +40,11 @@ def test_simulate_d2sim_success(monkeypatch: pytest.MonkeyPatch) -> None:
     assert called["seq"] == "ACGT"
 
 
-def test_simulate_d2sim_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_simulate_d2sim_fallback(
+    adapter_modules: tuple[object, object], monkeypatch: pytest.MonkeyPatch
+) -> None:
     """simulate_d2sim falls back when command missing."""
+    d2sim_adapter, simulator_utils = adapter_modules
     monkeypatch.setattr(simulator_utils.shutil, "which", lambda cmd: None)
     called: dict[str, bool] = {"simulate_errors": False}
 
@@ -50,7 +52,7 @@ def test_simulate_d2sim_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
         called["simulate_errors"] = True
         return "FALLBACK"
 
-    def fake_run_external(*args: object, **kwargs: object) -> str:  # pragma: no cover - should not run
+    def fake_run_external(*args: object, **kwargs: object) -> str:  # pragma: no cover
         raise AssertionError("_run_external should not be called")
 
     monkeypatch.setattr(simulator_utils, "simulate_errors", fake_simulate_errors)
@@ -60,3 +62,4 @@ def test_simulate_d2sim_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert result == "FALLBACK"
     assert called["simulate_errors"]
+

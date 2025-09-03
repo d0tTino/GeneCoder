@@ -1,0 +1,14 @@
+# Pipeline using Fountain FEC with the Nanopore simulator.
+encode:
+  input_files:
+    - examples/pipeline_demo_input.txt
+  method: base4_direct
+  fec: fountain
+simulate:
+  simulators:
+    - nanopore
+  pipeline:
+    nanopore_profile: r10
+decode:
+  method: base4_direct
+

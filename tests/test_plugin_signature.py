@@ -1,8 +1,8 @@
 import pytest
 
+pytest.importorskip("cryptography.hazmat.primitives.asymmetric")
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-
 from genecoder.plugin_security import verify_signature
 
 
