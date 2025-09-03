@@ -135,8 +135,7 @@ framework backends. Expect the installation to consume around **2&nbsp;GB** of
 disk space and take roughly **10&nbsp;minutes** on a typical broadband
 connection.
 
-For running GeneCoder without any network access see
-[the offline setup notes](docs/installation.md#offline-setup).
+For running GeneCoder without any network access see the [offline usage guide](docs/offline_usage.md) and the [offline setup notes](docs/installation.md#offline-setup).
 
 
 Desktop packages are available on the [releases page](https://github.com/d0tTino/GeneCoder/releases).
@@ -226,7 +225,7 @@ templates live in `plugins-examples/encoder_template` and
 using the CLI or GUI. When using GeneCoder as a library call
 ``genecoder.plugins.load_plugins()`` first to populate the registries.
 GeneCoder follows an offline-first design: without a registry URL only plugins
-already installed in the environment are loaded.
+already installed in the environment are loaded. See the [offline usage guide](docs/offline_usage.md) for environment flags and registry opt-in details.
 
 Remote plugin sources can be configured via the environment variables
 ``GENECODER_PLUGIN_REGISTRY_URL`` and ``GENECODER_PLUGIN_CATALOG_URL``. Set
