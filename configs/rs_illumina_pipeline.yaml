@@ -1,0 +1,14 @@
+# Pipeline using Reed-Solomon FEC with the Illumina simulator.
+encode:
+  input_files:
+    - examples/pipeline_demo_input.txt
+  method: base4_direct
+  fec: reed_solomon
+simulate:
+  simulators:
+    - illumina
+  pipeline:
+    illumina_profile: hiseq
+decode:
+  method: base4_direct
+

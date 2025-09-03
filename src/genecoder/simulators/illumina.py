@@ -368,9 +368,7 @@ class IlluminaChannel(BaseSimulator):
         read_length = self.get_read_length(sequence)
         read = sequence[:read_length]
         quality = self.get_quality_profile(sequence, read_length)
-        coverage = _poisson(self.coverage, rng)
-        if coverage <= 0:
-            return ""
+        coverage = max(1, _poisson(self.coverage, rng))
         reads = [self._mutate_read(read, quality, rng) for _ in range(coverage)]
         if coverage == 1:
             return reads[0]

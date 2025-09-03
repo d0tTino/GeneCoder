@@ -8,6 +8,9 @@ from genecoder.security import (
     decrypt_data,
     compute_checksum,
 )
+import pytest
+
+pytest.importorskip("cryptography.hazmat.primitives.asymmetric")
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.exceptions import InvalidSignature

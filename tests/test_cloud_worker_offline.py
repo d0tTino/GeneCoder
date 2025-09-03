@@ -1,3 +1,7 @@
+"""Tests for the cloud worker running in offline mode."""
+
+from __future__ import annotations
+
 import base64
 import tempfile
 import zipfile
@@ -8,11 +12,12 @@ from typing import Any, Callable
 
 import pytest
 
-# Provide a minimal FastAPI stub so the worker module can be imported without the
-# external dependency.
-try:  # pragma: no cover - real FastAPI is optional for tests
-    import fastapi  # noqa: F401
-except ModuleNotFoundError:  # pragma: no cover - executed when fastapi missing
+
+@pytest.fixture()
+def worker_plugins(monkeypatch: pytest.MonkeyPatch) -> tuple[object, object]:
+    """Return the worker and plugin manager with required modules stubbed."""
+
+    # Minimal FastAPI stub so ``genecoder.cloud.worker`` can be imported
     fastapi_stub = types.ModuleType("fastapi")
 
     class HTTPException(Exception):
@@ -21,9 +26,6 @@ except ModuleNotFoundError:  # pragma: no cover - executed when fastapi missing
             self.detail = detail
 
     class FastAPI:
-        def __init__(self) -> None:
-            pass
-
         def post(
             self, *_args: object, **_kwargs: object
         ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
@@ -38,23 +40,13 @@ except ModuleNotFoundError:  # pragma: no cover - executed when fastapi missing
     setattr(fastapi_stub, "FastAPI", FastAPI)
     setattr(fastapi_stub, "HTTPException", HTTPException)
     setattr(fastapi_stub, "Header", Header)
-    sys.modules["fastapi"] = fastapi_stub
 
-# Stub out the ``cryptography`` package used by plugin_security so the tests do
-# not require the external dependency.
-crypto_mod = types.ModuleType("cryptography")
-crypto_exc = types.ModuleType("cryptography.exceptions")
+    monkeypatch.setitem(sys.modules, "fastapi", fastapi_stub)
 
-class InvalidSignature(Exception):
-    pass
+    from genecoder.cloud import worker
+    from genecoder import plugin_manager as plugins
 
-setattr(crypto_exc, "InvalidSignature", InvalidSignature)
-setattr(crypto_mod, "exceptions", crypto_exc)
-sys.modules["cryptography"] = crypto_mod
-sys.modules["cryptography.exceptions"] = crypto_exc
-
-from genecoder.cloud import worker
-from genecoder import plugin_manager as plugins
+    yield worker, plugins
 
 
 def _build_archive(bundle_path: Path) -> str:
@@ -65,14 +57,19 @@ def _build_archive(bundle_path: Path) -> str:
         return base64.b64encode(archive.read_bytes()).decode()
 
 
-def test_worker_offline_blocks_network(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_worker_offline_blocks_network(
+    worker_plugins: tuple[object, object],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    worker, plugins = worker_plugins
     worker.API_TOKEN = "tok"
 
     bundle_file = tmp_path / "b.yaml"
     bundle_file.write_text("encode:\n  input_files: []\n")
     archive_b64 = _build_archive(bundle_file)
 
-    def fake_urlopen(*args: object, **kwargs: object) -> None:  # pragma: no cover - should not run
+    def fake_urlopen(*args: object, **kwargs: object) -> None:  # pragma: no cover
         raise AssertionError("network access attempted")
 
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
@@ -89,7 +86,8 @@ def test_worker_offline_blocks_network(monkeypatch: pytest.MonkeyPatch, tmp_path
 
     def dummy(args: object) -> None:
         called["run"] = True
-        genecoder.install_registry_plugins("https://example.com/plugins.yaml")
+        with pytest.raises(RuntimeError):
+            genecoder.install_registry_plugins("https://example.com/plugins.yaml")
 
     monkeypatch.setattr(worker.bundle_cli, "_handle_run", dummy)
 
@@ -99,3 +97,4 @@ def test_worker_offline_blocks_network(monkeypatch: pytest.MonkeyPatch, tmp_path
     )
     assert response["status"] == "ok"
     assert called["run"]
+
