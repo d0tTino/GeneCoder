@@ -169,21 +169,152 @@ def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer]) ->
 
 
 
+def _read_local(path_str: str) -> bytes:
+    path = urlparse(path_str).path if path_str.startswith("file://") else path_str
+    return Path(path).read_bytes()
 
 
+def _fetch_catalog(url: str, *, allow_network: bool) -> bytes:
+    if url.startswith("http://") or url.startswith("https://"):
+        if not allow_network:
+            msg = (
+                "Network access is disabled. Set GENECODER_ALLOW_NETWORK=1 to enable "
+                "downloads from the plugin registry specified by GENECODER_PLUGIN_REGISTRY_URL."
+            )
+            logger.error(msg)
+            raise RuntimeError(msg)
+        with urllib.request.urlopen(url, timeout=30) as response:
+            return response.read()
+    return _read_local(url)
+
+
+def _install_plugin_spec(
+    spec: str,
+    *,
+    checksum: str | None = None,
+    sig_b64: str | None = None,
+    version_req: str | None = None,
+    package: str | None = None,
+    allow_network: bool,
+) -> None:
+    install_target = spec
+    pkg_path = None
+    if checksum or sig_b64:
+        try:
+            path = urlparse(spec).path if spec.startswith("file://") else spec
+            if Path(path).exists():
+                pkg_bytes = _read_local(spec)
+            else:
+                if not allow_network:
+                    msg = (
+                        "Network access is disabled. Set GENECODER_ALLOW_NETWORK=1 to enable "
+                        "downloads from the plugin registry specified by GENECODER_PLUGIN_REGISTRY_URL."
+                    )
+                    logger.error(msg)
+                    raise RuntimeError(msg)
+                with urllib.request.urlopen(spec, timeout=30) as resp:
+                    pkg_bytes = resp.read()
+        except Exception as exc:  # pragma: no cover - download error path
+            if isinstance(exc, RuntimeError):
+                raise
+            logger.warning("Failed to download plugin %s: %s", spec, exc)
+            raise
+
+        signature = None
+        public_key = None
+        if sig_b64:
+            try:
+                signature = base64.b64decode(str(sig_b64), validate=True)
+            except Exception:
+                logger.error("Invalid signature for plugin %s", spec)
+                raise ValueError("Invalid signature")
+
+            key_path = os.getenv("GENECODER_PLUGIN_PUBLIC_KEY")
+            if not key_path:
+                logger.error("Invalid signature for plugin %s", spec)
+                raise ValueError("Invalid signature")
+            try:
+                public_key = Path(key_path).read_bytes()
+            except Exception:
+                logger.error("Invalid signature for plugin %s", spec)
+                raise ValueError("Invalid signature")
+
+        try:
+            digest = plugin_security.compute_checksum(
+                pkg_bytes, signature=signature, public_key=public_key
+            )
+        except Exception:
+            logger.error("Invalid signature for plugin %s", spec)
+            raise ValueError("Invalid signature")
+
+        if checksum:
+            try:
+                expected = plugin_security.decode_checksum(str(checksum))
+            except ValueError:
+                logger.error("Invalid checksum for plugin %s", spec)
+                raise ValueError("Invalid checksum")
+            if digest != expected:
+                logger.error("Checksum mismatch for plugin %s", spec)
+                raise ValueError("Checksum mismatch")
+
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        pkg_path = tmp.name
+        tmp.write(pkg_bytes)
+        tmp.close()
+        install_target = pkg_path
+
+    if not allow_network and not (spec.startswith("file://") or Path(spec).exists()):
+        msg = (
+            "Network access is disabled. Set GENECODER_ALLOW_NETWORK=1 to enable "
+            "downloads from the plugin registry specified by GENECODER_PLUGIN_REGISTRY_URL."
+        )
+        logger.error(msg)
+        raise RuntimeError(msg)
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", install_target])
+        if version_req:
+            pkg_name = str(package or spec).split("==")[0]
+            if _SAFE_PKG_RE.fullmatch(pkg_name):
+                try:
+                    installed_version = get_pkg_version(pkg_name)
+                except PackageNotFoundError:
+                    logger.error("Version mismatch for plugin %s", pkg_name)
+                    raise ValueError("Version mismatch")
+                if installed_version != str(version_req):
+                    logger.error(
+                        "Version mismatch for plugin %s (expected %s, got %s)",
+                        pkg_name,
+                        version_req,
+                        installed_version,
+                    )
+                    raise ValueError("Version mismatch")
+    except Exception as exc:  # pragma: no cover - install error path
+        if isinstance(exc, ValueError):
+            raise
+        logger.warning("Failed to install plugin %s from registry: %s", spec, exc)
+    finally:
+        if pkg_path is not None:
+            try:
+                os.unlink(pkg_path)
+            except Exception:
+                pass
 
 
 def install_registry_plugins(
-    url: str | os.PathLike[str] | None = None, offline: bool | None = None
+    url: str | os.PathLike[str] | None = None,
+    *,
+    offline: bool | None = None,
+    allow_network: bool | None = None,
 ) -> None:
     """Install plugin packages listed in a YAML registry at ``url``.
 
     The ``url`` argument may be an HTTP(S) address, a ``file://`` URL or a plain
-    filesystem path. When *offline* is ``True`` or the ``GENECODER_OFFLINE``
-    environment variable is set, all network access is disabled and the
-    registry must reside on the local filesystem. Any attempt to reach a remote
-    resource in offline mode raises :class:`RuntimeError` with a descriptive
-    message.
+    filesystem path. Network access is disabled by default; set the
+    ``GENECODER_ALLOW_NETWORK`` environment variable or pass ``allow_network=True``
+    to enable downloads from the registry specified by
+    ``GENECODER_PLUGIN_REGISTRY_URL``. When *offline* is ``True`` or the
+    ``GENECODER_OFFLINE`` environment variable is set, network access remains
+    disabled regardless of ``allow_network``.
     """
 
     if isinstance(url, os.PathLike):
@@ -191,18 +322,15 @@ def install_registry_plugins(
 
     if offline is None:
         offline = bool(os.getenv("GENECODER_OFFLINE"))
+    if allow_network is None:
+        allow_network = bool(os.getenv("GENECODER_ALLOW_NETWORK"))
 
     if url is None:
         url = os.getenv("GENECODER_PLUGIN_REGISTRY_URL")
     if not url:
         return
 
-    def _is_remote(target: str) -> bool:
-        return target.startswith("http://") or target.startswith("https://")
-
-    def _read_local(path_str: str) -> bytes:
-        path = urlparse(path_str).path if path_str.startswith("file://") else path_str
-        return Path(path).read_bytes()
+    network_ok = allow_network and not offline
 
     yaml_module = yaml
     if yaml_module is None:
@@ -219,15 +347,7 @@ def install_registry_plugins(
         return
 
     try:
-        if _is_remote(url):
-            if offline:
-                msg = f"Offline mode forbids fetching registry {url}"
-                logger.error(msg)
-                raise RuntimeError(msg)
-            with urllib.request.urlopen(url, timeout=30) as response:
-                raw = response.read()
-        else:
-            raw = _read_local(url)
+        raw = _fetch_catalog(url, allow_network=network_ok)
     except Exception as exc:
         if isinstance(exc, RuntimeError):
             raise
@@ -244,10 +364,14 @@ def install_registry_plugins(
         spec = ""
         checksum = None
         sig_b64: str | None = None
+        version_req: str | None = None
+        package = None
         if isinstance(entry, dict):
             spec = str(entry.get("spec") or entry.get("package") or entry.get("url") or "")
             checksum = entry.get("checksum")
             sig_b64 = entry.get("signature")
+            version_req = entry.get("version")
+            package = entry.get("package")
         else:
             spec = str(entry)
 
@@ -260,106 +384,19 @@ def install_registry_plugins(
         if checksum is None and sig_b64 is None:
             raise ValueError("Checksum or signature required")
 
-        install_target = spec
-        pkg_path = None
-        if checksum or sig_b64:
-            try:
-                path = (
-                    urlparse(spec).path if spec.startswith("file://") else spec
-                )
-                if Path(path).exists():
-                    pkg_bytes = _read_local(spec)
-                else:
-                    if offline:
-                        msg = f"Offline mode forbids downloading plugin {spec}"
-                        logger.error(msg)
-                        raise RuntimeError(msg)
-                    with urllib.request.urlopen(spec, timeout=30) as resp:
-                        pkg_bytes = resp.read()
-            except Exception as exc:  # pragma: no cover - download error path
-                if isinstance(exc, RuntimeError):
-                    raise
-                logger.warning("Failed to download plugin %s: %s", spec, exc)
-                raise
+        _install_plugin_spec(
+            spec,
+            checksum=checksum,
+            sig_b64=sig_b64,
+            version_req=version_req,
+            package=package,
+            allow_network=network_ok,
+        )
 
-            signature = None
-            public_key = None
-            if sig_b64:
-                try:
-                    signature = base64.b64decode(str(sig_b64), validate=True)
-                except Exception:
-                    logger.error("Invalid signature for plugin %s", spec)
-                    raise ValueError("Invalid signature")
 
-                key_path = os.getenv("GENECODER_PLUGIN_PUBLIC_KEY")
-                if not key_path:
-                    logger.error("Invalid signature for plugin %s", spec)
-                    raise ValueError("Invalid signature")
-                try:
-                    public_key = Path(key_path).read_bytes()
-                except Exception:
-                    logger.error("Invalid signature for plugin %s", spec)
-                    raise ValueError("Invalid signature")
 
-            try:
-                digest = plugin_security.compute_checksum(
-                    pkg_bytes, signature=signature, public_key=public_key
-                )
-            except Exception:
-                logger.error("Invalid signature for plugin %s", spec)
-                raise ValueError("Invalid signature")
 
-            if checksum:
-                try:
-                    expected = plugin_security.decode_checksum(str(checksum))
-                except ValueError:
-                    logger.error("Invalid checksum for plugin %s", spec)
-                    raise ValueError("Invalid checksum")
-                if digest != expected:
-                    logger.error("Checksum mismatch for plugin %s", spec)
-                    raise ValueError("Checksum mismatch")
 
-            tmp = tempfile.NamedTemporaryFile(delete=False)
-            pkg_path = tmp.name
-            tmp.write(pkg_bytes)
-            tmp.close()
-            install_target = pkg_path
-
-        if offline and not (spec.startswith("file://") or Path(spec).exists()):
-            msg = f"Offline mode forbids installing plugin {spec}"
-            logger.error(msg)
-            raise RuntimeError(msg)
-        try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", install_target])
-            version_req = entry.get("version") if isinstance(entry, dict) else None
-            if version_req:
-                pkg_name = str(entry.get("package") or spec).split("==")[0]
-                if _SAFE_PKG_RE.fullmatch(pkg_name):
-                    try:
-                        installed_version = get_pkg_version(pkg_name)
-                    except PackageNotFoundError:
-                        logger.error("Version mismatch for plugin %s", pkg_name)
-                        raise ValueError("Version mismatch")
-                    if installed_version != str(version_req):
-                        logger.error(
-                            "Version mismatch for plugin %s (expected %s, got %s)",
-                            pkg_name,
-                            version_req,
-                            installed_version,
-                        )
-                        raise ValueError("Version mismatch")
-        except Exception as exc:  # pragma: no cover - install error path
-            if isinstance(exc, ValueError):
-                raise
-            logger.warning(
-                "Failed to install plugin %s from registry: %s", spec, exc
-            )
-        finally:
-            if pkg_path is not None:
-                try:
-                    os.unlink(pkg_path)
-                except Exception:
-                    pass
 
 
 def _load_and_register(
