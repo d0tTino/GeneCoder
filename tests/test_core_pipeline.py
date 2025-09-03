@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from genecoder.core import run_pipeline
+from genecoder.core import encode, simulate, decode, metrics as gather_metrics, run_pipeline
 from genecoder.api import Codec
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
@@ -38,3 +38,35 @@ def test_roundtrip_rs_simple(tmp_path: Path) -> None:
     assert result == data
     assert metrics["gc_content"] >= 0.0
     assert outp.read_bytes() == data
+
+
+def test_encode_helper() -> None:
+    init_plugins()
+    CODEC_REGISTRY["base4"] = {"encode": _Base4Codec().encode, "decode": _Base4Codec().decode}
+    dna, fec_info = encode("base4", None, b"hi")
+    assert isinstance(dna, str)
+    assert fec_info is None
+
+
+def test_simulate_helper() -> None:
+    dna, subs, ins, dels, coverage = simulate(None, "ACGT")
+    assert dna == "ACGT"
+    assert subs is ins is dels is None
+    assert coverage is None
+
+
+def test_decode_helper() -> None:
+    init_plugins()
+    CODEC_REGISTRY["base4"] = {"encode": _Base4Codec().encode, "decode": _Base4Codec().decode}
+    dna, fec_info = encode("base4", None, b"data")
+    assert decode("base4", None, dna, fec_info) == b"data"
+
+
+def test_metrics_helper() -> None:
+    init_plugins()
+    CODEC_REGISTRY["base4"] = {"encode": _Base4Codec().encode, "decode": _Base4Codec().decode}
+    data = b"metrics"
+    dna, _ = encode("base4", None, data)
+    m = gather_metrics(dna, data, data, None)
+    assert m["decode_success_rate"] == 1.0
+    assert "gc_content" in m

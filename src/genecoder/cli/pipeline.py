@@ -7,12 +7,12 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, Dict
 
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES
 
-from genecoder.core import run_pipeline
+from genecoder.core import encode, simulate, decode, metrics as gather_metrics
 from genecoder.parallel import parallel_map
 from genecoder.plugin_manager import (
     CODEC_REGISTRY,
@@ -101,11 +101,25 @@ def _run_with_params(
         temp_name = f"_tmp_{chan_name}"
         SIMULATOR_REGISTRY[temp_name] = ch
     try:
-        _, metrics_any = run_pipeline(codec, fec, temp_name, input_path, output_path)
+        original_data = Path(input_path).read_bytes()
+        dna, fec_info = encode(codec, fec, original_data)
+        dna, subs, ins, dels, coverage = simulate(temp_name, dna)
+        decoded = decode(codec, fec, dna, fec_info)
+        Path(output_path).write_bytes(decoded)
+        metrics_any = gather_metrics(
+            dna,
+            original_data,
+            decoded,
+            fec,
+            subs,
+            ins,
+            dels,
+            coverage,
+        )
     finally:
         if temp_name != chan_name and temp_name in SIMULATOR_REGISTRY:
             del SIMULATOR_REGISTRY[temp_name]
-    return cast(Dict[str, Any], metrics_any)
+    return metrics_any
 
 
 def register_subcommand(
@@ -213,12 +227,9 @@ def _handle_command(args: argparse.Namespace) -> None:
         channel = "none"
 
     def _execute() -> Dict[str, Any]:
-        if channel_params:
-            return _run_with_params(
-                codec, fec, channel, channel_params, args.input, args.output
-            )
-        _, m = run_pipeline(codec, fec, channel, args.input, args.output)
-        return cast(Dict[str, Any], m)
+        return _run_with_params(
+            codec, fec, channel, channel_params, args.input, args.output
+        )
 
     if args.mpi_workers:
         metrics = parallel_map(
