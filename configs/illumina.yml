@@ -1,20 +1,15 @@
 miseq:
-  substitution_rate: 0.001
-  insertion_rate: 0.0001
-  deletion_rate: 0.0001
-  coverage_depth: 1
+  substitution_rate: 0.0006 # Stoler & Nekrutenko 2021 doi:10.1093/nargab/lqab019
+  insertion_rate: 0.00003   # Stoler & Nekrutenko 2021 doi:10.1093/nargab/lqab019
+  deletion_rate: 0.00004    # Stoler & Nekrutenko 2021 doi:10.1093/nargab/lqab019
+  coverage_depth: 30        # 1000 Genomes Project 2015 doi:10.1038/nature15393
 hiseq:
-  substitution_rate: 0.0005
-  insertion_rate: 0.00005
-  deletion_rate: 0.00005
-  coverage_depth: 1
+  substitution_rate: 0.0004 # Stoler & Nekrutenko 2021 doi:10.1093/nargab/lqab019
+  insertion_rate: 0.00002   # Stoler & Nekrutenko 2021 doi:10.1093/nargab/lqab019
+  deletion_rate: 0.00003    # Stoler & Nekrutenko 2021 doi:10.1093/nargab/lqab019
+  coverage_depth: 30        # 1000 Genomes Project 2015 doi:10.1038/nature15393
 novaseq:
-  substitution_rate: 0.0003
-  insertion_rate: 0.00003
-  deletion_rate: 0.00003
-  coverage_depth: 1
-nova:
-  substitution_rate: 0.0003
-  insertion_rate: 0.00003
-  deletion_rate: 0.00003
-  coverage_depth: 1
+  substitution_rate: 0.00025 # Stoler & Nekrutenko 2021 doi:10.1093/nargab/lqab019
+  insertion_rate: 0.000015   # Stoler & Nekrutenko 2021 doi:10.1093/nargab/lqab019
+  deletion_rate: 0.00002     # Stoler & Nekrutenko 2021 doi:10.1093/nargab/lqab019
+  coverage_depth: 30         # 1000 Genomes Project 2015 doi:10.1038/nature15393
