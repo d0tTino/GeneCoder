@@ -8,6 +8,7 @@ __all__ = ["get_cache_dir", "fetch_profile", "is_cached"]
 
 DEFAULT_BASE_URL = "https://example.com/profiles"
 PROFILE_DIR_ENV = "GENECODER_PROFILE_DIR"
+OFFLINE_ENV = "GENECODER_OFFLINE"
 
 
 def get_cache_dir() -> Path:
@@ -48,6 +49,12 @@ def fetch_profile(
         if candidate.is_file():
             dest.write_bytes(candidate.read_bytes())
             return dest
+
+    if os.getenv(OFFLINE_ENV) not in (None, "", "0"):
+        raise RuntimeError(
+            f"Network access disabled via {OFFLINE_ENV}. "
+            f"Supply profiles via {PROFILE_DIR_ENV}."
+        )
 
     url = f"{base_url.rstrip('/')}/{profile}"
     try:

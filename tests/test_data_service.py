@@ -79,3 +79,18 @@ def test_fetch_profile_network_error(tmp_path: Path, monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(urllib.request, "urlopen", fake_open)
     with pytest.raises(RuntimeError, match="Failed to download"):
         fetch_profile("illumina_profile.json", cache_dir=cache)
+
+
+def test_fetch_profile_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    called = False
+
+    def fake_open(url: str, *, timeout: int | None = None):
+        nonlocal called
+        called = True
+        raise AssertionError("network call")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_open)
+    monkeypatch.setenv("GENECODER_OFFLINE", "1")
+    with pytest.raises(RuntimeError, match="GENECODER_PROFILE_DIR"):
+        fetch_profile("illumina_profile.json")
+    assert not called
