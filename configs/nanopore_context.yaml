@@ -1,0 +1,37 @@
+# Nanopore profile demonstrating context-specific indel rates
+# Each top-level key defines a sequencing profile. Values are illustrative.
+minion:
+  error_rate: 0.12 # Overall per-base error rate
+  substitution_rate: 0.02 # Probability of base substitution
+  insertion_rate: 0.04 # Baseline insertion probability
+  deletion_rate: 0.06 # Baseline deletion probability
+  coverage: 30 # Default sequencing coverage
+  context_indels:
+    AA: # A/T-rich homopolymers have higher indel rates
+      1:
+        insertions: 0.02 # Short A-run insertion probability
+        deletions: 0.03 # Short A-run deletion probability
+      5:
+        insertions: 0.12 # Long A-run insertion probability
+        deletions: 0.10 # Long A-run deletion probability
+    TT: # A/T-rich homopolymers have higher indel rates
+      1:
+        insertions: 0.02 # Short T-run insertion probability
+        deletions: 0.03 # Short T-run deletion probability
+      5:
+        insertions: 0.12 # Long T-run insertion probability
+        deletions: 0.10 # Long T-run deletion probability
+    GG: # G/C-rich homopolymers typically show lower indel rates
+      1:
+        insertions: 0.01 # Short G-run insertion probability
+        deletions: 0.015 # Short G-run deletion probability
+      5:
+        insertions: 0.06 # Long G-run insertion probability
+        deletions: 0.05 # Long G-run deletion probability
+    CC: # G/C-rich homopolymers typically show lower indel rates
+      1:
+        insertions: 0.01 # Short C-run insertion probability
+        deletions: 0.015 # Short C-run deletion probability
+      5:
+        insertions: 0.06 # Long C-run insertion probability
+        deletions: 0.05 # Long C-run deletion probability
