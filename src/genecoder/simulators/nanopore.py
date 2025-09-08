@@ -94,18 +94,33 @@ def _split_context_indels(
     single probability is provided for a run length, it is applied to both insertions
     and deletions by default. This helper validates the nested indel profiles and
     returns two dictionaries in the normalized format used internally by the
-    simulator.
+    simulator. Invalid context structures raise ``ValueError``.
     """
+
+    if profiles is None:
+        return {}, {}
+    if not isinstance(profiles, Mapping):
+        raise ValueError(f"{name} must be a mapping of contexts to profiles")
 
     ctx_ins: Dict[str, Dict[int, float]] = {}
     ctx_del: Dict[str, Dict[int, float]] = {}
-    for ctx, ctx_map in (profiles or {}).items():
+    for ctx, ctx_map in profiles.items():
         if not isinstance(ctx_map, Mapping):
-            continue
+            raise ValueError(f"{name}[{ctx}] must be a mapping")
         ctx_key = str(ctx).upper()
 
         if any(k in {"insertions", "insertion", "deletions", "deletion"} for k in ctx_map):
             # Traditional format with explicit insertion/deletion maps
+            extra = set(ctx_map) - {
+                "insertions",
+                "insertion",
+                "deletions",
+                "deletion",
+            }
+            if extra:
+                raise ValueError(
+                    f"{name}[{ctx}] has invalid keys: {', '.join(map(str, extra))}"
+                )
             ins_prof = ctx_map.get("insertions") or ctx_map.get("insertion")
             del_prof = ctx_map.get("deletions") or ctx_map.get("deletion")
             if ins_prof is not None:
@@ -123,8 +138,18 @@ def _split_context_indels(
             try:
                 rl = int(run_len)
             except (TypeError, ValueError):
-                continue
+                raise ValueError(f"{name}[{ctx}] run lengths must be integers") from None
             if isinstance(rates, Mapping):
+                extra = set(rates) - {
+                    "insertions",
+                    "insertion",
+                    "deletions",
+                    "deletion",
+                }
+                if extra:
+                    raise ValueError(
+                        f"{name}[{ctx}][{rl}] has invalid keys: {', '.join(map(str, extra))}"
+                    )
                 ins = rates.get("insertions") or rates.get("insertion")
                 dele = rates.get("deletions") or rates.get("deletion")
                 if ins is None and dele is None:
@@ -432,22 +457,46 @@ class NanoporeChannel(BaseChannel):
             coverage = float(data.get("coverage", coverage))
             quality_profile = data.get("quality_profile", quality_profile)
             context_errors = data.get("context_errors", context_errors)
-            context_insertions = data.get("context_insertions", context_insertions)
-            context_deletions = data.get("context_deletions", context_deletions)
+
+            if "context_insertions" in data:
+                ci = data["context_insertions"]
+                if not isinstance(ci, Mapping):
+                    raise ValueError("context_insertions must be a mapping")
+                base = context_insertions or {}
+                for ctx, prof in ci.items():
+                    if not isinstance(prof, Mapping):
+                        raise ValueError(
+                            f"context_insertions[{ctx}] must map run lengths to rates"
+                        )
+                    base.setdefault(str(ctx).upper(), {}).update(prof)
+                context_insertions = base
+            if "context_deletions" in data:
+                cd = data["context_deletions"]
+                if not isinstance(cd, Mapping):
+                    raise ValueError("context_deletions must be a mapping")
+                base = context_deletions or {}
+                for ctx, prof in cd.items():
+                    if not isinstance(prof, Mapping):
+                        raise ValueError(
+                            f"context_deletions[{ctx}] must map run lengths to rates"
+                        )
+                    base.setdefault(str(ctx).upper(), {}).update(prof)
+                context_deletions = base
+
             if "context_indels" in data:
                 ctx_ins, ctx_del = _split_context_indels(
                     data.get("context_indels"), "context_indels"
                 )
                 if ctx_ins:
-                    context_insertions = {
-                        **(context_insertions or {}),
-                        **ctx_ins,
-                    }
+                    base = context_insertions or {}
+                    for ctx, prof in ctx_ins.items():
+                        base.setdefault(ctx, {}).update(prof)
+                    context_insertions = base
                 if ctx_del:
-                    context_deletions = {
-                        **(context_deletions or {}),
-                        **ctx_del,
-                    }
+                    base = context_deletions or {}
+                    for ctx, prof in ctx_del.items():
+                        base.setdefault(ctx, {}).update(prof)
+                    context_deletions = base
             insertion_profile = data.get("insertion_profile", insertion_profile)
             deletion_profile = data.get("deletion_profile", deletion_profile)
         error_rate = _validate_rate("error_rate", error_rate)
