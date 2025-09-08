@@ -462,7 +462,9 @@ class NanoporeChannel(BaseChannel):
                 ci = data["context_insertions"]
                 if not isinstance(ci, Mapping):
                     raise ValueError("context_insertions must be a mapping")
-                base = context_insertions or {}
+                base = {
+                    k: dict(v) for k, v in (context_insertions or {}).items()
+                }
                 for ctx, prof in ci.items():
                     if not isinstance(prof, Mapping):
                         raise ValueError(
@@ -474,7 +476,9 @@ class NanoporeChannel(BaseChannel):
                 cd = data["context_deletions"]
                 if not isinstance(cd, Mapping):
                     raise ValueError("context_deletions must be a mapping")
-                base = context_deletions or {}
+                base = {
+                    k: dict(v) for k, v in (context_deletions or {}).items()
+                }
                 for ctx, prof in cd.items():
                     if not isinstance(prof, Mapping):
                         raise ValueError(
@@ -488,12 +492,16 @@ class NanoporeChannel(BaseChannel):
                     data.get("context_indels"), "context_indels"
                 )
                 if ctx_ins:
-                    base = context_insertions or {}
+                    base = {
+                        k: dict(v) for k, v in (context_insertions or {}).items()
+                    }
                     for ctx, prof in ctx_ins.items():
                         base.setdefault(ctx, {}).update(prof)
                     context_insertions = base
                 if ctx_del:
-                    base = context_deletions or {}
+                    base = {
+                        k: dict(v) for k, v in (context_deletions or {}).items()
+                    }
                     for ctx, prof in ctx_del.items():
                         base.setdefault(ctx, {}).update(prof)
                     context_deletions = base
