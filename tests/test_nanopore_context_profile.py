@@ -1,8 +1,6 @@
 import random
 from pathlib import Path
 
-import yaml
-
 from genecoder.simulators.nanopore import NanoporeChannel, _mutate_read
 
 
@@ -20,14 +18,17 @@ def _simulate_many(channel: NanoporeChannel, sequence: str, runs: int = 1000) ->
 
 
 def test_context_indel_rates(tmp_path: Path) -> None:
-    profile = {
-        "substitution_rate": 0.0,
-        "insertion_rate": 0.0,
-        "deletion_rate": 0.0,
-        "context_indels": {"AA": {5: {"insertions": 0.5, "deletions": 0.5}}},
-    }
     prof = tmp_path / "nanopore_context.yaml"
-    prof.write_text(yaml.safe_dump(profile))
+    prof.write_text(
+        "substitution_rate: 0.0\n"
+        "insertion_rate: 0.0\n"
+        "deletion_rate: 0.0\n"
+        "context_indels:\n"
+        "  AA:\n"
+        "    5:\n"
+        "      insertions: 0.5\n"
+        "      deletions: 0.5\n"
+    )
     channel = NanoporeChannel(profile_path=str(prof))
 
     poly_ins, poly_del = _simulate_many(channel, "AAAAA")
