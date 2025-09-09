@@ -125,15 +125,33 @@ def register(register_simulator):
 
 ### Visualizer Example
 
+This minimal plugin prints the raw bytes it receives.
+
+`myviz.py`
+
 ```python
 from genecoder.api import Visualizer
 
 class MyViz(Visualizer):
     def visualize(self, data: bytes) -> None:
-        ...
+        print(f"visualized: {data!r}")
 
 def register(register_visualizer):
     register_visualizer("myviz", MyViz())
+```
+
+Declare the entry point in `pyproject.toml`:
+
+```toml
+[project.entry-points."genecoder.visualizers"]
+myviz = "myviz"
+```
+
+Run the visualizer:
+
+```bash
+$ genecli visualize myviz - <<<"hi"
+visualized: b'hi\n'
 ```
 
 See [`plugins-examples`](../plugins-examples/) for complete reference implementations.
