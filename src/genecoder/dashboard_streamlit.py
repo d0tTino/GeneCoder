@@ -108,7 +108,7 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     for name, data in datasets.items():
         label = Path(name).stem
         min_gc, mean_gc, max_gc = _gc_stats(data.get("gc_distribution"))
-        if None not in (min_gc, mean_gc, max_gc):
+        if min_gc is not None and mean_gc is not None and max_gc is not None:
             gc_rows.extend(
                 [
                     {"Run": label, "Metric": "min", "Value": min_gc},
