@@ -106,7 +106,7 @@ def _run_with_params(
         dna, subs, ins, dels, coverage = simulate(temp_name, dna)
         decoded = decode(codec, fec, dna, fec_info)
         Path(output_path).write_bytes(decoded)
-        metrics_any = gather_metrics(
+        metrics: dict[str, Any] = gather_metrics(
             dna,
             original_data,
             decoded,
@@ -119,7 +119,7 @@ def _run_with_params(
     finally:
         if temp_name != chan_name and temp_name in SIMULATOR_REGISTRY:
             del SIMULATOR_REGISTRY[temp_name]
-    return metrics_any
+    return metrics
 
 
 def register_subcommand(

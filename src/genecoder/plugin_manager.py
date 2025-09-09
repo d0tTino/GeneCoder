@@ -184,7 +184,7 @@ def _fetch_catalog(url: str, *, allow_network: bool) -> bytes:
             logger.error(msg)
             raise RuntimeError(msg)
         with urllib.request.urlopen(url, timeout=30) as response:
-            return response.read()
+            return cast(bytes, response.read())
     return _read_local(url)
 
 
