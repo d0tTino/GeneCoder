@@ -145,6 +145,154 @@ def _split_error_metric(val: object) -> tuple[float | None, list[int]]:
     return rate, hist
 
 
+def _parse_constraint_violations(value: object) -> dict[str, Any]:
+    """Return a normalized summary for ``constraint_violations`` values.
+
+    The metric may be expressed as an integer count, a mapping with nested
+    structures or an iterable of individual violation records.  The returned
+    dictionary always contains ``count`` (int), ``sequence_ids`` (list[str]) and
+    ``type_counts`` (dict[str, int]).  Unknown formats fall back to empty
+    collections.
+    """
+
+    sequences: list[str] = []
+    type_counts: Counter[str] = Counter()
+    explicit_count: int | None = None
+
+    def add_sequence(seq: object) -> None:
+        if seq is None:
+            return
+        text = str(seq)
+        if not text:
+            return
+        if text not in sequences:
+            sequences.append(text)
+
+    def add_type(name: object, count: object = 1) -> None:
+        if name is None:
+            return
+        label = str(name)
+        if not label:
+            return
+        try:
+            amount = int(count)
+        except Exception:
+            amount = 1
+        if amount <= 0:
+            return
+        type_counts[label] += amount
+
+    def parse_collection(collection: object) -> None:
+        nonlocal explicit_count
+        if isinstance(collection, dict):
+            for key, val in collection.items():
+                if key in {"count", "total", "violation_count"}:
+                    if isinstance(val, (int, float)):
+                        cur = int(val)
+                        explicit_count = max(explicit_count or 0, cur)
+                    continue
+                if key in {"sequence_ids", "sequences", "ids"}:
+                    if isinstance(val, list):
+                        for item in val:
+                            add_sequence(item)
+                    elif isinstance(val, str):
+                        add_sequence(val)
+                    continue
+                if key in {"violations", "details", "entries"}:
+                    parse_collection(val)
+                    continue
+                if isinstance(val, dict):
+                    if key in {"type_counts", "counts", "violations_by_type"}:
+                        for sub_key, sub_val in val.items():
+                            if isinstance(sub_val, (int, float)):
+                                add_type(sub_key, int(sub_val))
+                            elif isinstance(sub_val, list):
+                                add_type(sub_key, len(sub_val))
+                                for item in sub_val:
+                                    parse_item(item)
+                            else:
+                                add_type(sub_key)
+                        continue
+                    parse_collection(val)
+                    continue
+                if isinstance(val, (int, float)):
+                    add_type(key, int(val))
+                elif isinstance(val, list):
+                    add_type(key, len(val))
+                    for item in val:
+                        parse_item(item)
+                else:
+                    add_type(key)
+        elif isinstance(collection, list):
+            for item in collection:
+                parse_item(item)
+        elif isinstance(collection, tuple):
+            parse_collection(list(collection))
+        elif isinstance(collection, str):
+            add_type(collection)
+
+    def parse_item(item: object) -> None:
+        nonlocal explicit_count
+        if isinstance(item, dict):
+            seq = (
+                item.get("sequence_id")
+                or item.get("sequence")
+                or item.get("id")
+                or item.get("name")
+            )
+            add_sequence(seq)
+            if "count" in item and isinstance(item["count"], (int, float)):
+                cur = int(item["count"])
+                explicit_count = max(explicit_count or 0, cur)
+            type_hint = item.get("type") or item.get("constraint")
+            if type_hint:
+                add_type(type_hint, item.get("count", 1))
+            nested = item.get("violations") or item.get("details") or item.get("issues")
+            if nested is not None:
+                parse_collection(nested)
+        elif isinstance(item, (list, tuple)) and item:
+            add_sequence(item[0])
+            if len(item) > 1:
+                add_type(item[1])
+        elif isinstance(item, str):
+            # When only the sequence identifier is provided.
+            add_sequence(item)
+        elif isinstance(item, (int, float)):
+            explicit_count = max(explicit_count or 0, int(item))
+
+    if isinstance(value, (int, float)):
+        explicit_count = int(value)
+    elif isinstance(value, dict):
+        parse_collection(value)
+    elif isinstance(value, list):
+        for entry in value:
+            parse_item(entry)
+        explicit_count = explicit_count or len(value)
+    elif value is None:
+        pass
+    else:
+        # Attempt to coerce other iterables.
+        try:
+            for entry in value:  # type: ignore[assignment]
+                parse_item(entry)
+        except Exception:
+            pass
+
+    total_types = sum(type_counts.values())
+    count = explicit_count if explicit_count is not None else 0
+    if count == 0:
+        if sequences:
+            count = len(sequences)
+        elif total_types:
+            count = total_types
+
+    return {
+        "count": count,
+        "sequence_ids": sequences,
+        "type_counts": dict(type_counts),
+    }
+
+
 def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: no cover - UI logic
     """Render the dashboard from one or more metrics files."""
 
@@ -160,6 +308,9 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             rate, hist = _split_error_metric(data.get(key))
             data[key] = rate
             data[f"{key}_histogram"] = hist
+        data["constraint_violation_summary"] = _parse_constraint_violations(
+            data.get("constraint_violations")
+        )
         if data:
             datasets[Path(path).stem] = data
 
@@ -174,6 +325,9 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             rate, hist = _split_error_metric(data.get(key))
             data[key] = rate
             data[f"{key}_histogram"] = hist
+        data["constraint_violation_summary"] = _parse_constraint_violations(
+            data.get("constraint_violations")
+        )
         datasets[Path(up.name).stem] = data
 
     st.title("GeneCoder Dashboard")
@@ -323,6 +477,47 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             else:
                 st.write("Install pandas and altair for multi-file error histograms.")
 
+    st.header("Constraint Violation Types")
+    violation_rows: list[dict[str, Any]] = []
+    for name in selected:
+        summary = datasets[name].get("constraint_violation_summary")
+        type_counts = {}
+        if isinstance(summary, dict):
+            type_counts = summary.get("type_counts", {}) or {}
+        if isinstance(type_counts, dict) and type_counts:
+            for vio_type, count in type_counts.items():
+                try:
+                    violation_rows.append(
+                        {"Violation": str(vio_type), "Count": float(count), "Dataset": name}
+                    )
+                except Exception:
+                    pass
+    if violation_rows:
+        if alt and pd and hasattr(st, "altair_chart"):
+            df = pd.DataFrame(violation_rows)
+            chart = (
+                alt.Chart(df)
+                .mark_bar(opacity=0.5)
+                .encode(x="Violation:N", y="Count:Q", color="Dataset:N")
+            )
+            st.altair_chart(chart, use_container_width=True)
+        else:
+            if len(selected) == 1:
+                summary = datasets[selected[0]].get("constraint_violation_summary")
+                type_counts = {}
+                if isinstance(summary, dict):
+                    maybe_counts = summary.get("type_counts", {})
+                    if isinstance(maybe_counts, dict):
+                        type_counts = maybe_counts
+                if isinstance(type_counts, dict) and type_counts:
+                    st.bar_chart(type_counts)
+                else:
+                    st.write("No constraint violation type data.")
+            else:
+                st.write("Install pandas and altair for multi-file constraint violation charts.")
+    else:
+        st.write("No constraint violation type data.")
+
     for name in selected:
         data = datasets[name]
         section = getattr(st, "subheader", getattr(st, "header", lambda *a, **k: None))
@@ -360,9 +555,40 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                 st.write("No coverage data.")
 
         subheader("Constraint Violations")
-        violations = data.get("constraint_violations")
-        if isinstance(violations, int):
-            st.bar_chart({"Violations": violations})
+        summary = data.get("constraint_violation_summary")
+        count = 0
+        sequences: list[str] = []
+        type_counts: dict[str, int] = {}
+        if isinstance(summary, dict):
+            try:
+                count = int(summary.get("count", 0))
+            except Exception:
+                count = 0
+            seq_ids = summary.get("sequence_ids", [])
+            if isinstance(seq_ids, list):
+                sequences = [str(item) for item in seq_ids if str(item)]
+            counts = summary.get("type_counts", {})
+            if isinstance(counts, dict):
+                cleaned: dict[str, int] = {}
+                for key, val in counts.items():
+                    try:
+                        cleaned[str(key)] = int(val)
+                    except Exception:
+                        try:
+                            cleaned[str(key)] = int(float(val))
+                        except Exception:
+                            continue
+                type_counts = {k: v for k, v in cleaned.items() if v}
+        original_value = data.get("constraint_violations")
+        has_data = not (
+            original_value is None and not sequences and not type_counts and count == 0
+        )
+        if has_data:
+            st.metric("Constraint Violations", f"{count}")
+            if sequences:
+                st.write("Offending sequence IDs:", ", ".join(sequences))
+            if not type_counts and count:
+                st.bar_chart({"Violations": count})
         else:
             st.write("No constraint violation data.")
 

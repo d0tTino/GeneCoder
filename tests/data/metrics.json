@@ -11,5 +11,13 @@
   "decode_success_rate": 0.97,
   "substitutions": 2,
   "insertions": 0,
-  "deletions": 0
+  "deletions": 0,
+  "constraint_violations": {
+    "count": 3,
+    "violations": [
+      {"sequence_id": "seq-1", "type": "gc_high"},
+      {"sequence_id": "seq-1", "type": "homopolymer"},
+      {"sequence_id": "seq-2", "type": "gc_low"}
+    ]
+  }
 }
