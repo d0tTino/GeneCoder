@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Callable, Sequence, Dict, Iterable, Mapping, cast
+from copy import deepcopy
+from types import ModuleType
 import random
 import shutil
 import subprocess
@@ -174,123 +176,284 @@ def _split_context_indels(
 
 # ---------------------------------------------------------------------------
 # Preset parameter profiles for :class:`NanoporeChannel` loaded from YAML.
-_DEFAULT_NANOPORE_PROFILES: dict[
+
+_FALLBACK_PROFILE_DATA: dict[
     str, dict[str, float | int | Dict[int, float] | Dict[str, Dict[int, float]]]
 ] = {
     "minion": {
-        "error_rate": 0.12,
-        "substitution_rate": 0.02,
-        "insertion_rate": 0.04,
-        "deletion_rate": 0.06,
+        "error_rate": 0.13,
+        "substitution_rate": 0.019,
+        "insertion_rate": 0.046,
+        "deletion_rate": 0.065,
+        "coverage": 30,
+        "insertion_profile": {5: 0.16},
+        "deletion_profile": {5: 0.22},
+        "context_insertions": {
+            "AA": {1: 0.05, 5: 0.24},
+            "TT": {1: 0.05, 5: 0.24},
+            "GG": {1: 0.03, 5: 0.14},
+            "CC": {1: 0.03, 5: 0.14},
+        },
+        "context_deletions": {
+            "AA": {1: 0.08, 5: 0.26},
+            "TT": {1: 0.08, 5: 0.26},
+            "GG": {1: 0.04, 5: 0.18},
+            "CC": {1: 0.04, 5: 0.18},
+        },
     },
     "promethion": {
         "error_rate": 0.08,
         "substitution_rate": 0.015,
         "insertion_rate": 0.02,
         "deletion_rate": 0.045,
+        "coverage": 30,
+        "insertion_profile": {5: 0.11},
+        "deletion_profile": {5: 0.16},
+        "context_insertions": {
+            "AA": {1: 0.04, 5: 0.18},
+            "TT": {1: 0.04, 5: 0.18},
+            "GG": {1: 0.02, 5: 0.09},
+            "CC": {1: 0.02, 5: 0.09},
+        },
+        "context_deletions": {
+            "AA": {1: 0.06, 5: 0.2},
+            "TT": {1: 0.06, 5: 0.2},
+            "GG": {1: 0.03, 5: 0.12},
+            "CC": {1: 0.03, 5: 0.12},
+        },
     },
     "r10": {
         "error_rate": 0.05,
         "substitution_rate": 0.01,
-        "insertion_rate": 0.02,
-        "deletion_rate": 0.03,
+        "insertion_rate": 0.015,
+        "deletion_rate": 0.025,
+        "coverage": 30,
+        "insertion_profile": {5: 0.08},
+        "deletion_profile": {5: 0.12},
+        "context_insertions": {
+            "AA": {1: 0.03, 5: 0.12},
+            "TT": {1: 0.03, 5: 0.12},
+            "GG": {1: 0.015, 5: 0.06},
+            "CC": {1: 0.015, 5: 0.06},
+        },
+        "context_deletions": {
+            "AA": {1: 0.05, 5: 0.14},
+            "TT": {1: 0.05, 5: 0.14},
+            "GG": {1: 0.025, 5: 0.09},
+            "CC": {1: 0.025, 5: 0.09},
+        },
     },
 }
+
+_BASE_PROFILE_KEYS = {
+    "error_rate",
+    "substitution_rate",
+    "insertion_rate",
+    "deletion_rate",
+    "coverage",
+    "quality_profile",
+}
+
+
+def _parse_profile(params: Mapping[str, Any]) -> dict[str, Any]:
+    parsed: dict[str, Any] = {}
+    for key, value in params.items():
+        if key in {"insertion_profile", "deletion_profile"}:
+            prof = value if isinstance(value, Mapping) else None
+            parsed[key] = _validate_indel_profile(prof, key)
+        elif key in {"context_insertions", "context_deletions"}:
+            prof = value if isinstance(value, Mapping) else None
+            parsed[key] = _validate_context_profiles(prof, key)
+        elif key == "context_indels" and isinstance(value, Mapping):
+            ctx_ins, ctx_del = _split_context_indels(value, "context_indels")
+            if ctx_ins:
+                parsed.setdefault("context_insertions", {}).update(ctx_ins)
+            if ctx_del:
+                parsed.setdefault("context_deletions", {}).update(ctx_del)
+        else:
+            parsed[key] = value
+    if "error_rate" not in parsed:
+        sub = float(parsed.get("substitution_rate", 0.0))
+        ins = float(parsed.get("insertion_rate", 0.0))
+        dele = float(parsed.get("deletion_rate", 0.0))
+        parsed["error_rate"] = sub + ins + dele
+    return parsed
+
+
+def _parse_context_overrides(params: Mapping[str, Any], name: str) -> dict[str, Any]:
+    parsed = _parse_profile(params)
+    for key in list(parsed):
+        if key in _BASE_PROFILE_KEYS:
+            parsed.pop(key)
+    if not parsed:
+        raise ValueError(f"{name} must define context-specific overrides")
+    return parsed
+
+
+def _merge_profiles(
+    base: Mapping[str, Any], overrides: Mapping[str, Any]
+) -> dict[str, Any]:
+    merged: dict[str, Any] = {}
+    for key, value in base.items():
+        if isinstance(value, Mapping):
+            merged[key] = {k: deepcopy(v) for k, v in value.items()}
+        else:
+            merged[key] = deepcopy(value)
+    for key, value in overrides.items():
+        if key in {"insertion_profile", "deletion_profile"}:
+            existing = {k: float(v) for k, v in merged.get(key, {}).items()}
+            for run_len, rate in value.items():
+                existing[int(run_len)] = float(rate)
+            merged[key] = existing
+        elif key in {"context_insertions", "context_deletions"}:
+            dest = {
+                ctx: {run: float(rate) for run, rate in prof.items()}
+                for ctx, prof in merged.get(key, {}).items()
+            }
+            for ctx, prof in value.items():
+                ctx_key = str(ctx).upper()
+                dest.setdefault(ctx_key, {})
+                for run_len, rate in prof.items():
+                    dest[ctx_key][int(run_len)] = float(rate)
+            merged[key] = dest
+        else:
+            merged[key] = deepcopy(value)
+    return merged
+
+
+def _parse_rate_table(tbl: Mapping[str, Any]) -> dict[str, Any]:
+    parsed: dict[str, Any] = {
+        "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
+        "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
+        "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
+    }
+    if "context_errors" in tbl and isinstance(tbl["context_errors"], Mapping):
+        parsed["context_errors"] = {
+            str(k).upper(): float(v)
+            for k, v in tbl["context_errors"].items()
+            if isinstance(v, (int, float))
+        }
+    if "insertion_profile" in tbl:
+        parsed["insertion_profile"] = _validate_indel_profile(
+            tbl.get("insertion_profile"), "insertion_profile"
+        )
+    if "deletion_profile" in tbl:
+        parsed["deletion_profile"] = _validate_indel_profile(
+            tbl.get("deletion_profile"), "deletion_profile"
+        )
+    if "context_insertions" in tbl:
+        parsed["context_insertions"] = _validate_context_profiles(
+            tbl.get("context_insertions"), "context_insertions"
+        )
+    if "context_deletions" in tbl:
+        parsed["context_deletions"] = _validate_context_profiles(
+            tbl.get("context_deletions"), "context_deletions"
+        )
+    if "context_indels" in tbl and isinstance(tbl["context_indels"], Mapping):
+        ctx_ins, ctx_del = _split_context_indels(
+            tbl["context_indels"], "context_indels"
+        )
+        if ctx_ins:
+            parsed.setdefault("context_insertions", {}).update(ctx_ins)
+        if ctx_del:
+            parsed.setdefault("context_deletions", {}).update(ctx_del)
+    return parsed
+
+
+def _load_profiles_from_directory(
+    cfg_dir: Path, yaml_module: ModuleType | None = None
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    if yaml_module is None:
+        import yaml as yaml_module  # type: ignore[import]
+
+    profiles: dict[str, dict[str, Any]] = {
+        str(name).lower(): deepcopy(params)
+        for name, params in _FALLBACK_PROFILE_DATA.items()
+    }
+
+    base_path = cfg_dir / "nanopore.yml"
+    try:
+        with open(base_path, "r", encoding="utf-8") as fh:
+            base_data = yaml_module.safe_load(fh) or {}
+    except FileNotFoundError:
+        base_data = {}
+    if isinstance(base_data, Mapping):
+        for name, params in base_data.items():
+            if isinstance(params, Mapping):
+                key = str(name).lower()
+                parsed = _parse_profile(params)
+                existing = profiles.get(key, {})
+                profiles[key] = _merge_profiles(existing, parsed)
+
+    context_defaults: dict[str, Mapping[str, Any]] = {}
+    for name, params in _FALLBACK_PROFILE_DATA.items():
+        ctx = {
+            key: value
+            for key, value in params.items()
+            if key in {
+                "insertion_profile",
+                "deletion_profile",
+                "context_insertions",
+                "context_deletions",
+                "context_indels",
+            }
+        }
+        if ctx:
+            context_defaults[str(name).lower()] = ctx
+
+    context_path = cfg_dir / "nanopore_context.yaml"
+    try:
+        with open(context_path, "r", encoding="utf-8") as fh:
+            context_data = yaml_module.safe_load(fh) or {}
+    except FileNotFoundError:
+        context_data = {}
+    if not isinstance(context_data, Mapping):
+        context_data = {}
+    context_defaults.update({
+        str(name).lower(): params
+        for name, params in context_data.items()
+        if isinstance(params, Mapping)
+    })
+
+    for name, params in context_defaults.items():
+        parsed = _parse_context_overrides(params, f"context profile {name}")
+        existing = profiles.get(name, {})
+        profiles[name] = _merge_profiles(existing, parsed)
+
+    rates_path = cfg_dir / "dnarsim_rates.yaml"
+    try:
+        with open(rates_path, "r", encoding="utf-8") as fh:
+            rates_data = yaml_module.safe_load(fh) or {}
+    except FileNotFoundError:
+        rates_data = {}
+
+    dnarsim_tables: dict[str, dict[str, Any]] = {}
+    if isinstance(rates_data, Mapping):
+        for name, tbl in rates_data.items():
+            if isinstance(tbl, Mapping):
+                dnarsim_tables[str(name)] = _parse_rate_table(tbl)
+
+    combined = {
+        key: deepcopy(params) for key, params in profiles.items()
+    }
+    for name, table in dnarsim_tables.items():
+        combined[str(name).lower()] = deepcopy(table)
+
+    return combined, dnarsim_tables
+
 
 try:  # pragma: no cover - optional dependency
     import yaml
 
     _cfg_dir = Path(__file__).resolve().parents[3] / "configs"
-    with open(_cfg_dir / "nanopore.yml", "r", encoding="utf-8") as _fh:
-        _data = yaml.safe_load(_fh) or {}
-    with open(_cfg_dir / "dnarsim_rates.yaml", "r", encoding="utf-8") as _fh:
-        _rates_data = yaml.safe_load(_fh) or {}
-
-    def _parse_profile(params: dict[str, Any]) -> dict[str, Any]:
-        parsed: dict[str, Any] = {}
-        for key, value in params.items():
-            if key in {"insertion_profile", "deletion_profile"}:
-                prof = value if isinstance(value, Mapping) else None
-                parsed[key] = _validate_indel_profile(prof, key)
-            elif key in {"context_insertions", "context_deletions"}:
-                prof = value if isinstance(value, Mapping) else None
-                parsed[key] = _validate_context_profiles(prof, key)
-            elif key == "context_indels" and isinstance(value, Mapping):
-                ctx_ins, ctx_del = _split_context_indels(value, "context_indels")
-                if ctx_ins:
-                    parsed.setdefault("context_insertions", {}).update(ctx_ins)
-                if ctx_del:
-                    parsed.setdefault("context_deletions", {}).update(ctx_del)
-            else:
-                parsed[key] = value
-        if "error_rate" not in parsed:
-            sub = float(parsed.get("substitution_rate", 0.0))
-            ins = float(parsed.get("insertion_rate", 0.0))
-            dele = float(parsed.get("deletion_rate", 0.0))
-            parsed["error_rate"] = sub + ins + dele
-        return parsed
-
-    if isinstance(_data, dict):
-        NANOPORE_PROFILES: dict[str, dict[str, Any]] = {
-            str(name): _parse_profile(params)
-            for name, params in _data.items()
-            if isinstance(params, dict)
-        }
-    else:  # pragma: no cover - unexpected structure
-        NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
-
-    def _parse_rate_table(tbl: Mapping[str, Any]) -> dict[str, Any]:
-        parsed: dict[str, Any] = {
-            "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
-            "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
-            "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
-        }
-        if "context_errors" in tbl and isinstance(tbl["context_errors"], Mapping):
-            parsed["context_errors"] = {
-                str(k).upper(): float(v)
-                for k, v in tbl["context_errors"].items()
-                if isinstance(v, (int, float))
-            }
-        if "insertion_profile" in tbl:
-            parsed["insertion_profile"] = _validate_indel_profile(
-                tbl.get("insertion_profile"), "insertion_profile"
-            )
-        if "deletion_profile" in tbl:
-            parsed["deletion_profile"] = _validate_indel_profile(
-                tbl.get("deletion_profile"), "deletion_profile"
-            )
-        if "context_insertions" in tbl:
-            parsed["context_insertions"] = _validate_context_profiles(
-                tbl.get("context_insertions"), "context_insertions"
-            )
-        if "context_deletions" in tbl:
-            parsed["context_deletions"] = _validate_context_profiles(
-                tbl.get("context_deletions"), "context_deletions"
-            )
-        if "context_indels" in tbl and isinstance(tbl["context_indels"], Mapping):
-            ctx_ins, ctx_del = _split_context_indels(
-                tbl["context_indels"], "context_indels"
-            )
-            if ctx_ins:
-                parsed.setdefault("context_insertions", {}).update(ctx_ins)
-            if ctx_del:
-                parsed.setdefault("context_deletions", {}).update(ctx_del)
-        return parsed
-
-    if isinstance(_rates_data, dict):
-        DNARSIM_RATE_TABLES = {
-            str(name): _parse_rate_table(tbl)
-            for name, tbl in _rates_data.items()
-            if isinstance(tbl, Mapping)
-        }
-    else:  # pragma: no cover - unexpected structure
-        DNARSIM_RATE_TABLES = {}
-
-    NANOPORE_PROFILES.update(DNARSIM_RATE_TABLES)
+    NANOPORE_PROFILES, DNARSIM_RATE_TABLES = _load_profiles_from_directory(
+        _cfg_dir, yaml
+    )
 except Exception:  # pragma: no cover - fallback when yaml missing
-    NANOPORE_PROFILES = _DEFAULT_NANOPORE_PROFILES
+    NANOPORE_PROFILES = {
+        key: deepcopy(params) for key, params in _FALLBACK_PROFILE_DATA.items()
+    }
     DNARSIM_RATE_TABLES = {}
-
 
 @njit(cache=True, forceobj=True)  # type: ignore[misc]
 def _simulate_fallback_jit(sequence: str, error_rate: float, rng: random.Random) -> str:

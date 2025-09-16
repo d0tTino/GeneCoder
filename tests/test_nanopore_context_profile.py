@@ -35,3 +35,11 @@ def test_context_indel_rates(tmp_path: Path) -> None:
     control_ins, control_del = _simulate_many(channel, "ACGTACGT")
     assert poly_ins > control_ins
     assert poly_del > control_del
+
+
+def test_builtin_profile_context_bias() -> None:
+    channel = NanoporeChannel(profile="minion")
+    poly_ins, poly_del = _simulate_many(channel, "AAAAA")
+    control_ins, control_del = _simulate_many(channel, "ACGTACGT")
+    assert poly_ins > control_ins
+    assert poly_del > control_del

@@ -16,6 +16,33 @@ def _error_counts(original: str, mutated: str) -> tuple[int, int, int]:
     return subs, ins, dele
 
 
+def test_builtin_profiles_include_context_tables() -> None:
+    minion = nanopore.NANOPORE_PROFILES["minion"]
+    assert minion["insertion_profile"][5] == pytest.approx(0.16)
+    assert minion["context_insertions"]["AA"][5] == pytest.approx(0.24)
+    assert minion["context_deletions"]["AA"][5] == pytest.approx(0.26)
+
+
+def test_loader_falls_back_to_context_defaults(tmp_path: Path) -> None:
+    base_cfg = tmp_path / "nanopore.yml"
+    base_cfg.write_text(
+        "minion:\n"
+        "  substitution_rate: 0.019\n"
+        "  insertion_rate: 0.046\n"
+        "  deletion_rate: 0.065\n"
+    )
+    (tmp_path / "dnarsim_rates.yaml").write_text("{}\n")
+
+    profiles, tables = nanopore._load_profiles_from_directory(tmp_path, yaml)
+    assert "minion" in profiles
+    # Fallback context data should still be applied.
+    fallback = nanopore._FALLBACK_PROFILE_DATA["minion"]
+    assert profiles["minion"]["context_insertions"]["AA"][5] == pytest.approx(
+        fallback["context_insertions"]["AA"][5]
+    )
+    assert tables == {}
+
+
 def test_parse_valid_rate_table() -> None:
     data = yaml.safe_load((DATA_DIR / "dnarsim_rates_valid.yaml").read_text())
     tbl = next(iter(data.values()))
