@@ -242,6 +242,62 @@ The callback passed to `register()` depends on the entry point group used:
 See the packages in [`plugins-examples`](../plugins-examples/) for working
 implementations of each entry point group.
 
+## Simulator Plugin Requirements
+
+Channel plugins are adapters around
+[``genecoder.api.Simulator``](api_reference.md#genecoder.api.Simulator). The
+base class requires a ``simulate(sequence: str) -> str`` method that returns the
+mutated DNA sequence for the downstream pipeline. Implementations may override
+``with_profile(profile: str)`` to support external error profiles; the default
+implementation raises ``NotImplementedError`` so simulators that expose profile
+selection must supply their own version.
+
+Simulators are discovered from the ``genecoder.simulators`` entry-point group
+and should use a short, descriptive slug for the entry-point key. The slug is
+also passed to ``register_simulator`` and becomes the identifier used by CLI
+flags such as ``genecli pipeline --channel``. A minimal configuration looks
+like:
+
+```toml
+[project]
+name = "my-simulator"
+version = "0.1.0"
+dependencies = ["genecoder"]
+
+[project.entry-points."genecoder.simulators"]
+mysim = "my_package.my_sim"
+```
+
+```python
+# my_package/my_sim.py
+from genecoder.api import Simulator
+
+
+class Passthrough(Simulator):
+    def simulate(self, sequence: str) -> str:
+        return sequence
+
+
+def register(register_simulator):
+    register_simulator("mysim", Passthrough())
+```
+
+The package at
+[`plugins-examples/example_simulator`](../plugins-examples/example_simulator/)
+mirrors this layout. Its ``pyproject.toml`` defines the project metadata (name,
+version and dependency on ``genecoder``) alongside the
+``genecoder.simulators`` entry point, and ``example_simulator/__init__.py``
+exposes the required ``register`` function.
+
+Follow the assertions in
+[`tests/test_plugin_interface_enforcement.py`](../tests/test_plugin_interface_enforcement.py)
+when writing automated tests—those checks ensure every subclass provides
+``simulate``—and adapt them for your simulator's own pytest suite. Once the
+package is installed, confirm discovery with the CLI commands shown in
+[Writing and Registering Plugins](#writing-and-registering-plugins) (for
+example ``genecli plugin list``) and exercise the channel end-to-end as in the
+[Simulator Plugin Walkthrough](#simulator-plugin-walkthrough).
+
 Example `pyproject.toml` snippet:
 
 ```toml
