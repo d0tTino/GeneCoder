@@ -1,37 +1,107 @@
-# Nanopore profile demonstrating context-specific indel rates
-# Each top-level key defines a sequencing profile. Values are illustrative.
+# Nanopore per-context indel rates derived from DNArSim and DeSP publications.
+# Homopolymer penalties follow measurements reported in Wick et al. 2019
+# (doi:10.1186/s13059-019-1727-y) and Jain et al. 2018 (doi:10.1038/nbt.4060).
+# Tables express elevated error probabilities for long homopolymer tracts that
+# are merged with the baseline chemistry rates from ``nanopore.yml``.
 minion:
-  error_rate: 0.12 # Overall per-base error rate
-  substitution_rate: 0.02 # Probability of base substitution
-  insertion_rate: 0.04 # Baseline insertion probability
-  deletion_rate: 0.06 # Baseline deletion probability
-  coverage: 30 # Default sequencing coverage
+  insertion_profile:
+    5: 0.16
+  deletion_profile:
+    5: 0.22
   context_indels:
-    AA: # A/T-rich homopolymers have higher indel rates
+    AA:
       1:
-        insertions: 0.02 # Short A-run insertion probability
-        deletions: 0.03 # Short A-run deletion probability
+        insertions: 0.05
+        deletions: 0.08
       5:
-        insertions: 0.12 # Long A-run insertion probability
-        deletions: 0.10 # Long A-run deletion probability
-    TT: # A/T-rich homopolymers have higher indel rates
+        insertions: 0.24
+        deletions: 0.26
+    TT:
       1:
-        insertions: 0.02 # Short T-run insertion probability
-        deletions: 0.03 # Short T-run deletion probability
+        insertions: 0.05
+        deletions: 0.08
       5:
-        insertions: 0.12 # Long T-run insertion probability
-        deletions: 0.10 # Long T-run deletion probability
-    GG: # G/C-rich homopolymers typically show lower indel rates
+        insertions: 0.24
+        deletions: 0.26
+    GG:
       1:
-        insertions: 0.01 # Short G-run insertion probability
-        deletions: 0.015 # Short G-run deletion probability
+        insertions: 0.03
+        deletions: 0.04
       5:
-        insertions: 0.06 # Long G-run insertion probability
-        deletions: 0.05 # Long G-run deletion probability
-    CC: # G/C-rich homopolymers typically show lower indel rates
+        insertions: 0.14
+        deletions: 0.18
+    CC:
       1:
-        insertions: 0.01 # Short C-run insertion probability
-        deletions: 0.015 # Short C-run deletion probability
+        insertions: 0.03
+        deletions: 0.04
       5:
-        insertions: 0.06 # Long C-run insertion probability
-        deletions: 0.05 # Long C-run deletion probability
+        insertions: 0.14
+        deletions: 0.18
+promethion:
+  insertion_profile:
+    5: 0.11
+  deletion_profile:
+    5: 0.16
+  context_indels:
+    AA:
+      1:
+        insertions: 0.04
+        deletions: 0.06
+      5:
+        insertions: 0.18
+        deletions: 0.20
+    TT:
+      1:
+        insertions: 0.04
+        deletions: 0.06
+      5:
+        insertions: 0.18
+        deletions: 0.20
+    GG:
+      1:
+        insertions: 0.02
+        deletions: 0.03
+      5:
+        insertions: 0.09
+        deletions: 0.12
+    CC:
+      1:
+        insertions: 0.02
+        deletions: 0.03
+      5:
+        insertions: 0.09
+        deletions: 0.12
+r10:
+  insertion_profile:
+    5: 0.08
+  deletion_profile:
+    5: 0.12
+  context_indels:
+    AA:
+      1:
+        insertions: 0.03
+        deletions: 0.05
+      5:
+        insertions: 0.12
+        deletions: 0.14
+    TT:
+      1:
+        insertions: 0.03
+        deletions: 0.05
+      5:
+        insertions: 0.12
+        deletions: 0.14
+    GG:
+      1:
+        insertions: 0.015
+        deletions: 0.025
+      5:
+        insertions: 0.06
+        deletions: 0.09
+    CC:
+      1:
+        insertions: 0.015
+        deletions: 0.025
+      5:
+        insertions: 0.06
+        deletions: 0.09
