@@ -19,3 +19,9 @@ def test_dashboard_main_renders(tmp_path: Path) -> None:
     app = AppTest.from_function(run_app, args=(str(results),))
     app.run()
     assert not app.exception
+    markdown_values = [entry.value for entry in app.markdown]
+    assert "Offending sequence IDs: seq-1, seq-2" in markdown_values
+    assert any(
+        metric.label == "Constraint Violations" and metric.value == "3"
+        for metric in app.metric
+    )
