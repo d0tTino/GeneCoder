@@ -1,3 +1,5 @@
+import hashlib
+
 import pytest
 
 pytest.importorskip("cryptography.hazmat.primitives.asymmetric")
@@ -21,7 +23,8 @@ def test_verify_signature_pkcs1_valid():
     data = b"signed data"
     signature = key.sign(data, padding.PKCS1v15(), hashes.SHA256())
 
-    verify_signature(data, signature, public_bytes)
+    digest = verify_signature(data, signature, public_bytes)
+    assert digest == hashlib.sha256(data).hexdigest()
 
 
 def test_verify_signature_pkcs1_invalid_signature():
@@ -46,7 +49,8 @@ def test_verify_signature_pss_valid():
         hashes.SHA256(),
     )
 
-    verify_signature(data, signature, public_bytes, padding_scheme="pss")
+    digest = verify_signature(data, signature, public_bytes, padding_scheme="pss")
+    assert digest == hashlib.sha256(data).hexdigest()
 
 
 def test_verify_signature_pss_mismatch():
@@ -56,4 +60,19 @@ def test_verify_signature_pss_mismatch():
 
     with pytest.raises(ValueError, match="Invalid signature"):
         verify_signature(data, signature, public_bytes, padding_scheme="pss")
+
+
+def test_verify_signature_checksum_mismatch():
+    key, public_bytes = _generate_keypair()
+    data = b"signed data"
+    signature = key.sign(data, padding.PKCS1v15(), hashes.SHA256())
+    bad_checksum = "0" * 64
+
+    with pytest.raises(ValueError, match="Checksum mismatch"):
+        verify_signature(
+            data,
+            signature,
+            public_bytes,
+            expected_checksum=bad_checksum,
+        )
 

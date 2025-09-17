@@ -47,17 +47,26 @@ def compute_checksum(
 
 
 def verify_signature(
-    data: bytes, signature: bytes, public_key: bytes, *, padding_scheme: str = "pkcs1"
-) -> None:
-    """Raise ``ValueError`` if *signature* fails to verify.
+    data: bytes,
+    signature: bytes,
+    public_key: bytes,
+    *,
+    padding_scheme: str = "pkcs1",
+    expected_checksum: str | None = None,
+) -> str:
+    """Return the SHA256 digest for ``data`` after signature validation.
 
     Parameters are forwarded to :func:`genecoder.security.compute_checksum`.
     ``InvalidSignature`` from the underlying cryptography library is converted
-    into ``ValueError`` so callers can handle failures uniformly.
+    into ``ValueError`` so callers can handle failures uniformly. When
+    ``expected_checksum`` is provided the value is normalised via
+    :func:`decode_checksum` and compared against the computed digest. A mismatch
+    raises ``ValueError`` with a clear error message. Callers can persist the
+    returned digest in registry metadata for subsequent verification.
     """
 
     try:
-        _compute_checksum(
+        digest = _compute_checksum(
             data,
             signature=signature,
             public_key=public_key,
@@ -65,3 +74,13 @@ def verify_signature(
         )
     except InvalidSignature as exc:  # pragma: no cover - exercised in tests
         raise ValueError("Invalid signature") from exc
+
+    if expected_checksum is not None:
+        try:
+            expected = decode_checksum(expected_checksum)
+        except ValueError as exc:  # pragma: no cover - invalid checksum encoding
+            raise ValueError("Invalid checksum") from exc
+        if digest != expected:
+            raise ValueError("Checksum mismatch")
+
+    return digest
