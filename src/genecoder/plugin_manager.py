@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Any, Iterable, cast
+from typing import Callable, Dict, Any, Iterable, Mapping, cast
+from collections.abc import MutableMapping
 from types import ModuleType
 
 import os
@@ -34,7 +35,7 @@ import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
 from . import plugin_security
-from .api import Visualizer
+from .api import Codec, FEC, Simulator, Visualizer
 import base64
 import json
 
@@ -46,6 +47,284 @@ FEC_REGISTRY: Dict[str, Dict[str, Callable[..., Any]]] = {}
 VISUALIZER_REGISTRY: Dict[str, Callable[..., Any]] = {}
 
 PLUGIN_CATALOG: Dict[str, Dict[str, Any]] = {}
+
+_ENTRY_POINT_LOADERS: Dict[str, Dict[str, Callable[[], None]]] = {
+    "codec": {},
+    "FEC": {},
+    "simulator": {},
+    "visualizer": {},
+}
+
+_ENTRY_POINT_METADATA: Dict[str, Dict[str, Any]] = {}
+
+
+class _LazyMappingPlugin(MutableMapping[str, Callable[..., Any]]):
+    """Proxy mapping that imports entry point plugins on first access."""
+
+    __slots__ = ("_kind", "_name", "_registry", "_fallback", "_loading")
+
+    def __init__(
+        self,
+        kind: str,
+        name: str,
+        registry: Dict[str, Any],
+        fallback: Mapping[str, Callable[..., Any]] | None = None,
+    ) -> None:
+        self._kind = kind
+        self._name = name
+        self._registry = registry
+        self._fallback = fallback
+        self._loading = False
+
+    def _resolve(self) -> Mapping[str, Callable[..., Any]]:
+        value = self._registry.get(self._name)
+        if value is not self:
+            return cast(Mapping[str, Callable[..., Any]], value)
+        if self._loading:
+            raise RuntimeError(f"Recursive load for {self._kind} plugin {self._name}")
+        self._loading = True
+        try:
+            _load_pending_entry_point(self._kind, self._name)
+        except Exception:
+            if self._fallback is not None:
+                new_map = dict(self._fallback)
+                dict.__setitem__(self._registry, self._name, new_map)
+                return new_map
+            raise
+        finally:
+            self._loading = False
+        value = self._registry.get(self._name)
+        if value is self:
+            if self._fallback is not None:
+                new_map = dict(self._fallback)
+                dict.__setitem__(self._registry, self._name, new_map)
+                return new_map
+            raise KeyError(f"{self._kind} plugin {self._name} failed to register")
+        return cast(Mapping[str, Callable[..., Any]], value)
+
+    def __getitem__(self, key: str) -> Callable[..., Any]:
+        return self._resolve()[key]
+
+    def __setitem__(self, key: str, value: Callable[..., Any]) -> None:
+        mapping = dict(self._resolve())
+        mapping[key] = value
+        dict.__setitem__(self._registry, self._name, mapping)
+
+    def __delitem__(self, key: str) -> None:
+        mapping = dict(self._resolve())
+        del mapping[key]
+        dict.__setitem__(self._registry, self._name, mapping)
+
+    def __iter__(self):
+        return iter(self._resolve())
+
+    def __len__(self) -> int:
+        return len(self._resolve())
+
+    def __repr__(self) -> str:  # pragma: no cover - representation helper
+        if self._registry.get(self._name) is self:
+            return f"<Lazy{self._kind.title()}Plugin {self._name!r}>"
+        return repr(self._resolve())
+
+
+class _LazyVisualizer:
+    """Callable proxy that loads the underlying visualizer on demand."""
+
+    __slots__ = ("_name", "_fallback", "_loading")
+
+    def __init__(
+        self, name: str, fallback: Callable[..., Any] | None = None
+    ) -> None:
+        self._name = name
+        self._fallback = fallback
+        self._loading = False
+
+    def _resolve(self) -> Callable[..., Any]:
+        value = VISUALIZER_REGISTRY.get(self._name)
+        if value is not self:
+            return cast(Callable[..., Any], value)
+        if self._loading:
+            raise RuntimeError(f"Recursive load for visualizer {self._name}")
+        self._loading = True
+        try:
+            _load_pending_entry_point("visualizer", self._name)
+        except Exception:
+            if self._fallback is not None:
+                VISUALIZER_REGISTRY[self._name] = self._fallback
+                return self._fallback
+            raise
+        finally:
+            self._loading = False
+        value = VISUALIZER_REGISTRY.get(self._name)
+        if value is self:
+            if self._fallback is not None:
+                VISUALIZER_REGISTRY[self._name] = self._fallback
+                return self._fallback
+            raise RuntimeError(f"Visualizer {self._name} failed to register")
+        return cast(Callable[..., Any], value)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return self._resolve()(*args, **kwargs)
+
+    def __getattr__(self, attr: str) -> Any:
+        return getattr(self._resolve(), attr)
+
+    def __repr__(self) -> str:  # pragma: no cover - representation helper
+        if VISUALIZER_REGISTRY.get(self._name) is self:
+            return f"<LazyVisualizer {self._name!r}>"
+        return repr(self._resolve())
+
+
+class _LazySimulator(Simulator):
+    """Simulator proxy that loads entry point channels on demand."""
+
+    __slots__ = ("_name", "_fallback", "_loading")
+
+    def __init__(self, name: str, fallback: Simulator | None = None) -> None:
+        self._name = name
+        self._fallback = fallback
+        self._loading = False
+
+    def _resolve(self) -> Simulator:
+        channel = SIMULATOR_REGISTRY.get(self._name)
+        if channel is not self:
+            return cast(Simulator, channel)
+        if self._loading:
+            raise RuntimeError(f"Recursive load for simulator {self._name}")
+        self._loading = True
+        try:
+            _load_pending_entry_point("simulator", self._name)
+        except Exception:
+            if self._fallback is not None:
+                _register_simulator(self._name, self._fallback)
+                return self._fallback
+            raise
+        finally:
+            self._loading = False
+        channel = SIMULATOR_REGISTRY.get(self._name)
+        if channel is self:
+            if self._fallback is not None:
+                _register_simulator(self._name, self._fallback)
+                return self._fallback
+            raise RuntimeError(f"Simulator {self._name} failed to register")
+        return cast(Simulator, channel)
+
+    def simulate(self, sequence: str) -> str:
+        return self._resolve().simulate(sequence)
+
+    def with_profile(self, profile: str) -> Simulator:
+        return self._resolve().with_profile(profile)
+
+    def __getattr__(self, attr: str) -> Any:
+        return getattr(self._resolve(), attr)
+
+    def __repr__(self) -> str:  # pragma: no cover - representation helper
+        if SIMULATOR_REGISTRY.get(self._name) is self:
+            return f"<LazySimulator {self._name!r}>"
+        return repr(self._resolve())
+
+
+def _load_pending_entry_point(kind: str, name: str) -> None:
+    loader = _ENTRY_POINT_LOADERS.get(kind, {}).pop(name, None)
+    if loader is None:
+        return
+    loader()
+
+
+def _entry_point_version(entry_point: Any) -> str:
+    dist = getattr(entry_point, "dist", None)
+    version = getattr(dist, "version", None)
+    if version:
+        return str(version)
+    module_name = getattr(entry_point, "module", "")
+    if module_name:
+        root = module_name.split(".")[0]
+        try:
+            return get_pkg_version(root)
+        except PackageNotFoundError:
+            pass
+    value = getattr(entry_point, "value", "")
+    if value:
+        root = value.split(":", 1)[0].split(".")[0]
+        try:
+            return get_pkg_version(root)
+        except PackageNotFoundError:
+            pass
+    return ""
+
+
+def _record_entry_point_metadata(entry_name: str, kind: str, entry_point: Any) -> None:
+    meta = _ENTRY_POINT_METADATA.setdefault(entry_name, {})
+    meta.setdefault("entry_name", entry_name)
+    meta.setdefault("metadata_name", meta.get("metadata_name") or entry_name)
+    version = meta.get("version")
+    if not version:
+        ep_version = _entry_point_version(entry_point)
+        if ep_version:
+            meta["version"] = ep_version
+    interfaces = meta.setdefault("interfaces", set())
+    interfaces.add(kind)
+    module_name = getattr(entry_point, "module", None)
+    if not module_name:
+        value = getattr(entry_point, "value", "")
+        module_name = value.split(":", 1)[0]
+    if module_name:
+        meta.setdefault("module", module_name)
+
+
+def _update_entry_point_metadata(entry_name: str, module: ModuleType) -> None:
+    try:
+        meta = _validate_plugin_metadata(getattr(module, "PLUGIN_METADATA", None))
+    except Exception as exc:
+        logger.warning("Incompatible plugin %s: %s", entry_name, exc)
+        return
+    cached = _ENTRY_POINT_METADATA.setdefault(entry_name, {})
+    cached["entry_name"] = entry_name
+    cached["metadata_name"] = meta["name"]
+    cached["version"] = meta["version"]
+    cached["interfaces"] = set(meta["interfaces"])
+
+
+def _register_lazy_placeholder(kind: str, name: str) -> None:
+    if kind == "codec":
+        existing = CODEC_REGISTRY.get(name)
+        fallback = existing if isinstance(existing, Mapping) and not isinstance(existing, _LazyMappingPlugin) else None
+        CODEC_REGISTRY[name] = _LazyMappingPlugin("codec", name, CODEC_REGISTRY, fallback)
+    elif kind == "FEC":
+        existing = FEC_REGISTRY.get(name)
+        fallback = existing if isinstance(existing, Mapping) and not isinstance(existing, _LazyMappingPlugin) else None
+        FEC_REGISTRY[name] = _LazyMappingPlugin("FEC", name, FEC_REGISTRY, fallback)
+    elif kind == "visualizer":
+        existing = VISUALIZER_REGISTRY.get(name)
+        fallback = existing if callable(existing) and not isinstance(existing, _LazyVisualizer) else None
+        VISUALIZER_REGISTRY[name] = _LazyVisualizer(name, fallback)
+    elif kind == "simulator":
+        existing = SIMULATOR_REGISTRY.get(name)
+        fallback = existing if isinstance(existing, Simulator) and not isinstance(existing, _LazySimulator) else None
+        _register_simulator(name, _LazySimulator(name, fallback))
+
+
+def _load_entry_point_module(
+    entry_point: Any,
+    registrar: Callable[..., Any],
+    kind: str,
+    entry_name: str,
+) -> None:
+    try:
+        module = entry_point.load()
+    except Exception as exc:
+        logger.warning("Failed to import %s plugin %s: %s", kind, entry_name, exc)
+        raise
+    _update_entry_point_metadata(entry_name, module)
+    register = getattr(module, "register", None)
+    if not callable(register):
+        logger.warning("Entry point %s missing register()", entry_name)
+        return
+    try:
+        register(registrar)
+    except Exception as exc:
+        logger.warning("Failed to register %s plugin %s: %s", kind, entry_name, exc)
+        raise
 
 _VALID_INTERFACES = {"codec", "FEC", "simulator", "visualizer"}
 
@@ -64,9 +343,6 @@ def _validate_spec(spec: str) -> None:
     if _SAFE_PKG_RE.fullmatch(spec) or _SAFE_URL_RE.fullmatch(spec):
         return
     raise ValueError("Unsafe plugin spec")
-
-
-from .api import Codec, FEC, Simulator
 
 
 def _check_signature(
@@ -172,6 +448,56 @@ def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer]) ->
 def _read_local(path_str: str) -> bytes:
     path = urlparse(path_str).path if path_str.startswith("file://") else path_str
     return Path(path).read_bytes()
+
+
+def _parse_simple_yaml(text: str) -> Dict[str, Any]:
+    result: Dict[str, Any] = {}
+    current_list: list[Dict[str, Any]] | None = None
+    current_item: Dict[str, Any] | None = None
+    for raw_line in text.splitlines():
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.endswith(":") and not stripped.startswith("- "):
+            key = stripped[:-1].strip()
+            current_item = None
+            current_list = []
+            result[key] = current_list
+            continue
+        if stripped.startswith("- "):
+            if current_list is None:
+                continue
+            current_item = {}
+            current_list.append(current_item)
+            remainder = stripped[2:].strip()
+            if remainder:
+                if ":" in remainder:
+                    k, v = remainder.split(":", 1)
+                    current_item[k.strip()] = v.strip()
+            continue
+        if current_item is not None and ":" in stripped:
+            key, value = stripped.split(":", 1)
+            current_item[key.strip()] = value.strip()
+    return result
+
+
+def _load_registry_mapping(raw: bytes | str, yaml_module: ModuleType | None) -> Dict[str, Any]:
+    text = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else str(raw)
+    if yaml_module is not None:
+        try:
+            data = yaml_module.safe_load(text)
+        except Exception as exc:
+            raise ValueError("Invalid plugin registry YAML") from exc
+        if isinstance(data, dict) and data:
+            return data
+        # fall back to minimal parser if PyYAML returns an empty result
+    try:
+        data = json.loads(text)
+    except Exception:
+        data = _parse_simple_yaml(text)
+    if not isinstance(data, dict):
+        raise ValueError("Invalid plugin registry YAML")
+    return data
 
 
 def _fetch_catalog(url: str, *, allow_network: bool) -> bytes:
@@ -355,10 +681,10 @@ def install_registry_plugins(
         return
 
     try:
-        data = yaml_module.safe_load(raw) or {}
-    except Exception as exc:
+        data = _load_registry_mapping(raw, yaml_module)
+    except ValueError as exc:
         logger.warning("Failed to parse plugin registry %s: %s", url, exc)
-        raise ValueError("Invalid plugin registry YAML") from exc
+        raise
 
     for entry in data.get("packages", []):
         spec = ""
@@ -455,6 +781,58 @@ def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
     catalog: Dict[str, Dict[str, Any]] = {}
     failures: list[str] = []
 
+    groups = {
+        "genecoder.plugins": "codec",
+        "genecoder.fec": "FEC",
+        "genecoder.simulators": "simulator",
+        "genecoder.visualizers": "visualizer",
+    }
+    for group, kind in groups.items():
+        try:
+            entries = entry_points(group=group)
+        except TypeError:
+            eps = entry_points()
+            if hasattr(eps, "select"):
+                entries = eps.select(group=group)
+            elif isinstance(eps, dict):
+                entries = eps.get(group, EntryPoints())
+            else:  # pragma: no cover - legacy path
+                entries = [ep for ep in eps if getattr(ep, "group", None) == group]
+        for ep in entries:
+            entry_name = str(getattr(ep, "name", getattr(ep, "value", "")))
+            if entry_name:
+                _record_entry_point_metadata(entry_name, kind, ep)
+
+    for entry_name, cached in list(_ENTRY_POINT_METADATA.items()):
+        if cached.get("metadata_name") and cached.get("metadata_name") != cached.get("entry_name"):
+            continue
+        module_name = cached.get("module")
+        if not module_name:
+            continue
+        module = sys.modules.get(str(module_name))
+        if module is not None:
+            _update_entry_point_metadata(entry_name, module)
+
+    for cached in _ENTRY_POINT_METADATA.values():
+        entry_name = str(cached.get("entry_name") or "")
+        plugin_name = str(cached.get("metadata_name") or entry_name)
+        if not plugin_name:
+            continue
+        interfaces_raw = cached.get("interfaces") or set()
+        interfaces = {str(interface) for interface in interfaces_raw}
+        version = str(cached.get("version") or "")
+        existing = catalog.get(plugin_name)
+        if existing:
+            combined = set(existing.get("interfaces", [])) | interfaces
+            existing["interfaces"] = sorted(combined)
+            if not existing.get("version") and version:
+                existing["version"] = version
+        else:
+            catalog[plugin_name] = {
+                "version": version,
+                "interfaces": sorted(interfaces) if interfaces else [],
+            }
+
     def _handle_module(module: ModuleType, src: str) -> None:
         try:
             meta = _validate_plugin_metadata(getattr(module, "PLUGIN_METADATA", None))
@@ -468,27 +846,6 @@ def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
             logger.warning("Duplicate plugin name %s from %s", name, src)
             return
         catalog[name] = {"version": meta["version"], "interfaces": meta["interfaces"]}
-
-    # discover entry point plugins
-    try:
-        entries = entry_points(group="genecoder.plugins")
-    except TypeError:
-        eps = entry_points()
-        if hasattr(eps, "select"):
-            entries = eps.select(group="genecoder.plugins")
-        elif isinstance(eps, dict):
-            entries = eps.get("genecoder.plugins", EntryPoints())
-        else:  # pragma: no cover - legacy path
-            entries = [ep for ep in eps if getattr(ep, "group", None) == "genecoder.plugins"]
-    for ep in entries:
-        ep_name = getattr(ep, "name", getattr(ep, "value", "unknown"))
-        try:
-            module = ep.load()
-        except Exception as exc:  # pragma: no cover - import failure path
-            failures.append(ep_name)
-            logger.warning("Failed to import plugin %s: %s", ep_name, exc)
-            continue
-        _handle_module(module, ep_name)
 
     # discover local plugins in a ``plugins`` package
     try:
@@ -532,12 +889,16 @@ def load_entry_point_plugins() -> list[str]:
     """Load plugins registered via Python entry points."""
 
     failures: list[str] = []
+    for loaders in _ENTRY_POINT_LOADERS.values():
+        loaders.clear()
+
     groups: dict[str, tuple[Callable[..., Any], str]] = {
         "genecoder.plugins": (register_codec, "codec"),
         "genecoder.fec": (register_fec, "FEC"),
         "genecoder.simulators": (register_simulator, "simulator"),
         "genecoder.visualizers": (register_visualizer, "visualizer"),
     }
+
     for group, (registrar, kind) in groups.items():
         try:
             entries = entry_points(group=group)
@@ -549,7 +910,23 @@ def load_entry_point_plugins() -> list[str]:
                 entries = eps.get(group, EntryPoints())
             else:
                 entries = [ep for ep in eps if getattr(ep, "group", None) == group]
-        _load_and_register(entries, registrar, kind, failures)
+
+        seen: set[str] = set()
+        for ep in entries:
+            entry_name = str(getattr(ep, "name", getattr(ep, "value", "")))
+            if not entry_name:
+                failures.append(f"{kind}:unknown")
+                continue
+            seen.add(entry_name)
+            _ENTRY_POINT_LOADERS[kind][entry_name] = (lambda entry=ep, reg=registrar, k=kind, name=entry_name: _load_entry_point_module(entry, reg, k, name))
+            _record_entry_point_metadata(entry_name, kind, ep)
+            _register_lazy_placeholder(kind, entry_name)
+
+        # prune metadata for removed entry points of this kind
+        for meta in _ENTRY_POINT_METADATA.values():
+            interfaces = meta.get("interfaces")
+            if isinstance(interfaces, set) and kind in interfaces and meta.get("entry_name") not in seen:
+                interfaces.discard(kind)
 
     return failures
 
