@@ -33,7 +33,18 @@ _DEF_METRICS: dict[str, Any] = {
     "gc_distribution": [],
     "homopolymer_runs": [],
     "ecc_success_rates": {},
+    "substitutions": None,
+    "insertions": None,
+    "deletions": None,
+    "coverage": None,
+    "coverage_distribution": [],
 }
+
+_ERROR_METRICS: tuple[tuple[str, str], ...] = (
+    ("substitutions", "Substitutions"),
+    ("insertions", "Insertions"),
+    ("deletions", "Deletions"),
+)
 
 
 def _iterable(val: Iterable[str] | str | None) -> list[str]:
@@ -90,6 +101,29 @@ def _longest_homopolymer(runs: object) -> float | None:
     return None
 
 
+def _to_float(value: object) -> float | None:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    return None
+
+
+def _coverage_value(data: dict[str, Any]) -> float | None:
+    coverage = _to_float(data.get("coverage"))
+    if coverage is not None:
+        return coverage
+    distribution = data.get("coverage_distribution")
+    if isinstance(distribution, list) and distribution:
+        try:
+            total = float(sum(float(v) for v in distribution))
+            if total <= 0:
+                return None
+            mean = sum(idx * float(count) for idx, count in enumerate(distribution)) / total
+            return float(mean)
+        except Exception:  # pragma: no cover - defensive
+            return None
+    return None
+
+
 def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: no cover - UI logic
     """Render the dashboard from one or more metrics files."""
 
@@ -105,6 +139,8 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
 
     gc_rows: list[dict[str, float | str]] = []
     hp_rows: list[dict[str, float | str]] = []
+    error_rows: list[dict[str, float | str]] = []
+    coverage_rows: list[dict[str, float | str]] = []
     for name, data in datasets.items():
         label = Path(name).stem
         min_gc, mean_gc, max_gc = _gc_stats(data.get("gc_distribution"))
@@ -119,6 +155,15 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         longest = _longest_homopolymer(data.get("homopolymer_runs"))
         if longest is not None:
             hp_rows.append({"Run": label, "Value": longest})
+
+        for metric_key, metric_label in _ERROR_METRICS:
+            value = _to_float(data.get(metric_key))
+            if value is not None:
+                error_rows.append({"Run": label, "Metric": metric_label, "Value": value})
+
+        coverage = _coverage_value(data)
+        if coverage is not None:
+            coverage_rows.append({"Run": label, "Metric": "Coverage", "Value": coverage})
 
     st.header("GC Summary (%)")
     if gc_rows:
@@ -141,6 +186,43 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                     st.bar_chart(chart_data)
     else:
         st.write("No GC summary data.")
+
+    st.header("Error Summary")
+    if error_rows:
+        if alt and pd:
+            df = pd.DataFrame(error_rows)
+            chart = (
+                alt.Chart(df)
+                .mark_bar()
+                .encode(x="Run:N", y="Value:Q", color="Metric:N")
+            )
+            st.altair_chart(chart, use_container_width=True)
+        else:  # pragma: no cover - basic fallback
+            for _, metric_label in _ERROR_METRICS:
+                chart_data = {
+                    f"{row['Run']} ({row['Metric']})": row["Value"]
+                    for row in error_rows
+                    if row["Metric"] == metric_label
+                }
+                if chart_data:
+                    st.bar_chart(chart_data)
+    else:
+        st.write("No error summary data.")
+
+    st.header("Coverage Summary")
+    if coverage_rows:
+        if alt and pd:
+            df = pd.DataFrame(coverage_rows)
+            chart = alt.Chart(df).mark_bar().encode(x="Run:N", y="Value:Q")
+            st.altair_chart(chart, use_container_width=True)
+        else:  # pragma: no cover - basic fallback
+            chart_data = {
+                f"{row['Run']} ({row['Metric']})": row["Value"] for row in coverage_rows
+            }
+            if chart_data:
+                st.bar_chart(chart_data)
+    else:
+        st.write("No coverage summary data.")
 
     st.header("Longest Homopolymer Runs")
     if hp_rows:
@@ -191,6 +273,29 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                 st.bar_chart(ecc)
         else:
             st.write("No ECC data.")
+
+        st.subheader("Coverage")
+        coverage_value = _to_float(data.get("coverage"))
+        coverage_shown = False
+        if coverage_value is not None:
+            coverage_shown = True
+            if alt and pd:
+                df = pd.DataFrame({"Run": [label], "Value": [coverage_value]})
+                chart = alt.Chart(df).mark_bar().encode(x="Run:N", y="Value:Q")
+                st.altair_chart(chart, use_container_width=True)
+            else:  # pragma: no cover
+                st.bar_chart({label: coverage_value})
+        cov_dist = data.get("coverage_distribution")
+        if isinstance(cov_dist, list) and cov_dist:
+            coverage_shown = True
+            if alt and pd:
+                df = pd.DataFrame({"coverage": list(range(len(cov_dist))), "count": cov_dist})
+                chart = alt.Chart(df).mark_bar().encode(x="coverage", y="count")
+                st.altair_chart(chart, use_container_width=True)
+            else:  # pragma: no cover
+                st.bar_chart(cov_dist)
+        if not coverage_shown:
+            st.write("No coverage data.")
 
 
 def launch(*results_paths: str) -> None:  # pragma: no cover - UI startup
