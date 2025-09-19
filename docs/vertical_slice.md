@@ -130,6 +130,48 @@ genecli encode input.bin output.fasta --codec chamaeleo_gc --fec reed_solomon --
 
 This creates `output.fasta.manifest.json` containing encoding metrics.
 
+### Review the Metrics Outputs
+
+The manifest captures all of the quality measurements from the encode run.
+Use these commands to inspect substitution, insertion, deletion and coverage
+results in different formats so you can confirm the channel behaviour.
+
+1. **Inspect the raw JSON.** The manifest stores error counts under the
+   `metrics` key. Filter them with `jq` (or your preferred JSON viewer):
+
+   ```bash
+   jq '.metrics | {substitutions, insertions, deletions, coverage, coverage_distribution}' \
+       output.fasta.manifest.json
+   ```
+
+   A value of `2` under `substitutions` means two base substitutions were
+   introduced across the simulated reads. `coverage` reports the average read
+   depth returned by the simulator, while `coverage_distribution` (when
+   present) lists how many sequences were observed at each depth bucket.
+
+2. **Generate a standalone HTML summary.** Build a static report that can be
+   shared with collaborators:
+
+   ```bash
+   genecli html-report --manifest output.fasta.manifest.json --output-file reports/vertical-slice.html
+   ```
+
+   Open `reports/vertical-slice.html` in a browser to review the GC, homopolymer
+   and ECC sections, keeping the JSON snippet handy for the exact error counts.
+
+3. **Launch the interactive dashboard.** The Streamlit view provides charts for
+   the error metrics and coverage distribution:
+
+   ```bash
+   genecli dashboard output.fasta.manifest.json
+   ```
+
+   The **Error Rates** cards list the substitution, insertion and deletion
+   counts. Expand the **Error Histograms** multiselect in the sidebar to view
+   per-read distributions. The **Read Coverage** chart visualises the
+   `coverage_distribution` array, defaulting to the single `coverage` value when
+   no histogram is available.
+
 ## Launch the GUI
 
 ```bash
