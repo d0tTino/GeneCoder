@@ -26,6 +26,20 @@ def _calc_decode_success(data: dict[str, Any]) -> float | None:
     return None
 
 
+def _format_numeric(value: int | float) -> str:
+    """Return a user-friendly string for numeric values."""
+
+    if isinstance(value, bool):  # bool is a subclass of int, handle explicitly
+        return "1" if value else "0"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        if value.is_integer():
+            return str(int(value))
+        return f"{value:.2f}".rstrip("0").rstrip(".")
+    return str(value)
+
+
 def generate_html_report(manifest_path: str) -> str:
     """Return HTML summary for the manifest at ``manifest_path``."""
     with open(manifest_path, "r", encoding="utf-8") as fh:
@@ -54,6 +68,31 @@ def generate_html_report(manifest_path: str) -> str:
         html_lines.append(
             f"<p><strong>Max Homopolymer Length:</strong> {int(max_hp)}</p>"
         )
+
+    error_metrics: list[tuple[str, str]] = [
+        ("substitutions", "Substitutions"),
+        ("insertions", "Insertions"),
+        ("deletions", "Deletions"),
+    ]
+    error_lines: list[str] = []
+    for key, label in error_metrics:
+        value = metrics.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            error_lines.append(
+                f"<li><strong>{label}:</strong> {_format_numeric(value)}</li>"
+            )
+
+    coverage = metrics.get("coverage")
+    if isinstance(coverage, (int, float)) and not isinstance(coverage, bool):
+        error_lines.append(
+            f"<li><strong>Coverage:</strong> {_format_numeric(coverage)}</li>"
+        )
+
+    if error_lines:
+        html_lines.append("<h2>Error Metrics</h2>")
+        html_lines.append("<ul>")
+        html_lines.extend(error_lines)
+        html_lines.append("</ul>")
 
     ecc = metrics.get("ecc_success_rates")
     if isinstance(ecc, dict) and ecc:
