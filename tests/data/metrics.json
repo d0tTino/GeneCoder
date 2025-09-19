@@ -12,6 +12,8 @@
   "substitutions": 2,
   "insertions": 0,
   "deletions": 0,
+  "coverage": 30,
+  "coverage_distribution": [1, 3, 2],
   "constraint_violations": {
     "count": 3,
     "violations": [

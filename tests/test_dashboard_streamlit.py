@@ -68,12 +68,17 @@ def test_dashboard_summary_plots_rendered(
 
     dash.main(str(results))
 
-    assert charts[:4] == [
-        {"results": 0.0},
-        {"results": pytest.approx(2.0)},
-        {"results": 3.0},
-        {"results": 3.0},
-    ]
+    def contains_chart(target: object) -> bool:
+        return any(chart == target for chart in charts)
+
+    assert contains_chart({"results": 0.0})
+    assert contains_chart({"results": pytest.approx(2.0)})
+    assert contains_chart({"results": 3.0})
+    assert contains_chart({"results (Substitutions)": pytest.approx(2.0)})
+    assert contains_chart({"results (Insertions)": pytest.approx(0.0)})
+    assert contains_chart({"results (Deletions)": pytest.approx(0.0)})
+    assert contains_chart({"results (Coverage)": pytest.approx(30.0)})
+    assert [1, 3, 2] in charts
 
 
 def test_dashboard_homopolymer_chart_rendered(
@@ -100,3 +105,4 @@ def test_dashboard_homopolymer_chart_rendered(
 
     assert charts
     assert [1, 2, 1, 0] in charts
+    assert any(chart == {"results": pytest.approx(30.0)} for chart in charts)
