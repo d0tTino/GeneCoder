@@ -16,7 +16,7 @@ from genecoder.plugin_manager import FEC_REGISTRY
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES
-from genecoder.formats import from_fasta
+from genecoder.formats import SequenceBatch
 from genecoder.utils import get_alphabet_maps
 from ..options import DecodingOptions
 from .common import run_tasks
@@ -194,18 +194,26 @@ def process_single_decode(
         with open(input_file_path, "r", encoding="utf-8") as f_in:
             file_content_str = f_in.read()
 
-        parsed_records = from_fasta(file_content_str)
-        if not parsed_records:
+        batch = SequenceBatch.from_fasta(file_content_str)
+        if not batch.oligos:
             logger.info(
                 f"Error for {input_file_path}: No valid FASTA records found."
             )
             return
-        if len(parsed_records) > 1:
+        primary_oligos = batch.primary_oligos()
+        if not primary_oligos:
+            primary_oligos = batch.oligos
+        if len(primary_oligos) < len(batch.oligos):
             logger.info(
-                f"Warning for {input_file_path}: Multiple FASTA records found. Processing the first one only."
+                "Skipping %d secondary oligo(s) during decode for %s.",
+                len(batch.oligos) - len(primary_oligos),
+                input_file_path,
             )
 
-        header, sequence_from_fasta = parsed_records[0]
+        header = primary_oligos[0].header
+        sequence_from_fasta = "".join(ol.sequence for ol in primary_oligos)
+        if getattr(args, "seed", None) is None and batch.seed is not None:
+            args.seed = batch.seed
 
         header_method_match = re.search(r"method=([\w_]+)", header)
         if header_method_match:

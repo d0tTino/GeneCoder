@@ -13,6 +13,7 @@ from typing import Any, Mapping, cast
 
 from . import cli as cli_module
 from genecoder.metrics import metrics
+from genecoder.formats import SequenceBatch
 
 
 @dataclass
@@ -132,6 +133,7 @@ def _create_archive(
     config_hash: str,
     author: str | None = None,
     description: str | None = None,
+    batch_metadata: Mapping[str, object] | None = None,
 ) -> None:
     """Create a gzipped tar archive of ``run_dir`` with a summary manifest."""
     summary = {
@@ -139,6 +141,8 @@ def _create_archive(
         "timestamp": run_dir.name,
         "files": [str(p.relative_to(run_dir)) for p in run_dir.rglob("*") if p.is_file()],
     }
+    if batch_metadata:
+        summary["sequence_batches"] = batch_metadata
     if author is not None:
         summary["author"] = author
     if description is not None:
@@ -187,6 +191,7 @@ def _handle_run(args: argparse.Namespace) -> None:
                     config_hash,
                     args.author,
                     args.description,
+                    batch_metadata=None,
                 )
         return
 
@@ -206,6 +211,41 @@ def _handle_run(args: argparse.Namespace) -> None:
     _run_cli(enc_args)
 
     input_files = [encoded_dir / (Path(p).name + ".fasta") for p in enc_cfg.get("input_files", [])]
+    batch_summary: dict[str, object] = {}
+    for fasta_path in input_files:
+        if not fasta_path.exists():
+            continue
+        try:
+            batch = SequenceBatch.from_fasta(fasta_path.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            logger.warning("Could not parse FASTA batch for %s: %s", fasta_path, exc)
+            continue
+        payload = {
+            "batch_id": batch.batch_id,
+            "seed": batch.seed,
+            "metadata": batch.metadata,
+            "oligos": [
+                {
+                    "id": ol.oligo_id,
+                    "index": ol.index,
+                    "seed": ol.seed,
+                    "metadata": ol.metadata,
+                }
+                for ol in batch.oligos
+            ],
+        }
+        metadata_path = fasta_path.with_suffix(fasta_path.suffix + ".batch.json")
+        with open(metadata_path, "w", encoding="utf-8") as meta_f:
+            json.dump(payload, meta_f, indent=2)
+        try:
+            rel = fasta_path.relative_to(run_dir)
+        except ValueError:
+            rel = fasta_path
+        batch_summary[str(rel)] = payload
+
+    if batch_summary:
+        with open(run_dir / "sequence_batches.json", "w", encoding="utf-8") as fh:
+            json.dump(batch_summary, fh, indent=2)
 
     sim_cfg = config.get("simulate")
     if sim_cfg is not None and not isinstance(sim_cfg, dict):
@@ -238,6 +278,7 @@ def _handle_run(args: argparse.Namespace) -> None:
             config_hash,
             args.author,
             args.description,
+            batch_summary,
         )
 
     metrics.increment("bundle_runs")

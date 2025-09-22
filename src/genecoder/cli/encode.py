@@ -34,7 +34,7 @@ from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import encode_data_with_hamming
 from genecoder.plugin_manager import CODEC_REGISTRY, FEC_REGISTRY
 from genecoder.simulators import SIMULATOR_REGISTRY
-from genecoder.formats import to_fasta, from_fasta
+from genecoder.formats import SequenceBatch
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
@@ -236,6 +236,7 @@ def process_single_encode(
                 k_value=args.k_value,
                 parity_rule=args.parity_rule,
                 alphabet=args.alphabet,
+                batch_seed=getattr(args, "seed", None),
             )
 
             original_size_bytes = os.path.getsize(input_file_path)
@@ -268,15 +269,26 @@ def process_single_encode(
             with open(output_file_path, "r", encoding="utf-8") as f_out:
                 fasta_content = f_out.read()
 
-            parsed_records = from_fasta(fasta_content)
-            dna_sequence = parsed_records[0][1] if parsed_records else ""
+            batch = SequenceBatch.from_fasta(fasta_content)
+            dna_sequence = batch.primary_sequence()
 
             if getattr(args, "mirror", False) and dna_sequence:
                 rc_seq = reverse_complement(dna_sequence)
-                rc_header = f"{header} mirror=rc"
-                with open(output_file_path, "a", encoding="utf-8") as f_out:
-                    f_out.write(to_fasta(rc_seq, rc_header, line_width=80))
-                parsed_records.append((rc_header, rc_seq))
+                base_header = batch.first_header() or header
+                mirror_header = f"{base_header} mirror=rc"
+                existing_records = [
+                    (record.header, record.sequence) for record in batch.records()
+                ]
+                existing_records.append((mirror_header, rc_seq))
+                rebuilt_batch = SequenceBatch.build(
+                    existing_records,
+                    batch_id=batch.batch_id or Path(sanitized_name).stem,
+                    batch_seed=batch.seed,
+                )
+                with open(output_file_path, "w", encoding="utf-8") as f_out:
+                    f_out.write(rebuilt_batch.to_fasta(line_width=80))
+                batch = rebuilt_batch
+                dna_sequence = batch.primary_sequence()
 
             final_gc = calculate_gc_content(dna_sequence)
             final_hp = get_max_homopolymer_length(dna_sequence)
@@ -388,22 +400,31 @@ def process_single_encode(
         if checksum:
             fasta_header = f"{fasta_header} checksum={checksum}"
 
-        fasta_output = to_fasta(final_encoded_dna_sequence, fasta_header, line_width=80)
+        records: list[tuple[str, str]] = [(fasta_header, final_encoded_dna_sequence)]
         if getattr(args, "mirror", False):
             rc_seq = reverse_complement(final_encoded_dna_sequence)
-            rc_header = f"{fasta_header} mirror=rc"
-            fasta_output += to_fasta(rc_seq, rc_header, line_width=80)
+            records.append((f"{fasta_header} mirror=rc", rc_seq))
+
+        batch_id = Path(header_name).stem.replace(" ", "_") or "batch"
+        batch = SequenceBatch.build(
+            records,
+            batch_id=batch_id,
+            batch_seed=getattr(args, "seed", None),
+        )
 
         os.makedirs(os.path.dirname(output_file_path) or ".", exist_ok=True)
         with open(output_file_path, "w", encoding="utf-8") as f_out:
-            f_out.write(fasta_output)
+            f_out.write(batch.to_fasta(line_width=80))
+
+        primary_sequence = batch.primary_sequence()
+        primary_header = batch.first_header() or fasta_header
 
         if getattr(args, "mirror", False):
             try:
                 from genecoder.helix_view import show_helix_ui
 
-                rc_seq = reverse_complement(final_encoded_dna_sequence)
-                show_helix_ui(final_encoded_dna_sequence, strand2_sequence=rc_seq)
+                rc_seq = reverse_complement(primary_sequence)
+                show_helix_ui(primary_sequence, strand2_sequence=rc_seq)
             except Exception as exc:  # pragma: no cover - optional GUI
                 logger.warning("Could not launch helix viewer: %s", exc)
 
@@ -416,15 +437,15 @@ def process_single_encode(
                 "fec": args.fec,
             }
             write_capsule(
-                final_encoded_dna_sequence,
-                fasta_header,
+                primary_sequence,
+                primary_header,
                 metadata,
                 args.capsule,
             )
             logger.info(f"Capsule written to {args.capsule}")
 
         original_size_bytes = len(plaintext_data)
-        final_encoded_length_nucleotides = len(final_encoded_dna_sequence)
+        final_encoded_length_nucleotides = len(primary_sequence)
         dna_equivalent_bytes = final_encoded_length_nucleotides * 0.25
 
         compression_ratio = (
@@ -438,8 +459,8 @@ def process_single_encode(
             else 0.0
         )
 
-        final_gc = calculate_gc_content(final_encoded_dna_sequence)
-        final_hp = get_max_homopolymer_length(final_encoded_dna_sequence)
+        final_gc = calculate_gc_content(primary_sequence)
+        final_hp = get_max_homopolymer_length(primary_sequence)
         gc_default_bad = final_gc < DEFAULT_GC_MIN or final_gc > DEFAULT_GC_MAX
         hp_default_bad = final_hp > DEFAULT_MAX_HOMOPOLYMER
         if not suppress_warnings:
@@ -524,7 +545,7 @@ def process_single_encode(
         with open(manifest_path, "w", encoding="utf-8") as mf:
             json.dump(manifest, mf, indent=2)
 
-        return os.path.basename(input_file_path), final_encoded_dna_sequence
+        return os.path.basename(input_file_path), primary_sequence
 
     except FileNotFoundError:
         logger.error(f"Error for {input_file_path}: Input file not found.")

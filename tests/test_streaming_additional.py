@@ -12,7 +12,8 @@ def test_stream_encode_line_width(tmp_path):
     header = "method=base4_direct input_file=in.bin"
     total_len = stream_encode_file(str(input_file), str(output_file), header=header, chunk_size=50)
     lines = output_file.read_text().splitlines()
-    assert lines[0] == f">{header}"
+    assert lines[0].startswith(f">{header}")
+    assert "batch_id=" in lines[0]
     dna = "".join(lines[1:])
     assert len(dna) == total_len
     for line in lines[1:]:
