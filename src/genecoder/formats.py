@@ -1,17 +1,312 @@
-"""Provides functions for formatting data into and parsing data from FASTA format.
+"""Helpers for working with FASTA records and :class:`SequenceBatch` objects."""
 
-FASTA is a text-based format for representing nucleotide sequences or peptide
-sequences, where nucleotides or amino acids are represented using single-letter
-codes. A sequence in FASTA format consists of a single-line description (header),
-followed by lines of sequence data.
-"""
-from typing import List, Tuple, Sequence  # For type hints
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Iterable, Iterator, List, Mapping, MutableMapping, Sequence, Tuple
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 # The set of valid characters for FASTA sequence lines.
 # Valid characters are the uppercase ASCII letters ``A``-``Z``, the digits
 # ``0``-``9``, the gap characters ``-`` and ``*``, and the slash ``/``.
 # Lowercase characters are considered invalid and will trigger a ``ValueError``.
 FASTA_ALLOWED_CHARS: set[str] = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-*/")
+
+
+@dataclass(slots=True)
+class FastaRecord:
+    """Represents a single FASTA record."""
+
+    header: str
+    sequence: str
+
+    def as_tuple(self) -> tuple[str, str]:
+        """Return ``(header, sequence)`` for compatibility with legacy helpers."""
+
+        return self.header, self.sequence
+
+
+@dataclass(slots=True)
+class SequenceOligo:
+    """A single oligo entry within a :class:`SequenceBatch`."""
+
+    sequence: str
+    header: str
+    index: int
+    oligo_id: str
+    metadata: dict[str, str] = field(default_factory=dict)
+    seed: int | None = None
+
+    def to_record(self) -> FastaRecord:
+        """Return the oligo as a :class:`FastaRecord`."""
+
+        return FastaRecord(header=self.header, sequence=self.sequence)
+
+
+@dataclass
+class SequenceBatch:
+    """A batch of related oligos accompanied by shared metadata."""
+
+    batch_id: str
+    metadata: dict[str, str] = field(default_factory=dict)
+    seed: int | None = None
+    oligos: list[SequenceOligo] = field(default_factory=list)
+    legacy: bool = False
+
+    def __post_init__(self) -> None:
+        self.oligos.sort(key=lambda ol: ol.index)
+
+    def add_oligo(self, oligo: SequenceOligo) -> None:
+        """Append ``oligo`` and keep records ordered."""
+
+        self.oligos.append(oligo)
+        self.oligos.sort(key=lambda item: item.index)
+
+    @property
+    def total_length(self) -> int:
+        """Return the total number of nucleotides across all oligos."""
+
+        return sum(len(ol.sequence) for ol in self.oligos)
+
+    def records(self) -> list[FastaRecord]:
+        """Return the batch as a list of :class:`FastaRecord` objects."""
+
+        return [ol.to_record() for ol in self.oligos]
+
+    def to_fasta(self, line_width: int = 60) -> str:
+        """Serialise the batch into FASTA text."""
+
+        return format_fasta_records(self.records(), line_width=line_width)
+
+    def combined_sequence(self) -> str:
+        """Concatenate the sequences for all oligos in order."""
+
+        return "".join(ol.sequence for ol in self.oligos)
+
+    def primary_oligos(self) -> list[SequenceOligo]:
+        """Return oligos that are not marked as mirrors."""
+
+        return [
+            ol for ol in self.oligos if ol.metadata.get("mirror", "").lower() != "rc"
+        ]
+
+    def primary_sequence(self) -> str:
+        """Concatenate only the primary oligo sequences."""
+
+        return "".join(ol.sequence for ol in self.primary_oligos())
+
+    def first_header(self) -> str:
+        """Return the header for the first primary oligo, if present."""
+
+        primaries = self.primary_oligos()
+        return primaries[0].header if primaries else (self.oligos[0].header if self.oligos else "")
+
+    @classmethod
+    def build(
+        cls,
+        records: Sequence[FastaRecord | tuple[str, str]],
+        *,
+        batch_id: str | None = None,
+        batch_seed: int | None = None,
+        max_oligo_length: int | None = None,
+    ) -> "SequenceBatch":
+        """Construct a batch from ``records``.
+
+        The ``records`` iterable may contain :class:`FastaRecord` instances or
+        ``(header, sequence)`` tuples. Each record can optionally be split into
+        multiple oligos by providing ``max_oligo_length``. Metadata is preserved
+        and augmented with ``batch_id``, ``batch_size`` and per-oligo identifiers.
+        """
+
+        items = [r if isinstance(r, FastaRecord) else FastaRecord(*r) for r in records]
+        if not items:
+            raise ValueError("records cannot be empty")
+
+        base_meta = _metadata_from_header(items[0].header)
+        derived_id = _sanitize_header_value(
+            batch_id or base_meta.get("batch_id") or base_meta.get("input_file") or "batch"
+        )
+        batch = cls(batch_id=derived_id, metadata=dict(base_meta), seed=batch_seed)
+
+        index = 0
+        for record in items:
+            rec_meta = _metadata_from_header(record.header)
+            sequences = list(_split_sequence(record.sequence, max_oligo_length))
+            if not sequences:
+                sequences = [""]
+            for chunk in sequences:
+                index += 1
+                metadata = dict(rec_meta)
+                metadata["batch_id"] = derived_id
+                metadata["oligo_index"] = str(index)
+                metadata.setdefault("oligo_id", f"{derived_id}-{index:04d}")
+                if batch_seed is not None:
+                    metadata["batch_seed"] = str(batch_seed)
+                    metadata.setdefault("oligo_seed", str(batch_seed + index - 1))
+                header = _update_header_tokens(record.header, metadata)
+                oligo_seed = metadata.get("oligo_seed")
+                try:
+                    oligo_seed_int = int(oligo_seed) if oligo_seed is not None else None
+                except ValueError:
+                    oligo_seed_int = None
+                batch.add_oligo(
+                    SequenceOligo(
+                        sequence=chunk,
+                        header=header,
+                        index=index,
+                        oligo_id=metadata["oligo_id"],
+                        metadata=metadata,
+                        seed=oligo_seed_int,
+                    )
+                )
+
+        total = len(batch.oligos)
+        batch.metadata["batch_id"] = derived_id
+        batch.metadata["batch_size"] = str(total)
+        if batch_seed is not None:
+            batch.metadata["batch_seed"] = str(batch_seed)
+
+        for oligo in batch.oligos:
+            oligo.metadata["batch_size"] = str(total)
+            oligo.header = _update_header_tokens(
+                oligo.header,
+                {"batch_size": str(total), "batch_id": derived_id}
+                | ({"batch_seed": str(batch_seed)} if batch_seed is not None else {}),
+            )
+
+        return batch
+
+    @classmethod
+    def from_fasta(cls, fasta_content: str) -> "SequenceBatch":
+        """Parse ``fasta_content`` into a :class:`SequenceBatch`.
+
+        Legacy single-record FASTA files (without batch metadata) are wrapped into
+        a batch with a deprecation warning.
+        """
+
+        records = parse_fasta_records(fasta_content)
+        if not records:
+            return cls(batch_id="", metadata={}, seed=None, oligos=[], legacy=False)
+
+        first_meta = _metadata_from_header(records[0].header)
+        has_batch = "batch_id" in first_meta and (
+            "oligo_index" in first_meta or "oligo_id" in first_meta
+        )
+
+        if len(records) == 1 and not has_batch:
+            logger.warning(
+                "Legacy FASTA without SequenceBatch metadata detected; treating as a single-oligo batch."
+            )
+            batch_id = _sanitize_header_value(
+                first_meta.get("input_file") or first_meta.get("name") or "legacy"
+            )
+            batch = cls.build(records, batch_id=batch_id)
+            batch.legacy = True
+            return batch
+
+        batch_id = _sanitize_header_value(first_meta.get("batch_id") or "batch")
+        batch_seed = first_meta.get("batch_seed")
+        try:
+            seed_int = int(batch_seed) if batch_seed is not None else None
+        except ValueError:
+            seed_int = None
+
+        oligos: list[SequenceOligo] = []
+        for idx, record in enumerate(records, start=1):
+            meta = _metadata_from_header(record.header)
+            index_str = meta.get("oligo_index") or meta.get("oligo_id")
+            try:
+                index = int(index_str) if index_str is not None else idx
+            except ValueError:
+                index = idx
+            oligo_seed = meta.get("oligo_seed")
+            try:
+                seed_val = int(oligo_seed) if oligo_seed is not None else None
+            except ValueError:
+                seed_val = None
+            oligo_id = meta.get("oligo_id") or f"{batch_id}-{index:04d}"
+            oligos.append(
+                SequenceOligo(
+                    sequence=record.sequence,
+                    header=record.header,
+                    index=index,
+                    oligo_id=oligo_id,
+                    metadata=meta,
+                    seed=seed_val,
+                )
+            )
+
+        batch_meta = dict(first_meta)
+        batch_meta["batch_id"] = batch_id
+        batch_meta.setdefault("batch_size", str(len(oligos)))
+        if seed_int is not None:
+            batch_meta["batch_seed"] = str(seed_int)
+
+        return cls(
+            batch_id=batch_id,
+            metadata=batch_meta,
+            seed=seed_int,
+            oligos=sorted(oligos, key=lambda ol: ol.index),
+            legacy=False,
+        )
+
+
+def _split_sequence(sequence: str, max_length: int | None) -> Iterator[str]:
+    """Yield ``sequence`` chunks of at most ``max_length`` nucleotides."""
+
+    if max_length is None or max_length <= 0:
+        yield sequence
+        return
+    for start in range(0, len(sequence), max_length):
+        yield sequence[start : start + max_length]
+
+
+def _sanitize_header_value(value: object) -> str:
+    """Return ``value`` as a header-safe string without whitespace."""
+
+    text = str(value).strip()
+    if not text:
+        return "0"
+    for bad in "\r\n\t>":
+        text = text.replace(bad, "_")
+    return "_".join(part for part in text.split()) or "0"
+
+
+def _tokenize_header(header: str) -> tuple[list[str], MutableMapping[str, int]]:
+    tokens = header.strip().split()
+    positions: MutableMapping[str, int] = {}
+    for idx, token in enumerate(tokens):
+        if "=" in token:
+            key, _ = token.split("=", 1)
+            positions[key] = idx
+    return tokens, positions
+
+
+def _update_header_tokens(header: str, updates: Mapping[str, object]) -> str:
+    tokens, positions = _tokenize_header(header)
+    for key, value in updates.items():
+        if value is None:
+            continue
+        sanitized = _sanitize_header_value(value)
+        token = f"{key}={sanitized}"
+        if key in positions:
+            tokens[positions[key]] = token
+        else:
+            positions[key] = len(tokens)
+            tokens.append(token)
+    return " ".join(tokens)
+
+
+def _metadata_from_header(header: str) -> dict[str, str]:
+    metadata: dict[str, str] = {}
+    for token in header.strip().split():
+        if "=" in token:
+            key, value = token.split("=", 1)
+            metadata[key] = value
+    return metadata
 
 def to_fasta(dna_sequence: str, header: str, line_width: int = 60) -> str:
     """Formats a DNA sequence into a FASTA formatted string.
@@ -57,41 +352,23 @@ def to_fasta(dna_sequence: str, header: str, line_width: int = 60) -> str:
     return fasta_string
 
 
-def from_fasta(fasta_content: str) -> List[Tuple[str, str]]:
-    """Parses content in FASTA format and extracts sequence records.
+def format_fasta_records(records: Sequence[FastaRecord], line_width: int = 60) -> str:
+    """Return FASTA text for ``records``."""
 
-    A FASTA record consists of a header line starting with ">" followed by
-    one or more lines of sequence data. This function can parse multiple
-    FASTA records from a single string input. Lines not part of a valid
-    record structure (e.g., text before the first header) are ignored.
+    return "".join(
+        to_fasta(record.sequence, record.header, line_width=line_width)
+        for record in records
+    )
 
-    Sequence lines are processed by first stripping leading/trailing whitespace,
-    then removing all internal whitespace before concatenation. For example,
-    a line "  AT GC  " becomes "ATGC".
 
-    Args:
-        fasta_content (str): A string containing the entire FASTA formatted data.
+def parse_fasta_records(fasta_content: str) -> List[FastaRecord]:
+    """Parse ``fasta_content`` and return :class:`FastaRecord` objects.
 
-    Returns:
-        List[Tuple[str, str]]: A list of tuples, where each tuple contains 
-        `(header, sequence)`.
-        - `header` (str): The header string (content after the initial ">", 
-          stripped of leading/trailing whitespace).
-        - `sequence` (str): The concatenated sequence data, with all internal
-          whitespace removed from each original sequence line.
-        Returns an empty list if no valid FASTA records (lines starting with ">")
-        are found.
-    
-    Example:
-        >>> fasta_data = ">seq1 description1\\nAT GC\\nCGTA\\n>seq2\\nTT TT\\nAAAA"
-        >>> from_fasta(fasta_data)
-        [('seq1 description1', 'ATGCCGTA'), ('seq2', 'TTTTAAAA')]
-
-    Raises:
-        ValueError: If any sequence line contains lowercase letters or
-            characters not present in :data:`FASTA_ALLOWED_CHARS`.
+    This function mirrors :func:`from_fasta` but preserves the headers exactly as
+    they appear in the file.
     """
-    records: List[Tuple[str, str]] = []
+
+    records: List[FastaRecord] = []
     current_header: str | None = None
     current_sequence_parts: List[str] = []
 
@@ -99,19 +376,15 @@ def from_fasta(fasta_content: str) -> List[Tuple[str, str]]:
 
     for line_number, line_text in enumerate(lines, start=1):
         stripped_line = line_text.strip()
-        if not stripped_line: # Skip empty or whitespace-only lines
+        if not stripped_line:
             continue
 
         if stripped_line.startswith(">"):
-            # If a previous record was being processed, finalize and save it.
             if current_header is not None:
-                records.append((current_header, "".join(current_sequence_parts)))
-            
-            current_header = stripped_line[1:].strip() # Store header without ">"
-            current_sequence_parts = [] # Reset for the new sequence
+                records.append(FastaRecord(current_header, "".join(current_sequence_parts)))
+            current_header = stripped_line[1:].strip()
+            current_sequence_parts = []
         elif current_header is not None:
-            # This is a sequence line for the current active header.
-            # Remove all whitespace (leading, trailing, and internal) from the sequence line.
             processed_sequence_line = "".join(stripped_line.split())
             if (
                 any(ch.islower() for ch in processed_sequence_line)
@@ -119,15 +392,17 @@ def from_fasta(fasta_content: str) -> List[Tuple[str, str]]:
             ):
                 raise ValueError(f"Invalid characters on line {line_number}.")
             current_sequence_parts.append(processed_sequence_line)
-        # else: If line_text does not start with ">" and no current_header is active,
-        #       it's considered content outside a valid FASTA record (e.g., text
-        #       before the first header) and is ignored.
 
-    # After the loop, save the last processed record, if any.
     if current_header is not None:
-        records.append((current_header, "".join(current_sequence_parts)))
+        records.append(FastaRecord(current_header, "".join(current_sequence_parts)))
 
     return records
+
+
+def from_fasta(fasta_content: str) -> List[Tuple[str, str]]:
+    """Parse ``fasta_content`` and return ``(header, sequence)`` tuples."""
+
+    return [record.as_tuple() for record in parse_fasta_records(fasta_content)]
 
 
 def to_fastq(

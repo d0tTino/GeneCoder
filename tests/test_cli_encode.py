@@ -12,7 +12,7 @@ import pytest
 
 from genecoder.cli.encode import process_single_encode
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
-from genecoder.formats import from_fasta
+from genecoder.formats import SequenceBatch, from_fasta
 from genecoder.reed_solomon_codec import _HAS_REEDSOLO
 
 
@@ -113,6 +113,28 @@ def test_process_single_encode_windows_path(tmp_path: Path) -> None:
     header = records[0][0]
     assert "input_file=file.txt" in header
     assert "\\" not in header
+
+
+def test_process_single_encode_sequence_batch_metadata(tmp_path: Path) -> None:
+    input_file = tmp_path / "meta.bin"
+    input_file.write_text("batch")
+    output_file = tmp_path / "meta_out.fasta"
+    args = _encode_args()
+    args.seed = 123
+    process_single_encode(str(input_file), str(output_file), args)
+
+    batch = SequenceBatch.from_fasta(output_file.read_text())
+    assert batch.batch_id == "meta"
+    assert batch.seed == 123
+    assert batch.metadata.get("method") == "base4_direct"
+    assert batch.metadata.get("input_file") == "meta.bin"
+    assert len(batch.oligos) == 1
+    oligo = batch.oligos[0]
+    assert oligo.metadata.get("batch_size") == "1"
+    assert oligo.metadata.get("oligo_index") == "1"
+    assert oligo.seed == 123
+    assert "batch_id=" in oligo.header
+    assert batch.primary_sequence() == from_fasta(output_file.read_text())[0][1]
 
 
 def test_process_single_encode_windows_path_stream(tmp_path: Path) -> None:

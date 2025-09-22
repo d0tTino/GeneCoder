@@ -12,10 +12,12 @@ from typing import (
 import os
 import json
 import hashlib
+from pathlib import Path
 
 from .encoders import encode_base4_direct, decode_base4_direct
 from .error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from .utils import get_alphabet_maps
+from .formats import SequenceBatch
 
 
 EncodeFunc = Callable[[bytes], str]
@@ -69,6 +71,7 @@ def stream_encode_file(
     k_value: int = 7,
     parity_rule: str = PARITY_RULE_GC_EVEN_A_ODD_T,
     alphabet: str = "base4",
+    batch_seed: int | None = None,
 ) -> int:
     """Encode ``input_path`` to ``output_path`` streaming chunks.
 
@@ -84,6 +87,7 @@ def stream_encode_file(
     manifest_file = None
     processed_chunks = 0
     manifest_lines: list[dict[str, int | str]] = []
+    verified_chunks: list[str] = []
     encode_map, _ = get_alphabet_maps(alphabet)
     if manifest_path:
         mode = "a" if resume else "w"
@@ -109,6 +113,7 @@ def stream_encode_file(
                             stream=True,
                         )
                         dna_chunk = next(iter(dna_iter))
+                        verified_chunks.append(dna_chunk)
                         expected = hashlib.sha256(dna_chunk.encode()).hexdigest()
                         entry = manifest_lines[idx]
                         if (
@@ -122,6 +127,20 @@ def stream_encode_file(
 
     start_offset = processed_chunks * chunk_size
 
+    existing_sequence = "".join(verified_chunks)
+    if resume and os.path.exists(output_path):
+        try:
+            existing_batch = SequenceBatch.from_fasta(
+                Path(output_path).read_text(encoding="utf-8")
+            )
+            parsed_sequence = existing_batch.primary_sequence()
+            if parsed_sequence:
+                existing_sequence = parsed_sequence
+            if batch_seed is None:
+                batch_seed = existing_batch.seed
+        except (OSError, ValueError):
+            existing_sequence = "".join(verified_chunks)
+
     def data_iter() -> Iterator[bytes]:
         with open(input_path, "rb") as f_in:
             if start_offset:
@@ -132,35 +151,37 @@ def stream_encode_file(
                     break
                 yield chunk
 
-    total_len = 0
-    line_width = 80
-    buffer = ""
-    mode = "a" if resume and os.path.exists(output_path) else "w"
-    with open(output_path, mode, encoding="utf-8") as f_out:
-        if mode == "w":
-            f_out.write(f">{header}\n")
-        offset = processed_chunks * chunk_size
-        for dna_chunk in encode_base4_direct(
-            data_iter(),
-            add_parity=add_parity,
-            k_value=k_value,
-            parity_rule=parity_rule,
-            encode_map=encode_map,
-            stream=True,
-        ):
-            if manifest_file:
-                chunk_hash = hashlib.sha256(dna_chunk.encode()).hexdigest()
-                manifest_file.write(json.dumps({"offset": offset, "hash": chunk_hash}) + "\n")
-                offset += chunk_size
-            total_len += len(dna_chunk)
-            buffer += dna_chunk
-            while len(buffer) >= line_width:
-                f_out.write(buffer[:line_width] + "\n")
-                buffer = buffer[line_width:]
-        if buffer:
-            f_out.write(buffer + "\n")
+    sequence_parts: list[str] = []
+    if existing_sequence:
+        sequence_parts.append(existing_sequence)
+    total_len = len(existing_sequence)
+    offset = processed_chunks * chunk_size
+    for dna_chunk in encode_base4_direct(
+        data_iter(),
+        add_parity=add_parity,
+        k_value=k_value,
+        parity_rule=parity_rule,
+        encode_map=encode_map,
+        stream=True,
+    ):
         if manifest_file:
-            manifest_file.close()
+            chunk_hash = hashlib.sha256(dna_chunk.encode()).hexdigest()
+            manifest_file.write(json.dumps({"offset": offset, "hash": chunk_hash}) + "\n")
+            offset += chunk_size
+        total_len += len(dna_chunk)
+        sequence_parts.append(dna_chunk)
+    if manifest_file:
+        manifest_file.close()
+
+    full_sequence = "".join(sequence_parts)
+
+    batch = SequenceBatch.build(
+        [(header, full_sequence)],
+        batch_seed=batch_seed,
+    )
+    with open(output_path, "w", encoding="utf-8") as f_out:
+        f_out.write(batch.to_fasta(line_width=80))
+
     return total_len
 
 

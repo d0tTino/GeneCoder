@@ -9,7 +9,7 @@ from tests.test_cli import run_cli_command
 from genecoder.cli.options import build_encoding_options, build_decoding_options
 from genecoder.cli import run_encoding_pipeline, run_decoding_pipeline
 from genecoder.encoders import encode_base4_direct
-from genecoder.formats import to_fasta
+from genecoder.formats import SequenceBatch, to_fasta
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder import plugins
 
@@ -88,6 +88,62 @@ def test_cli_decode_duplicate_output_names(tmp_path: Path) -> None:
     out2 = tmp_path / "dup_1.bin"
     assert out1.read_bytes() == b"one"
     assert out2.read_bytes() == b"two"
+
+
+def test_cli_decode_sequence_batch_round_trip(tmp_path: Path) -> None:
+    input_file = tmp_path / "payload.bin"
+    input_file.write_bytes(b"hello world")
+    encoded_dir = tmp_path / "encoded"
+    encoded_dir.mkdir()
+
+    enc_res = run_cli_command(
+        [
+            "encode",
+            "--input-files",
+            str(input_file),
+            "--output-dir",
+            str(encoded_dir),
+            "--method",
+            "base4_direct",
+            "--seed",
+            "7",
+        ]
+    )
+    assert enc_res.returncode == 0, enc_res.stderr
+    fasta_path = encoded_dir / "payload.bin.fasta"
+    batch = SequenceBatch.from_fasta(fasta_path.read_text())
+
+    sequence = batch.primary_sequence()
+    split = len(sequence) // 2 or len(sequence)
+    records = [
+        (batch.first_header(), sequence[:split]),
+        (batch.first_header(), sequence[split:]),
+    ]
+    split_batch = SequenceBatch.build(
+        records,
+        batch_id=batch.batch_id,
+        batch_seed=batch.seed,
+    )
+    split_path = tmp_path / "payload_split.fasta"
+    split_path.write_text(split_batch.to_fasta(line_width=80))
+
+    decoded_dir = tmp_path / "decoded"
+    decoded_dir.mkdir()
+    dec_res = run_cli_command(
+        [
+            "decode",
+            "--input-files",
+            str(split_path),
+            "--output-dir",
+            str(decoded_dir),
+            "--method",
+            "base4_direct",
+        ]
+    )
+    assert dec_res.returncode == 0, dec_res.stderr
+    outputs = list(decoded_dir.glob("*"))
+    assert len(outputs) == 1
+    assert outputs[0].read_bytes() == input_file.read_bytes()
 
 
 @pytest.mark.parametrize("sim_name", ["d2sim", "dnarsim", "squigulator", "desp"])
