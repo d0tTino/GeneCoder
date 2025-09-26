@@ -8,23 +8,33 @@ import logging
 import os
 import random
 from pathlib import Path
-from typing import Sequence, Dict, Any
+from typing import Sequence, Dict, Any, Mapping
 from difflib import SequenceMatcher
 
 
-from genecoder.formats import from_fasta, to_fasta
+from genecoder.formats import SequenceBatch
 from genecoder.simulators import SIMULATOR_REGISTRY, ChannelPipeline
 from genecoder.channel_config import ChannelConfig
 from genecoder.channels.base import BaseChannel
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
 from genecoder.error_simulation import introduce_errors
 from genecoder.metrics import metrics
-from genecoder.parallel import parallel_map
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES, DNARSIM_RATE_TABLES
 from genecoder.error_simulation import INDEL_PROFILES
 from genecoder.simulators.decay import DegradationChannel
-from .options import ChannelOptions, build_channel_options
+from genecoder.simulators.batch_utils import (
+    RESULT_COVERAGE_KEY,
+    RESULT_DROPOUT_FLAG_KEY,
+    RESULT_MUTATION_LOG_KEY,
+    RESULT_MUTATION_TOTALS_KEY,
+    RESULT_SYNTHESIS_FLAG_KEY,
+    bool_to_str,
+    clone_batch,
+    finalize_batch_statistics,
+    load_coverage_distribution,
+)
+from .options import ChannelOptions, build_channel_options, _parse_distribution
 from .shared import add_single_io_args
 
 logger = logging.getLogger(__name__)
@@ -93,6 +103,7 @@ def _load_config(
     if not isinstance(pipeline, dict):
         raise ValueError("'pipeline' must be a mapping")
 
+    coverage_config = pipeline.get("coverage_distribution")
     cfg = ChannelConfig(
         parallel=bool(pipeline.get("parallel", False)),
         workers=pipeline.get("workers"),
@@ -100,6 +111,13 @@ def _load_config(
         use_mpi=bool(pipeline.get("use_mpi", False)),
         illumina_profile=pipeline.get("illumina_profile"),
         nanopore_profile=pipeline.get("nanopore_profile"),
+        dropout_rate=(
+            float(pipeline["dropout_rate"]) if "dropout_rate" in pipeline else None
+        ),
+        coverage_distribution=load_coverage_distribution(coverage_config),
+        synthesis_loss=(
+            float(pipeline["synthesis_loss"]) if "synthesis_loss" in pipeline else None
+        ),
     )
 
     extra = {
@@ -140,13 +158,13 @@ def _load_profile_file(path: str) -> Dict[str, Any]:
 
 
 def _apply_simulators(
-    sequence: str,
+    batch: SequenceBatch,
     simulators: Sequence[
         BaseChannel | tuple[str, Dict[str, Any]]
     ],
     *,
     config: ChannelConfig,
-) -> str:
+) -> SequenceBatch:
     channels: list[BaseChannel] = []
     for item in simulators:
         if isinstance(item, BaseChannel):
@@ -167,8 +185,101 @@ def _apply_simulators(
         channels.append(channel)
         logger.info("Applied %s simulator", name)
     pipeline = ChannelPipeline(channels)
-    result: str = pipeline.simulate(sequence, config=config)
-    return result
+    result = pipeline.simulate(batch, config=config)
+    return result if isinstance(result, SequenceBatch) else _batch_from_string(result)
+
+
+def _batch_from_string(sequence: str) -> SequenceBatch:
+    batch = SequenceBatch.build([("cli", sequence)], batch_id="cli")
+    if batch.oligos:
+        oligo = batch.oligos[0]
+        oligo.metadata[RESULT_COVERAGE_KEY] = "1"
+        oligo.metadata[RESULT_DROPOUT_FLAG_KEY] = bool_to_str(False)
+        oligo.metadata[RESULT_SYNTHESIS_FLAG_KEY] = bool_to_str(False)
+        oligo.metadata[RESULT_MUTATION_LOG_KEY] = json.dumps([])
+        oligo.metadata[RESULT_MUTATION_TOTALS_KEY] = json.dumps(
+            {"substitutions": 0, "insertions": 0, "deletions": 0}
+        )
+        finalize_batch_statistics(batch, [1], [False], [False], [(0, 0, 0)])
+    return batch
+
+
+def _is_flag_true(metadata: Mapping[str, str], key: str) -> bool:
+    return metadata.get(key, "").strip().lower() in {"true", "1", "yes"}
+
+
+def _parse_float(value: str | None, default: float = 0.0) -> float:
+    try:
+        return float(value) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_int(value: str | None, default: int = 0) -> int:
+    try:
+        return int(value) if value is not None else default
+    except (TypeError, ValueError):
+        try:
+            return int(float(value)) if value is not None else default
+        except (TypeError, ValueError):
+            return default
+
+
+def _simulate_probabilities(
+    batch: SequenceBatch,
+    *,
+    sub_prob: float,
+    ins_prob: float,
+    del_prob: float,
+    seed: int | None,
+) -> SequenceBatch:
+    base_rng = random.Random(seed)
+    mutated = clone_batch(batch)
+    coverage_counts: list[int] = []
+    dropout_flags: list[bool] = []
+    synthesis_flags: list[bool] = []
+    consensus_totals: list[tuple[int, int, int]] = []
+
+    for idx, (original, oligo) in enumerate(zip(batch.oligos, mutated.oligos), start=1):
+        if seed is not None:
+            rng = random.Random(seed + idx)
+        else:
+            rng = random.Random(base_rng.random())
+        mutated_seq = introduce_errors(
+            original.sequence,
+            substitution_prob=sub_prob,
+            insertion_prob=ins_prob,
+            deletion_prob=del_prob,
+            rng=rng,
+        )
+        oligo.sequence = mutated_seq
+        subs, ins, dels = _count_errors(original.sequence, mutated_seq)
+        oligo.metadata[RESULT_COVERAGE_KEY] = "1"
+        oligo.metadata[RESULT_DROPOUT_FLAG_KEY] = bool_to_str(False)
+        oligo.metadata[RESULT_SYNTHESIS_FLAG_KEY] = bool_to_str(False)
+        oligo.metadata[RESULT_MUTATION_LOG_KEY] = json.dumps(
+            [
+                {
+                    "read": mutated_seq,
+                    "substitutions": subs,
+                    "insertions": ins,
+                    "deletions": dels,
+                }
+            ]
+        )
+        oligo.metadata[RESULT_MUTATION_TOTALS_KEY] = json.dumps(
+            {"substitutions": subs, "insertions": ins, "deletions": dels}
+        )
+        coverage_counts.append(1)
+        dropout_flags.append(False)
+        synthesis_flags.append(False)
+        consensus_totals.append((subs, ins, dels))
+
+    finalize_batch_statistics(
+        mutated, coverage_counts, dropout_flags, synthesis_flags, consensus_totals
+    )
+    metrics.increment("oligos_simulated")
+    return mutated
 
 
 def _count_errors(original: str, mutated: str) -> tuple[int, int, int]:
@@ -204,8 +315,14 @@ def process_channel(
     except FileNotFoundError:
         logger.error("Error: Input file %s not found.", input_file)
         raise SystemExit(1)
-    records = from_fasta(fasta_str)
-    if not records:
+
+    try:
+        batch = SequenceBatch.from_fasta(fasta_str)
+    except ValueError as exc:
+        logger.error("Failed to parse %s: %s", input_file, exc)
+        raise SystemExit(1)
+
+    if not batch.oligos:
         logger.error("No FASTA records found in %s", input_file)
         raise SystemExit(1)
 
@@ -213,59 +330,104 @@ def process_channel(
         synth = SynthesisConstraints(**constraints)
     except ValueError:
         synth = SynthesisConstraints()
-    headers = [h for h, _ in records]
-    sequences = [s for _, s in records]
 
-    def _process(item: tuple[int, str]) -> tuple[str, tuple[int, int, int]]:
-        idx, seq = item
-        original = seq
-        if simulators:
-            cfg = config or ChannelConfig()
-            seq = _apply_simulators(seq, simulators, config=cfg)
-        else:
-            rng = random.Random(seed + idx if seed is not None else None)
-            seq = introduce_errors(
-                seq,
-                substitution_prob=sub_prob,
-                insertion_prob=ins_prob,
-                deletion_prob=del_prob,
-                rng=rng,
-            )
-            metrics.increment("oligos_simulated")
-        if not validate_sequence(seq, synth):
-            raise ValueError("Sequence violates synthesis constraints")
-        logger.info("Sequence satisfies synthesis constraints")
-        return seq, _count_errors(original, seq)
-
-    if batch_workers and len(sequences) > 1:
-        processed = parallel_map(
-            _process,
-            list(enumerate(sequences)),
-            workers=batch_workers,
-        )
+    cfg = config or ChannelConfig()
+    if simulators:
+        processed_batch = _apply_simulators(batch, simulators, config=cfg)
     else:
-        processed = [_process(p) for p in enumerate(sequences)]
+        processed_batch = _simulate_probabilities(
+            batch,
+            sub_prob=sub_prob,
+            ins_prob=ins_prob,
+            del_prob=del_prob,
+            seed=seed,
+        )
 
-    processed_records: list[tuple[str, str]] = []
+    total_len = sum(len(ol.sequence) for ol in processed_batch.oligos)
     sub_total = ins_total = del_total = 0
-    for header, (seq, stats) in zip(headers, processed):
-        s, i, d = stats
-        sub_total += s
-        ins_total += i
-        del_total += d
-        processed_records.append((header, seq))
+    dropout_count = 0
+    synth_failures = 0
 
-    fasta_out = "".join(
-        to_fasta(seq, header, line_width=80) for header, seq in processed_records
-    )
+    for original, processed in zip(batch.oligos, processed_batch.oligos):
+        dropout = _is_flag_true(processed.metadata, RESULT_DROPOUT_FLAG_KEY)
+        synth_fail = _is_flag_true(processed.metadata, RESULT_SYNTHESIS_FLAG_KEY)
+        if dropout:
+            dropout_count += 1
+        if synth_fail:
+            synth_failures += 1
+        if dropout or synth_fail:
+            continue
+        if not validate_sequence(processed.sequence, synth):
+            raise ValueError("Sequence violates synthesis constraints")
+        totals_json = processed.metadata.get(RESULT_MUTATION_TOTALS_KEY)
+        totals = None
+        if totals_json:
+            try:
+                totals = json.loads(totals_json)
+            except json.JSONDecodeError:
+                totals = None
+        if totals:
+            sub_total += int(totals.get("substitutions", 0))
+            ins_total += int(totals.get("insertions", 0))
+            del_total += int(totals.get("deletions", 0))
+        else:
+            s, i, d = _count_errors(original.sequence, processed.sequence)
+            sub_total += s
+            ins_total += i
+            del_total += d
+        logger.info("Sequence satisfies synthesis constraints")
+
+    fasta_out = processed_batch.to_fasta(line_width=80)
     os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
     with open(output_file, "w", encoding="utf-8") as f_out:
         f_out.write(fasta_out)
 
-    total_len = sum(len(seq) for _, seq in processed_records)
+    coverage_hist = {}
+    coverage_raw = processed_batch.metadata.get("sim_coverage_histogram")
+    if coverage_raw:
+        try:
+            coverage_hist = json.loads(coverage_raw)
+        except json.JSONDecodeError:
+            coverage_hist = {}
+
+    mutation_totals_raw = processed_batch.metadata.get("sim_mutation_totals")
+    mutation_totals: dict[str, int] | None = None
+    if mutation_totals_raw:
+        try:
+            parsed = json.loads(mutation_totals_raw)
+            mutation_totals = {
+                "substitutions": int(parsed.get("substitutions", sub_total)),
+                "insertions": int(parsed.get("insertions", ins_total)),
+                "deletions": int(parsed.get("deletions", del_total)),
+            }
+        except (json.JSONDecodeError, TypeError, ValueError):
+            mutation_totals = None
+
+    dropout_total_meta = _parse_int(
+        processed_batch.metadata.get("sim_dropout_total"), dropout_count
+    )
+    dropout_fraction = _parse_float(
+        processed_batch.metadata.get("sim_dropout_fraction"),
+        dropout_count / max(1, len(processed_batch.oligos)),
+    )
+    synthesis_total_meta = _parse_int(
+        processed_batch.metadata.get("sim_synthesis_failures"), synth_failures
+    )
+    synthesis_fraction = _parse_float(
+        processed_batch.metadata.get("sim_synthesis_fraction"),
+        synth_failures / max(1, len(processed_batch.oligos)),
+    )
+
+    manifest_simulators: list[str] = []
+    for item in simulators:
+        if isinstance(item, tuple):
+            manifest_simulators.append(item[0])
+        else:
+            manifest_simulators.append(item.__class__.__name__)
+
     manifest = {
         "file": os.path.basename(Path(input_file).as_posix()),
-        "simulators": [name for name, _ in simulators],
+        "simulators": manifest_simulators,
         "probabilities": {
             "sub_prob": sub_prob,
             "ins_prob": ins_prob,
@@ -278,7 +440,23 @@ def process_channel(
             "insertions": ins_total,
             "deletions": del_total,
         },
+        "coverage": {
+            "average": _parse_float(processed_batch.metadata.get("sim_average_coverage")),
+            "histogram": coverage_hist,
+            "total_reads": _parse_int(processed_batch.metadata.get("sim_total_reads")),
+        },
+        "dropout": {
+            "count": dropout_total_meta,
+            "fraction": dropout_fraction,
+        },
+        "synthesis": {
+            "count": synthesis_total_meta,
+            "fraction": synthesis_fraction,
+        },
     }
+    if mutation_totals is not None:
+        manifest["mutation_totals"] = mutation_totals
+
     manifest_path = os.path.splitext(output_file)[0] + ".manifest.json"
     with open(manifest_path, "w", encoding="utf-8") as m_out:
         json.dump(manifest, m_out, indent=2)
@@ -340,6 +518,24 @@ def register_subcommand(
         type=float,
         default=None,
         help="Probability of strand loss and damage",
+    )
+    run_parser.add_argument(
+        "--dropout-rate",
+        type=float,
+        default=None,
+        help="Probability that an oligo drops out before sequencing",
+    )
+    run_parser.add_argument(
+        "--coverage-distribution",
+        type=str,
+        default=None,
+        help="Coverage distribution mapping or JSON/YAML file",
+    )
+    run_parser.add_argument(
+        "--synthesis-loss",
+        type=float,
+        default=None,
+        help="Probability of synthesis failure per oligo",
     )
     run_parser.set_defaults(func=_handle_run)
 
@@ -436,6 +632,24 @@ def register_subcommand(
             default=None,
             help="Probability of strand loss and damage",
         )
+        target.add_argument(
+            "--dropout-rate",
+            type=float,
+            default=None,
+            help="Probability that an oligo drops out before sequencing",
+        )
+        target.add_argument(
+            "--coverage-distribution",
+            type=str,
+            default=None,
+            help="Coverage distribution mapping or JSON/YAML file",
+        )
+        target.add_argument(
+            "--synthesis-loss",
+            type=float,
+            default=None,
+            help="Probability of synthesis failure per oligo",
+        )
         target.add_argument("--seed", type=int, default=None, help="Random seed for deterministic output")
         target.add_argument("--min-length", type=int, default=25, help="Minimum synthesis length")
         target.add_argument("--max-length", type=int, default=300, help="Maximum synthesis length")
@@ -478,6 +692,11 @@ def run_channel(args: argparse.Namespace) -> None:
         use_mpi=False,
         illumina_profile=opts.illumina_profile,
         nanopore_profile=opts.nanopore_profile,
+        dropout_rate=opts.dropout_rate,
+        coverage_distribution=(
+            dict(opts.coverage_distribution) if opts.coverage_distribution else None
+        ),
+        synthesis_loss=opts.synthesis_loss,
     )
     simulators = opts.simulator_specs
     if opts.profile:
@@ -599,6 +818,12 @@ def _handle_run(args: argparse.Namespace) -> None:
         cfg.illumina_profile = args.illumina_profile
     if args.nanopore_profile is not None:
         cfg.nanopore_profile = args.nanopore_profile
+    if args.dropout_rate is not None:
+        cfg.dropout_rate = args.dropout_rate
+    if args.synthesis_loss is not None:
+        cfg.synthesis_loss = args.synthesis_loss
+    if args.coverage_distribution is not None:
+        cfg.coverage_distribution = _parse_distribution(args.coverage_distribution)
     if args.dnarsim_profile is not None:
         for name, params in simulators:
             if name == "nanopore_dnarsim":

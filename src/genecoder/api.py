@@ -4,7 +4,10 @@ from __future__ import annotations
 """Public abstract interfaces for GeneCoder plugins."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Mapping, Tuple
+from typing import Any, Mapping, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from .formats import SequenceBatch
 
 
 __all__ = ["Codec", "FEC", "Simulator", "Visualizer"]
@@ -106,18 +109,18 @@ class Simulator(ABC):
     """
 
     @abstractmethod
-    def simulate(self, sequence: str) -> str:
+    def simulate(self, sequence: str | "SequenceBatch") -> str | "SequenceBatch":
         """Return a possibly corrupted version of ``sequence``.
 
         Parameters
         ----------
         sequence:
-            Input DNA sequence.
+            Input DNA sequence or :class:`~genecoder.formats.SequenceBatch`.
 
         Returns
         -------
-        str
-            Simulated read sequence.
+        str or :class:`~genecoder.formats.SequenceBatch`
+            Simulated read sequence(s).
         """
 
     def with_profile(self, profile: str) -> "Simulator":

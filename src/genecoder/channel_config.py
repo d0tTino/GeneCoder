@@ -15,3 +15,6 @@ class ChannelConfig:
     use_mpi: bool = False
     illumina_profile: str | None = None
     nanopore_profile: str | None = None
+    dropout_rate: float | None = None
+    coverage_distribution: dict[int, float] | None = None
+    synthesis_loss: float | None = None

@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any, Callable, Sequence, Dict, Iterable, Mapping, cast
 from copy import deepcopy
 from types import ModuleType
+import json
 import random
 import shutil
 import subprocess
@@ -30,6 +31,24 @@ from ..desp_adapter import simulate_desp
 from ..simulator_utils import _run_external, _parse_env_options
 from ..api import Simulator
 from .base import BaseChannel
+from .batch_utils import (
+    CONFIG_COVERAGE_KEY,
+    CONFIG_DROPOUT_KEY,
+    CONFIG_SYNTHESIS_KEY,
+    RESULT_CONSENSUS_TOTALS_KEY,
+    RESULT_COVERAGE_KEY,
+    RESULT_DROPOUT_FLAG_KEY,
+    RESULT_MUTATION_LOG_KEY,
+    RESULT_MUTATION_TOTALS_KEY,
+    RESULT_SYNTHESIS_FLAG_KEY,
+    bool_to_str,
+    clone_batch,
+    finalize_batch_statistics,
+    load_coverage_distribution,
+    metadata_float,
+    mutation_counts,
+)
+from ..formats import SequenceBatch
 from ..error_simulation import (
     _random_substitution,
     NUCLEOTIDES,
@@ -545,6 +564,8 @@ def _mutate_read_jit(
 class NanoporeChannel(BaseChannel):
     """Channel that delegates to :mod:`d2sim` if installed."""
 
+    supports_batches = True
+
     def __init__(
         self,
         error_rate: float = 0.05,
@@ -706,22 +727,141 @@ class NanoporeChannel(BaseChannel):
         self.insertion_profile = insertion_profile
         self.deletion_profile = deletion_profile
 
-    def simulate(self, sequence: str) -> str:
+    def simulate(self, sequence: str | SequenceBatch) -> str | SequenceBatch:
+        if isinstance(sequence, SequenceBatch):
+            return self._simulate_batch(sequence)
+        return self._simulate_string(sequence)
+
+    def _simulate_string(self, sequence: str) -> str:
         rng = make_rng()
-        quality = self.quality_profile
         coverage = max(1, self.get_coverage(sequence))
         reads = [
-            _mutate_read(
-                simulate_d2sim(sequence, error_rate=self.error_rate, rng=rng),
-                quality,
-                rng,
-                self,
+            self._mutate_observed_read(
+                sequence, self._simulate_base_read(sequence, rng), rng
             )
             for _ in range(coverage)
         ]
         if coverage == 1:
             return reads[0]
         return _consensus(reads)
+
+    def _simulate_base_read(self, sequence: str, rng: random.Random) -> str:
+        return simulate_d2sim(sequence, error_rate=self.error_rate, rng=rng)
+
+    def _mutate_observed_read(
+        self, original: str, base_read: str, rng: random.Random
+    ) -> str:
+        quality = self.quality_profile
+        return _mutate_read(base_read, quality, rng, self)
+
+    def _simulate_batch(self, batch: SequenceBatch) -> SequenceBatch:
+        rng = make_rng()
+        mutated = clone_batch(batch)
+        dropout_rate = metadata_float(mutated.metadata, CONFIG_DROPOUT_KEY, 0.0)
+        synthesis_loss = metadata_float(mutated.metadata, CONFIG_SYNTHESIS_KEY, 0.0)
+        coverage_dist = load_coverage_distribution(
+            mutated.metadata.get(CONFIG_COVERAGE_KEY)
+        )
+
+        coverage_counts: list[int] = []
+        dropout_flags: list[bool] = []
+        synthesis_flags: list[bool] = []
+        consensus_totals: list[tuple[int, int, int]] = []
+
+        for original, oligo in zip(batch.oligos, mutated.oligos):
+            seed = (
+                oligo.seed
+                if oligo.seed is not None
+                else int(rng.random() * (2**32 - 1))
+            )
+            oligo_rng = random.Random(seed)
+
+            dropped = False
+            synth_failed = False
+            coverage = 0
+            read_logs: list[dict[str, int | str]] = []
+            per_read_totals = [0, 0, 0]
+
+            if oligo_rng.random() < synthesis_loss:
+                synth_failed = True
+            elif oligo_rng.random() < dropout_rate:
+                dropped = True
+
+            if not dropped and not synth_failed:
+                if coverage_dist:
+                    total_weight = sum(coverage_dist.values())
+                    threshold = oligo_rng.random() * total_weight if total_weight > 0 else 0.0
+                    cumulative = 0.0
+                    coverage_choice = 0
+                    for cov, weight in sorted(coverage_dist.items()):
+                        cumulative += weight
+                        coverage_choice = int(cov)
+                        if threshold <= cumulative:
+                            break
+                    coverage = max(0, coverage_choice)
+                else:
+                    coverage = max(1, int(self.get_coverage(original.sequence)))
+                if coverage <= 0:
+                    dropped = True
+
+            reads: list[str] = []
+            if not dropped and not synth_failed:
+                for _ in range(coverage):
+                    base_read = self._simulate_base_read(original.sequence, oligo_rng)
+                    mutated_read = self._mutate_observed_read(
+                        original.sequence, base_read, oligo_rng
+                    )
+                    reads.append(mutated_read)
+                    sub, ins, dele = mutation_counts(original.sequence, mutated_read)
+                    per_read_totals[0] += sub
+                    per_read_totals[1] += ins
+                    per_read_totals[2] += dele
+                    read_logs.append(
+                        {
+                            "read": mutated_read,
+                            "substitutions": sub,
+                            "insertions": ins,
+                            "deletions": dele,
+                        }
+                    )
+
+            consensus_counts = (0, 0, 0)
+            if reads:
+                consensus = reads[0] if len(reads) == 1 else _consensus(reads)
+                oligo.sequence = consensus
+                consensus_counts = mutation_counts(original.sequence, consensus)
+            else:
+                oligo.sequence = ""
+                coverage = 0
+
+            oligo.metadata[RESULT_COVERAGE_KEY] = str(coverage)
+            oligo.metadata[RESULT_DROPOUT_FLAG_KEY] = bool_to_str(dropped)
+            oligo.metadata[RESULT_SYNTHESIS_FLAG_KEY] = bool_to_str(synth_failed)
+            oligo.metadata[RESULT_MUTATION_LOG_KEY] = json.dumps(read_logs)
+            oligo.metadata[RESULT_MUTATION_TOTALS_KEY] = json.dumps(
+                {
+                    "substitutions": per_read_totals[0],
+                    "insertions": per_read_totals[1],
+                    "deletions": per_read_totals[2],
+                }
+            )
+            oligo.metadata[RESULT_CONSENSUS_TOTALS_KEY] = json.dumps(
+                {
+                    "substitutions": consensus_counts[0],
+                    "insertions": consensus_counts[1],
+                    "deletions": consensus_counts[2],
+                }
+            )
+
+            coverage_counts.append(int(coverage))
+            dropout_flags.append(dropped)
+            synthesis_flags.append(synth_failed)
+            consensus_totals.append(consensus_counts)
+
+        finalize_batch_statistics(
+            mutated, coverage_counts, dropout_flags, synthesis_flags, consensus_totals
+        )
+        return mutated
 
     def with_profile(self, profile: str) -> "NanoporeChannel":
         """Return a new channel configured to use ``profile``.
@@ -745,22 +885,8 @@ class NanoporeChannel(BaseChannel):
 class NanoporeDeSPChannel(NanoporeChannel):
     """Channel wrapper using the external ``desp`` simulator."""
 
-    def simulate(self, sequence: str) -> str:
-        rng = make_rng()
-        quality = self.quality_profile
-        coverage = max(1, self.get_coverage(sequence))
-        reads = [
-            _mutate_read(
-                simulate_desp(sequence, error_rate=self.error_rate, rng=rng),
-                quality,
-                rng,
-                self,
-            )
-            for _ in range(coverage)
-        ]
-        if coverage == 1:
-            return reads[0]
-        return _consensus(reads)
+    def _simulate_base_read(self, sequence: str, rng: random.Random) -> str:
+        return simulate_desp(sequence, error_rate=self.error_rate, rng=rng)
 
 
 class NanoporeDNArSimChannel(NanoporeChannel):
@@ -796,6 +922,7 @@ class NanoporeDNArSimChannel(NanoporeChannel):
         self._profile_rates: dict[str, float] = (
             DNARSIM_RATE_TABLES.get(profile, {}) if profile else {}
         )
+        self._current_rates: tuple[float, float, float] | None = None
 
     def _simulate_cli(self, sequence: str) -> str:
         cmd = "dnarsim"
@@ -834,49 +961,54 @@ class NanoporeDNArSimChannel(NanoporeChannel):
 
         return cast(str, _simulate_fallback_jit(sequence, error_rate, rng))
 
+    def _simulate_base_read(self, sequence: str, rng: random.Random) -> str:
+        try:
+            base = self._simulate_cli(sequence)
+            self._current_rates = (
+                self.substitution_rate,
+                self.insertion_rate,
+                self.deletion_rate,
+            )
+            return base
+        except Exception:
+            base = self._simulate_fallback(sequence, self.error_rate, rng)
+            rates = self._profile_rates
+            self._current_rates = (
+                rates.get("substitution_rate", self.substitution_rate),
+                rates.get("insertion_rate", self.insertion_rate),
+                rates.get("deletion_rate", self.deletion_rate),
+            )
+            return base
 
-    def simulate(self, sequence: str) -> str:
+    def _mutate_observed_read(
+        self, original: str, base_read: str, rng: random.Random
+    ) -> str:
         from typing import cast
 
-        rng = make_rng()
+        sub, ins, dele = self._current_rates or (
+            self.substitution_rate,
+            self.insertion_rate,
+            self.deletion_rate,
+        )
         quality = self.quality_profile
-        coverage = max(1, self.get_coverage(sequence))
-
-        reads = []
-        for _ in range(coverage):
-            try:
-                base = self._simulate_cli(sequence)
-                sub = self.substitution_rate
-                ins = self.insertion_rate
-                dele = self.deletion_rate
-            except Exception:
-                base = self._simulate_fallback(sequence, self.error_rate, rng)
-                rates = self._profile_rates
-                sub = rates.get("substitution_rate", self.substitution_rate)
-                ins = rates.get("insertion_rate", self.insertion_rate)
-                dele = rates.get("deletion_rate", self.deletion_rate)
-            reads.append(
-                cast(
-                    str,
-                    _mutate_read_jit(
-                        base,
-                        quality,
-                        rng,
-                        sub,
-                        ins,
-                        dele,
-                        self.context_errors,
-                        self.insertion_profile,
-                        self.deletion_profile,
-                        self.context_insertions,
-                        self.context_deletions,
-                    ),
-                )
-            )
-
-        if coverage == 1:
-            return reads[0]
-        return _consensus(reads)
+        mutated = cast(
+            str,
+            _mutate_read_jit(
+                base_read,
+                quality,
+                rng,
+                sub,
+                ins,
+                dele,
+                self.context_errors,
+                self.insertion_profile,
+                self.deletion_profile,
+                self.context_insertions,
+                self.context_deletions,
+            ),
+        )
+        self._current_rates = None
+        return mutated
 
 
 def _mutate_read(

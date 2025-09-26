@@ -48,6 +48,9 @@ class ChannelOptions:
     ins_rate: float | None = None
     del_rate: float | None = None
     decay_rate: float | None = None
+    dropout_rate: float | None = None
+    coverage_distribution: Dict[int, float] | None = None
+    synthesis_loss: float | None = None
 
 
 def _parse_quality(value: str | None) -> Sequence[float] | None:
@@ -89,6 +92,69 @@ def _parse_context(value: str | None) -> Dict[str, float] | None:
     if not isinstance(data, dict):
         raise ValueError("context must be a mapping")
     return {str(k).upper(): float(v) for k, v in data.items()}
+
+
+def _parse_distribution(value: str | None) -> Dict[int, float] | None:
+    if value is None:
+        return None
+    from pathlib import Path
+    path = Path(value)
+    data: object
+    if path.is_file():
+        import json
+        import yaml
+
+        text = path.read_text(encoding="utf-8")
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            data = yaml.safe_load(text)
+    else:
+        data = value
+
+    if isinstance(data, dict):
+        result: Dict[int, float] = {}
+        for key, weight in data.items():
+            try:
+                cov = int(key)
+                wt = float(weight)
+            except (TypeError, ValueError):
+                continue
+            if wt < 0:
+                continue
+            result[cov] = result.get(cov, 0.0) + wt
+        return result or None
+
+    if isinstance(data, Sequence) and not isinstance(data, str):
+        result: Dict[int, float] = {}
+        for item in data:
+            try:
+                cov = int(item)
+            except (TypeError, ValueError):
+                continue
+            result[cov] = result.get(cov, 0.0) + 1.0
+        return result or None
+
+    if isinstance(data, str):
+        result: Dict[int, float] = {}
+        for chunk in data.split(","):
+            if not chunk:
+                continue
+            if ":" in chunk:
+                key, weight = chunk.split(":", 1)
+            else:
+                key, weight = chunk, "1"
+            try:
+                cov = int(key.strip())
+                wt = float(weight.strip())
+            except ValueError:
+                continue
+            if wt < 0:
+                continue
+            result[cov] = result.get(cov, 0.0) + wt
+        return result or None
+
+    raise ValueError("coverage distribution must be a mapping or sequence")
 
 
 def _validate_simulator_prob_args(
@@ -161,6 +227,12 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
     }
 
     sim_specs: list[tuple[str, dict[str, object]]] | None = None
+    dropout_rate = getattr(args, "dropout_rate", None)
+    synthesis_loss = getattr(args, "synthesis_loss", None)
+    coverage_distribution = _parse_distribution(
+        getattr(args, "coverage_distribution", None)
+    )
+
     if args.config:
         cfg_sim, cfg_con, cfg_pipeline, extra = _load_config(args.config)
         if cfg_sim:
@@ -176,6 +248,12 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
             args.processes = args.threads
         if getattr(args, "decay_rate", None) is None:
             args.decay_rate = extra.get("decay_rate")
+        if dropout_rate is None and cfg_pipeline.dropout_rate is not None:
+            dropout_rate = cfg_pipeline.dropout_rate
+        if synthesis_loss is None and cfg_pipeline.synthesis_loss is not None:
+            synthesis_loss = cfg_pipeline.synthesis_loss
+        if coverage_distribution is None and cfg_pipeline.coverage_distribution:
+            coverage_distribution = dict(cfg_pipeline.coverage_distribution)
 
     _validate_simulator_prob_args(
         simulators, args.sub_prob, args.ins_prob, args.del_prob, getattr(args, "profile", None)
@@ -190,6 +268,8 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         raise ValueError("Cannot specify both --threads and --processes")
     if args.batch_workers is not None and args.batch_workers <= 0:
         raise ValueError("batch_workers must be greater than 0")
+    if coverage_distribution is not None:
+        coverage_distribution = dict(coverage_distribution)
     return ChannelOptions(
         simulators=simulators,
         constraints=constraints,
@@ -226,4 +306,7 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         ins_rate=args.ins_rate,
         del_rate=args.del_rate,
         decay_rate=getattr(args, "decay_rate", None),
+        dropout_rate=dropout_rate,
+        coverage_distribution=coverage_distribution,
+        synthesis_loss=synthesis_loss,
     )

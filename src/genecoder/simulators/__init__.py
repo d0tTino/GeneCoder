@@ -1,18 +1,61 @@
 """Sequencing simulator implementations and registry."""
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Type
 import os
 
 from ..api import Simulator
-from .pipeline import ChannelPipeline
+from ..formats import SequenceBatch
 from ..random_utils import reset_rng
+from .batch_utils import apply_legacy_simulator
+from .pipeline import ChannelPipeline
 
 SIMULATOR_REGISTRY: Dict[str, Simulator] = {}
+
+_ADAPTER_CACHE: Dict[Type[Simulator], Type[Simulator]] = {}
+
+
+def _get_batch_adapter(base_cls: Type[Simulator]) -> Type[Simulator]:
+    if getattr(base_cls, "supports_batches", False):
+        return base_cls
+    adapter = _ADAPTER_CACHE.get(base_cls)
+    if adapter is not None:
+        return adapter
+
+    class BatchAdapter(base_cls):  # type: ignore[misc]
+        """Auto-generated adapter adding SequenceBatch support."""
+
+        supports_batches = True
+
+        def simulate(self, sequence: str | SequenceBatch) -> str | SequenceBatch:  # type: ignore[override]
+            if isinstance(sequence, SequenceBatch):
+                return apply_legacy_simulator(
+                    sequence,
+                    super(BatchAdapter, self).simulate,  # type: ignore[misc]
+                )
+            return super(BatchAdapter, self).simulate(sequence)  # type: ignore[misc]
+
+        def with_profile(self, profile: str):  # type: ignore[override]
+            result = super(BatchAdapter, self).with_profile(profile)
+            if isinstance(result, base_cls) and not getattr(
+                result.__class__, "supports_batches", False
+            ):
+                result.__class__ = _get_batch_adapter(result.__class__)
+            return result
+
+    BatchAdapter.__name__ = f"{base_cls.__name__}BatchAdapter"
+    BatchAdapter.__qualname__ = BatchAdapter.__name__
+    BatchAdapter.__module__ = base_cls.__module__
+    _ADAPTER_CACHE[base_cls] = BatchAdapter
+    return BatchAdapter
 
 
 def register_simulator(name: str, channel: Simulator) -> None:
     """Register ``channel`` under ``name``."""
+
+    adapter_cls = _get_batch_adapter(channel.__class__)
+    if adapter_cls is not channel.__class__:
+        channel.__class__ = adapter_cls  # type: ignore[misc]
     SIMULATOR_REGISTRY[name] = channel
 
 from .base import BaseChannel, BaseSimulator

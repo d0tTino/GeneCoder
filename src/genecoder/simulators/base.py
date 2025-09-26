@@ -1,11 +1,14 @@
 """Common base classes for sequencing simulators."""
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Sequence, TYPE_CHECKING
 from dataclasses import dataclass
 from abc import abstractmethod
 
 from ..api import Simulator
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from ..formats import SequenceBatch
 
 
 __all__ = ["BaseChannel", "BaseSimulator"]
@@ -25,7 +28,7 @@ class BaseChannel(Simulator):
         return int(self.coverage)
 
     @abstractmethod
-    def simulate(self, sequence: str) -> str:  # pragma: no cover - abstract
+    def simulate(self, sequence: str | "SequenceBatch") -> str | "SequenceBatch":  # pragma: no cover - abstract
         """Return a possibly corrupted version of ``sequence``."""
         raise NotImplementedError
 
@@ -57,6 +60,6 @@ class BaseSimulator(BaseChannel):
         return profile + (tail,) * (length - len(profile))
 
     @abstractmethod
-    def simulate(self, sequence: str) -> str:  # pragma: no cover - abstract
+    def simulate(self, sequence: str | "SequenceBatch") -> str | "SequenceBatch":  # pragma: no cover - abstract
         """Return a possibly corrupted version of ``sequence``."""
         raise NotImplementedError
