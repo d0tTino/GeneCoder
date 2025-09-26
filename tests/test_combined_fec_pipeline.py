@@ -61,7 +61,6 @@ class _CombinedFountainRSFEC(FEC):
 def test_combined_fec_pipeline(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    pytest.importorskip("pyfinite")
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
     monkeypatch.setattr(nanopore.shutil, "which", lambda _: None)
     monkeypatch.setattr(

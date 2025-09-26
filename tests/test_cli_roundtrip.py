@@ -222,8 +222,6 @@ def test_cli_ldpc_check_parity(tmp_path: Path):
 
 
 def test_cli_roundtrip_fountain(tmp_path: Path):
-    pytest.importorskip("pyfinite")
-
     input_file = tmp_path / "fountain.txt"
     input_file.write_text("fountain test")
 

@@ -38,6 +38,9 @@ class EncodingOptions:
     seed: int | None = None
     rs_symbol_size: int | None = None
     rs_primitive: int | None = None
+    fountain_chunk_size: int = 4
+    fountain_redundancy: float = 2.0
+    fountain_manifest: str | None = None
 
 
 @dataclass

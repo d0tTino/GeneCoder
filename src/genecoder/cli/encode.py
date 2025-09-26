@@ -93,12 +93,23 @@ def run_encoding_pipeline(
                 f"Warning for {input_file_name}: --add-parity is ignored when {options.fec} FEC is applied to binary data."
             )
         enc = FEC_REGISTRY[options.fec]
-        encode_kwargs = {}
+        encode_kwargs: dict[str, object | None] = {}
         if options.fec == "reed_solomon":
             encode_kwargs = {
                 "symbol_size": options.rs_symbol_size,
                 "primitive": options.rs_primitive,
             }
+        elif options.fec == "fountain":
+            if options.fountain_chunk_size <= 0:
+                raise ValueError("Fountain chunk size must be positive.")
+            if options.fountain_redundancy <= 0:
+                raise ValueError("Fountain redundancy must be positive.")
+            encode_kwargs = {
+                "chunk_size": options.fountain_chunk_size,
+                "redundancy": options.fountain_redundancy,
+                "manifest_path": options.fountain_manifest,
+            }
+        encode_kwargs = {k: v for k, v in encode_kwargs.items() if v is not None}
         current_input, info = enc["encode"](data, **encode_kwargs)
         header_parts.append(f"fec={options.fec}")
         if info is not None:
@@ -349,6 +360,17 @@ def process_single_encode(
             checksum = compute_checksum(plaintext_data)
 
         options = build_encoding_options(args)
+        manifest_spec = getattr(args, "fountain_manifest", None)
+        if manifest_spec:
+            manifest_path = Path(manifest_spec)
+            input_stem = Path(input_file_path).stem.replace(" ", "_") or "batch"
+            if manifest_path.is_dir() or manifest_spec.endswith(os.sep) or manifest_path.suffix == "":
+                resolved = manifest_path / f"{input_stem}_droplets.json"
+            elif len(getattr(args, "input_files", [])) > 1:
+                resolved = manifest_path.parent / f"{input_stem}_{manifest_path.name}"
+            else:
+                resolved = manifest_path
+            options.fountain_manifest = str(resolved)
         header_name = os.path.basename(input_file_path.replace("\\", "/"))
         if getattr(args, "file_type", None):
             stem = Path(header_name).stem
@@ -622,6 +644,33 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         help=(
             "Primitive polynomial for Reed-Solomon FEC. Provide as integer or"
             " 0x-prefixed hex. Ignored unless --fec reed_solomon."
+        ),
+    )
+    parser.add_argument(
+        "--fountain-chunk-size",
+        type=int,
+        default=4,
+        help=(
+            "Chunk size in bytes for Fountain droplets (default: 4). Ignored"
+            " unless --fec fountain."
+        ),
+    )
+    parser.add_argument(
+        "--fountain-redundancy",
+        type=float,
+        default=2.0,
+        help=(
+            "Redundancy multiplier for Fountain droplets (default: 2.0)."
+            " Ignored unless --fec fountain."
+        ),
+    )
+    parser.add_argument(
+        "--fountain-manifest",
+        type=str,
+        default=None,
+        help=(
+            "Optional path to export Fountain droplet metadata as JSON."
+            " Ignored unless --fec fountain."
         ),
     )
     parser.add_argument(

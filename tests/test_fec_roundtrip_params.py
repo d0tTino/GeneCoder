@@ -1,4 +1,6 @@
 import os
+import os
+
 import pytest
 
 from genecoder.reed_solomon_codec import (
@@ -19,11 +21,10 @@ def test_reed_solomon_roundtrip_params(nsym, length):
     assert corrected == 0
 
 
-pytest.importorskip("pyfinite")
 @pytest.mark.parametrize("chunk_size,length", [(3, 10), (8, 25)])
 def test_fountain_roundtrip_params(chunk_size, length):
     data = os.urandom(length)
-    encoded, info = encode_data_fountain(data, chunk_size=chunk_size)
+    batch, info = encode_data_fountain(data, chunk_size=chunk_size)
     assert info["chunk_size"] == chunk_size
-    decoded, _ = decode_data_fountain(encoded, info)
+    decoded, _ = decode_data_fountain(batch, info)
     assert decoded == data

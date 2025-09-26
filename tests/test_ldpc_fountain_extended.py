@@ -31,6 +31,6 @@ def test_ldpc_encode_decode_roundtrip(monkeypatch):
 
 def test_fountain_basic_roundtrip():
     data = b"abcd"
-    encoded, info = encode_data_fountain(data, chunk_size=2)
-    decoded, _ = decode_data_fountain(encoded, info)
+    batch, info = encode_data_fountain(data, chunk_size=2)
+    decoded, _ = decode_data_fountain(batch, info)
     assert decoded == data

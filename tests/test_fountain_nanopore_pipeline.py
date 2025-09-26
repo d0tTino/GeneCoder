@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+import random
+import random
 from pathlib import Path
+from typing import Mapping
 
 import pytest
 import genecoder.simulators.nanopore as nanopore
 from genecoder.core import run_pipeline
-from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
+from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins, register_fec
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.api import Codec
+from genecoder.formats import SequenceBatch
+from genecoder.fountain_codec import (
+    FountainFEC,
+    droplet_batch_to_bytes,
+    encode_data_fountain,
+)
 
 
 class _Base4Codec(Codec):
@@ -22,10 +31,74 @@ class _Base4Codec(Codec):
         return decode_base4_direct(encoded)[0]
 
 
+def _subset_batch(
+    batch: SequenceBatch,
+    info: Mapping[str, object],
+    keep_fraction: float,
+    *,
+    rng: random.Random | None = None,
+) -> SequenceBatch:
+    rng = rng or random.Random(2)
+    total = len(batch.oligos)
+    if total == 0:
+        return SequenceBatch(batch_id=batch.batch_id, metadata=dict(batch.metadata), seed=batch.seed, oligos=[])
+    k = int(info.get("k", 0))
+    keep = max(k, int(round(total * keep_fraction)))
+    keep = min(keep, total)
+    indices = sorted(rng.sample(range(total), keep))
+    required = set(range(min(k, total)))
+    selected = set(indices)
+    missing = sorted(required - selected)
+    if missing:
+        extras = sorted(selected - required, reverse=True)
+        for idx in missing:
+            if len(selected) >= keep and extras:
+                removed = extras.pop(0)
+                selected.remove(removed)
+            selected.add(idx)
+        indices = sorted(selected)
+    survivors = [batch.oligos[i] for i in indices]
+    return SequenceBatch(batch_id=batch.batch_id, metadata=dict(batch.metadata), seed=batch.seed, oligos=list(survivors))
+
+
+class _DroppingFountainFEC(FountainFEC):
+    def __init__(self, keep_fraction: float) -> None:
+        super().__init__()
+        self._keep_fraction = keep_fraction
+
+    def encode(
+        self,
+        data: bytes,
+        /,
+        *,
+        chunk_size: int = 4,
+        seed: int = 0,
+        redundancy: float = 2.0,
+        droplet_count: int | None = None,
+        c: float = 0.1,
+        delta: float = 0.5,
+        manifest_path: str | None = None,
+        **kwargs: object,
+    ) -> tuple[bytes, Mapping[str, object]]:
+        batch, info = encode_data_fountain(
+            data,
+            chunk_size,
+            seed=seed,
+            redundancy=redundancy,
+            droplet_count=droplet_count,
+            c=c,
+            delta=delta,
+            manifest_path=manifest_path,
+        )
+        survivors = _subset_batch(batch, info, self._keep_fraction)
+        updated_info = dict(info)
+        updated_info["droplet_count"] = len(survivors.oligos)
+        return droplet_batch_to_bytes(survivors), updated_info
+
+
 def test_fountain_nanopore_pipeline(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    pytest.importorskip("pyfinite")
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
     monkeypatch.setattr(nanopore.shutil, "which", lambda _: None)
     monkeypatch.setattr(
@@ -39,6 +112,7 @@ def test_fountain_nanopore_pipeline(
         "encode": _Base4Codec().encode,
         "decode": _Base4Codec().decode,
     }
+    register_fec("fountain", _DroppingFountainFEC(keep_fraction=0.85))
     SIMULATOR_REGISTRY["nanopore"] = nanopore.NanoporeChannel(
         error_rate=0.0,
         substitution_rate=0.0,
@@ -51,9 +125,12 @@ def test_fountain_nanopore_pipeline(
     outp = tmp_path / "out.bin"
     inp.write_bytes(data)
 
-    result, metrics = run_pipeline(
-        "base4", "fountain", "nanopore", str(inp), str(outp)
-    )
+    try:
+        result, metrics = run_pipeline(
+            "base4", "fountain", "nanopore", str(inp), str(outp)
+        )
+    finally:
+        register_fec("fountain", FountainFEC())
 
     assert result == data
     assert outp.read_bytes() == data
