@@ -198,6 +198,9 @@ def build_encoding_options(args: argparse.Namespace) -> EncodingOptions:
         seed=getattr(args, "seed", None),
         rs_symbol_size=getattr(args, "rs_symbol_size", None),
         rs_primitive=getattr(args, "rs_primitive", None),
+        fountain_chunk_size=getattr(args, "fountain_chunk_size", 4),
+        fountain_redundancy=getattr(args, "fountain_redundancy", 2.0),
+        fountain_manifest=getattr(args, "fountain_manifest", None),
     )
 
 

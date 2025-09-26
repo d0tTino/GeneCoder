@@ -25,13 +25,22 @@ def _levenshtein_counts(original: str, mutated: str) -> tuple[int, int, int]:
         def get_tag(op: Any) -> str:  # noqa: D401,ANN401
             return str(op[0])
 
-    except Exception:  # pragma: no cover - fallback to rapidfuzz
-        from rapidfuzz.distance import Levenshtein as RF
+    except Exception:  # pragma: no cover - fallback to rapidfuzz or difflib
+        try:
+            from rapidfuzz.distance import Levenshtein as RF
 
-        ops = RF.editops(original, mutated)
+            ops = RF.editops(original, mutated)
 
-        def get_tag(op: Any) -> str:  # noqa: D401,ANN401
-            return str(op.tag)
+            def get_tag(op: Any) -> str:  # noqa: D401,ANN401
+                return str(op.tag)
+
+        except Exception:
+            import difflib
+
+            ops = difflib.SequenceMatcher(None, original, mutated).get_opcodes()
+
+            def get_tag(op: Any) -> str:  # noqa: D401,ANN401
+                return str(op[0])
 
     subs = ins = dels = 0
     for op in ops:

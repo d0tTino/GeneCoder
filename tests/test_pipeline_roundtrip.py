@@ -35,9 +35,6 @@ def _setup_simple_channel(rate: float) -> None:
 def test_pipeline_roundtrip(tmp_path: Path, fec_backend: str) -> None:
     if fec_backend == "reed_solomon" and not _HAS_REEDSOLO:
         pytest.skip("reedsolo not installed")
-    if fec_backend == "fountain":
-        pytest.importorskip("pyfinite")
-
     init_plugins()
     _register_base_codec()
     _setup_simple_channel(rate=0.1)
@@ -85,7 +82,6 @@ def test_pipeline_roundtrip_rs_illumina(
 def test_pipeline_roundtrip_fountain_nanopore(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    pytest.importorskip("pyfinite")
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
     init_plugins()
     _register_base_codec()

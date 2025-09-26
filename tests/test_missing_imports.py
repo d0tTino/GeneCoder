@@ -12,14 +12,6 @@ from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 
 CASES = [
     (
-        "genecoder.fountain_codec",
-        "pyfinite",
-        "encode_data_fountain",
-        (b"data",),
-        {},
-        "pyfinite is required",
-    ),
-    (
         "genecoder.reed_solomon_codec",
         "reedsolo",
         "encode_data_rs",

@@ -169,9 +169,6 @@ def test_process_single_encode_applies_fix(tmp_path: Path) -> None:
     assert max_hp <= args.max_homopolymer
 
 
-_HAS_PYFINITE = importlib.util.find_spec("pyfinite") is not None
-
-
 @pytest.mark.parametrize(
     ("fec", "channel"),
     [
@@ -182,13 +179,7 @@ _HAS_PYFINITE = importlib.util.find_spec("pyfinite") is not None
                 not _HAS_REEDSOLO, reason="reedsolo not installed"
             ),
         ),
-        pytest.param(
-            "fountain",
-            "nanopore",
-            marks=pytest.mark.skipif(
-                not _HAS_PYFINITE, reason="pyfinite not installed"
-            ),
-        ),
+        ("fountain", "nanopore"),
     ],
 )
 def test_cli_encode_plugins(tmp_path: Path, fec: str, channel: str) -> None:

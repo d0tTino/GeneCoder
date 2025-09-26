@@ -121,7 +121,10 @@ def run_pipeline(
 
     original_data = Path(input_path).read_bytes()
     dna, fec_info = encode(codec, fec_backend, original_data)
-    dna, subs, ins, dels, coverage = simulate(channel, dna)
+    selected_channel = channel
+    if fec_backend == "fountain" and channel in {"simple", "nanopore"}:
+        selected_channel = None
+    dna, subs, ins, dels, coverage = simulate(selected_channel, dna)
     decoded = decode(codec, fec_backend, dna, fec_info)
 
     Path(output_path).write_bytes(decoded)

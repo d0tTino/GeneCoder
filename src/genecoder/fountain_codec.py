@@ -16,9 +16,14 @@ from typing import Any, Mapping, Tuple, cast
 
 from .api import FEC
 
+import json
 import math
 import random
+from collections import deque
 from itertools import accumulate
+from pathlib import Path
+
+from .formats import SequenceBatch, SequenceOligo
 
 
 _HAS_PYFINITE = True  # compatibility with older tests
@@ -74,6 +79,35 @@ def _xor_into(target: bytearray, src: bytes | bytearray) -> None:
         target[i] ^= b
 
 
+def _oligo_seed(oligo: SequenceOligo) -> int:
+    if oligo.seed is not None:
+        return int(oligo.seed)
+    seed_token = oligo.metadata.get("droplet_seed") or oligo.metadata.get("seed")
+    if seed_token is None:
+        raise ValueError("Droplet missing seed metadata")
+    return int(seed_token)
+
+
+def _batch_to_bytes(batch: SequenceBatch) -> bytes:
+    """Return the packed droplet byte stream for ``batch``."""
+
+    chunks: list[bytes] = []
+    for oligo in batch.oligos:
+        seed = _oligo_seed(oligo)
+        payload_hex = oligo.sequence.strip()
+        if len(payload_hex) % 2 != 0:
+            raise ValueError("Droplet payload hex must contain an even number of symbols")
+        payload = bytes.fromhex(payload_hex)
+        chunks.append(seed.to_bytes(4, "big") + payload)
+    return b"".join(chunks)
+
+
+def droplet_batch_to_bytes(batch: SequenceBatch) -> bytes:
+    """Expose the packed droplet stream for ``batch`` to external callers."""
+
+    return _batch_to_bytes(batch)
+
+
 def encode_data_fountain(
     data: bytes,
     chunk_size: int = 4,
@@ -83,12 +117,15 @@ def encode_data_fountain(
     droplet_count: int | None = None,
     c: float = 0.1,
     delta: float = 0.5,
-) -> Tuple[bytes, Any]:
+    manifest_path: str | Path | None = None,
+) -> Tuple[SequenceBatch, Any]:
     """Encode ``data`` using an LT fountain scheme.
 
     The ``c`` and ``delta`` parameters control the robust soliton distribution
     used when selecting droplet degrees. They are forwarded directly to
-    :func:`_robust_soliton_cdf`.
+    :func:`_robust_soliton_cdf`. Droplets are returned as a
+    :class:`~genecoder.formats.SequenceBatch` where each oligo stores the
+    droplet seed and payload metadata.
 
     Parameters
     ----------
@@ -109,25 +146,50 @@ def encode_data_fountain(
         soliton distribution.
     delta:
         Failure probability for the robust soliton distribution.
+    manifest_path:
+        Optional filesystem path where droplet metadata will be exported as a
+        JSON manifest. When provided, parent directories are created
+        automatically.
     """
 
-    try:
-        import builtins
-        builtins.__import__("pyfinite")
-    except Exception as exc:  # pragma: no cover - optional dependency missing
-        raise ImportError("pyfinite is required") from exc
-
     if not data:
-        return (
-            b"",
-            {
-                "chunk_size": chunk_size,
-                "orig_len": 0,
-                "k": 0,
-                "c": c,
-                "delta": delta,
+        batch = SequenceBatch(
+            batch_id="fountain",
+            metadata={
+                "batch_id": "fountain",
+                "batch_size": "0",
+                "chunk_size": str(chunk_size),
             },
+            seed=seed,
+            oligos=[],
         )
+        info = {
+            "chunk_size": chunk_size,
+            "orig_len": 0,
+            "k": 0,
+            "seed": seed,
+            "c": c,
+            "delta": delta,
+            "droplet_count": 0,
+        }
+        if manifest_path is not None:
+            path = Path(manifest_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                json.dumps(
+                    {
+                        "chunk_size": chunk_size,
+                        "orig_len": 0,
+                        "seed": seed,
+                        "c": c,
+                        "delta": delta,
+                        "droplets": [],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+        return batch, info
 
     k = math.ceil(len(data) / chunk_size)
     blocks = [
@@ -137,21 +199,90 @@ def encode_data_fountain(
     num_droplets = (
         droplet_count
         if droplet_count is not None
-        else max(k, int(k * redundancy))
+        else max(k, int(math.ceil(k * redundancy)))
     )
     cdf = _robust_soliton_cdf(k, c=c, delta=delta)
-    droplets: list[bytes] = []
+
+    batch_id = f"fountain-{seed}"
+    batch_metadata = {
+        "batch_id": batch_id,
+        "batch_size": str(num_droplets),
+        "chunk_size": str(chunk_size),
+        "k": str(k),
+        "orig_len": str(len(data)),
+        "seed": str(seed),
+        "redundancy": f"{redundancy:.4f}",
+    }
+
+    oligos: list[SequenceOligo] = []
+    manifest_entries: list[dict[str, Any]] = []
     for i in range(num_droplets):
         droplet_seed = seed + i
         rnd = random.Random(droplet_seed)
-        degree = _sample_degree(cdf, rnd)
-        indices = rnd.sample(range(k), degree)
+        if i < k:
+            degree = 1
+            indices = [i]
+        else:
+            degree = _sample_degree(cdf, rnd)
+            indices = rnd.sample(range(k), degree)
         payload = bytearray(chunk_size)
         for idx in indices:
             _xor_into(payload, blocks[idx])
-        droplets.append(droplet_seed.to_bytes(4, "big") + bytes(payload))
+        payload_hex = bytes(payload).hex().upper()
+        metadata = {
+            "batch_id": batch_id,
+            "batch_size": str(num_droplets),
+            "oligo_index": str(i + 1),
+            "oligo_id": f"{batch_id}-{i + 1:04d}",
+            "droplet_seed": str(droplet_seed),
+            "droplet_index": str(i),
+            "payload_format": "hex",
+            "chunk_size": str(chunk_size),
+        }
+        header = (
+            f"batch_id={batch_id} oligo_index={i + 1} droplet_seed={droplet_seed} "
+            f"payload_format=hex"
+        )
+        oligos.append(
+            SequenceOligo(
+                sequence=payload_hex,
+                header=header,
+                index=i + 1,
+                oligo_id=metadata["oligo_id"],
+                metadata=metadata,
+                seed=droplet_seed,
+            )
+        )
+        manifest_entries.append(
+            {
+                "index": i,
+                "seed": droplet_seed,
+                "degree": degree,
+                "sources": indices,
+            }
+        )
 
-    encoded = b"".join(droplets)
+    batch = SequenceBatch(
+        batch_id=batch_id,
+        metadata=batch_metadata,
+        seed=seed,
+        oligos=oligos,
+    )
+
+    if manifest_path is not None:
+        path = Path(manifest_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_payload = {
+            "chunk_size": chunk_size,
+            "orig_len": len(data),
+            "seed": seed,
+            "c": c,
+            "delta": delta,
+            "k": k,
+            "droplets": manifest_entries,
+        }
+        path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
+
     info = {
         "chunk_size": chunk_size,
         "orig_len": len(data),
@@ -159,12 +290,13 @@ def encode_data_fountain(
         "seed": seed,
         "c": c,
         "delta": delta,
+        "droplet_count": num_droplets,
     }
-    return encoded, info
+    return batch, info
 
 
 def decode_data_fountain(
-    encoded: bytes,
+    encoded: bytes | SequenceBatch,
     info: Mapping[str, Any],
     *,
     c: float | None = None,
@@ -175,7 +307,9 @@ def decode_data_fountain(
     Parameters
     ----------
     encoded:
-        Bytes emitted by :func:`encode_data_fountain`.
+        Bytes emitted by :func:`encode_data_fountain` or a
+        :class:`~genecoder.formats.SequenceBatch` containing the surviving
+        droplets.
     info:
         Mapping returned alongside the encoded data.
     c:
@@ -186,6 +320,8 @@ def decode_data_fountain(
         Override for the robust soliton ``delta`` parameter. If not provided,
         the value stored in ``info`` (or the default) is used. Forwarded to
         :func:`_robust_soliton_cdf`.
+
+    Only droplets present in ``encoded`` are used during belief-propagation.
     """
 
     chunk_size = int(info["chunk_size"])
@@ -197,48 +333,129 @@ def decode_data_fountain(
     c = float(info.get("c", 0.1)) if c is None else c
     delta = float(info.get("delta", 0.5)) if delta is None else delta
 
-    droplet_size = chunk_size + 4
-    droplets = [
-        (
-            int.from_bytes(encoded[i : i + 4], "big"),
-            bytearray(encoded[i + 4 : i + droplet_size]),
-        )
-        for i in range(0, len(encoded), droplet_size)
-    ]
+    base_seed = int(info.get("seed", 0))
+    droplets: list[tuple[int, bytearray]] = []
+    if isinstance(encoded, SequenceBatch):
+        for oligo in encoded.oligos:
+            seed_val = _oligo_seed(oligo)
+            payload_hex = oligo.sequence.strip()
+            if len(payload_hex) % 2 != 0:
+                raise ValueError("Droplet payload hex must have even length")
+            payload_bytes = bytes.fromhex(payload_hex)
+            if len(payload_bytes) != chunk_size:
+                if len(payload_bytes) < chunk_size:
+                    payload_bytes = payload_bytes.ljust(chunk_size, b"\x00")
+                else:
+                    payload_bytes = payload_bytes[:chunk_size]
+            droplets.append((seed_val, bytearray(payload_bytes)))
+    else:
+        droplet_size = chunk_size + 4
+        for i in range(0, len(encoded), droplet_size):
+            seed_val = int.from_bytes(encoded[i : i + 4], "big")
+            payload = bytearray(encoded[i + 4 : i + droplet_size])
+            droplets.append((seed_val, payload))
 
     cdf = _robust_soliton_cdf(k, c=c, delta=delta)
-    equations: list[tuple[list[int], bytearray]] = []
-    for seed, payload in droplets:
-        rnd = random.Random(seed)
-        degree = _sample_degree(cdf, rnd)
-        indices = rnd.sample(range(k), degree)
-        equations.append((indices, payload))
+    ripple: deque[dict[str, Any]] = deque()
+    equations: list[dict[str, Any]] = []
+    for seed_val, payload in droplets:
+        rnd = random.Random(seed_val)
+        offset = seed_val - base_seed
+        if 0 <= offset < k:
+            degree = 1
+            indices = [offset]
+        else:
+            degree = _sample_degree(cdf, rnd)
+            indices = rnd.sample(range(k), degree)
+        unknown = set(indices)
+        equation = {"indices": indices, "payload": payload, "unknown": unknown}
+        equations.append(equation)
+        if len(unknown) == 1:
+            ripple.append(equation)
 
     pieces: list[bytearray | None] = [None] * k
 
-    progress = True
-    while progress and equations:
-        progress = False
-        remaining: list[tuple[list[int], bytearray]] = []
-        for indices, payload in equations:
-            unknown = [i for i in indices if pieces[i] is None]
-            if len(unknown) == 0:
+    while ripple:
+        equation = ripple.popleft()
+        if not equation["unknown"]:
+            continue
+        target_idx = next(iter(equation["unknown"]))
+        payload = equation["payload"]
+        if pieces[target_idx] is not None:
+            continue
+        pieces[target_idx] = bytearray(payload)
+        equation["unknown"].clear()
+        for other in equations:
+            if target_idx not in other["unknown"]:
                 continue
-            if len(unknown) == 1:
-                j = unknown[0]
-                for idx in indices:
-                    if idx != j and pieces[idx] is not None:
-                        _xor_into(payload, cast(bytearray, pieces[idx]))
-                pieces[j] = payload
-                progress = True
-            else:
-                remaining.append((indices, payload))
-        equations = remaining
+            other["unknown"].remove(target_idx)
+            _xor_into(other["payload"], cast(bytearray, pieces[target_idx]))
+            if len(other["unknown"]) == 1:
+                ripple.append(other)
 
-    if any(p is None for p in pieces):
+    if any(piece is None for piece in pieces):
+        residual_rows: list[tuple[int, bytearray]] = []
+        for equation in equations:
+            if not equation["unknown"]:
+                continue
+            mask = 0
+            for idx in equation["unknown"]:
+                mask |= 1 << idx
+            residual_rows.append((mask, bytearray(equation["payload"])))
+
+        if residual_rows:
+            rows = [list(row) for row in residual_rows]
+            pivot_rows: dict[int, int] = {}
+            row_idx = 0
+            for col in range(k):
+                pivot_row = None
+                for r in range(row_idx, len(rows)):
+                    if rows[r][0] & (1 << col):
+                        pivot_row = r
+                        break
+                if pivot_row is None:
+                    continue
+                rows[row_idx], rows[pivot_row] = rows[pivot_row], rows[row_idx]
+                pivot_mask, pivot_payload = rows[row_idx]
+                for r in range(len(rows)):
+                    if r != row_idx and (rows[r][0] & (1 << col)):
+                        rows[r][0] ^= pivot_mask
+                        _xor_into(rows[r][1], cast(bytearray, pivot_payload))
+                pivot_rows[col] = row_idx
+                row_idx += 1
+                if row_idx == len(rows):
+                    break
+
+            for mask, payload in rows[row_idx:]:
+                if mask == 0 and any(payload):
+                    raise ValueError("Fountain decode failed")
+
+            solved: dict[int, bytearray] = {}
+            for col in sorted(pivot_rows.keys(), reverse=True):
+                row_mask, row_payload = rows[pivot_rows[col]]
+                payload = bytearray(row_payload)
+                remaining = row_mask & ~(1 << col)
+                unresolved = False
+                while remaining:
+                    idx = (remaining & -remaining).bit_length() - 1
+                    if pieces[idx] is not None:
+                        _xor_into(payload, cast(bytearray, pieces[idx]))
+                    elif idx in solved:
+                        _xor_into(payload, solved[idx])
+                    else:
+                        unresolved = True
+                        break
+                    remaining &= remaining - 1
+                if not unresolved:
+                    solved[col] = payload
+            for idx, payload in solved.items():
+                if pieces[idx] is None:
+                    pieces[idx] = payload
+
+    if any(piece is None for piece in pieces):
         raise ValueError("Fountain decode failed")
 
-    data = b"".join(cast(bytearray, p) for p in pieces)[:orig_len]
+    data = b"".join(bytes(cast(bytearray, p)) for p in pieces)[:orig_len]
     return data, 0
 
 
@@ -256,9 +473,10 @@ class FountainFEC(FEC):
         droplet_count: int | None = None,
         c: float = 0.1,
         delta: float = 0.5,
+        manifest_path: str | Path | None = None,
         **kwargs: Any,
     ) -> Tuple[bytes, Mapping[str, Any]]:  # noqa: ANN401
-        return encode_data_fountain(
+        batch, info = encode_data_fountain(
             data,
             chunk_size,
             seed=seed,
@@ -266,7 +484,9 @@ class FountainFEC(FEC):
             droplet_count=droplet_count,
             c=c,
             delta=delta,
+            manifest_path=manifest_path,
         )
+        return _batch_to_bytes(batch), info
 
     def decode(
         self,
