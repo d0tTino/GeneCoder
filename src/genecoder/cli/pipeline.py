@@ -13,6 +13,8 @@ from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES
 
 from genecoder.core import encode, simulate, decode, metrics as gather_metrics
+from genecoder.html_report import generate_html_report
+from genecoder.manifest import generate_manifest
 from genecoder.parallel import parallel_map
 from genecoder.plugin_manager import (
     CODEC_REGISTRY,
@@ -139,7 +141,7 @@ def register_subcommand(
     parser.add_argument("input", help="Path to input file")
     parser.add_argument("output", help="Path to output file")
 
-    parser.add_argument("--config", help="YAML configuration file")
+    parser.add_argument("-c", "--config", help="YAML configuration file")
 
     parser.add_argument("--codec", choices=codec_choices, default=None)
     if fec_choices:
@@ -245,3 +247,22 @@ def _handle_command(args: argparse.Namespace) -> None:
 
     metrics_path = Path(str(args.output) + ".json")
     metrics_path.write_text(json.dumps({"metrics": metrics}))
+    logger.info("Metrics written to %s", metrics_path)
+
+    manifest_params: Dict[str, Any] = {"method": codec}
+    if fec:
+        manifest_params["fec"] = fec
+    if channel and channel != "none":
+        manifest_params["channel"] = channel
+        if channel_params:
+            manifest_params["channel_parameters"] = channel_params
+
+    manifest = generate_manifest(args.input, manifest_params, metrics)
+    manifest_path = metrics_path.with_suffix(".manifest.json")
+    manifest_path.write_text(json.dumps(manifest, indent=2))
+    logger.info("Manifest written to %s", manifest_path)
+
+    html_report_path = metrics_path.with_suffix(".html")
+    html = generate_html_report(str(manifest_path))
+    html_report_path.write_text(html, encoding="utf-8")
+    logger.info("HTML report written to %s", html_report_path)
