@@ -14,7 +14,7 @@ GeneCoder has been enhanced with new encoding strategies, error correction, batc
 
 For more details, explore the sections below.
 
-* [Vertical Slice Guide](vertical_slice.md) – Quick setup and interface demo.
+* [Vertical Slice Guide](vertical_slice.md) – Quick setup and interface demo featuring the multi-oligo pipeline.
 * [n8n Overview](n8n_overview.md) – Automate workflows with n8n.
 * [Simulators](simulators.md) – Available read simulators and how to install external tools.
 * [Performance Benchmarks](performance.md) – Encoding/decoding throughput numbers.

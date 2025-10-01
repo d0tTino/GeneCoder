@@ -20,3 +20,4 @@ an older plugin:
    invoke ``finalize_batch_statistics`` to generate aggregate metrics.
 4. Reuse ``apply_legacy_simulator`` for simple passthrough simulators that do not
    yet understand batches; it automatically produces ``SequenceBatch`` outputs.
+
