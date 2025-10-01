@@ -1,0 +1,17 @@
+# Gold-standard pipeline preset using GC-balanced encoding and Reed-Solomon FEC
+# with MiSeq-style Illumina simulation.
+encode:
+  input_files:
+    - tests/data/vertical_slice.txt
+  method: gc_balanced
+  fec: reed_solomon
+simulate:
+  simulators:
+    - name: insilicoseq
+      profile: miseq
+  pipeline:
+    illumina_profile: miseq
+    coverage_distribution:
+      18: 1.0
+decode:
+  method: gc_balanced
