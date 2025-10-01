@@ -23,6 +23,8 @@ files = [
     "plugins-examples/example_visualizer/example_visualizer",
     "plugins-examples/example_package_plugin/example_plugin",
     "plugins-examples/advanced_fec/advanced_fec",
+    "plugins-examples/channel_template/channel_template",
+    "plugins-examples/encoder_template/encoder_template",
 ]
 exclude = "^tests/"
 

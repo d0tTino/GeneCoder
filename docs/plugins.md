@@ -5,7 +5,9 @@ package can expose entry points under `genecoder.plugins`, `genecoder.fec`,
 `genecoder.simulators` or `genecoder.visualizers` that point to modules with a
 `register` function. The function receives a callback used to add the
 implementation to the appropriate registry. GeneCoder looks only at packages
-installed in your current Python environment when loading plugins.
+installed in your current Python environment when loading plugins. Plugins that
+use the batch-aware simulator API must declare `genecoder>=0.2.0` in their
+project metadata.
 
 ## Interface Expectations
 
@@ -35,14 +37,58 @@ def register(register_codec):
 ### Channels
 
 Channel plugins subclass [``genecoder.api.Simulator``](api_reference.md#genecoder.api.Simulator)
-and implement a ``simulate`` method:
+and implement a ``simulate`` method that accepts and returns
+``SequenceBatch`` instances. The helper demonstrates converting legacy string
+inputs into batches so per-oligo metadata is always available:
 
 ```python
+import secrets
+
 from genecoder.api import Simulator
+from genecoder.formats import SequenceBatch
+from genecoder.simulators.batch_utils import (
+    RESULT_COVERAGE_KEY,
+    clone_batch,
+    finalize_batch_statistics,
+)
+
 
 class MyChannel(Simulator):
-    def simulate(self, sequence: str) -> str:
-        ...
+    def simulate(self, sequence: str | SequenceBatch) -> SequenceBatch:
+        batch = sequence if isinstance(sequence, SequenceBatch) else SequenceBatch.build(
+            [("mychannel", sequence)],
+            batch_id="mychannel",
+            batch_seed=secrets.randbits(32),
+        )
+
+        mutated = clone_batch(batch)
+        coverage_counts: list[int] = []
+        dropouts: list[bool] = []
+        synthesis_failures: list[bool] = []
+        mutation_totals: list[tuple[int, int, int]] = []
+
+        for source, oligo in zip(batch.oligos, mutated.oligos):
+            oligo.sequence = source.sequence
+            coverage_counts.append(1)
+            dropouts.append(False)
+            synthesis_failures.append(False)
+            mutation_totals.append((0, 0, 0))
+            oligo.metadata[RESULT_COVERAGE_KEY] = "1"
+
+        finalize_batch_statistics(
+            mutated,
+            coverage_counts,
+            dropouts,
+            synthesis_failures,
+            mutation_totals,
+        )
+
+        if mutated.seed is None:
+            mutated.seed = secrets.randbits(32)
+        mutated.metadata["sim_seed"] = str(mutated.seed)
+
+        return mutated
+
 
 def register(register_simulator):
     register_simulator("mychannel", MyChannel())
@@ -113,11 +159,22 @@ def register(register_codec):
 ### Channel Example
 
 ```python
+import secrets
+
 from genecoder.api import Simulator
+from genecoder.formats import SequenceBatch
+
 
 class MyChannel(Simulator):
-    def simulate(self, sequence: str) -> str:
-        ...
+    def simulate(self, sequence: str | SequenceBatch) -> SequenceBatch:
+        if isinstance(sequence, SequenceBatch):
+            return sequence
+        return SequenceBatch.build(
+            [("mychannel", sequence)],
+            batch_id="mychannel",
+            batch_seed=secrets.randbits(32),
+        )
+
 
 def register(register_simulator):
     register_simulator("mychannel", MyChannel())
@@ -155,6 +212,20 @@ visualized: b'hi\n'
 ```
 
 See [`plugins-examples`](../plugins-examples/) for complete reference implementations.
+
+### Batch-aware Adapter Patterns
+
+- **Legacy simulators** – wrap older ``str``-only simulators with
+  ``genecoder.simulators.batch_utils.apply_legacy_simulator``. The helper
+  iterates each oligo, updates coverage statistics and returns a complete
+  ``SequenceBatch`` so the rest of the pipeline can remain batch-native.
+- **Metadata helpers** – use ``clone_batch`` to duplicate the incoming batch
+  before mutating oligos. After processing, call ``finalize_batch_statistics`` to
+  populate aggregate metrics such as coverage histograms and dropout rates.
+- **Validation hooks** – mypy treats the templates in ``plugins-examples`` as
+  first-class code. Running ``mypy --config-file mypy.ini`` will flag protocol
+  mismatches if ``simulate`` stops returning ``SequenceBatch`` objects or
+  required metadata keys are missing from the examples.
 
 ### Step-by-step Example
 
