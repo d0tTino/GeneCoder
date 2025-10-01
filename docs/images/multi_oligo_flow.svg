@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" role="img" aria-labelledby="title desc">
+  <title id="title">Multi-oligo pipeline flow</title>
+  <desc id="desc">Encode to oligo batches, simulate channel dropout, and decode reconstructed payloads.</desc>
+  <defs>
+    <linearGradient id="oligoGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+      <stop offset="0%" stop-color="#2b9ad8" />
+      <stop offset="100%" stop-color="#8ad7f6" />
+    </linearGradient>
+    <linearGradient id="channelGradient" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#f7b733" />
+      <stop offset="100%" stop-color="#fc4a1a" />
+    </linearGradient>
+    <linearGradient id="decodeGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+      <stop offset="0%" stop-color="#5ec16e" />
+      <stop offset="100%" stop-color="#a6e89c" />
+    </linearGradient>
+    <style>
+      text { font-family: "Fira Sans", "Segoe UI", sans-serif; fill: #1f2933; }
+      .label { font-size: 20px; font-weight: 600; }
+      .body { font-size: 16px; }
+    </style>
+  </defs>
+  <rect x="32" y="48" width="160" height="144" rx="16" fill="url(#oligoGradient)" opacity="0.9" />
+  <rect x="240" y="48" width="160" height="144" rx="16" fill="url(#channelGradient)" opacity="0.9" />
+  <rect x="448" y="48" width="160" height="144" rx="16" fill="url(#decodeGradient)" opacity="0.9" />
+  <text x="112" y="88" text-anchor="middle" class="label">Encode</text>
+  <text x="112" y="120" text-anchor="middle" class="body">chunk → oligos</text>
+  <text x="112" y="146" text-anchor="middle" class="body">SequenceBatch + manifest</text>
+  <text x="320" y="88" text-anchor="middle" class="label">Channel</text>
+  <text x="320" y="120" text-anchor="middle" class="body">coverage mix</text>
+  <text x="320" y="146" text-anchor="middle" class="body">dropout_rate &amp; synthesis checks</text>
+  <text x="528" y="88" text-anchor="middle" class="label">Decode</text>
+  <text x="528" y="120" text-anchor="middle" class="body">reassemble payload</text>
+  <text x="528" y="146" text-anchor="middle" class="body">metrics + dashboard</text>
+  <g fill="none" stroke="#1f2933" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M200 120h32" />
+    <path d="M408 120h32" />
+    <polygon points="416,120 400,132 400,108" fill="#1f2933" />
+    <polygon points="624,120 608,132 608,108" fill="#1f2933" />
+  </g>
+  <g>
+    <circle cx="320" cy="182" r="22" fill="#fff" stroke="#fc4a1a" stroke-width="4" />
+    <text x="320" y="190" text-anchor="middle" class="body" fill="#fc4a1a">10% drop</text>
+    <circle cx="112" cy="182" r="22" fill="#fff" stroke="#2b9ad8" stroke-width="4" />
+    <text x="112" y="190" text-anchor="middle" class="body" fill="#2b9ad8">96 nt</text>
+    <circle cx="528" cy="182" r="22" fill="#fff" stroke="#5ec16e" stroke-width="4" />
+    <text x="528" y="190" text-anchor="middle" class="body" fill="#2f855a">99.2%</text>
+  </g>
+</svg>

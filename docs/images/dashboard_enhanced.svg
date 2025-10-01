@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-labelledby="dashTitle dashDesc">
+  <title id="dashTitle">Enhanced GeneCoder dashboard</title>
+  <desc id="dashDesc">Mock dashboard layout showing dropout ribbon, coverage heatmap and oligo table.</desc>
+  <defs>
+    <style>
+      text { font-family: "Inter", "Segoe UI", sans-serif; fill: #1f2a3a; }
+      .title { font-size: 22px; font-weight: 700; }
+      .subtitle { font-size: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+      .small { font-size: 14px; }
+    </style>
+    <linearGradient id="card" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#eff6ff" />
+      <stop offset="100%" stop-color="#e0f2fe" />
+    </linearGradient>
+  </defs>
+  <rect width="720" height="420" rx="24" fill="#f8fafc" />
+  <rect x="24" y="24" width="672" height="372" rx="20" fill="#ffffff" stroke="#d0d7e3" stroke-width="2" />
+  <text x="60" y="72" class="title">Run 42 · Multi-oligo bundle</text>
+  <text x="60" y="96" class="small" fill="#475569">Dropout-aware Illumina simulation with Fountain FEC</text>
+  <rect x="60" y="116" width="280" height="120" rx="16" fill="url(#card)" />
+  <text x="80" y="148" class="subtitle" fill="#0f172a">dropout trend</text>
+  <polyline points="80,204 110,180 140,188 170,160 200,152 230,166 260,140 300,132" fill="none" stroke="#f97316" stroke-width="5" stroke-linecap="round" />
+  <circle cx="80" cy="204" r="6" fill="#f97316" />
+  <circle cx="170" cy="160" r="6" fill="#f97316" />
+  <circle cx="260" cy="140" r="6" fill="#f97316" />
+  <text x="80" y="222" class="small" fill="#f97316">Peak dropout 12%</text>
+  <rect x="360" y="116" width="288" height="120" rx="16" fill="url(#card)" />
+  <text x="380" y="148" class="subtitle" fill="#0f172a">coverage heatmap</text>
+  <g transform="translate(380 156)">
+    <rect x="0" y="0" width="240" height="80" fill="#e2e8f0" rx="12" />
+    <rect x="8" y="8" width="48" height="64" fill="#0ea5e9" opacity="0.3" rx="8" />
+    <rect x="60" y="8" width="48" height="64" fill="#0ea5e9" opacity="0.6" rx="8" />
+    <rect x="112" y="8" width="48" height="64" fill="#0ea5e9" opacity="0.85" rx="8" />
+    <rect x="164" y="8" width="48" height="64" fill="#0ea5e9" opacity="0.45" rx="8" />
+  </g>
+  <text x="380" y="222" class="small" fill="#0284c7">Mean coverage 18×</text>
+  <rect x="60" y="260" width="588" height="120" rx="16" fill="#0f172a" opacity="0.85" />
+  <text x="80" y="296" class="subtitle" fill="#e2e8f0">oligo inspector</text>
+  <text x="80" y="320" class="small" fill="#cbd5f5">#0216 · GC 48% · homopolymer 3 · dropout ✓</text>
+  <text x="80" y="344" class="small" fill="#cbd5f5">#0217 · GC 51% · homopolymer 4 · dropout ✗</text>
+  <text x="80" y="368" class="small" fill="#cbd5f5">#0218 · GC 49% · homopolymer 2 · dropout ✗</text>
+  <text x="420" y="320" class="small" fill="#34d399">Recovered payload 99.4%</text>
+</svg>
