@@ -16,6 +16,9 @@ All notable changes to this project will be documented in this file.
 - Plugin registry now verifies package checksums before installation.
 - Renamed ``Channel.error_rate`` to ``Channel.substitution_prob``; ``error_rate`` remains
   as a deprecated alias.
+- **Breaking:** Simulator plugins must adopt the ``SequenceBatch`` API. Example
+  packages now emit metadata for batch IDs, seeds and coverage, and declare a
+  minimum dependency of ``genecoder>=0.2.0``.
 
 ## [0.1.0] - 2025-06-12
 ### Added

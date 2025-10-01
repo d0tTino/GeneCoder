@@ -52,6 +52,27 @@ and mypy lint those files as well:
 pre-commit run --files plugins-examples/example_codec/example_codec/__init__.py
 ```
 
+### Migrating plugins to `SequenceBatch`
+
+Simulators must now accept and return ``genecoder.formats.SequenceBatch``
+instances. To update an existing string-based plugin:
+
+1. Convert any incoming ``str`` to a batch with
+   ``SequenceBatch.build(..., batch_seed=secrets.randbits(32))`` so oligo IDs and
+   seeds are populated automatically.
+2. Use ``genecoder.simulators.batch_utils.clone_batch`` to work on a copy of the
+   source batch and preserve metadata.
+3. Populate coverage, dropout and synthesis results via
+   ``genecoder.simulators.batch_utils.RESULT_*`` constants and finish with
+   ``finalize_batch_statistics`` to keep aggregate metadata in sync.
+4. Opt into the compatibility layer by calling
+   ``apply_legacy_simulator`` when you need to adapt an older ``str``-only
+   simulator. The helper takes care of all metadata bookkeeping.
+
+``mypy`` validates the plugin templates in ``plugins-examples/`` to ensure these
+hooks stay exercised. Run ``mypy --config-file mypy.ini`` locally after editing
+examples to confirm your plugin still satisfies the updated protocol.
+
 The hook also runs automatically on each commit if installed.
 
 CI runs `ruff check` and `mypy` on pull requests that modify code. Fix any
