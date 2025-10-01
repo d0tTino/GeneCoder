@@ -38,6 +38,7 @@ _DEF_METRICS: dict[str, Any] = {
     "deletions": None,
     "coverage": None,
     "coverage_distribution": [],
+    "oligo_metrics": {},
 }
 
 _ERROR_METRICS: tuple[tuple[str, str], ...] = (
@@ -124,6 +125,61 @@ def _coverage_value(data: dict[str, Any]) -> float | None:
     return None
 
 
+def _extract_oligo_records(data: dict[str, Any]) -> list[dict[str, Any]]:
+    oligo = data.get("oligo_metrics")
+    if not isinstance(oligo, dict):
+        return []
+    gc_vals = [
+        float(v) for v in oligo.get("gc_percentages", []) if isinstance(v, (int, float))
+    ]
+    hp_vals = [
+        float(v) for v in oligo.get("max_homopolymers", []) if isinstance(v, (int, float))
+    ]
+    dropout_flags = [
+        bool(v) if isinstance(v, bool) else bool(int(v))
+        for v in oligo.get("dropout_flags", [])
+    ]
+    ecc = oligo.get("ecc_success")
+    ecc_map: dict[str, list[float]] = {}
+    if isinstance(ecc, dict):
+        for name, values in ecc.items():
+            if isinstance(values, list):
+                filtered = [
+                    float(val)
+                    for val in values
+                    if isinstance(val, (int, float)) or isinstance(val, bool)
+                ]
+                if filtered:
+                    ecc_map[str(name)] = [
+                        float(val) if not isinstance(val, bool) else (1.0 if val else 0.0)
+                        for val in filtered
+                    ]
+
+    max_len = max(
+        [len(gc_vals), len(hp_vals), len(dropout_flags)]
+        + [len(values) for values in ecc_map.values()] 
+        if ecc_map
+        else [len(gc_vals), len(hp_vals), len(dropout_flags)]
+    )
+    if max_len == 0:
+        return []
+
+    records: list[dict[str, Any]] = []
+    for idx in range(max_len):
+        record: dict[str, Any] = {"Index": idx + 1}
+        if idx < len(gc_vals):
+            record["GC%"] = gc_vals[idx]
+        if idx < len(hp_vals):
+            record["Max Homopolymer"] = hp_vals[idx]
+        if idx < len(dropout_flags):
+            record["Dropout"] = dropout_flags[idx]
+        for name, values in ecc_map.items():
+            if idx < len(values):
+                record[f"ECC:{name}"] = values[idx]
+        records.append(record)
+    return records
+
+
 def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: no cover - UI logic
     """Render the dashboard from one or more metrics files."""
 
@@ -141,6 +197,7 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     hp_rows: list[dict[str, float | str]] = []
     error_rows: list[dict[str, float | str]] = []
     coverage_rows: list[dict[str, float | str]] = []
+    oligo_rows: list[dict[str, Any]] = []
     for name, data in datasets.items():
         label = Path(name).stem
         min_gc, mean_gc, max_gc = _gc_stats(data.get("gc_distribution"))
@@ -165,6 +222,11 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         if coverage is not None:
             coverage_rows.append({"Run": label, "Metric": "Coverage", "Value": coverage})
 
+        for record in _extract_oligo_records(data):
+            record = {**record}
+            record["Run"] = label
+            oligo_rows.append(record)
+
     st.header("GC Summary (%)")
     if gc_rows:
         if alt and pd:
@@ -186,6 +248,61 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                     st.bar_chart(chart_data)
     else:
         st.write("No GC summary data.")
+
+    st.header("Per-oligo Distributions")
+    if oligo_rows:
+        if alt and pd:
+            df = pd.DataFrame(oligo_rows)
+            gc_chart = (
+                alt.Chart(df.dropna(subset=["GC%"]))
+                .mark_bar(opacity=0.7)
+                .encode(
+                    alt.X("GC%:Q", bin=alt.Bin(maxbins=20)),
+                    y="count()",
+                    color="Run:N",
+                    tooltip=["Run", "count()"],
+                )
+                .properties(title="GC% Histogram")
+            )
+            hp_chart = (
+                alt.Chart(df.dropna(subset=["Max Homopolymer"]))
+                .mark_boxplot()
+                .encode(x="Run:N", y="Max Homopolymer:Q", color="Run:N")
+                .properties(title="Max Homopolymer Boxplot")
+            )
+            st.altair_chart(gc_chart, use_container_width=True)
+            st.altair_chart(hp_chart, use_container_width=True)
+        else:  # pragma: no cover - basic fallback
+            gc_hist: dict[str, list[float]] = {}
+            hp_values: dict[str, list[float]] = {}
+            for row in oligo_rows:
+                run = row["Run"]
+                gc_hist.setdefault(run, [])
+                hp_values.setdefault(run, [])
+                if "GC%" in row:
+                    gc_hist[run].append(row["GC%"])
+                if "Max Homopolymer" in row:
+                    hp_values[run].append(row["Max Homopolymer"])
+            for run, values in gc_hist.items():
+                st.write(f"GC% for {run}: {[round(v, 3) for v in values]}")
+            for run, values in hp_values.items():
+                st.write(f"Homopolymer lengths for {run}: {values}")
+
+        # Highlight out-of-bounds oligos (GC outside [0.4,0.6] or HP > 8)
+        flagged = [
+            row
+            for row in oligo_rows
+            if (
+                ("GC%" in row and (row["GC%"] < 0.4 or row["GC%"] > 0.6))
+                or ("Max Homopolymer" in row and row["Max Homopolymer"] > 8)
+                or row.get("Dropout")
+            )
+        ]
+        if flagged:
+            st.subheader("Out-of-bounds oligos")
+            st.table(flagged)
+    else:
+        st.write("No per-oligo metrics available.")
 
     st.header("Error Summary")
     if error_rows:

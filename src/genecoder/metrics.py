@@ -3,7 +3,7 @@ import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, IO, Sequence, cast
+from typing import Any, IO, Mapping, Sequence, cast
 
 try:  # pragma: no cover - optional dependency
     import portalocker
@@ -36,6 +36,7 @@ __all__ = [
     "oligos_per_week",
     "append_gc_distribution",
     "append_homopolymer_runs",
+    "append_oligo_metrics",
 ]
 
 
@@ -122,6 +123,48 @@ class Metrics:
                     for i, c in enumerate(counts):
                         existing_hp[i] += int(c)
                     metrics[key] = existing_hp
+                elif key in {"oligo_gc_percentages", "oligo_homopolymers"}:
+                    if counts is None:
+                        raise ValueError(f"counts required for {key}")
+                    existing_obj: Any = metrics.get(key, [])
+                    existing = (
+                        cast(list[float], existing_obj)
+                        if isinstance(existing_obj, list)
+                        else []
+                    )
+                    existing.extend(float(c) for c in counts)
+                    metrics[key] = existing
+                elif key == "oligo_dropout_flags":
+                    if counts is None:
+                        raise ValueError("counts required for oligo_dropout_flags")
+                    existing_obj = metrics.get(key, [])
+                    existing = (
+                        cast(list[int], existing_obj)
+                        if isinstance(existing_obj, list)
+                        else []
+                    )
+                    existing.extend(1 if bool(c) else 0 for c in counts)
+                    metrics[key] = existing
+                elif key == "oligo_ecc_success":
+                    if counts is None or not isinstance(counts, dict):
+                        raise ValueError("mapping required for oligo_ecc_success")
+                    existing_map_obj: Any = metrics.get(key, {})
+                    existing_map = (
+                        cast(dict[str, list[float]], existing_map_obj)
+                        if isinstance(existing_map_obj, dict)
+                        else {}
+                    )
+                    for name, values in counts.items():
+                        try:
+                            seq = list(values)
+                        except TypeError as exc:  # pragma: no cover - defensive
+                            raise ValueError("values for oligo_ecc_success must be iterable") from exc
+                        current = existing_map.setdefault(str(name), [])
+                        current.extend(
+                            float(val) if not isinstance(val, bool) else (1.0 if val else 0.0)
+                            for val in seq
+                        )
+                    metrics[key] = existing_map
                 else:
                     current = metrics.get(key, 0)
                     if not isinstance(current, int):
@@ -171,6 +214,22 @@ def append_gc_distribution(values: Sequence[float]) -> None:
 
 def append_homopolymer_runs(counts: Sequence[int]) -> None:
     metrics.increment("homopolymer_runs", counts)
+
+
+def append_oligo_metrics(
+    gc_percentages: Sequence[float] | None = None,
+    homopolymers: Sequence[int] | None = None,
+    dropouts: Sequence[bool | int] | None = None,
+    ecc_success: Mapping[str, Sequence[float | bool]] | None = None,
+) -> None:
+    if gc_percentages is not None:
+        metrics.increment("oligo_gc_percentages", gc_percentages)
+    if homopolymers is not None:
+        metrics.increment("oligo_homopolymers", homopolymers)
+    if dropouts is not None:
+        metrics.increment("oligo_dropout_flags", [1 if bool(v) else 0 for v in dropouts])
+    if ecc_success is not None:
+        metrics.increment("oligo_ecc_success", ecc_success)
 
 
 def increment(key: str, counts: Sequence[float | int] | None = None) -> None:

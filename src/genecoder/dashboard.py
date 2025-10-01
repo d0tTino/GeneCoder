@@ -47,6 +47,7 @@ _DEF_METRICS: dict[str, Any] = {
     "coverage": None,
     "coverage_distribution": [],
     "constraint_violations": None,
+    "oligo_metrics": {},
 }
 
 
@@ -143,6 +144,58 @@ def _split_error_metric(val: object) -> tuple[float | None, list[int]]:
     else:
         hist = _calc_error_hist(val)
     return rate, hist
+
+
+def _extract_oligo_records(data: dict[str, Any]) -> list[dict[str, Any]]:
+    oligo = data.get("oligo_metrics")
+    if not isinstance(oligo, dict):
+        return []
+    gc_vals = [
+        float(v) for v in oligo.get("gc_percentages", []) if isinstance(v, (int, float))
+    ]
+    hp_vals = [
+        float(v) for v in oligo.get("max_homopolymers", []) if isinstance(v, (int, float))
+    ]
+    dropout_flags = [
+        bool(v) if isinstance(v, bool) else bool(int(v))
+        for v in oligo.get("dropout_flags", [])
+    ]
+    ecc = oligo.get("ecc_success")
+    ecc_map: dict[str, list[float]] = {}
+    if isinstance(ecc, dict):
+        for name, values in ecc.items():
+            if isinstance(values, list):
+                filtered = [
+                    float(val)
+                    for val in values
+                    if isinstance(val, (int, float)) or isinstance(val, bool)
+                ]
+                if filtered:
+                    ecc_map[str(name)] = [
+                        float(val) if not isinstance(val, bool) else (1.0 if val else 0.0)
+                        for val in filtered
+                    ]
+
+    base_lengths = [len(gc_vals), len(hp_vals), len(dropout_flags)]
+    extra_lengths = [len(values) for values in ecc_map.values()]
+    max_len = max(base_lengths + extra_lengths) if base_lengths or extra_lengths else 0
+    if max_len == 0:
+        return []
+
+    records: list[dict[str, Any]] = []
+    for idx in range(max_len):
+        record: dict[str, Any] = {"Index": idx + 1}
+        if idx < len(gc_vals):
+            record["GC%"] = gc_vals[idx]
+        if idx < len(hp_vals):
+            record["Max Homopolymer"] = hp_vals[idx]
+        if idx < len(dropout_flags):
+            record["Dropout"] = dropout_flags[idx]
+        for name, values in ecc_map.items():
+            if idx < len(values):
+                record[f"ECC:{name}"] = values[idx]
+        records.append(record)
+    return records
 
 
 def _parse_constraint_violations(value: object) -> dict[str, Any]:
@@ -302,6 +355,7 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     paths = _iterable(results_paths) or sys.argv[1:]
 
     datasets: dict[str, dict[str, Any]] = {}
+    oligo_rows: list[dict[str, Any]] = []
     for path in paths:
         data = {**_DEF_METRICS, **_load_metrics(path)}
         for key in ("substitutions", "insertions", "deletions"):
@@ -312,7 +366,12 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             data.get("constraint_violations")
         )
         if data:
-            datasets[Path(path).stem] = data
+            label = Path(path).stem
+            datasets[label] = data
+            for record in _extract_oligo_records(data):
+                new_record = {**record}
+                new_record["Run"] = label
+                oligo_rows.append(new_record)
 
     sidebar = getattr(st, "sidebar", st)
     file_uploader: Callable[..., Iterable[Any]] = getattr(
@@ -328,7 +387,12 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         data["constraint_violation_summary"] = _parse_constraint_violations(
             data.get("constraint_violations")
         )
-        datasets[Path(up.name).stem] = data
+        label = Path(up.name).stem
+        datasets[label] = data
+        for record in _extract_oligo_records(data):
+            new_record = {**record}
+            new_record["Run"] = label
+            oligo_rows.append(new_record)
 
     st.title("GeneCoder Dashboard")
     if not datasets:
@@ -365,6 +429,55 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             st.bar_chart(datasets[selected[0]]["gc_distribution"])
         else:
             st.write("Install pandas and altair for multi-file GC charts.")
+
+    st.header("Per-oligo Distributions")
+    if oligo_rows:
+        relevant = [row for row in oligo_rows if row.get("Run") in selected]
+        if relevant:
+            if alt and pd and hasattr(st, "altair_chart"):
+                df = pd.DataFrame(relevant)
+                gc_chart = (
+                    alt.Chart(df.dropna(subset=["GC%"]))
+                    .mark_bar(opacity=0.7)
+                    .encode(
+                        alt.X("GC%:Q", bin=alt.Bin(maxbins=20)),
+                        y="count()",
+                        color="Run:N",
+                        tooltip=["Run", "count()"],
+                    )
+                    .properties(title="GC% Histogram")
+                )
+                hp_chart = (
+                    alt.Chart(df.dropna(subset=["Max Homopolymer"]))
+                    .mark_boxplot()
+                    .encode(x="Run:N", y="Max Homopolymer:Q", color="Run:N")
+                    .properties(title="Max Homopolymer Boxplot")
+                )
+                st.altair_chart(gc_chart, use_container_width=True)
+                st.altair_chart(hp_chart, use_container_width=True)
+            else:
+                for row in relevant:
+                    st.write(row)
+
+            flagged = [
+                row
+                for row in relevant
+                if (
+                    ("GC%" in row and (row["GC%"] < 0.4 or row["GC%"] > 0.6))
+                    or ("Max Homopolymer" in row and row["Max Homopolymer"] > 8)
+                    or row.get("Dropout")
+                )
+            ]
+            if flagged:
+                st.subheader("Out-of-bounds oligos")
+                if pd:
+                    st.dataframe(pd.DataFrame(flagged))
+                else:
+                    st.write(flagged)
+        else:
+            st.write("No per-oligo metrics for selected datasets.")
+    else:
+        st.write("No per-oligo metrics available.")
 
     st.header("ECC Success Rates")
     ecc_rows: list[dict[str, Any]] = []

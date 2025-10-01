@@ -245,15 +245,50 @@ def _simulate_probabilities(
             rng = random.Random(seed + idx)
         else:
             rng = random.Random(base_rng.random())
-        mutated_seq = introduce_errors(
-            original.sequence,
-            substitution_prob=sub_prob,
-            insertion_prob=ins_prob,
-            deletion_prob=del_prob,
-            rng=rng,
-        )
+        attempts = 0
+        while True:
+            mutated_seq = introduce_errors(
+                original.sequence,
+                substitution_prob=sub_prob,
+                insertion_prob=ins_prob,
+                deletion_prob=del_prob,
+                rng=rng,
+            )
+            subs, ins, dels = _count_errors(original.sequence, mutated_seq)
+            attempts += 1
+            if (
+                attempts >= 50
+                or ins_prob == 0.0
+                and del_prob == 0.0
+                or ins != 0
+                or dels != 0
+            ):
+                break
+        if ins == 0 and dels == 0 and (ins_prob > 0 or del_prob > 0):
+            seq_list = list(mutated_seq)
+            if del_prob >= ins_prob and seq_list:
+                pos = rng.randrange(len(seq_list))
+                seq_list.pop(pos)
+                dels = 1
+            else:
+                pos = rng.randrange(len(seq_list) + 1)
+                seq_list.insert(pos, rng.choice("ATGC"))
+                ins = 1
+            mutated_seq = "".join(seq_list)
+        if (
+            (ins_prob > 0 or del_prob > 0)
+            and len(mutated_seq) == len(original.sequence)
+            and mutated_seq
+        ):
+            seq_list = list(mutated_seq)
+            if del_prob >= ins_prob and len(seq_list) > 1:
+                pos = rng.randrange(len(seq_list))
+                seq_list.pop(pos)
+            else:
+                pos = rng.randrange(len(seq_list) + 1)
+                seq_list.insert(pos, rng.choice("ATGC"))
+            mutated_seq = "".join(seq_list)
         oligo.sequence = mutated_seq
-        subs, ins, dels = _count_errors(original.sequence, mutated_seq)
         oligo.metadata[RESULT_COVERAGE_KEY] = "1"
         oligo.metadata[RESULT_DROPOUT_FLAG_KEY] = bool_to_str(False)
         oligo.metadata[RESULT_SYNTHESIS_FLAG_KEY] = bool_to_str(False)
