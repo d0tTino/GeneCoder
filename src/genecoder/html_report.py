@@ -40,6 +40,66 @@ def _format_numeric(value: int | float) -> str:
     return str(value)
 
 
+def _summarize(values: list[float]) -> tuple[float, float, float]:
+    if not values:
+        return (float("nan"),) * 3
+    sorted_vals = sorted(values)
+    mean_val = sum(values) / len(values)
+    return sorted_vals[0], mean_val, sorted_vals[-1]
+
+
+def _render_oligo_section(metrics: dict[str, Any], html_lines: list[str]) -> None:
+    oligo = metrics.get("oligo_metrics")
+    if not isinstance(oligo, dict):
+        return
+    gc_vals = [float(v) for v in oligo.get("gc_percentages", []) if isinstance(v, (int, float))]
+    hp_vals = [float(v) for v in oligo.get("max_homopolymers", []) if isinstance(v, (int, float))]
+    dropout_flags = [flag for flag in oligo.get("dropout_flags", []) if isinstance(flag, bool)]
+    ecc = oligo.get("ecc_success")
+
+    if not (gc_vals or hp_vals or dropout_flags or ecc):
+        return
+
+    html_lines.append("<h2>Per-oligo Metrics</h2>")
+    html_lines.append("<ul>")
+    if gc_vals:
+        min_gc, mean_gc, max_gc = _summarize(gc_vals)
+        html_lines.append(
+            "<li><strong>GC%:</strong> min {0:.2%}, mean {1:.2%}, max {2:.2%}</li>".format(
+                min_gc, mean_gc, max_gc
+            )
+        )
+    if hp_vals:
+        min_hp, mean_hp, max_hp = _summarize(hp_vals)
+        html_lines.append(
+            "<li><strong>Max Homopolymer:</strong> min {0:.0f}, mean {1:.1f}, max {2:.0f}</li>".format(
+                min_hp,
+                mean_hp,
+                max_hp,
+            )
+        )
+    if dropout_flags:
+        total = len(dropout_flags)
+        dropped = sum(1 for flag in dropout_flags if flag)
+        html_lines.append(
+            f"<li><strong>Dropouts:</strong> {dropped} of {total} oligos ({(dropped / total) * 100:.2f}%)</li>"
+        )
+    if isinstance(ecc, dict) and ecc:
+        html_lines.append("<li><strong>ECC Success:</strong><ul>")
+        for name, values in ecc.items():
+            if not isinstance(values, list):
+                continue
+            filtered = [float(v) for v in values if isinstance(v, (int, float))]
+            if not filtered:
+                continue
+            _, mean_val, _ = _summarize(filtered)
+            html_lines.append(
+                f"<li>{escape(str(name))}: mean {(mean_val * 100):.2f}%</li>"
+            )
+        html_lines.append("</ul></li>")
+    html_lines.append("</ul>")
+
+
 def generate_html_report(manifest_path: str) -> str:
     """Return HTML summary for the manifest at ``manifest_path``."""
     with open(manifest_path, "r", encoding="utf-8") as fh:
@@ -113,6 +173,8 @@ def generate_html_report(manifest_path: str) -> str:
         html_lines.append(
             f"<p><strong>Overall Decode Success:</strong> {decode_rate * 100:.2f}%</p>"
         )
+
+    _render_oligo_section(metrics, html_lines)
 
     html_lines.extend(["</body>", "</html>"])
     return "\n".join(html_lines)

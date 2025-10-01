@@ -52,13 +52,18 @@ def test_dashboard_summary_plots_rendered(
     results.write_text(metrics_file.read_text())
 
     charts: list[object] = []
+    writes: list[object] = []
 
     def capture_bar_chart(
         data: object, *args: object, **kwargs: object
     ) -> None:  # pragma: no cover - simple capture
         charts.append(data)
 
+    def capture_write(*args: object, **kwargs: object) -> None:  # pragma: no cover - simple capture
+        writes.extend(args)
+
     monkeypatch.setattr(streamlit, "bar_chart", capture_bar_chart)
+    monkeypatch.setattr(streamlit, "write", capture_write)
 
     from genecoder import dashboard_streamlit as dash
 
@@ -79,6 +84,7 @@ def test_dashboard_summary_plots_rendered(
     assert contains_chart({"results (Deletions)": pytest.approx(0.0)})
     assert contains_chart({"results (Coverage)": pytest.approx(30.0)})
     assert [1, 3, 2] in charts
+    assert any(isinstance(entry, dict) and "GC%" in entry for entry in writes)
 
 
 def test_dashboard_homopolymer_chart_rendered(
@@ -89,11 +95,16 @@ def test_dashboard_homopolymer_chart_rendered(
     results.write_text(metrics_file.read_text())
 
     charts: list[object] = []
+    writes: list[object] = []
 
     def capture_bar_chart(data: object, *args: object, **kwargs: object) -> None:  # pragma: no cover - simple capture
         charts.append(data)
 
+    def capture_write(*args: object, **kwargs: object) -> None:  # pragma: no cover - simple capture
+        writes.extend(args)
+
     monkeypatch.setattr(streamlit, "bar_chart", capture_bar_chart)
+    monkeypatch.setattr(streamlit, "write", capture_write)
 
     from genecoder import dashboard_streamlit as dash
 
@@ -106,3 +117,4 @@ def test_dashboard_homopolymer_chart_rendered(
     assert charts
     assert [1, 2, 1, 0] in charts
     assert any(chart == {"results": pytest.approx(30.0)} for chart in charts)
+    assert any(isinstance(entry, dict) and entry.get("Dropout") for entry in writes)

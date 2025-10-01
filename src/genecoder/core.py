@@ -3,7 +3,7 @@ from __future__ import annotations
 """Simple encode/ECC/channel/decode pipeline utilities."""
 
 from pathlib import Path
-from typing import Any, Mapping, Tuple, Dict, List
+from typing import Any, Mapping, Tuple, Dict, List, Sequence
 
 from .gc_constrained_encoder import calculate_gc_content
 from .utils import get_max_homopolymer_length
@@ -162,6 +162,10 @@ def metrics(
     ins: int | None = None,
     dels: int | None = None,
     coverage: int | None = None,
+    *,
+    oligos: Sequence[str] | None = None,
+    dropout_flags: Sequence[bool] | None = None,
+    ecc_outcomes: Mapping[str, Sequence[bool | float]] | None = None,
 ) -> Dict[str, Any]:
     """Return quality metrics for ``dna`` and decode results."""
 
@@ -185,6 +189,33 @@ def metrics(
     except Exception:  # pragma: no cover - optional dependency
         constraint_violations = 0
 
+    sequences: list[str] = list(oligos or [dna])
+    dropout_list: list[bool] = (
+        list(dropout_flags)
+        if dropout_flags is not None
+        else [False] * len(sequences)
+    )
+    if len(dropout_list) < len(sequences):
+        dropout_list.extend([False] * (len(sequences) - len(dropout_list)))
+
+    per_oligo_gc = [calculate_gc_content(seq) for seq in sequences]
+    per_oligo_hp = [get_max_homopolymer_length(seq) for seq in sequences]
+
+    ecc_map: dict[str, list[float]] = {}
+    if ecc_outcomes:
+        for name, values in ecc_outcomes.items():
+            ratios: list[float] = []
+            for value in values:
+                if isinstance(value, bool):
+                    ratios.append(1.0 if value else 0.0)
+                else:
+                    try:
+                        ratios.append(float(value))
+                    except Exception:
+                        ratios.append(0.0)
+            if ratios:
+                ecc_map[str(name)] = ratios
+
     result: Dict[str, Any] = {
         "gc_distribution": gc_dist,
         "gc_content": gc_content,
@@ -195,6 +226,12 @@ def metrics(
         "decode_success_rate": success,
         "coverage": coverage,
         "constraint_violations": constraint_violations,
+        "oligo_metrics": {
+            "gc_percentages": per_oligo_gc,
+            "max_homopolymers": per_oligo_hp,
+            "dropout_flags": [bool(flag) for flag in dropout_list[: len(sequences)]],
+            "ecc_success": ecc_map or ({fec: [success]} if fec else {}),
+        },
     }
     if subs is not None and ins is not None and dels is not None:
         result.update({"substitutions": subs, "insertions": ins, "deletions": dels})

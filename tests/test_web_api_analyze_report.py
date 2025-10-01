@@ -47,7 +47,8 @@ def test_dashboard_metrics_with_token() -> None:
     r = client.post("/dashboard/metrics", headers=AUTH_HEADERS, json=payload)
     assert r.status_code == 200
     data = r.json()
-    assert set(data) >= {"gc_content", "max_homopolymer", "error_rate", "plot"}
+    assert set(data) >= {"gc_content", "max_homopolymer", "error_rate", "plot", "oligo_metrics"}
+    assert data["oligo_metrics"]["gc_percentages"]
 
 
 def test_report_invalid_request() -> None:

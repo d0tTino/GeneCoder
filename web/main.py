@@ -333,12 +333,19 @@ async def dashboard_metrics(
         ber = bit_error_rate(orig_bytes, dec_bytes)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    oligo_metrics = {
+        "gc_percentages": [gc],
+        "max_homopolymers": [float(max_hp)],
+        "dropout_flags": [False],
+        "ecc_success": {"decode": [max(0.0, min(1.0, 1.0 - ber))]},
+    }
     return {
         "gc_content": gc,
         "gc_variance": gc_var,
         "max_homopolymer": max_hp,
         "error_rate": ber,
         "plot": plot_b64,
+        "oligo_metrics": oligo_metrics,
     }
 
 

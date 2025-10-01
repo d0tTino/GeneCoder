@@ -25,6 +25,7 @@ def dummy_streamlit(monkeypatch: pytest.MonkeyPatch) -> dict[str, list]:
         metric=metric,
         bar_chart=bar_chart,
         error=lambda *a, **k: None,
+        dataframe=lambda *a, **k: None,
     )
     monkeypatch.setitem(sys.modules, "streamlit", dummy)
     return calls

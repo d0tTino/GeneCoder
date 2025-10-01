@@ -21,5 +21,11 @@
       {"sequence_id": "seq-1", "type": "homopolymer"},
       {"sequence_id": "seq-2", "type": "gc_low"}
     ]
+  },
+  "oligo_metrics": {
+    "gc_percentages": [0.45, 0.52, 0.61],
+    "max_homopolymers": [4, 5, 9],
+    "dropout_flags": [false, false, true],
+    "ecc_success": {"rs": [0.98, 0.97, 0.0]}
   }
 }

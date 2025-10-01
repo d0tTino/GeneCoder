@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import os
+from itertools import zip_longest
 from typing import Callable, Awaitable, Optional
 
 import flet as ft
@@ -194,6 +195,42 @@ def make_encode_handler(
             else:
                 encode_actual_gc_value.value = "N/A"
                 encode_actual_homopolymer_value.value = "N/A"
+
+            oligo_metrics = metrics.get("oligo_metrics", {}) if isinstance(metrics, dict) else {}
+            gc_vals = [
+                float(v)
+                for v in oligo_metrics.get("gc_percentages", [])
+                if isinstance(v, (int, float))
+            ]
+            hp_vals = [
+                float(v)
+                for v in oligo_metrics.get("max_homopolymers", [])
+                if isinstance(v, (int, float))
+            ]
+            dropout_flags = [
+                bool(v) if isinstance(v, bool) else bool(int(v))
+                for v in oligo_metrics.get("dropout_flags", [])
+            ]
+            summary_lines: list[str] = []
+            for idx, (gc_val, hp_val, drop) in enumerate(
+                zip_longest(gc_vals, hp_vals, dropout_flags, fillvalue=None), start=1
+            ):
+                gc_text = f"{gc_val * 100:.2f}%" if isinstance(gc_val, float) else "n/a"
+                hp_text = f"{hp_val:.0f}" if isinstance(hp_val, float) else "n/a"
+                drop_text = "yes" if drop else "no"
+                out_of_bounds = (
+                    isinstance(gc_val, float)
+                    and (gc_val < 0.4 or gc_val > 0.6)
+                ) or (isinstance(hp_val, float) and hp_val > 8) or bool(drop)
+                suffix = " ⚠️" if out_of_bounds else ""
+                summary_lines.append(
+                    f"Oligo {idx}: GC {gc_text}, HP {hp_text}, dropout {drop_text}{suffix}"
+                )
+            if summary_lines:
+                encode_status_text.tooltip = "\n".join(summary_lines)
+                encode_status_text.value = "Encoding complete. Hover for per-oligo metrics."
+            else:
+                encode_status_text.tooltip = None
 
             plots = result.plots or {}
             codeword_hist_image.src_base64 = plots.get("codeword_hist")

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from html import escape
-from typing import Iterable, List, Dict
+from typing import Iterable, List, Dict, Mapping, Any
 import io
 
 from .plotting import plt, _MATPLOTLIB_AVAILABLE, _dummy_png
@@ -23,9 +23,59 @@ def _metric_lines(metrics: dict[str, float]) -> Iterable[str]:
         yield f"- **{key}**: {value}"
 
 
+def _oligo_metric_lines(metrics: Mapping[str, Any]) -> list[str]:
+    oligo = metrics.get("oligo_metrics") if isinstance(metrics, Mapping) else None
+    if not isinstance(oligo, Mapping):
+        return []
+
+    lines: list[str] = []
+    gc_vals = [float(v) for v in oligo.get("gc_percentages", []) if isinstance(v, (int, float))]
+    hp_vals = [float(v) for v in oligo.get("max_homopolymers", []) if isinstance(v, (int, float))]
+    dropout_flags = [flag for flag in oligo.get("dropout_flags", []) if isinstance(flag, bool)]
+    ecc = oligo.get("ecc_success") if isinstance(oligo.get("ecc_success"), Mapping) else {}
+
+    def summarize(values: list[float]) -> tuple[str, str, str]:
+        if not values:
+            return ("n/a", "n/a", "n/a")
+        sorted_vals = sorted(values)
+        mean_val = sum(values) / len(values)
+        return (
+            f"{sorted_vals[0]:.2f}",
+            f"{mean_val:.2f}",
+            f"{sorted_vals[-1]:.2f}",
+        )
+
+    if gc_vals:
+        mn, mean, mx = summarize(gc_vals)
+        lines.append(f"- **Per-oligo GC%**: min {mn}, mean {mean}, max {mx}")
+    if hp_vals:
+        mn, mean, mx = summarize(hp_vals)
+        lines.append(f"- **Per-oligo homopolymer**: min {mn}, mean {mean}, max {mx}")
+    if dropout_flags:
+        total = len(dropout_flags)
+        dropped = sum(1 for flag in dropout_flags if flag)
+        lines.append(f"- **Dropouts**: {dropped}/{total} ({(dropped/total)*100:.2f}% )")
+    if isinstance(ecc, Mapping) and ecc:
+        lines.append("- **ECC Success Ratios:**")
+        for name, values in ecc.items():
+            if not isinstance(values, list):
+                continue
+            filtered = [float(v) for v in values if isinstance(v, (int, float))]
+            if not filtered:
+                continue
+            _, mean_val, _ = sorted(filtered)[0], sum(filtered) / len(filtered), sorted(filtered)[-1]
+            lines.append(f"  - {name}: {mean_val:.2%}")
+    return lines
+
+
 def encode_to_markdown(result: EncodeResult) -> str:
     lines: list[str] = ["# Encoding Report", "", "## Metrics"]
     lines.extend(_metric_lines(result.metrics))
+    oligo_lines = _oligo_metric_lines(result.metrics)
+    if oligo_lines:
+        lines.append("")
+        lines.append("## Per-oligo Metrics")
+        lines.extend(oligo_lines)
     if result.info_messages:
         lines.append("")
         lines.append("## Info Messages")
