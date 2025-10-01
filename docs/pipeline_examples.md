@@ -83,6 +83,43 @@ GENECODER_METRICS_PATH=examples/illumina_metrics.json \
   genecli bundle run configs/rs_illumina_pipeline.yaml
 ```
 
+### GC-balanced Gold Preset with InSilicoSeq
+
+```yaml
+# configs/gold.yaml
+# Gold-standard pipeline preset using GC-balanced encoding and Reed-Solomon FEC
+# with MiSeq-style Illumina simulation.
+encode:
+  input_files:
+    - tests/data/vertical_slice.txt
+  method: gc_balanced
+  fec: reed_solomon
+simulate:
+  simulators:
+    - name: insilicoseq
+      profile: miseq
+  pipeline:
+    illumina_profile: miseq
+    coverage_distribution:
+      18: 1.0
+decode:
+  method: gc_balanced
+```
+
+Run the preset with metrics enabled to mirror the MiSeq 18× coverage and 150 bp
+read defaults highlighted in the channel walkthrough:
+
+```bash
+GENECODER_METRICS_PATH=examples/gold_metrics.json \
+  genecli bundle run configs/gold.yaml
+```
+
+`genecli` will prefer the external
+[InSilicoSeq](https://github.com/HadrienG/InSilicoSeq) simulator when the
+`insilicoseq` CLI is installed. If it is missing, the command transparently
+falls back to the built-in Illumina channel while still honouring the MiSeq
+profile, coverage and read-length defaults baked into the preset.
+
 ### Fountain with Nanopore
 
 ```yaml
