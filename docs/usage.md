@@ -379,23 +379,47 @@ genecli channel run decay_config.yml
        --method ai
    ```
 
-17. **Run the full pipeline from a YAML file**
+17. **Run the multi-oligo encode → channel → decode flow**
 
-   Create a configuration with the codec, FEC and channel settings:
+   Multi-oligo runs use streaming encode output, a dropout-aware channel configuration, and a standard decode step. Start by encoding the payload into a `SequenceBatch` with per-oligo metadata:
 
-   ```yaml
-   codec: base4_direct
-   fec: reed_solomon
-   channel:
-     name: simple
-     substitution_rate: 0.01
+   ```bash
+   genecli encode --input-files examples/pipeline_demo_input.txt \
+       --output-file encoded/multi_oligo_stream.fasta --stream --chunk-size 500000
    ```
 
-   Then execute:
+   Define the channel stage with `dropout_rate` and `coverage_distribution` so coverage variation is tracked in the manifest. The sample lives at `configs/channel_multi_oligo.yaml`:
 
-  ```bash
-  genecli pipeline input.bin output.bin --config pipeline.yml
-  ```
+   ```yaml
+   input: encoded/multi_oligo_stream.fasta
+   output: simulated_multi_oligo.fasta
+   synthesis:
+     min_length: 80
+     max_length: 220
+     max_homopolymer: 5
+   simulators:
+     - name: illumina
+       profile: miseq
+       coverage: 18
+       read_length: 150
+   pipeline:
+     dropout_rate: 0.12
+     coverage_distribution:
+       12: 0.25
+       16: 0.50
+       24: 0.25
+     parallel: true
+     workers: 4
+   ```
+
+   Run the channel and decode the surviving strands:
+
+   ```bash
+   genecli channel run configs/channel_multi_oligo.yaml
+   genecli decode --input-files simulated_multi_oligo.fasta --output-file decoded_multi.txt
+   ```
+
+   The resulting `decoded_multi.txt.json` manifest lists dropout counts, coverage histograms, and oligo-level GC and homopolymer metrics. Open it with `genecli dashboard` or a browser pointed at the rebuilt React dashboard. Preview the updated documentation and diagrams locally with `mkdocs serve`.
 
 ### MPI Channel Pipeline
 

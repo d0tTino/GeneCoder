@@ -6,19 +6,21 @@ metrics in the dashboard.
 
 ## Basic CLI Flow
 
+The multi-oligo pipeline splits the encoded payload into manageable oligos, simulates dropout-heavy sequencing, and stitches the surviving strands back together. The commands below mirror the workflow presented in the repository README.
+
 ```bash
-# Encode a sample file with Reed-Solomon FEC
+# Encode the payload into multiple oligos using streaming mode
 genecli encode --input-files examples/pipeline_demo_input.txt \
-  --output-file encoded.fasta --fec reed_solomon
+  --output-file encoded/multi_oligo_stream.fasta --stream --chunk-size 400000
 
-# Run a channel simulation using a configuration file
-genecli channel run configs/channel_demo.yaml
+# Run the dropout-aware channel pipeline
+genecli channel run configs/channel_multi_oligo.yaml
 
-# Decode the simulated reads back to the original data
-genecli decode --input-files simulated.fasta --output-file decoded.txt
+# Decode the surviving oligos into the original payload
+genecli decode --input-files simulated_multi_oligo.fasta --output-file decoded_multi.txt
 
-# Launch the Streamlit dashboard to inspect metrics
-genecli dashboard examples/illumina_metrics.json
+# Launch the dashboard to inspect dropout, coverage and ECC metrics
+genecli dashboard decoded_multi.txt.json
 ```
 
 ## RaptorQ and Fountain via `genecli pipeline`
@@ -96,6 +98,7 @@ simulate:
     - nanopore
   pipeline:
     nanopore_profile: r10
+    dropout_rate: 0.15
 decode:
   method: base4_direct
 ```
@@ -105,6 +108,44 @@ Execute with metrics enabled:
 ```bash
 GENECODER_METRICS_PATH=examples/nanopore_metrics.json \
   genecli bundle run configs/fountain_nanopore_pipeline.yaml
+```
+
+### Multi-oligo Illumina Dropout Pipeline
+
+The `configs/channel_multi_oligo.yaml` file demonstrates the new dropout-aware channel pipeline. It mixes an Illumina simulator with a coverage distribution and enforces synthesis constraints for the streamed FASTA output.
+
+```yaml
+# configs/channel_multi_oligo.yaml
+input: encoded/multi_oligo_stream.fasta
+output: simulated_multi_oligo.fasta
+
+synthesis:
+  min_length: 80
+  max_length: 220
+  max_homopolymer: 5
+
+simulators:
+  - name: illumina
+    profile: miseq
+    coverage: 18
+    read_length: 150
+
+pipeline:
+  dropout_rate: 0.12
+  coverage_distribution:
+    12: 0.25
+    16: 0.50
+    24: 0.25
+  parallel: true
+  workers: 4
+```
+
+Run the configuration and inspect the emitted `simulated_multi_oligo.fasta.manifest.json` to see per-oligo dropout flags:
+
+```bash
+genecli channel run configs/channel_multi_oligo.yaml
+genecli html-report --manifest simulated_multi_oligo.fasta.manifest.json \
+  --output-file reports/multi_oligo_channel.html
 ```
 
 ## Metrics and Troubleshooting

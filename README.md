@@ -14,20 +14,23 @@ For deployment instructions including building the React dashboard see the
 
 ## End-to-End CLI Example
 
-Run encoding, simulation, and decoding with default settings:
+GeneCoder now treats each pipeline stage as a multi-oligo workflow. The encode step produces a `SequenceBatch` containing per-oligo metadata, the channel stage applies dropout-aware simulators, and the decode step reassembles the payload while tracking which strands survived. The diagram below illustrates the flow.
+
+![Multi-oligo pipeline](docs/images/multi_oligo_flow.svg)
 
 ```bash
-# Encode a sample file
-genecli encode --input-files tests/data/sample.txt --output-file encoded/message.fasta
+# Encode a sample file into streaming-sized oligos
+genecli encode --input-files tests/data/sample.txt \
+  --output-file encoded/multi_oligo_stream.fasta --stream --chunk-size 600000
 
-# Simulate sequencing noise using an existing config
-genecli channel run configs/channel_demo.yaml
+# Apply dropout-aware channel simulation with coverage mixing
+genecli channel run configs/channel_multi_oligo.yaml
 
-# Decode back to the original text
-genecli decode --input-files simulated.fasta --output-file decoded.txt
+# Decode the surviving oligos back to the original text
+genecli decode --input-files simulated_multi_oligo.fasta --output-file decoded.txt
 ```
 
-The `configs/channel_demo.yaml` configuration mixes basic synthesis constraints with an Illumina simulator.
+The `configs/channel_multi_oligo.yaml` configuration enables a `dropout_rate` and coverage distribution inside the channel pipeline so the metrics capture how many oligos are lost during sequencing.
 
 After running these commands GeneCoder leaves behind metrics artifacts that you can inspect immediately:
 
@@ -50,7 +53,7 @@ For full pipeline runs the CLI also emits reusable metrics outputs:
 - Launch `genecli dashboard decoded.txt.json` to explore the metrics interactively, or build the React dashboard (`npm install` then
   `npm run build` inside `web/helix-ui`) and open `web/helix-ui/dist/dashboard.html` as outlined in the
   [dashboard quickstart](docs/gui_tutorial.md#launching-the-streamlit-dashboard) and
-  [deployment guide](docs/deployment.md).
+  [deployment guide](docs/deployment.md). When iterating on the documentation, run `mkdocs serve` from the repository root to preview the new pages and diagrams locally.
 
 ## Introductory notebooks
 
