@@ -105,8 +105,9 @@ metric. See [docs/metrics.md](docs/metrics.md) for more details.
 ## Quick Start
 
 GeneCoder requires **Python 3.11+** and uses
-[Poetry](https://python-poetry.org/) for dependency management. Install the
-dependencies with:
+[Poetry](https://python-poetry.org/) for dependency management. Review the
+[reproducibility guide](docs/reproducibility.md) for recommended OS specs and
+seeding tips, then install the dependencies with:
 
 ```bash
 poetry install --no-interaction

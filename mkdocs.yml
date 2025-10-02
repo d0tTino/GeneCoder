@@ -16,6 +16,7 @@ nav:
       - Installation: installation.md
       - Usage Guide: usage.md
       - Manifest Format: manifest.md
+      - Reproducibility Guide: reproducibility.md
   - Project Overview:
       - Vision & Core Concept: vision.md
       - Implemented Features: features.md
