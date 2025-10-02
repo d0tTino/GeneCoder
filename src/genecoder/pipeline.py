@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, Tuple
 from .plugin_manager import init_plugins
 from .parallel import parallel_map
 from .core import encode, simulate, decode, metrics as gather_metrics
+from .formats import SequenceBatch
 
 __all__ = ["SequencePipeline", "run_pipeline"]
 
@@ -73,6 +74,11 @@ def _homopolymer_runs(sequence: str) -> List[int]:
     return [counts.get(i, 0) for i in range(1, max_run + 1)]
 
 
+def _wrap_pipeline_sequence(sequence: str) -> SequenceBatch:
+    header = "batch_id=pipeline oligo_index=1"
+    return SequenceBatch.build([(header, sequence)], batch_id="pipeline")
+
+
 class SequencePipeline:
     """Process sequences through a series of transformation steps."""
 
@@ -120,16 +126,19 @@ def run_pipeline(
     init_plugins()
 
     original_data = Path(input_path).read_bytes()
-    dna, fec_info = encode(codec, fec_backend, original_data)
+    dna_batch, fec_info = encode(codec, fec_backend, original_data)
     selected_channel = channel
     if fec_backend == "fountain" and channel in {"simple", "nanopore"}:
         selected_channel = None
-    dna, subs, ins, dels, coverage = simulate(selected_channel, dna)
-    decoded = decode(codec, fec_backend, dna, fec_info)
+    simulated, subs, ins, dels, coverage = simulate(selected_channel, dna_batch)
+    batch_result = (
+        simulated if isinstance(simulated, SequenceBatch) else _wrap_pipeline_sequence(simulated)
+    )
+    decoded = decode(codec, fec_backend, batch_result, fec_info)
 
     Path(output_path).write_bytes(decoded)
     metrics_dict = gather_metrics(
-        dna,
+        batch_result,
         original_data,
         decoded,
         fec_backend,

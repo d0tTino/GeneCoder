@@ -23,8 +23,14 @@ from genecoder.plugin_manager import (
     init_plugins,
 )
 from genecoder.simulators import SIMULATOR_REGISTRY
+from genecoder.formats import SequenceBatch
 
 logger = logging.getLogger(__name__)
+
+
+def _wrap_cli_sequence(sequence: str) -> SequenceBatch:
+    header = "batch_id=cli_pipeline oligo_index=1"
+    return SequenceBatch.build([(header, sequence)], batch_id="cli_pipeline")
 
 
 def _load_config(path: str) -> tuple[str, str | None, str | None, Dict[str, Any]]:
@@ -104,13 +110,16 @@ def _run_with_params(
         SIMULATOR_REGISTRY[temp_name] = ch
     try:
         original_data = Path(input_path).read_bytes()
-        dna, fec_info = encode(codec, fec, original_data)
-        dna, subs, ins, dels, coverage = simulate(temp_name, dna)
-        decoded = decode(codec, fec, dna, fec_info)
+        dna_batch, fec_info = encode(codec, fec, original_data)
+        simulated, subs, ins, dels, coverage = simulate(temp_name, dna_batch)
+        batch_result = (
+            simulated if isinstance(simulated, SequenceBatch) else _wrap_cli_sequence(simulated)
+        )
+        decoded = decode(codec, fec, batch_result, fec_info)
         Path(output_path).write_bytes(decoded)
         metrics: dict[str, Any] = gather_metrics(
 
-            dna,
+            batch_result,
             original_data,
             decoded,
             fec,
