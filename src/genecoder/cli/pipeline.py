@@ -36,6 +36,7 @@ from genecoder.simulators.batch_utils import (
     mutation_counts,
 )
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -72,6 +73,7 @@ def _is_truthy(value: object) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in {"true", "1", "yes"}
     return bool(value)
+
 
 
 def _load_config(path: str) -> tuple[str, str | None, str | None, Dict[str, Any]]:
@@ -226,6 +228,7 @@ def _run_with_params(
         mutated_batch = SequenceBatch.build(
             [(header, str(result))],
             batch_id=simulation_batch.batch_id,
+
         )
 
     mutated_sequence = mutated_batch.primary_sequence()

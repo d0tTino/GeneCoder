@@ -2,7 +2,9 @@
 
 This guide demonstrates common `genecli` commands and sample pipeline
 configurations. It covers encoding, channel simulation, decoding and viewing
-metrics in the dashboard.
+metrics in the dashboard. For deterministic comparisons, review the
+[reproducibility checklist](reproducibility.md) before running the examples
+below.
 
 ## Basic CLI Flow
 
@@ -100,6 +102,10 @@ Run the pipeline while capturing metrics:
 GENECODER_METRICS_PATH=examples/illumina_metrics.json \
   genecli bundle run configs/rs_illumina_pipeline.yaml
 ```
+Set `GENECODER_SIM_SEED` (as described in the
+[Reproducibility Guide](reproducibility.md#seeding-the-simulation-rng)) and pin
+the `illumina_profile` to reproduce the same dropout and quality score sampling
+across runs.
 
 ### GC-balanced Gold Preset with InSilicoSeq
 
