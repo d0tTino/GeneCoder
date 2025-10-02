@@ -49,10 +49,15 @@ def test_pipeline_roundtrip(tmp_path: Path, fec_backend: str) -> None:
     assert metrics["gc_content"] >= 0.0
     assert outp.read_bytes() == data
     assert info is not None
+    assert "batch_metadata" in info
     if fec_backend == "reed_solomon":
         assert "nsym" in info
+        assert info["batch_metadata"]["batch_id"].startswith("base4")
     else:
         assert "seed" in info
+        assert "chunk_size" in info
+        assert info["batch_metadata"]["batch_id"].startswith("base4")
+    assert len(metrics["oligo_metrics"]["dropout_flags"]) >= 1
 
 
 @pytest.mark.skipif(not _HAS_REEDSOLO, reason="reedsolo not installed")
