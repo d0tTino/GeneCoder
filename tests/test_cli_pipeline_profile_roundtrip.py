@@ -1,7 +1,8 @@
+import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
-import yaml
 import pytest
 
 from tests.test_cli import run_cli_command
@@ -24,7 +25,23 @@ def test_pipeline_cli_profile_roundtrip(tmp_path: Path, monkeypatch: pytest.Monk
         "channel": {"name": "nanopore_dnarsim", "profile": "r10.3"},
     }
     cfg_path = tmp_path / "pipe.yml"
-    cfg_path.write_text(yaml.safe_dump(config))
+    cfg_path.write_text(json.dumps(config), encoding="utf-8")
+
+    from genecoder.cli import pipeline as pipeline_module
+
+    def _json_loader(data: object) -> object:
+        if hasattr(data, "read"):
+            return json.load(data)  # type: ignore[arg-type]
+        if data:
+            return json.loads(data)
+        return {}
+
+    monkeypatch.setattr(
+        pipeline_module,
+        "yaml_module",
+        SimpleNamespace(safe_load=_json_loader),
+        raising=False,
+    )
 
     called: list[str | None] = []
 
@@ -40,6 +57,23 @@ def test_pipeline_cli_profile_roundtrip(tmp_path: Path, monkeypatch: pytest.Monk
     assert result.returncode == 0, result.stderr
     assert called == ["r10.3"]
     assert output_file.read_text() == "hi"
+
+    metrics_path = output_file.with_suffix(output_file.suffix + ".json")
+    metrics_data = json.loads(metrics_path.read_text(encoding="utf-8"))
+    metrics = metrics_data.get("metrics", metrics_data)
+
+    assert metrics.get("dropout_count") == 0
+    oligo_metrics = metrics.get("oligo_metrics", {})
+    coverage_counts = oligo_metrics.get("coverage_counts")
+    dropout_flags = oligo_metrics.get("dropout_flags")
+    assert isinstance(coverage_counts, list)
+    assert isinstance(dropout_flags, list)
+    assert len(coverage_counts) == len(dropout_flags) == 1
+    assert coverage_counts[0] >= 1
+    seq_batch = metrics.get("sequence_batch", {})
+    metadata = seq_batch.get("metadata", {}) if isinstance(seq_batch, dict) else {}
+    assert isinstance(metadata, dict)
+    assert metadata.get("sim_coverage_histogram") is not None
 
 def test_pipeline_cli_illumina_profile_roundtrip(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -58,7 +92,23 @@ def test_pipeline_cli_illumina_profile_roundtrip(
         "channel": {"name": "illumina", "profile": "miseq"},
     }
     cfg_path = tmp_path / "pipe2.yml"
-    cfg_path.write_text(yaml.safe_dump(config))
+    cfg_path.write_text(json.dumps(config), encoding="utf-8")
+
+    from genecoder.cli import pipeline as pipeline_module
+
+    def _json_loader(data: object) -> object:
+        if hasattr(data, "read"):
+            return json.load(data)  # type: ignore[arg-type]
+        if data:
+            return json.loads(data)
+        return {}
+
+    monkeypatch.setattr(
+        pipeline_module,
+        "yaml_module",
+        SimpleNamespace(safe_load=_json_loader),
+        raising=False,
+    )
 
     called: list[tuple[float, float, float]] = []
 
@@ -81,3 +131,20 @@ def test_pipeline_cli_illumina_profile_roundtrip(
         )
     ]
     assert output_file.read_text() == "hi"
+
+    metrics_path = output_file.with_suffix(output_file.suffix + ".json")
+    metrics_data = json.loads(metrics_path.read_text(encoding="utf-8"))
+    metrics = metrics_data.get("metrics", metrics_data)
+
+    assert metrics.get("dropout_count") == 0
+    oligo_metrics = metrics.get("oligo_metrics", {})
+    coverage_counts = oligo_metrics.get("coverage_counts")
+    dropout_flags = oligo_metrics.get("dropout_flags")
+    assert isinstance(coverage_counts, list)
+    assert isinstance(dropout_flags, list)
+    assert len(coverage_counts) == len(dropout_flags) == 1
+    assert coverage_counts[0] >= 1
+    seq_batch = metrics.get("sequence_batch", {})
+    metadata = seq_batch.get("metadata", {}) if isinstance(seq_batch, dict) else {}
+    assert isinstance(metadata, dict)
+    assert metadata.get("sim_coverage_histogram") is not None

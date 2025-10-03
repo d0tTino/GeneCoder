@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from genecoder.core import encode, simulate, decode, metrics as gather_metrics, run_pipeline
+from genecoder.formats import SequenceBatch
 from genecoder.api import Codec
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
@@ -43,8 +44,10 @@ def test_roundtrip_rs_simple(tmp_path: Path) -> None:
 def test_encode_helper() -> None:
     init_plugins()
     CODEC_REGISTRY["base4"] = {"encode": _Base4Codec().encode, "decode": _Base4Codec().decode}
+    expected = _Base4Codec().encode(b"hi")
     dna, fec_info = encode("base4", None, b"hi")
-    assert isinstance(dna, str)
+    assert isinstance(dna, SequenceBatch)
+    assert dna.primary_sequence() == expected
     assert fec_info is None
 
 
@@ -70,3 +73,5 @@ def test_metrics_helper() -> None:
     m = gather_metrics(dna, data, data, None)
     assert m["decode_success_rate"] == 1.0
     assert "gc_content" in m
+    assert m["oligo_metrics"]["dropout_flags"] == [False]
+    assert m["oligo_metrics"]["coverage"] == [None]

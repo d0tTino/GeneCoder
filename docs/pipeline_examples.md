@@ -2,7 +2,9 @@
 
 This guide demonstrates common `genecli` commands and sample pipeline
 configurations. It covers encoding, channel simulation, decoding and viewing
-metrics in the dashboard.
+metrics in the dashboard. For deterministic comparisons, review the
+[reproducibility checklist](reproducibility.md) before running the examples
+below.
 
 ## Basic CLI Flow
 
@@ -37,6 +39,16 @@ GENECODER_METRICS_PATH=examples/raptorq_metrics.json \
     --channel illumina --profile hiseq
 ```
 
+After the run finishes inspect the dropout-aware metrics that accompany the decoded payload:
+
+```bash
+jq '.metrics.channel.dropout' decoded_raptorq.txt.json
+jq '.metrics.oligo_metrics.coverage_counts' decoded_raptorq.txt.json
+jq '.metrics.oligo_metrics.dropout_flags' decoded_raptorq.txt.json
+jq '.metrics.sequence_batch.metadata.sim_coverage_histogram' decoded_raptorq.txt.json
+jq '.metrics.sequence_batch.metadata.sim_dropout_total' decoded_raptorq.txt.json
+```
+
 ### Fountain FEC
 
 ```bash
@@ -44,6 +56,14 @@ GENECODER_METRICS_PATH=examples/fountain_metrics.json \
   genecli pipeline examples/pipeline_demo_input.txt decoded_fountain.txt \
     --codec base4_direct --fec fountain \
     --channel nanopore --profile r10
+```
+
+The Fountain pipeline emits the same `sequence_batch` manifest metadata, making it easy to compare per-oligo dropout between
+Illumina and Nanopore profiles with a single `jq` invocation. For example:
+
+```bash
+jq '.metrics.sequence_batch.metadata.sim_dropout_fraction' decoded_fountain.txt.json
+jq '.metrics.oligo_metrics.dropout_flags' decoded_fountain.txt.json
 ```
 
 **When to choose a scheme**
@@ -82,6 +102,10 @@ Run the pipeline while capturing metrics:
 GENECODER_METRICS_PATH=examples/illumina_metrics.json \
   genecli bundle run configs/rs_illumina_pipeline.yaml
 ```
+Set `GENECODER_SIM_SEED` (as described in the
+[Reproducibility Guide](reproducibility.md#seeding-the-simulation-rng)) and pin
+the `illumina_profile` to reproduce the same dropout and quality score sampling
+across runs.
 
 ### GC-balanced Gold Preset with InSilicoSeq
 
