@@ -71,6 +71,12 @@ except Exception:  # pragma: no cover - import guard
     sys.modules.setdefault("yaml", yaml_stub)
 
 
+from genecoder.api import Codec
+from genecoder.encoders import decode_base4_direct, encode_base4_direct
+from genecoder.formats import SequenceBatch
+from genecoder.plugin_manager import CODEC_REGISTRY, register_codec
+
+
 @pytest.fixture
 def mock_coverage_distribution(monkeypatch: pytest.MonkeyPatch) -> dict[int, float]:
     """Provide a deterministic coverage distribution for simulator tests."""
@@ -136,3 +142,47 @@ def mock_coverage_distribution(monkeypatch: pytest.MonkeyPatch) -> dict[int, flo
     monkeypatch.setattr("genecoder.simulators.illumina.load_coverage_distribution", _fake_loader)
     monkeypatch.setattr("genecoder.simulators.nanopore.load_coverage_distribution", _fake_loader)
     return _fake_loader(None)
+
+
+@pytest.fixture
+def multi_oligo_codec(monkeypatch: pytest.MonkeyPatch) -> str:
+    """Register a deterministic multi-oligo codec for CLI pipeline tests."""
+
+    class _MultiOligoCodec(Codec):
+        """Codec that emits a :class:`SequenceBatch` with multiple oligos."""
+
+        max_length = 64
+
+        def encode(self, data: bytes, /, **_kwargs: object) -> SequenceBatch:  # type: ignore[override]
+            dna_sequence = encode_base4_direct(data)
+            header = "batch_id=test-multi method=test_multi_base4"
+            return SequenceBatch.build(
+                [(header, dna_sequence)],
+                batch_id="test-multi",
+                max_oligo_length=self.max_length,
+            )
+
+        def decode(self, encoded: str, /, **_kwargs: object) -> bytes:  # type: ignore[override]
+            decoded, _errors = decode_base4_direct(encoded)
+            return decoded
+
+    codec_name = "test_multi_base4"
+
+    from genecoder import plugin_manager as plugin_mod
+
+    original_load_local = plugin_mod.load_local_plugins
+
+    def _register_codec() -> None:
+        register_codec(codec_name, _MultiOligoCodec)
+
+    def patched_load_local() -> list[str]:
+        failures = original_load_local()
+        _register_codec()
+        return failures
+
+    monkeypatch.setattr(plugin_mod, "load_local_plugins", patched_load_local)
+    _register_codec()
+
+    yield codec_name
+
+    CODEC_REGISTRY.pop(codec_name, None)
