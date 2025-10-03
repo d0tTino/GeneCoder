@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">GeneCoder gold preset manifest preview</title>
+  <desc id="desc">Stylised depiction of the HTML manifest generated from the gold preset bundle run.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="0%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#e2e8f0" />
+    </linearGradient>
+    <linearGradient id="panel" x1="0%" x2="0%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="960" height="540" fill="url(#bg)" stroke="#cbd5f5" stroke-width="2" rx="18" />
+  <rect x="36" y="40" width="888" height="460" fill="url(#panel)" stroke="#cbd5f5" stroke-width="2" rx="14" />
+
+  <rect x="36" y="40" width="888" height="72" fill="#0f172a" rx="14" />
+  <text x="72" y="87" fill="#f8fafc" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="600" font-size="28">
+    GeneCoder Manifest · gold.yaml · vertical_slice.txt
+  </text>
+
+  <rect x="72" y="140" width="260" height="320" fill="#0f172a" opacity="0.9" rx="12" />
+  <text x="96" y="178" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#38bdf8">
+    Encode Summary
+  </text>
+  <text x="96" y="210" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#e2e8f0">
+    • GC balance: 49.8%
+  </text>
+  <text x="96" y="238" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#e2e8f0">
+    • Homopolymers ≤ 3bp
+  </text>
+  <text x="96" y="266" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#e2e8f0">
+    • Reed–Solomon (32, 26)
+  </text>
+  <text x="96" y="294" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#e2e8f0">
+    • Droplet survival: 99.1%
+  </text>
+  <text x="96" y="322" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#e2e8f0">
+    • Total oligos: 1,280
+  </text>
+  <text x="96" y="350" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#e2e8f0">
+    • Payload checksum ✓
+  </text>
+
+  <rect x="360" y="140" width="532" height="140" fill="#e0f2fe" stroke="#38bdf8" stroke-width="2" rx="12" />
+  <text x="384" y="176" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#0f172a">
+    Channel Health
+  </text>
+  <text x="384" y="208" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#0f172a">
+    Average coverage: 54×   •   Dropout rate: 0.6%   •   Substitutions: 0.11%
+  </text>
+  <text x="384" y="238" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#0f172a">
+    Sequencer: InSilicoSeq MiSeq v2 · Seed 2024-06-01 · Phred30 floor enforced
+  </text>
+
+  <rect x="360" y="310" width="532" height="150" fill="#fef9c3" stroke="#facc15" stroke-width="2" rx="12" />
+  <text x="384" y="346" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#78350f">
+    Decode Output
+  </text>
+  <text x="384" y="378" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#78350f">
+    Restored file: decoded/vertical_slice.txt_decoded.bin
+  </text>
+  <text x="384" y="408" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#78350f">
+    Integrity: SHA256 match • Decode duration: 00:00:12
+  </text>
+  <text x="384" y="438" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#78350f">
+    Tip: run with --auto-ext to keep the original suffix after decode.
+  </text>
+
+  <rect x="72" y="480" width="820" height="28" fill="#94a3b8" opacity="0.45" rx="10" />
+  <text x="96" y="499" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#0f172a">
+    Generated via `genecli html-report --manifest ... --output-file ...` after running the gold preset bundle.
+  </text>
+</svg>
