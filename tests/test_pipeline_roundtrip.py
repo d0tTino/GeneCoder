@@ -3,6 +3,8 @@ from pathlib import Path
 import pytest
 
 from genecoder.pipeline import run_pipeline
+from genecoder import core
+from genecoder.formats import SequenceBatch
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.channel_sim import Channel
@@ -58,6 +60,35 @@ def test_pipeline_roundtrip(tmp_path: Path, fec_backend: str) -> None:
         assert "chunk_size" in info
         assert info["batch_metadata"]["batch_id"].startswith("base4")
     assert len(metrics["oligo_metrics"]["dropout_flags"]) >= 1
+
+    dna_batch, fec_info = core.encode("base4", fec_backend, data)
+    selected_channel = "simple"
+    if fec_backend == "fountain":
+        selected_channel = None
+    simulated, subs, ins, dels, coverage = core.simulate(selected_channel, dna_batch)
+    if not isinstance(simulated, SequenceBatch):
+        simulated = SequenceBatch.build(
+            [
+                (
+                    dna_batch.first_header() or "batch_id=test oligo_index=1",
+                    simulated if isinstance(simulated, str) else str(simulated),
+                )
+            ],
+            batch_id=dna_batch.batch_id,
+        )
+    decoded_core = core.decode("base4", fec_backend, simulated, fec_info)
+    metrics_core = core.metrics(
+        simulated,
+        data,
+        decoded_core,
+        fec_backend,
+        subs,
+        ins,
+        dels,
+        coverage,
+    )
+    assert decoded_core == data
+    assert metrics_core == metrics
 
 
 @pytest.mark.skipif(not _HAS_REEDSOLO, reason="reedsolo not installed")

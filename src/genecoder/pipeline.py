@@ -3,86 +3,31 @@ from __future__ import annotations
 """Simple pipeline for processing sequences step by step."""
 
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, Tuple
+import warnings
+from typing import Any, Callable, Iterable, Mapping, Sequence, Tuple
 
 from .plugin_manager import init_plugins
 from .parallel import parallel_map
-from .core import encode, simulate, decode, metrics as gather_metrics
 from .formats import SequenceBatch
+from . import core
 
 __all__ = ["SequencePipeline", "run_pipeline"]
 
 
-def _levenshtein_counts(original: str, mutated: str) -> Tuple[int, int, int]:
-    """Return substitution, insertion and deletion counts."""
-    try:
-        from Levenshtein import editops
-
-        ops = editops(original, mutated)
-
-        def get_tag(op: Any) -> str:  # noqa: D401,ANN401
-            return str(op[0])
-
-    except Exception:  # pragma: no cover - fallback
-        from rapidfuzz.distance import Levenshtein as RF
-
-        ops = RF.editops(original, mutated)
-
-        def get_tag(op: Any) -> str:  # noqa: D401,ANN401
-            return str(op.tag)
-
-    subs = ins = dels = 0
-    for op in ops:
-        tag = get_tag(op)
-        if tag == "replace":
-            subs += 1
-        elif tag == "insert":
-            ins += 1
-        elif tag == "delete":
-            dels += 1
-    return subs, ins, dels
-
-
-def _gc_distribution(sequence: str, window: int = 50) -> List[float]:
-    """Return GC content for non-overlapping windows in ``sequence``."""
-    values: List[float] = []
-    for i in range(0, len(sequence), window):
-        chunk = sequence[i : i + window]
-        if not chunk:
-            break
-        gc = sum(1 for base in chunk if base in "GCgc") / len(chunk)
-        values.append(gc)
-    return values
-
-
-def _homopolymer_runs(sequence: str) -> List[int]:
-    """Return counts of homopolymer runs by length for ``sequence``."""
-    if not sequence:
-        return []
-    counts: Dict[int, int] = {}
-    current = sequence[0]
-    run = 1
-    for base in sequence[1:]:
-        if base == current:
-            run += 1
-        else:
-            counts[run] = counts.get(run, 0) + 1
-            current = base
-            run = 1
-    counts[run] = counts.get(run, 0) + 1
-    max_run = max(counts)
-    return [counts.get(i, 0) for i in range(1, max_run + 1)]
-
-
-def _wrap_pipeline_sequence(sequence: str) -> SequenceBatch:
-    header = "batch_id=pipeline oligo_index=1"
-    return SequenceBatch.build([(header, sequence)], batch_id="pipeline")
-
-
 class SequencePipeline:
-    """Process sequences through a series of transformation steps."""
+    """Legacy string-based pipeline wrapper.
+
+    This adapter exists for backwards compatibility with older integrations
+    that expected ``SequencePipeline`` to operate on plain strings. New code
+    should prefer the SequenceBatch-aware helpers in :mod:`genecoder.core`.
+    """
 
     def __init__(self, steps: Iterable[Callable[[str], str]] | None = None) -> None:
+        warnings.warn(
+            "SequencePipeline is deprecated; use genecoder.core helpers instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.steps: list[Callable[[str], str]] = list(steps or [])
 
     def add_step(self, step: Callable[[str], str]) -> None:
@@ -120,25 +65,35 @@ def run_pipeline(
     channel: str | None,
     input_path: str,
     output_path: str,
-) -> Tuple[bytes, Dict[str, Any], Mapping[str, Any] | None]:
+) -> Tuple[bytes, dict[str, Any], Mapping[str, Any] | None]:
     """Process ``input_path`` through the selected codec, FEC and channel."""
 
     init_plugins()
 
     original_data = Path(input_path).read_bytes()
-    dna_batch, fec_info = encode(codec, fec_backend, original_data)
+    dna_batch, fec_info = core.encode(codec, fec_backend, original_data)
+
     selected_channel = channel
     if fec_backend == "fountain" and channel in {"simple", "nanopore"}:
         selected_channel = None
-    simulated, subs, ins, dels, coverage = simulate(selected_channel, dna_batch)
-    batch_result = (
-        simulated if isinstance(simulated, SequenceBatch) else _wrap_pipeline_sequence(simulated)
-    )
-    decoded = decode(codec, fec_backend, batch_result, fec_info)
 
+    simulated_batch, subs, ins, dels, coverage = core.simulate(selected_channel, dna_batch)
+    if not isinstance(simulated_batch, SequenceBatch):
+        simulated_batch = SequenceBatch.build(
+            [
+                (
+                    dna_batch.first_header() or "batch_id=pipeline oligo_index=1",
+                    str(simulated_batch),
+                )
+            ],
+            batch_id=dna_batch.batch_id,
+        )
+
+    decoded = core.decode(codec, fec_backend, simulated_batch, fec_info)
     Path(output_path).write_bytes(decoded)
-    metrics_dict = gather_metrics(
-        batch_result,
+
+    metrics_dict = core.metrics(
+        simulated_batch,
         original_data,
         decoded,
         fec_backend,
