@@ -111,8 +111,12 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
    ```bash
    genecli encode --input-files file1.txt notes.md image.png \
        --output-dir gc_encoded_batch/ --method gc_balanced \
-       --gc-min 0.40 --gc-max 0.60 --max-homopolymer 4
+       --gc-min 0.40 --gc-max 0.60 --max-homopolymer 5
    ```
+
+   The CLI enforces a 45–55% GC window and a maximum homopolymer length of 3 by
+   default. The flags above relax those limits for workloads that tolerate
+   higher variance.
 
 9. **Batch decode multiple FASTA files**
 
@@ -606,9 +610,9 @@ Example metrics snippet:
 ### Constraint Fix Suggestions
 
 Both the CLI `analyze` command and the GUI provide simple suggestions when a
-sequence falls outside the 40-60% GC range or exceeds the default homopolymer
-limit. After running `genecli analyze`, a log entry shows the GC content and
-maximum homopolymer length of an adjusted sequence. The GUI displays a
+sequence falls outside the enforced 45–55% GC window or exceeds the default
+three-base homopolymer limit. After running `genecli analyze`, a log entry shows
+the GC content and maximum homopolymer length of an adjusted sequence. The GUI displays a
 "Suggested fix" message beneath the encoding status when applicable.
 
 The **Visualizer** tab embeds a dedicated React/Three.js frontend. It renders the
@@ -643,3 +647,31 @@ GeneCoder is intended for educational simulations only. It should not be used
 to handle personal or medical DNA data. See the
 [README's Disclaimer](../README.md#disclaimer) for full details.
 
+#### Default GC/homopolymer guardrails
+
+`genecli encode`, the GUI, and constraint-fixing helpers all validate payloads
+against an enforced 45–55% GC range and a maximum homopolymer run of 3 bases.
+These checks run even if you do not pass constraint flags. When a sequence falls
+outside those guardrails, the CLI logs a warning and the GUI highlights the
+violation.
+
+Override the defaults by supplying constraint options explicitly:
+
+```bash
+genecli encode input.bin --method gc_balanced \
+    --gc-min 0.40 --gc-max 0.60 --max-homopolymer 5
+```
+
+YAML configurations and the pipeline runner accept the same keys:
+
+```yaml
+constraints:
+  gc_min: 0.40
+  gc_max: 0.60
+  max_homopolymer: 5
+```
+
+You can also provide the parameters when calling `genecli analyze`, `genecli
+bundle`, or the dashboard pipeline presets. If you simply want to silence the
+warnings while keeping the defaults, pass `--suppress-constraint-warnings` to
+`genecli encode`.

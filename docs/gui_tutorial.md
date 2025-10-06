@@ -33,7 +33,11 @@ input file.
 
 Use the buttons at the bottom of each tab to start the selected operation. The updated dashboard highlights per-oligo dropout flags, coverage heatmaps and recovery percentages so you can see how the multi-oligo pipeline behaves immediately after a run.
 
-After encoding completes, GC and homopolymer metrics are shown. If they fall outside recommended ranges, a **Fix Sequence** button allows automatic adjustment. Clicking it displays the fixed DNA snippet and updated metrics.
+After encoding completes, GC and homopolymer metrics are shown. The app uses the
+same enforced defaults as the CLI (45–55% GC and a three-base homopolymer cap).
+If a sequence violates those guardrails, a **Fix Sequence** button allows
+automatic adjustment. Clicking it displays the fixed DNA snippet and updated
+metrics.
 
 Example: encode any file, then click **Fix Sequence** when the suggestion text appears to view the corrected sequence.
 
