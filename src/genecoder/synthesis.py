@@ -13,9 +13,9 @@ class SynthesisConstraints:
 
     min_length: int = 25
     max_length: int = 300
-    max_homopolymer: int = 4
-    gc_min: float = 0.0
-    gc_max: float = 1.0
+    max_homopolymer: int = 3
+    gc_min: float = 0.45
+    gc_max: float = 0.55
 
     def __post_init__(self) -> None:
         if self.min_length <= 0:

@@ -1,4 +1,5 @@
 from pathlib import Path
+import importlib.util
 
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
 from genecoder.formats import to_fasta
@@ -11,6 +12,10 @@ import sys
 from pathlib import Path as SysPath
 
 PROJECT_ROOT = SysPath(__file__).parent.parent
+try:
+    CRYPTOGRAPHY_AVAILABLE = importlib.util.find_spec("cryptography") is not None
+except (ImportError, ValueError):
+    CRYPTOGRAPHY_AVAILABLE = False
 
 
 def run_cli_command(command_args: list[str], env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -38,19 +43,15 @@ def test_validate_sequence_fail_homopolymer() -> None:
 
 
 def test_validate_sequence_gc_boundaries_accept() -> None:
-    constraints = SynthesisConstraints(
-        min_length=5, max_length=10, max_homopolymer=2, gc_min=0.4, gc_max=0.6
-    )
-    assert validate_sequence("GCATA", constraints)  # 40% GC
-    assert validate_sequence("GCCAT", constraints)  # 60% GC
+    constraints = SynthesisConstraints(min_length=1, max_length=30)
+    assert validate_sequence("GCGATACGATACGATACGAT", constraints)  # 45% GC
+    assert validate_sequence("GCGATGCGATGCGATACGAT", constraints)  # 55% GC
 
 
 def test_validate_sequence_gc_outside_reject() -> None:
-    constraints = SynthesisConstraints(
-        min_length=5, max_length=10, max_homopolymer=2, gc_min=0.4, gc_max=0.6
-    )
-    assert not validate_sequence("GAATT", constraints)  # 20% GC
-    assert not validate_sequence("GGCCA", constraints)  # 80% GC
+    constraints = SynthesisConstraints(min_length=1, max_length=30)
+    assert not validate_sequence("GCGATACATA", constraints)  # 40% GC
+    assert not validate_sequence("GCGATGCGAT", constraints)  # 60% GC
 
 
 def test_constraints_invalid_min_length() -> None:
@@ -78,6 +79,23 @@ def test_constraints_min_gt_max() -> None:
         SynthesisConstraints(min_length=10, max_length=5)
 
 
+def test_constraints_defaults() -> None:
+    constraints = SynthesisConstraints()
+    assert constraints.max_homopolymer == 3
+    assert constraints.gc_min == pytest.approx(0.45)
+    assert constraints.gc_max == pytest.approx(0.55)
+
+
+def test_validate_sequence_homopolymer_thresholds() -> None:
+    constraints = SynthesisConstraints(min_length=1, max_length=30)
+    assert validate_sequence("AAACGCGCTA", constraints)
+    assert not validate_sequence("AAAACGCGCT", constraints)
+
+
+@pytest.mark.skipif(
+    not CRYPTOGRAPHY_AVAILABLE,
+    reason="cryptography dependency is required for CLI encode/analyze",
+)
 def test_export_csv_and_analysis_warnings(tmp_path: Path) -> None:
     # Create input files
     f1 = tmp_path / "a.txt"
