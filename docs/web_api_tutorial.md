@@ -98,13 +98,14 @@ POST /design/validate
 ```
 
 The response reports whether the sequence falls within the supplied GC
-and homopolymer limits.
+and homopolymer limits. When you omit the fields, the service applies the same
+defaults as the CLI: 45–55% GC content and a maximum homopolymer length of 3.
 
 To automatically adjust a sequence, call `/design/fix`:
 
 ```json
 POST /design/fix
-{ "sequence": "AAAAAA", "gc_min": 0.4, "gc_max": 0.6, "max_homopolymer": 3 }
+{ "sequence": "AAAAAA", "gc_min": 0.4, "gc_max": 0.6, "max_homopolymer": 5 }
 ```
 
 The fixed sequence and its metrics are returned in the JSON response.
