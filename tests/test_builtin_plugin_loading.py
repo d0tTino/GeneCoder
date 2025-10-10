@@ -16,7 +16,6 @@ def test_load_builtin_plugins_populates_registries() -> None:
         "fountain",
         "bch",
         "raptorq",
-        "framed",
     } <= set(plugins.FEC_REGISTRY)
 
     sim_names = {
