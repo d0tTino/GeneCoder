@@ -3487,11 +3487,10 @@ chamaeleo = ["chamaeleo"]
 deepdna = []
 dnaformer = []
 fountain = ["pyfinite"]
-framed = []
 ldpc = ["numpy", "pyldpc"]
 raptorq = ["numpy", "raptorq"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "26a29af98c38dcef5c446817ca2b1c0e4f9509c3a9821c2744d8558be0fa762b"
+content-hash = "83865dec35f227b77f85123e70ea64f5d61a0bf65c785704985f984ccb2a0e2e"

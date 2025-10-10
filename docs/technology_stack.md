@@ -14,9 +14,11 @@ installed:
 
 - **LDPC** via `pyldpc` – experimental low-density parity-check codes.
 - **Fountain** via `pyfinite` – simple rateless encoding with parity chunks.
-- **FrameD** via `cffi` – wrappers around optimized C++ kernels.
+- **FrameD** wrapper via `cffi` – requires the external LGPL `FrameD` package installed separately.
 
-Install these with Poetry extras, for example `poetry install --extras framed`.
+Install these with Poetry extras. The FrameD wrapper is provided for
+compatibility but the underlying library is no longer bundled; install it
+manually with `pip install FrameD` if needed.
 
 ## Web Components
 

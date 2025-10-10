@@ -46,7 +46,6 @@ the optional groups and what they provide:
 | `fountain`    | Fountain code support                           |
 | `bch`         | BCH error-correcting codes                      |
 | `raptorq`     | RaptorQ FEC algorithms                          |
-| `framed`      | FrameD C++ backend                              |
 | `dnaformer`   | DNAformer AI codec                              |
 | `deepdna`     | DeepDNA FEC plugin                              |
 
@@ -55,13 +54,18 @@ Install every group required for development and testing with:
 ```bash
 poetry install --with gui,web,dev \
   --extras ldpc --extras fountain --extras bch \
-  --extras raptorq --extras framed --extras dnaformer \
+  --extras raptorq --extras dnaformer \
   --extras deepdna --no-interaction
 ```
 
 These packages are quite large (Flet and the various FEC backends in
 particular). Installing all of them uses roughly **2&nbsp;GB** of disk space and
 takes about **10&nbsp;minutes** on a typical broadband connection.
+
+> **FrameD availability:** GeneCoder still ships a Python wrapper for FrameD but
+> no longer bundles the LGPL-licensed C++ dependency. Install the
+> [`FrameD` package](https://pypi.org/project/FrameD/) manually if you need this
+> backend and ensure it is on the Python path before importing GeneCoder.
 
 ## Editable install with pip
 
@@ -171,30 +175,16 @@ poetry install --extras deepdna --no-interaction
 
 The codec registers itself automatically when imported.
 
-## FrameD FEC Backend
-
-The optional FrameD plugin wraps optimized C++ kernels using CFFI to provide additional
-[FEC](glossary.md#forward-error-correction-fec) methods.
-Install it using the ``framed`` extras:
-
-```bash
-poetry install --extras framed --no-interaction
-```
-
-
-
-The `framed` FEC method becomes available automatically after
-installation.
-
 ## Licenses for Optional Extras
 
 GeneCoder itself and all core functionality use permissive licenses. Some
 optional extras come with additional requirements:
 
-* **FrameD** &ndash; [LGPLv3](https://www.gnu.org/licenses/lgpl-3.0.html)
 * **DeepDNA** &ndash; [MIT](https://opensource.org/license/mit/)
 
-These components are only needed when installing the corresponding extras.
+FrameD remains available under the LGPL but must be installed separately as it
+is no longer distributed with GeneCoder. Other components are only needed when
+installing the corresponding extras.
 
 ## Custom Temporary Directory
 
