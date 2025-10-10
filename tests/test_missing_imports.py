@@ -28,14 +28,6 @@ CASES = [
         "pyldpc is required",
     ),
     (
-        "genecoder.raptorq_codec",
-        "raptorq",
-        "encode_data_raptorq",
-        (b"data",),
-        {"symbol_size": 4},
-        "raptorq is required",
-    ),
-    (
         "genecoder.bch_codec",
         "bchlib",
         "encode_data_bch",
@@ -44,12 +36,12 @@ CASES = [
         "bchlib is required",
     ),
     (
-        "genecoder.fec.framed",
-        "cffi",
-        "encode_data_framed",
+        "genecoder.raptorq_codec",
+        "raptorq",
+        "encode_data_raptorq",
         (b"data",),
-        {},
-        "FrameD is required",
+        {"symbol_size": 4},
+        "raptorq is required",
     ),
 ]
 

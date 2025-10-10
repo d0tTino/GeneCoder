@@ -48,7 +48,6 @@ def register_builtin_plugins() -> None:
             "genecoder.fountain_codec",
             "genecoder.bch_codec",
             "genecoder.raptorq_codec",
-            "genecoder.fec.framed",
         ],
         register_fec,
         "builtin",
