@@ -84,7 +84,6 @@ pyldpc = ">=0.7.6,<0.7.7"
 pyfinite = ">=1.9,<2.0"
 bchlib = ">=2.1,<3.0"
 raptorq = ">=2.0,<3.0"
-FrameD = "*"
 numba = "*"
 playwright = "*"
 
@@ -100,7 +99,6 @@ ldpc = "genecoder.ldpc_codec"
 fountain = "genecoder.fountain_codec"
 bch = "genecoder.bch_codec"
 raptorq = "genecoder.raptorq_codec"
-framed = "genecoder.fec.framed"
 dnaformer = "genecoder.dnaformer_codec"
 deepdna = "genecoder.deepdna_codec"
 
@@ -115,7 +113,6 @@ illumina = "genecoder.simulators.illumina"
 
 [tool.poetry.extras]
 dnaformer = ["dnaformer", "torch"]
-framed = ["FrameD"]
 ldpc = ["pyldpc", "numpy"]
 fountain = ["pyfinite"]
 raptorq = ["raptorq", "numpy"]

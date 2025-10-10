@@ -121,11 +121,12 @@ GUI and web features are optional. Install their dependencies with:
 poetry install --with gui,web --no-interaction
 ```
 
-Additional plugins such as DNAformer or FrameD can be installed via
-Poetry's ``--extras`` flag:
+Additional plugins such as DNAformer can be installed via
+Poetry's ``--extras`` flag. FrameD remains available as a manual install due to
+its LGPL license:
 
 ```bash
-poetry install --extras dnaformer --extras framed --no-interaction
+poetry install --extras dnaformer --no-interaction
 ```
 
 GeneCoder now uses a single `poetry.lock` across Linux, macOS and Windows.
@@ -146,7 +147,6 @@ test suite:
 | `fountain`    | Fountain code support                           |
 | `bch`         | BCH error-correcting codes                      |
 | `raptorq`     | RaptorQ FEC algorithms                          |
-| `framed`      | FrameD C++ backend                              |
 | `dnaformer`   | DNAformer AI codec                              |
 | `deepdna`     | DeepDNA FEC plugin                              |
 
@@ -155,14 +155,15 @@ Install all groups required for development and testing with:
 ```bash
 poetry install --with gui,web,dev \
   --extras ldpc --extras fountain --extras bch \
-  --extras raptorq --extras framed --extras dnaformer \
+  --extras raptorq --extras dnaformer \
   --extras deepdna --no-interaction
 ```
 
 Installing all extras downloads many large packages such as Flet and
 framework backends. Expect the installation to consume around **2&nbsp;GB** of
 disk space and take roughly **10&nbsp;minutes** on a typical broadband
-connection.
+connection. Install the third-party `FrameD` package separately if you need
+that codec's C++ acceleration.
 
 For running GeneCoder without any network access see the [offline usage guide](docs/offline_usage.md) and the [offline setup notes](docs/installation.md#offline-setup).
 

@@ -2,13 +2,15 @@ import json
 import os
 import sys
 import types
+from pathlib import Path
 from typing import Mapping, Sequence
 
 import pytest
 
 # Ensure the ``src`` directory is importable
-ROOT = os.path.dirname(os.path.dirname(__file__))
-SRC = os.path.join(ROOT, "src")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ROOT = str(PROJECT_ROOT)
+SRC = str(PROJECT_ROOT / "src")
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 if SRC not in sys.path:

@@ -119,7 +119,7 @@ To run **all** tests, including those covering optional codecs and machine
 learning models, install every extras group:
 
 ```bash
-poetry install --with gui,web,dnaformer,deepdna,ldpc,fountain,raptorq,bch,framed --no-interaction
+poetry install --with gui,web,dnaformer,deepdna,ldpc,fountain,raptorq,bch --no-interaction
 ```
 
 You can also run `scripts/setup_test_env.sh` to install the same extras.
