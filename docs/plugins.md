@@ -22,17 +22,35 @@ and implement ``encode`` and ``decode`` methods:
 
 ```python
 from genecoder.api import Codec
+from genecoder.formats import SequenceBatch
+
 
 class MyCodec(Codec):
     def encode(self, data: bytes, /, **kwargs: object) -> str:
         ...
 
-    def decode(self, text: str, /, **kwargs: object) -> bytes:
+    def decode(
+        self,
+        encoded: SequenceBatch | str,
+        /,
+        *,
+        batch_metadata: dict[str, str] | None = None,
+        oligo_metadata: list[dict[str, str]] | None = None,
+        **kwargs: object,
+    ) -> bytes:
         ...
+
 
 def register(register_codec):
     register_codec("mycodec", MyCodec)
 ```
+
+Annotating the ``encoded`` parameter with :class:`~genecoder.formats.SequenceBatch`
+signals that the codec can operate on batches. When present GeneCoder passes the
+full :class:`SequenceBatch` object along with convenience keyword arguments
+containing ``batch_metadata`` and ``oligo_metadata`` dictionaries. Codecs that
+prefer not to use type annotations may instead set ``accepts_sequence_batch =
+True`` on the codec instance or class.
 
 ### Channels
 
@@ -144,13 +162,24 @@ visualizers. The general workflow is:
 
 ```python
 from genecoder.api import Codec
+from genecoder.formats import SequenceBatch
+
 
 class MyCodec(Codec):
     def encode(self, data: bytes, /, **kwargs: object) -> str:
         ...
 
-    def decode(self, text: str, /, **kwargs: object) -> bytes:
+    def decode(
+        self,
+        encoded: SequenceBatch | str,
+        /,
+        *,
+        batch_metadata: dict[str, str] | None = None,
+        oligo_metadata: list[dict[str, str]] | None = None,
+        **kwargs: object,
+    ) -> bytes:
         ...
+
 
 def register(register_codec):
     register_codec("mycodec", MyCodec)
@@ -242,13 +271,17 @@ adding your encode/decode logic the module may look like:
 ```python
 # mycodec/mycodec/plugin.py
 from genecoder.api import Codec
+from genecoder.formats import SequenceBatch
+
 
 class MyCodec(Codec):
     def encode(self, data: bytes) -> str:
         return data.decode().upper()
 
-    def decode(self, text: str) -> bytes:
+    def decode(self, encoded: SequenceBatch | str) -> bytes:
+        text = encoded.primary_sequence() if isinstance(encoded, SequenceBatch) else encoded
         return text.lower().encode()
+
 
 def register(register_plugin):
     register_plugin("mycodec", MyCodec())
@@ -273,13 +306,15 @@ genecli plugin list   # confirms the plugin is available
    # src/plugins/reverse_codec.py
    from typing import Callable
    from genecoder.api import Codec
+   from genecoder.formats import SequenceBatch
 
    class ReverseCodec(Codec):
        def encode(self, data: bytes, /, **kwargs: object) -> str:
            return data[::-1].decode("utf-8")
 
-       def decode(self, encoded: str, /, **kwargs: object) -> bytes:
-           return encoded[::-1].encode("utf-8")
+       def decode(self, encoded: SequenceBatch | str, /, **kwargs: object) -> bytes:
+           text = encoded.primary_sequence() if isinstance(encoded, SequenceBatch) else encoded
+           return text[::-1].encode("utf-8")
 
    def register(register_codec: Callable[[str, type[Codec]], None]) -> None:
        register_codec("reverse", ReverseCodec)
@@ -317,11 +352,11 @@ implementations of each entry point group.
 
 Channel plugins are adapters around
 [``genecoder.api.Simulator``](api_reference.md#genecoder.api.Simulator). The
-base class requires a ``simulate(sequence: str) -> str`` method that returns the
-mutated DNA sequence for the downstream pipeline. Implementations may override
-``with_profile(profile: str)`` to support external error profiles; the default
-implementation raises ``NotImplementedError`` so simulators that expose profile
-selection must supply their own version.
+base class requires a ``simulate(sequence: str | SequenceBatch) -> SequenceBatch``
+method that returns the mutated DNA sequence(s) for the downstream pipeline.
+Implementations may override ``with_profile(profile: str)`` to support external
+error profiles; the default implementation raises ``NotImplementedError`` so
+simulators that expose profile selection must supply their own version.
 
 Simulators are discovered from the ``genecoder.simulators`` entry-point group
 and should use a short, descriptive slug for the entry-point key. The slug is
