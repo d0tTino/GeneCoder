@@ -141,7 +141,7 @@ def mock_coverage_distribution(monkeypatch: pytest.MonkeyPatch) -> dict[int, flo
         return {cov_value: 1.0}
 
     monkeypatch.setattr("genecoder.simulators.batch_utils.load_coverage_distribution", _fake_loader)
-    monkeypatch.setattr("genecoder.simulators.illumina.load_coverage_distribution", _fake_loader)
+    monkeypatch.setattr("genecoder.simulators.illumina.batch.load_coverage_distribution", _fake_loader)
     monkeypatch.setattr("genecoder.simulators.nanopore.load_coverage_distribution", _fake_loader)
     return _fake_loader(None)
 

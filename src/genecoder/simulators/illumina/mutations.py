@@ -1,0 +1,79 @@
+"""Mutation helpers for the Illumina simulator."""
+from __future__ import annotations
+
+from typing import Dict, Sequence
+import random
+
+try:  # Optional at runtime
+    from numba import njit
+except Exception:  # pragma: no cover - fallback when numba missing
+    from typing import Callable, TypeVar, ParamSpec
+
+    P = ParamSpec("P")
+    R = TypeVar("R")
+
+    def njit(*args: object, **kwargs: object) -> Callable[[Callable[P, R]], Callable[P, R]]:  # type: ignore[misc]
+        def wrapper(func: Callable[P, R]) -> Callable[P, R]:
+            return func
+
+        return wrapper
+
+from ...error_simulation import _random_substitution, NUCLEOTIDES
+
+
+__all__ = ["mutate_read"]
+
+
+@njit(cache=True, forceobj=True)  # type: ignore[misc]
+def _mutate_read_jit(
+    read: str,
+    quality: Sequence[float] | None,
+    substitution_rate: float,
+    insertion_rate: float,
+    deletion_rate: float,
+    context_errors: Dict[str, float],
+    rng: random.Random,
+) -> str:
+    mutated: list[str] = []
+    for idx, nt in enumerate(read):
+        if rng.random() < deletion_rate:
+            continue
+
+        sub_rate = (
+            quality[idx] if quality is not None and idx < len(quality) else substitution_rate
+        )
+        if context_errors and idx > 0:
+            ctx = read[idx - 1 : idx + 1].upper()
+            sub_rate *= context_errors.get(ctx, 1.0)
+
+        if rng.random() < sub_rate:
+            nt = _random_substitution(nt, rng)
+
+        mutated.append(nt)
+        if rng.random() < insertion_rate:
+            mutated.append(rng.choice(NUCLEOTIDES))
+
+    return "".join(mutated)
+
+
+def mutate_read(
+    read: str,
+    quality: Sequence[float] | None,
+    rng: random.Random,
+    *,
+    substitution_rate: float,
+    insertion_rate: float,
+    deletion_rate: float,
+    context_errors: Dict[str, float],
+) -> str:
+    """Return a mutated ``read`` using the configured error rates."""
+
+    return _mutate_read_jit(
+        read,
+        quality,
+        substitution_rate,
+        insertion_rate,
+        deletion_rate,
+        context_errors,
+        rng,
+    )
