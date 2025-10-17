@@ -34,10 +34,10 @@ def test_insilicoseq_cli_profile_file(tmp_path: Path, monkeypatch: pytest.Monkey
     profile.write_text(yaml.safe_dump(params))
 
     called: list[tuple[float, float, float]] = []
-    import genecoder.simulators.illumina as illumina
+    import genecoder.simulators.illumina.cli as illumina_cli
     from genecoder.simulators.illumina import IlluminaChannel
 
-    monkeypatch.setattr(illumina.shutil, "which", lambda _: None)
+    monkeypatch.setattr(illumina_cli.shutil, "which", lambda _: None)
 
     def fake_simulate(self: IlluminaChannel, seq: str) -> str:
         called.append((self.substitution_rate, self.insertion_rate, self.deletion_rate))
