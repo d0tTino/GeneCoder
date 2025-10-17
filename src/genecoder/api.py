@@ -39,13 +39,16 @@ class Codec(ABC):
         """
 
     @abstractmethod
-    def decode(self, encoded: str, /, **kwargs: Any) -> bytes:
+    def decode(self, encoded: "SequenceBatch" | str, /, **kwargs: Any) -> bytes:
         """Decode ``encoded`` back into the original byte sequence.
 
         Parameters
         ----------
         encoded:
-            The sequence returned by :meth:`encode`.
+            The sequence returned by :meth:`encode`. Implementations that
+            advertise support for batch-aware decoding receive a
+            :class:`~genecoder.formats.SequenceBatch`. Legacy codecs continue to
+            be passed a plain string containing the primary sequence.
         **kwargs:
             Optional codec specific parameters.
 

@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from typing import Any, Mapping, Sequence
+
 from genecoder.core import encode, simulate, decode, metrics as gather_metrics, run_pipeline
 from genecoder.formats import SequenceBatch
 from genecoder.api import Codec
@@ -20,6 +22,40 @@ class _Base4Codec(Codec):
     def decode(self, encoded: str) -> bytes:  # type: ignore[override]
         from genecoder.encoders import decode_base4_direct
         return decode_base4_direct(encoded)[0]
+
+
+class _BatchAwareCodec(Codec):
+    def __init__(self) -> None:
+        self.last_batch: SequenceBatch | None = None
+        self.last_batch_metadata: Mapping[str, str] | None = None
+        self.last_oligo_metadata: list[Mapping[str, str]] | None = None
+
+    def encode(self, data: bytes, /, **kwargs: Any) -> SequenceBatch:  # type: ignore[override]
+        from genecoder.encoders import encode_base4_direct
+
+        dna = encode_base4_direct(data)
+        half = max(1, len(dna) // 2)
+        records = [
+            ("batch_id=batchy oligo_index=1", dna[:half]),
+            ("batch_id=batchy oligo_index=2", dna[half:]),
+        ]
+        return SequenceBatch.build(records, batch_id="batchy", batch_seed=11)
+
+    def decode(
+        self,
+        encoded: SequenceBatch,
+        /,
+        *,
+        batch_metadata: Mapping[str, str] | None = None,
+        oligo_metadata: Sequence[Mapping[str, str]] | None = None,
+        **_kwargs: Any,
+    ) -> bytes:  # type: ignore[override]
+        from genecoder.encoders import decode_base4_direct
+
+        self.last_batch = encoded
+        self.last_batch_metadata = dict(batch_metadata or {})
+        self.last_oligo_metadata = [dict(m) for m in (oligo_metadata or [])]
+        return decode_base4_direct(encoded.primary_sequence())[0]
 
 
 def test_roundtrip_rs_simple(tmp_path: Path) -> None:
@@ -63,6 +99,22 @@ def test_decode_helper() -> None:
     CODEC_REGISTRY["base4"] = {"encode": _Base4Codec().encode, "decode": _Base4Codec().decode}
     dna, fec_info = encode("base4", None, b"data")
     assert decode("base4", None, dna, fec_info) == b"data"
+
+
+def test_decode_helper_sequence_batch_metadata() -> None:
+    init_plugins()
+    codec = _BatchAwareCodec()
+    CODEC_REGISTRY["batchy"] = {"encode": codec.encode, "decode": codec.decode}
+
+    payload = b"batch aware payload"
+    dna, fec_info = encode("batchy", None, payload)
+    assert isinstance(dna, SequenceBatch)
+
+    result = decode("batchy", None, dna, fec_info)
+    assert result == payload
+    assert codec.last_batch is dna
+    assert codec.last_batch_metadata == dict(dna.metadata)
+    assert codec.last_oligo_metadata == [dict(ol.metadata) for ol in dna.oligos]
 
 
 def test_metrics_helper() -> None:

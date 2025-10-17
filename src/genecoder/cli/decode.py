@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 import re
+from dataclasses import replace
 from pathlib import Path
 
 
@@ -59,18 +60,27 @@ def _get_header_filename(file_path: str) -> str | None:
     return None
 
 def run_decoding_pipeline(
-    sequence: str, header: str, options: DecodingOptions, input_file_name: str
+    sequence: str | SequenceBatch,
+    header: str | None,
+    options: DecodingOptions,
+    input_file_name: str,
 ) -> bytes:
-    dna_for_primary = sequence
+    batch: SequenceBatch | None = sequence if isinstance(sequence, SequenceBatch) else None
+    if batch is not None:
+        dna_for_primary = batch.primary_sequence() or batch.combined_sequence()
+        header_value = header or batch.first_header()
+    else:
+        dna_for_primary = sequence
+        header_value = header or ""
     _, decode_map = get_alphabet_maps(options.alphabet)
-    if "fec=triple_repeat" in header:
+    if "fec=triple_repeat" in header_value:
         logger.info(f"Triple-Repeat FEC detected in header for {input_file_name}.")
-        if len(sequence) % 3 != 0:
+        if len(dna_for_primary) % 3 != 0:
             logger.warning(
-                f"Warning for {input_file_name}: Sequence length {len(sequence)} is not multiple of 3 for Triple-Repeat FEC. Attempting decode."
+                f"Warning for {input_file_name}: Sequence length {len(dna_for_primary)} is not multiple of 3 for Triple-Repeat FEC. Attempting decode."
             )
         try:
-            dna_for_primary, corrected_tr, uncorr_tr = decode_triple_repeat(sequence)
+            dna_for_primary, corrected_tr, uncorr_tr = decode_triple_repeat(dna_for_primary)
             logger.info(
                 f"Triple-Repeat FEC decoding for {input_file_name}: {corrected_tr} corrected, {uncorr_tr} uncorrectable errors in triplets."
             )
@@ -83,7 +93,7 @@ def run_decoding_pipeline(
     fec_names = [f"fec={name}" for name in FEC_REGISTRY]
     should_check_parity = (
         options.check_parity
-        and not any(tag in header for tag in fec_names)
+        and not any(tag in header_value for tag in fec_names)
     )
 
     if options.method == "base4_direct":
@@ -105,9 +115,9 @@ def run_decoding_pipeline(
             logger.warning(
                 f"Warning for {input_file_name}: --check-parity is not applicable to 'gc_balanced' method's DNA layer."
             )
-        gc_min_match = re.search(r"gc_min=([\d.]+)", header)
-        gc_max_match = re.search(r"gc_max=([\d.]+)", header)
-        max_hp_match = re.search(r"max_homopolymer=(\d+)", header)
+        gc_min_match = re.search(r"gc_min=([\d.]+)", header_value)
+        gc_max_match = re.search(r"gc_max=([\d.]+)", header_value)
+        max_hp_match = re.search(r"max_homopolymer=(\d+)", header_value)
         gc_min = float(gc_min_match.group(1)) if gc_min_match else None
         gc_max = float(gc_max_match.group(1)) if gc_max_match else None
         max_hp = int(max_hp_match.group(1)) if max_hp_match else None
@@ -133,19 +143,19 @@ def run_decoding_pipeline(
         )
 
     final_data: bytes = binary_data
-    if "fec=hamming_7_4" in header:
+    if "fec=hamming_7_4" in header_value:
         logger.info(f"Hamming(7,4) FEC detected in header for {input_file_name}.")
-        fec_padding_bits_match = re.search(r"fec_padding_bits=(\d+)", header)
+        fec_padding_bits_match = re.search(r"fec_padding_bits=(\d+)", header_value)
         if not fec_padding_bits_match:
             raise ValueError("'fec_padding_bits' missing in header for Hamming(7,4) FEC.")
         fec_padding_bits = int(fec_padding_bits_match.group(1))
         final_data, _ = decode_data_with_hamming(binary_data, fec_padding_bits)
     else:
-        fec_match = re.search(r"fec=([\w_]+)", header)
+        fec_match = re.search(r"fec=([\w_]+)", header_value)
         if fec_match:
             fec_name = fec_match.group(1)
             if fec_name in FEC_REGISTRY:
-                info_match = re.search(r"fec_info=([^ ]+)", header)
+                info_match = re.search(r"fec_info=([^ ]+)", header_value)
                 info = None
                 if info_match:
                     import base64
@@ -210,8 +220,17 @@ def process_single_decode(
                 input_file_path,
             )
 
-        header = primary_oligos[0].header
-        sequence_from_fasta = "".join(ol.sequence for ol in primary_oligos)
+        primary_batch = SequenceBatch(
+            batch_id=batch.batch_id,
+            metadata=dict(batch.metadata),
+            seed=batch.seed,
+            oligos=[replace(ol) for ol in primary_oligos],
+            legacy=batch.legacy,
+        )
+
+        header = primary_batch.oligos[0].header if primary_batch.oligos else ""
+        sequence_from_fasta = "".join(ol.sequence for ol in primary_batch.oligos)
+        oligo_lengths = [len(ol.sequence) for ol in primary_batch.oligos]
         if getattr(args, "seed", None) is None and batch.seed is not None:
             args.seed = batch.seed
 
@@ -252,10 +271,23 @@ def process_single_decode(
                     "Applied %s simulator before decoding.", args.simulator
                 )
 
+        if primary_batch.oligos:
+            if len(primary_batch.oligos) == 1:
+                primary_batch.oligos[0].sequence = sequence_from_fasta
+            else:
+                offset = 0
+                for ol, length in zip(primary_batch.oligos, oligo_lengths):
+                    ol.sequence = sequence_from_fasta[offset : offset + length]
+                    offset += length
+                if offset < len(sequence_from_fasta):
+                    primary_batch.oligos[-1].sequence += sequence_from_fasta[offset:]
 
         options = build_decoding_options(args)
         final_decoded_data = run_decoding_pipeline(
-            sequence_from_fasta, header, options, os.path.basename(input_file_path)
+            primary_batch if primary_batch.oligos else sequence_from_fasta,
+            header,
+            options,
+            os.path.basename(input_file_path),
         )
 
         _key_bytes = None

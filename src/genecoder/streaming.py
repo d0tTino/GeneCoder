@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-from typing import (
-    Callable,
-    Iterable,
-    Iterator,
-    Tuple,
-    Union,
-)
+import inspect
+from typing import Any, Callable, Iterable, Iterator, Tuple, Union
+from typing import get_args, get_origin
 import os
 import json
 import hashlib
@@ -20,8 +16,45 @@ from .utils import get_alphabet_maps
 from .formats import SequenceBatch
 
 
-EncodeFunc = Callable[[bytes], str]
-DecodeFunc = Callable[[str], bytes]
+DNAChunk = Union[str, SequenceBatch]
+EncodeFunc = Callable[[bytes], DNAChunk]
+DecodeFunc = Callable[[DNAChunk], bytes]
+
+
+def _annotation_supports_sequence_batch(annotation: object) -> bool:
+    if annotation is inspect._empty:
+        return False
+    if isinstance(annotation, str):
+        return "SequenceBatch" in annotation
+    origin = get_origin(annotation)
+    if origin is not None:
+        return any(_annotation_supports_sequence_batch(arg) for arg in get_args(annotation))
+    try:
+        return bool(annotation is SequenceBatch or issubclass(annotation, SequenceBatch))
+    except TypeError:
+        return False
+
+
+def _has_batch_flag(candidate: object) -> bool:
+    return bool(
+        getattr(candidate, "__genecoder_accepts_batch__", False)
+        or getattr(candidate, "accepts_sequence_batch", False)
+        or getattr(candidate, "supports_sequence_batch", False)
+    )
+
+
+def _decode_accepts_sequence_batch(decode_fn: Callable[..., Any]) -> bool:
+    for candidate in (decode_fn, getattr(decode_fn, "__self__", None), getattr(decode_fn, "__func__", None)):
+        if candidate is not None and _has_batch_flag(candidate):
+            return True
+    try:
+        signature = inspect.signature(decode_fn)
+    except (TypeError, ValueError):
+        return False
+    params = list(signature.parameters.values())
+    if not params:
+        return False
+    return _annotation_supports_sequence_batch(params[0].annotation)
 
 
 def stream_encode(
@@ -41,7 +74,7 @@ def stream_encode(
 
 
 def stream_decode(
-    dna_iter: Iterable[Union[str, Tuple[str, object]]],
+    dna_iter: Iterable[Union[DNAChunk, Tuple[DNAChunk, object]]],
     decode_fn: DecodeFunc,
     *,
     fec_decode: Callable[[bytes, object], tuple[bytes, int]] | None = None,
@@ -53,7 +86,15 @@ def stream_decode(
             dna, info = item
         else:
             dna, info = item, None
-        chunk = decode_fn(dna)
+        if isinstance(dna, SequenceBatch) and _decode_accepts_sequence_batch(decode_fn):
+            metadata_kwargs = {
+                "batch_metadata": dict(dna.metadata),
+                "oligo_metadata": [dict(ol.metadata) for ol in dna.oligos],
+            }
+            chunk = decode_fn(dna, **metadata_kwargs)
+        else:
+            dna_string = dna.primary_sequence() if isinstance(dna, SequenceBatch) else dna
+            chunk = decode_fn(dna_string)  # type: ignore[arg-type]
         if fec_decode:
             chunk, _ = fec_decode(chunk, info)
         yield idx, chunk

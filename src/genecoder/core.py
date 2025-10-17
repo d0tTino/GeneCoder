@@ -2,9 +2,11 @@ from __future__ import annotations
 
 """Simple encode/ECC/channel/decode pipeline utilities."""
 
+import inspect
 import json
 from pathlib import Path
 from typing import Any, Mapping, Tuple, Dict, List, Sequence
+from typing import get_args, get_origin
 
 from .gc_constrained_encoder import calculate_gc_content
 from .utils import get_max_homopolymer_length
@@ -19,6 +21,49 @@ from .simulators.batch_utils import (
 )
 
 __all__ = ["encode", "simulate", "decode", "metrics", "run_pipeline"]
+
+
+def _annotation_supports_sequence_batch(annotation: object) -> bool:
+    """Return ``True`` if ``annotation`` references :class:`SequenceBatch`."""
+
+    if annotation is inspect._empty:
+        return False
+    if isinstance(annotation, str):
+        return "SequenceBatch" in annotation
+    origin = get_origin(annotation)
+    if origin is not None:
+        return any(_annotation_supports_sequence_batch(arg) for arg in get_args(annotation))
+    try:
+        return bool(annotation is SequenceBatch or issubclass(annotation, SequenceBatch))
+    except TypeError:
+        return False
+
+
+def _has_batch_flag(candidate: object) -> bool:
+    """Return ``True`` if ``candidate`` advertises batch support."""
+
+    return bool(
+        getattr(candidate, "__genecoder_accepts_batch__", False)
+        or getattr(candidate, "accepts_sequence_batch", False)
+        or getattr(candidate, "supports_sequence_batch", False)
+    )
+
+
+def _codec_accepts_sequence_batch(decode_fn: Any) -> bool:
+    """Return ``True`` when ``decode_fn`` opts into ``SequenceBatch`` inputs."""
+
+    for candidate in (decode_fn, getattr(decode_fn, "__self__", None), getattr(decode_fn, "__func__", None)):
+        if candidate is not None and _has_batch_flag(candidate):
+            return True
+    try:
+        signature = inspect.signature(decode_fn)
+    except (TypeError, ValueError):
+        return False
+    params = list(signature.parameters.values())
+    if not params:
+        return False
+    first_param = params[0]
+    return _annotation_supports_sequence_batch(first_param.annotation)
 
 
 
@@ -233,7 +278,16 @@ def decode(
         raise ValueError(f"Unknown codec: {codec}")
 
     batch = dna if isinstance(dna, SequenceBatch) else _wrap_single_sequence(str(dna))
-    decoded_any = CODEC_REGISTRY[codec]["decode"](batch.primary_sequence())
+    decode_fn = CODEC_REGISTRY[codec]["decode"]
+    primary_sequence = batch.primary_sequence()
+    if _codec_accepts_sequence_batch(decode_fn):
+        decoded_any = decode_fn(
+            batch,
+            batch_metadata=dict(batch.metadata),
+            oligo_metadata=[dict(ol.metadata) for ol in batch.oligos],
+        )
+    else:
+        decoded_any = decode_fn(primary_sequence)
     assert isinstance(decoded_any, (bytes, bytearray))
     decoded = bytes(decoded_any)
 
