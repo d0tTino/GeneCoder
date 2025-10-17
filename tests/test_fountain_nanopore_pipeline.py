@@ -7,6 +7,7 @@ from typing import Mapping
 
 import pytest
 import genecoder.simulators.nanopore as nanopore
+import genecoder.simulators.nanopore_external as nanopore_external
 from genecoder.core import run_pipeline
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins, register_fec
 from genecoder.simulators import SIMULATOR_REGISTRY
@@ -100,12 +101,9 @@ def test_fountain_nanopore_pipeline(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
-    monkeypatch.setattr(nanopore.shutil, "which", lambda _: None)
-    monkeypatch.setattr(
-        nanopore,
-        "_run_external",
-        lambda *_: (_ for _ in ()).throw(AssertionError("_run_external called")),
-    )
+    fallback = lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("fallback"))
+    monkeypatch.setattr(nanopore_external, "run_dnarsim_cli", fallback)
+    monkeypatch.setattr(nanopore, "run_dnarsim_cli", fallback)
 
     init_plugins()
     CODEC_REGISTRY["base4"] = {
