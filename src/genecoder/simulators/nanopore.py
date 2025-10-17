@@ -1,59 +1,39 @@
 """Wrapper for the optional d2sim nanopore simulator."""
 from __future__ import annotations
 
-from typing import Any, Callable, Sequence, Dict, Iterable, Mapping, cast
+from typing import Any, Callable, Dict, Iterable, Mapping, Sequence, cast
 from copy import deepcopy
 from types import ModuleType
 import json
 import random
-import shutil
-import subprocess
-import logging
 from pathlib import Path
-
-try:  # Optional at runtime
-    from numba import njit
-except Exception:  # pragma: no cover - fallback when numba missing
-    from typing import Callable, TypeVar, ParamSpec
-
-    P = ParamSpec("P")
-    R = TypeVar("R")
-
-    def njit(*args: object, **kwargs: object) -> Callable[[Callable[P, R]], Callable[P, R]]:
-        def wrapper(func: Callable[P, R]) -> Callable[P, R]:
-            return func
-
-        return wrapper
 
 from ..random_utils import make_rng
 from ..d2sim_adapter import simulate_d2sim
 from ..desp_adapter import simulate_desp
-from ..simulator_utils import _run_external, _parse_env_options
 from ..api import Simulator
-from .base import BaseChannel
-from .batch_utils import (
-    CONFIG_COVERAGE_KEY,
-    CONFIG_DROPOUT_KEY,
-    CONFIG_SYNTHESIS_KEY,
-    RESULT_CONSENSUS_TOTALS_KEY,
-    RESULT_COVERAGE_KEY,
-    RESULT_DROPOUT_FLAG_KEY,
-    RESULT_MUTATION_LOG_KEY,
-    RESULT_MUTATION_TOTALS_KEY,
-    RESULT_SYNTHESIS_FLAG_KEY,
-    bool_to_str,
-    clone_batch,
-    finalize_batch_statistics,
-    load_coverage_distribution,
-    metadata_float,
-    mutation_counts,
-)
 from ..formats import SequenceBatch
-from ..error_simulation import (
-    _random_substitution,
-    NUCLEOTIDES,
-)
 from . import register_simulator as _register_simulator
+from .base import BaseChannel
+from .nanopore_batch import (
+    mutate_read as _mutate_read,
+    mutate_read_jit as _mutate_read_jit,
+    consensus as _consensus,
+    simulate_batch as _simulate_batch_impl,
+)
+from .nanopore_external import run_dnarsim_cli, simulate_simple_model as _simulate_fallback_jit
+from .nanopore_profiles import (
+    BASE_PROFILE_KEYS as _BASE_PROFILE_KEYS,
+    load_yaml_data as _load_yaml_data,
+    merge_profiles as _merge_profiles,
+    parse_context_overrides as _parse_context_overrides,
+    parse_profile as _parse_profile,
+    parse_rate_table as _parse_rate_table,
+    split_context_indels as _split_context_indels,
+    validate_context_profiles as _validate_context_profiles,
+    validate_indel_profile as _validate_indel_profile,
+    validate_rate as _validate_rate,
+)
 
 __all__ = [
     "NanoporeChannel",
@@ -63,135 +43,6 @@ __all__ = [
     "NANOPORE_PROFILES",
     "DNARSIM_RATE_TABLES",
 ]
-
-# ---------------------------------------------------------------------------
-# Validation helpers
-
-
-def _validate_rate(name: str, rate: float | int) -> float:
-    try:
-        value = float(rate)
-    except (TypeError, ValueError):
-        raise ValueError(f"{name} must be a number between 0 and 1") from None
-    if not 0.0 <= value <= 1.0:
-        raise ValueError(f"{name} must be between 0 and 1")
-    return value
-
-
-def _validate_indel_profile(
-    profile: Mapping[int, float] | None, name: str
-) -> Dict[int, float]:
-    validated: Dict[int, float] = {}
-    for run_len, prob in (profile or {}).items():
-        try:
-            rl = int(run_len)
-        except (TypeError, ValueError):
-            raise ValueError(f"{name} run lengths must be integers") from None
-        validated[rl] = _validate_rate(f"{name}[{rl}]", prob)
-    return validated
-
-
-def _validate_context_profiles(
-    profiles: Mapping[str, Mapping[int, float]] | None, name: str
-) -> Dict[str, Dict[int, float]]:
-    validated: Dict[str, Dict[int, float]] = {}
-    for ctx, prof in (profiles or {}).items():
-        if not isinstance(prof, Mapping):
-            raise ValueError(
-                f"{name}[{ctx}] must be a mapping of run lengths to probabilities"
-            )
-        validated[str(ctx).upper()] = _validate_indel_profile(prof, f"{name}[{ctx}]")
-    return validated
-
-
-def _split_context_indels(
-    profiles: Mapping[str, Mapping[Any, Any]] | None,
-    name: str,
-) -> tuple[Dict[str, Dict[int, float]], Dict[str, Dict[int, float]]]:
-    """Return separate insertion and deletion context maps.
-
-    ``profiles`` can map contexts either to ``{"insertions": {...}, "deletions": {...}}``
-    or to run-length specific mappings such as ``{5: {"insertions": 0.1}}``. When only a
-    single probability is provided for a run length, it is applied to both insertions
-    and deletions by default. This helper validates the nested indel profiles and
-    returns two dictionaries in the normalized format used internally by the
-    simulator. Invalid context structures raise ``ValueError``.
-    """
-
-    if profiles is None:
-        return {}, {}
-    if not isinstance(profiles, Mapping):
-        raise ValueError(f"{name} must be a mapping of contexts to profiles")
-
-    ctx_ins: Dict[str, Dict[int, float]] = {}
-    ctx_del: Dict[str, Dict[int, float]] = {}
-    for ctx, ctx_map in profiles.items():
-        if not isinstance(ctx_map, Mapping):
-            raise ValueError(f"{name}[{ctx}] must be a mapping")
-        ctx_key = str(ctx).upper()
-
-        if any(k in {"insertions", "insertion", "deletions", "deletion"} for k in ctx_map):
-            # Traditional format with explicit insertion/deletion maps
-            extra = set(ctx_map) - {
-                "insertions",
-                "insertion",
-                "deletions",
-                "deletion",
-            }
-            if extra:
-                raise ValueError(
-                    f"{name}[{ctx}] has invalid keys: {', '.join(map(str, extra))}"
-                )
-            ins_prof = ctx_map.get("insertions") or ctx_map.get("insertion")
-            del_prof = ctx_map.get("deletions") or ctx_map.get("deletion")
-            if ins_prof is not None:
-                ctx_ins[ctx_key] = _validate_indel_profile(
-                    ins_prof, f"{name}[{ctx}].insertions"
-                )
-            if del_prof is not None:
-                ctx_del[ctx_key] = _validate_indel_profile(
-                    del_prof, f"{name}[{ctx}].deletions"
-                )
-            continue
-
-        # Run-length first format: {context: {run_len: {"insertions": x, ...}}}
-        for run_len, rates in ctx_map.items():
-            try:
-                rl = int(run_len)
-            except (TypeError, ValueError):
-                raise ValueError(f"{name}[{ctx}] run lengths must be integers") from None
-            if isinstance(rates, Mapping):
-                extra = set(rates) - {
-                    "insertions",
-                    "insertion",
-                    "deletions",
-                    "deletion",
-                }
-                if extra:
-                    raise ValueError(
-                        f"{name}[{ctx}][{rl}] has invalid keys: {', '.join(map(str, extra))}"
-                    )
-                ins = rates.get("insertions") or rates.get("insertion")
-                dele = rates.get("deletions") or rates.get("deletion")
-                if ins is None and dele is None:
-                    raise ValueError(
-                        f"{name}[{ctx}][{rl}] must specify insertions or deletions"
-                    )
-                if ins is not None:
-                    val = _validate_rate(
-                        f"{name}[{ctx}][{rl}].insertions", ins
-                    )
-                    ctx_ins.setdefault(ctx_key, {})[rl] = val
-                if dele is not None:
-                    val = _validate_rate(
-                        f"{name}[{ctx}][{rl}].deletions", dele
-                    )
-                    ctx_del.setdefault(ctx_key, {})[rl] = val
-            else:
-                val = _validate_rate(f"{name}[{ctx}][{rl}]", rates)
-                ctx_ins.setdefault(ctx_key, {})[rl] = val
-                ctx_del.setdefault(ctx_key, {})[rl] = val
-    return ctx_ins, ctx_del
 
 # ---------------------------------------------------------------------------
 # Preset parameter profiles for :class:`NanoporeChannel` loaded from YAML.
@@ -264,119 +115,8 @@ _FALLBACK_PROFILE_DATA: dict[
     },
 }
 
-_BASE_PROFILE_KEYS = {
-    "error_rate",
-    "substitution_rate",
-    "insertion_rate",
-    "deletion_rate",
-    "coverage",
-    "quality_profile",
-}
-
-
-def _parse_profile(params: Mapping[str, Any]) -> dict[str, Any]:
-    parsed: dict[str, Any] = {}
-    for key, value in params.items():
-        if key in {"insertion_profile", "deletion_profile"}:
-            prof = value if isinstance(value, Mapping) else None
-            parsed[key] = _validate_indel_profile(prof, key)
-        elif key in {"context_insertions", "context_deletions"}:
-            prof = value if isinstance(value, Mapping) else None
-            parsed[key] = _validate_context_profiles(prof, key)
-        elif key == "context_indels" and isinstance(value, Mapping):
-            ctx_ins, ctx_del = _split_context_indels(value, "context_indels")
-            if ctx_ins:
-                parsed.setdefault("context_insertions", {}).update(ctx_ins)
-            if ctx_del:
-                parsed.setdefault("context_deletions", {}).update(ctx_del)
-        else:
-            parsed[key] = value
-    if "error_rate" not in parsed:
-        sub = float(parsed.get("substitution_rate", 0.0))
-        ins = float(parsed.get("insertion_rate", 0.0))
-        dele = float(parsed.get("deletion_rate", 0.0))
-        parsed["error_rate"] = sub + ins + dele
-    return parsed
-
-
-def _parse_context_overrides(params: Mapping[str, Any], name: str) -> dict[str, Any]:
-    parsed = _parse_profile(params)
-    for key in list(parsed):
-        if key in _BASE_PROFILE_KEYS:
-            parsed.pop(key)
-    if not parsed:
-        raise ValueError(f"{name} must define context-specific overrides")
-    return parsed
-
-
-def _merge_profiles(
-    base: Mapping[str, Any], overrides: Mapping[str, Any]
-) -> dict[str, Any]:
-    merged: dict[str, Any] = {}
-    for key, value in base.items():
-        if isinstance(value, Mapping):
-            merged[key] = {k: deepcopy(v) for k, v in value.items()}
-        else:
-            merged[key] = deepcopy(value)
-    for key, value in overrides.items():
-        if key in {"insertion_profile", "deletion_profile"}:
-            existing = {k: float(v) for k, v in merged.get(key, {}).items()}
-            for run_len, rate in value.items():
-                existing[int(run_len)] = float(rate)
-            merged[key] = existing
-        elif key in {"context_insertions", "context_deletions"}:
-            dest = {
-                ctx: {run: float(rate) for run, rate in prof.items()}
-                for ctx, prof in merged.get(key, {}).items()
-            }
-            for ctx, prof in value.items():
-                ctx_key = str(ctx).upper()
-                dest.setdefault(ctx_key, {})
-                for run_len, rate in prof.items():
-                    dest[ctx_key][int(run_len)] = float(rate)
-            merged[key] = dest
-        else:
-            merged[key] = deepcopy(value)
-    return merged
-
-
-def _parse_rate_table(tbl: Mapping[str, Any]) -> dict[str, Any]:
-    parsed: dict[str, Any] = {
-        "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
-        "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
-        "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
-    }
-    if "context_errors" in tbl and isinstance(tbl["context_errors"], Mapping):
-        parsed["context_errors"] = {
-            str(k).upper(): float(v)
-            for k, v in tbl["context_errors"].items()
-            if isinstance(v, (int, float))
-        }
-    if "insertion_profile" in tbl:
-        parsed["insertion_profile"] = _validate_indel_profile(
-            tbl.get("insertion_profile"), "insertion_profile"
-        )
-    if "deletion_profile" in tbl:
-        parsed["deletion_profile"] = _validate_indel_profile(
-            tbl.get("deletion_profile"), "deletion_profile"
-        )
-    if "context_insertions" in tbl:
-        parsed["context_insertions"] = _validate_context_profiles(
-            tbl.get("context_insertions"), "context_insertions"
-        )
-    if "context_deletions" in tbl:
-        parsed["context_deletions"] = _validate_context_profiles(
-            tbl.get("context_deletions"), "context_deletions"
-        )
-    if "context_indels" in tbl and isinstance(tbl["context_indels"], Mapping):
-        ctx_ins, ctx_del = _split_context_indels(
-            tbl["context_indels"], "context_indels"
-        )
-        if ctx_ins:
-            parsed.setdefault("context_insertions", {}).update(ctx_ins)
-        if ctx_del:
-            parsed.setdefault("context_deletions", {}).update(ctx_del)
-    return parsed
+# ---------------------------------------------------------------------------
+# Profile configuration helpers
 
 
 def _load_profiles_from_directory(
@@ -393,7 +133,7 @@ def _load_profiles_from_directory(
     base_path = cfg_dir / "nanopore.yml"
     try:
         with open(base_path, "r", encoding="utf-8") as fh:
-            base_data = yaml_module.safe_load(fh) or {}
+            base_data = _load_yaml_data(fh.read(), yaml_module) or {}
     except FileNotFoundError:
         base_data = {}
     if isinstance(base_data, Mapping):
@@ -423,7 +163,7 @@ def _load_profiles_from_directory(
     context_path = cfg_dir / "nanopore_context.yaml"
     try:
         with open(context_path, "r", encoding="utf-8") as fh:
-            context_data = yaml_module.safe_load(fh) or {}
+            context_data = _load_yaml_data(fh.read(), yaml_module) or {}
     except FileNotFoundError:
         context_data = {}
     if not isinstance(context_data, Mapping):
@@ -442,7 +182,7 @@ def _load_profiles_from_directory(
     rates_path = cfg_dir / "dnarsim_rates.yaml"
     try:
         with open(rates_path, "r", encoding="utf-8") as fh:
-            rates_data = yaml_module.safe_load(fh) or {}
+            rates_data = _load_yaml_data(fh.read(), yaml_module) or {}
     except FileNotFoundError:
         rates_data = {}
 
@@ -473,92 +213,6 @@ except Exception:  # pragma: no cover - fallback when yaml missing
         key: deepcopy(params) for key, params in _FALLBACK_PROFILE_DATA.items()
     }
     DNARSIM_RATE_TABLES = {}
-
-@njit(cache=True, forceobj=True)  # type: ignore[misc]
-def _simulate_fallback_jit(sequence: str, error_rate: float, rng: random.Random) -> str:
-    sub_p = error_rate * 0.4
-    ins_p = error_rate * 0.3
-    base_del_p = error_rate * 0.3
-
-    mutated: list[str] = []
-    prev = ""
-    run_len = 0
-    for nt in sequence:
-        if nt == prev:
-            run_len += 1
-        else:
-            run_len = 1
-            prev = nt
-
-        del_p = base_del_p * (2 if run_len >= 5 else 1)
-        del_p = min(1.0, del_p)
-        if rng.random() < del_p:
-            continue
-
-        if rng.random() < sub_p:
-            nt = _random_substitution(nt, rng)
-
-        mutated.append(nt)
-        if rng.random() < ins_p:
-            mutated.append(rng.choice(NUCLEOTIDES))
-
-    return "".join(mutated)
-
-
-@njit(cache=True, forceobj=True)  # type: ignore[misc]
-def _mutate_read_jit(
-    read: str,
-    quality: Sequence[float] | None,
-    rng: random.Random,
-    substitution_rate: float,
-    insertion_rate: float,
-    deletion_rate: float,
-    context_errors: Dict[str, float],
-    insertion_profile: Dict[int, float],
-    deletion_profile: Dict[int, float],
-    context_insertions: Dict[str, Dict[int, float]],
-    context_deletions: Dict[str, Dict[int, float]],
-) -> str:
-    mutated = []
-    prev = ""
-    run_len = 0
-    for idx, nt in enumerate(read):
-        if nt == prev:
-            run_len += 1
-        else:
-            run_len = 1
-            prev = nt
-
-        ctx = read[idx - 1 : idx + 1].upper() if idx > 0 else ""
-
-        del_rate = deletion_profile.get(run_len, deletion_rate)
-        if context_deletions and ctx:
-            ctx_profile = context_deletions.get(ctx)
-            if ctx_profile is not None:
-                del_rate = ctx_profile.get(run_len, ctx_profile.get(1, del_rate))
-        del_rate = min(1.0, del_rate)
-        if rng.random() < del_rate:
-            continue
-
-        sub_rate = (
-            quality[idx] if quality is not None and idx < len(quality) else substitution_rate
-        )
-        if context_errors and ctx:
-            sub_rate *= context_errors.get(ctx, 1.0)
-
-        if rng.random() < sub_rate:
-            nt = _random_substitution(nt, rng)
-
-        mutated.append(nt)
-        ins_rate = insertion_profile.get(run_len, insertion_rate)
-        if context_insertions and ctx:
-            ctx_profile = context_insertions.get(ctx)
-            if ctx_profile is not None:
-                ins_rate = ctx_profile.get(run_len, ctx_profile.get(1, ins_rate))
-        if rng.random() < ins_rate:
-            mutated.append(rng.choice(NUCLEOTIDES))
-
-    return "".join(mutated)
 
 
 class NanoporeChannel(BaseChannel):
@@ -631,7 +285,7 @@ class NanoporeChannel(BaseChannel):
                 yaml = yaml_module
 
             with open(profile_path, "r", encoding="utf-8") as fh:
-                data = yaml.safe_load(fh) or {}
+                data = _load_yaml_data(fh.read(), yaml) or {}
             if not isinstance(data, dict):
                 raise ValueError("Profile file must map keys to values")
             error_rate = float(data.get("error_rate", error_rate))
@@ -755,113 +409,7 @@ class NanoporeChannel(BaseChannel):
         return _mutate_read(base_read, quality, rng, self)
 
     def _simulate_batch(self, batch: SequenceBatch) -> SequenceBatch:
-        rng = make_rng()
-        mutated = clone_batch(batch)
-        dropout_rate = metadata_float(mutated.metadata, CONFIG_DROPOUT_KEY, 0.0)
-        synthesis_loss = metadata_float(mutated.metadata, CONFIG_SYNTHESIS_KEY, 0.0)
-        coverage_dist = load_coverage_distribution(
-            mutated.metadata.get(CONFIG_COVERAGE_KEY)
-        )
-
-        coverage_counts: list[int] = []
-        dropout_flags: list[bool] = []
-        synthesis_flags: list[bool] = []
-        consensus_totals: list[tuple[int, int, int]] = []
-
-        for original, oligo in zip(batch.oligos, mutated.oligos):
-            seed = (
-                oligo.seed
-                if oligo.seed is not None
-                else int(rng.random() * (2**32 - 1))
-            )
-            oligo_rng = random.Random(seed)
-
-            dropped = False
-            synth_failed = False
-            coverage = 0
-            read_logs: list[dict[str, int | str]] = []
-            per_read_totals = [0, 0, 0]
-
-            if oligo_rng.random() < synthesis_loss:
-                synth_failed = True
-            elif oligo_rng.random() < dropout_rate:
-                dropped = True
-
-            if not dropped and not synth_failed:
-                if coverage_dist:
-                    total_weight = sum(coverage_dist.values())
-                    threshold = oligo_rng.random() * total_weight if total_weight > 0 else 0.0
-                    cumulative = 0.0
-                    coverage_choice = 0
-                    for cov, weight in sorted(coverage_dist.items()):
-                        cumulative += weight
-                        coverage_choice = int(cov)
-                        if threshold <= cumulative:
-                            break
-                    coverage = max(0, coverage_choice)
-                else:
-                    coverage = max(1, int(self.get_coverage(original.sequence)))
-                if coverage <= 0:
-                    dropped = True
-
-            reads: list[str] = []
-            if not dropped and not synth_failed:
-                for _ in range(coverage):
-                    base_read = self._simulate_base_read(original.sequence, oligo_rng)
-                    mutated_read = self._mutate_observed_read(
-                        original.sequence, base_read, oligo_rng
-                    )
-                    reads.append(mutated_read)
-                    sub, ins, dele = mutation_counts(original.sequence, mutated_read)
-                    per_read_totals[0] += sub
-                    per_read_totals[1] += ins
-                    per_read_totals[2] += dele
-                    read_logs.append(
-                        {
-                            "read": mutated_read,
-                            "substitutions": sub,
-                            "insertions": ins,
-                            "deletions": dele,
-                        }
-                    )
-
-            consensus_counts = (0, 0, 0)
-            if reads:
-                consensus = reads[0] if len(reads) == 1 else _consensus(reads)
-                oligo.sequence = consensus
-                consensus_counts = mutation_counts(original.sequence, consensus)
-            else:
-                oligo.sequence = ""
-                coverage = 0
-
-            oligo.metadata[RESULT_COVERAGE_KEY] = str(coverage)
-            oligo.metadata[RESULT_DROPOUT_FLAG_KEY] = bool_to_str(dropped)
-            oligo.metadata[RESULT_SYNTHESIS_FLAG_KEY] = bool_to_str(synth_failed)
-            oligo.metadata[RESULT_MUTATION_LOG_KEY] = json.dumps(read_logs)
-            oligo.metadata[RESULT_MUTATION_TOTALS_KEY] = json.dumps(
-                {
-                    "substitutions": per_read_totals[0],
-                    "insertions": per_read_totals[1],
-                    "deletions": per_read_totals[2],
-                }
-            )
-            oligo.metadata[RESULT_CONSENSUS_TOTALS_KEY] = json.dumps(
-                {
-                    "substitutions": consensus_counts[0],
-                    "insertions": consensus_counts[1],
-                    "deletions": consensus_counts[2],
-                }
-            )
-
-            coverage_counts.append(int(coverage))
-            dropout_flags.append(dropped)
-            synthesis_flags.append(synth_failed)
-            consensus_totals.append(consensus_counts)
-
-        finalize_batch_statistics(
-            mutated, coverage_counts, dropout_flags, synthesis_flags, consensus_totals
-        )
-        return mutated
+        return _simulate_batch_impl(self, batch)
 
     def with_profile(self, profile: str) -> "NanoporeChannel":
         """Return a new channel configured to use ``profile``.
@@ -925,23 +473,14 @@ class NanoporeDNArSimChannel(NanoporeChannel):
         self._current_rates: tuple[float, float, float] | None = None
 
     def _simulate_cli(self, sequence: str) -> str:
-        cmd = "dnarsim"
-        if shutil.which(cmd):
-            cmd_list = [cmd, "-e", str(self.error_rate)]
-            if self.profile:
-                cmd_list += ["-p", self.profile]
-            try:
-                cmd_list += _parse_env_options(cmd)
-                return _run_external(cmd_list, sequence)
-            except (ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
-                logging.getLogger(__name__).warning(
-                    "%s failed: %s; falling back to simple dnarsim model", cmd, exc
-                )
-        else:
-            logging.getLogger(__name__).warning(
-                "%s not found; falling back to simple dnarsim model", cmd
-            )
-        raise RuntimeError("fallback")
+        import logging
+
+        return run_dnarsim_cli(
+            sequence,
+            self.error_rate,
+            self.profile,
+            logger=logging.getLogger(__name__).warning,
+        )
 
     def with_profile(self, profile: str) -> "NanoporeDNArSimChannel":
         """Return a new channel configured to use ``profile``."""
@@ -955,12 +494,6 @@ class NanoporeDNArSimChannel(NanoporeChannel):
             context_deletions=self.context_deletions,
         )
 
-    @staticmethod
-    def _simulate_fallback(sequence: str, error_rate: float, rng: random.Random) -> str:
-        from typing import cast
-
-        return cast(str, _simulate_fallback_jit(sequence, error_rate, rng))
-
     def _simulate_base_read(self, sequence: str, rng: random.Random) -> str:
         try:
             base = self._simulate_cli(sequence)
@@ -971,7 +504,9 @@ class NanoporeDNArSimChannel(NanoporeChannel):
             )
             return base
         except Exception:
-            base = self._simulate_fallback(sequence, self.error_rate, rng)
+            from typing import cast
+
+            base = cast(str, _simulate_fallback_jit(sequence, self.error_rate, rng))
             rates = self._profile_rates
             self._current_rates = (
                 rates.get("substitution_rate", self.substitution_rate),

@@ -1,9 +1,17 @@
+from __future__ import annotations
+
+from pathlib import Path
+
 import pytest
 import yaml
-from pathlib import Path
-import genecoder.simulators.nanopore as nanopore
-from genecoder.simulators.nanopore import NanoporeDNArSimChannel
+
 import genecoder.random_utils as random_utils
+import genecoder.simulators.nanopore as nanopore
+import genecoder.simulators.nanopore_external as nanopore_external
+from genecoder.simulators.nanopore import (
+    NANOPORE_PROFILES,
+    NanoporeDNArSimChannel,
+)
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -17,7 +25,7 @@ def _error_counts(original: str, mutated: str) -> tuple[int, int, int]:
 
 
 def test_builtin_profiles_include_context_tables() -> None:
-    minion = nanopore.NANOPORE_PROFILES["minion"]
+    minion = NANOPORE_PROFILES["minion"]
     assert minion["insertion_profile"][5] == pytest.approx(0.16)
     assert minion["context_insertions"]["AA"][5] == pytest.approx(0.24)
     assert minion["context_deletions"]["AA"][5] == pytest.approx(0.26)
@@ -35,7 +43,6 @@ def test_loader_falls_back_to_context_defaults(tmp_path: Path) -> None:
 
     profiles, tables = nanopore._load_profiles_from_directory(tmp_path, yaml)
     assert "minion" in profiles
-    # Fallback context data should still be applied.
     fallback = nanopore._FALLBACK_PROFILE_DATA["minion"]
     assert profiles["minion"]["context_insertions"]["AA"][5] == pytest.approx(
         fallback["context_insertions"]["AA"][5]
@@ -61,7 +68,7 @@ def test_parse_invalid_rate_table() -> None:
         nanopore._parse_rate_table(tbl)
 
 
-def test_profile_simulation_statistics(monkeypatch) -> None:
+def test_profile_simulation_statistics(monkeypatch: pytest.MonkeyPatch) -> None:
     data = yaml.safe_load((DATA_DIR / "dnarsim_rates_valid.yaml").read_text())
     profile_name, tbl = next(iter(data.items()))
     rates = nanopore._parse_rate_table(tbl)
@@ -81,13 +88,17 @@ def test_profile_simulation_statistics(monkeypatch) -> None:
     monkeypatch.setattr(nanopore, "NANOPORE_PROFILES", {profile_name: rates})
     channel = NanoporeDNArSimChannel(error_rate=0.0, profile=profile_name)
 
-    monkeypatch.setattr(nanopore.shutil, "which", lambda _: None)
+    monkeypatch.setattr(
+        nanopore_external,
+        "run_dnarsim_cli",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("fallback")),
+    )
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
     random_utils._RNG = None
 
     monkeypatch.setattr(
-        nanopore.NanoporeDNArSimChannel,
-        "_simulate_fallback",
+        nanopore,
+        "_simulate_fallback_jit",
         staticmethod(lambda seq, rate, rng: seq),
     )
 

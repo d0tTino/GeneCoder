@@ -4,7 +4,10 @@ from genecoder.constraint_fixer import fix_sequence
 from genecoder.random_utils import reset_rng
 from genecoder.encoders import encode_base4_direct, decode_base4_direct
 from genecoder.simulators.illumina import IlluminaChannel
+import pytest
+
 import genecoder.simulators.nanopore as nanopore
+import genecoder.simulators.nanopore_external as nanopore_external
 
 
 def _nanopore_profile() -> nanopore.NanoporeChannel:
@@ -21,6 +24,16 @@ def _nanopore_profile() -> nanopore.NanoporeChannel:
     return channel
 
 
+def _noop_patch(monkeypatch: pytest.MonkeyPatch) -> None:
+    return None
+
+
+def _nanopore_patch(monkeypatch: pytest.MonkeyPatch) -> None:
+    fallback = lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("fallback"))
+    monkeypatch.setattr(nanopore_external, "run_dnarsim_cli", fallback)
+    monkeypatch.setattr(nanopore, "run_dnarsim_cli", fallback)
+
+
 @pytest.mark.parametrize(
     "channel_factory, patch",
     [
@@ -31,19 +44,9 @@ def _nanopore_profile() -> nanopore.NanoporeChannel:
                 insertion_rate=0.0,
                 deletion_rate=0.0,
             ),
-            lambda monkeypatch: None,
+            _noop_patch,
         ),
-        (
-            lambda: _nanopore_profile(),
-            lambda monkeypatch: (
-                monkeypatch.setattr(nanopore.shutil, "which", lambda _: None),
-                monkeypatch.setattr(
-                    nanopore,
-                    "_run_external",
-                    lambda *_: (_ for _ in ()).throw(AssertionError("_run_external called")),
-                ),
-            ),
-        ),
+        (lambda: _nanopore_profile(), _nanopore_patch),
     ],
 )
 def test_seeded_pipeline(monkeypatch: pytest.MonkeyPatch, channel_factory, patch) -> None:

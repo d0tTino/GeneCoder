@@ -1,15 +1,23 @@
+from __future__ import annotations
+
 import random
 from pathlib import Path
+from typing import Tuple
 
-from genecoder.simulators.nanopore import NanoporeChannel, _mutate_read
+import pytest
+
+from genecoder.simulators.nanopore import NanoporeChannel
+from genecoder.simulators.nanopore_batch import mutate_read
 
 
-def _simulate_many(channel: NanoporeChannel, sequence: str, runs: int = 1000) -> tuple[float, float]:
+def _simulate_many(
+    channel: NanoporeChannel, sequence: str, runs: int = 1000
+) -> Tuple[float, float]:
     rng = random.Random(0)
     ins = 0
     dels = 0
     for _ in range(runs):
-        mutated = _mutate_read(sequence, None, rng, channel)
+        mutated = mutate_read(sequence, None, rng, channel)
         if len(mutated) > len(sequence):
             ins += 1
         if len(mutated) < len(sequence):
@@ -17,9 +25,13 @@ def _simulate_many(channel: NanoporeChannel, sequence: str, runs: int = 1000) ->
     return ins / runs, dels / runs
 
 
-def test_context_indel_rates(tmp_path: Path) -> None:
-    prof = tmp_path / "nanopore_context.yaml"
-    prof.write_text(
+@pytest.mark.parametrize(
+    "sequence, expected_bias",
+    [("AAAAA", True), ("ACGTACGT", False)],
+)
+def test_context_indel_rates(tmp_path: Path, sequence: str, expected_bias: bool) -> None:
+    profile_path = tmp_path / "nanopore_context.yaml"
+    profile_path.write_text(
         "substitution_rate: 0.0\n"
         "insertion_rate: 0.0\n"
         "deletion_rate: 0.0\n"
@@ -29,12 +41,17 @@ def test_context_indel_rates(tmp_path: Path) -> None:
         "      insertions: 0.5\n"
         "      deletions: 0.5\n"
     )
-    channel = NanoporeChannel(profile_path=str(prof))
+    channel = NanoporeChannel(profile_path=str(profile_path))
 
-    poly_ins, poly_del = _simulate_many(channel, "AAAAA")
+    ins_rate, del_rate = _simulate_many(channel, sequence)
     control_ins, control_del = _simulate_many(channel, "ACGTACGT")
-    assert poly_ins > control_ins
-    assert poly_del > control_del
+
+    if expected_bias:
+        assert ins_rate > control_ins
+        assert del_rate > control_del
+    else:
+        assert ins_rate <= control_ins
+        assert del_rate <= control_del
 
 
 def test_builtin_profile_context_bias() -> None:

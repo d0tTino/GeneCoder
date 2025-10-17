@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from genecoder.simulators.nanopore import NanoporeChannel
@@ -30,4 +32,3 @@ def test_invalid_base_rates(kwargs: dict[str, object], match: str) -> None:
 def test_invalid_profiles(kwargs: dict[str, object], match: str) -> None:
     with pytest.raises(ValueError, match=match):
         NanoporeChannel(**kwargs)
-
