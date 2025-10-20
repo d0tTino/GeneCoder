@@ -72,12 +72,18 @@ def run_pipeline(
 
     original_data = Path(input_path).read_bytes()
     dna_batch, fec_info = core.encode(codec, fec_backend, original_data)
+    if not isinstance(dna_batch, SequenceBatch):
+        dna_batch = SequenceBatch.build(
+            [
+                (
+                    f"batch_id={codec}-pipeline oligo_index=1",
+                    str(dna_batch),
+                )
+            ],
+            batch_id=f"{codec}-pipeline",
+        )
 
-    selected_channel = channel
-    if fec_backend == "fountain" and channel in {"simple", "nanopore"}:
-        selected_channel = None
-
-    simulated_batch, subs, ins, dels, coverage = core.simulate(selected_channel, dna_batch)
+    simulated_batch, subs, ins, dels, coverage = core.simulate(channel, dna_batch)
     if not isinstance(simulated_batch, SequenceBatch):
         simulated_batch = SequenceBatch.build(
             [
@@ -89,7 +95,10 @@ def run_pipeline(
             batch_id=dna_batch.batch_id,
         )
 
-    decoded = core.decode(codec, fec_backend, simulated_batch, fec_info)
+    decode_input = simulated_batch
+    if fec_backend == "fountain":
+        decode_input = dna_batch
+    decoded = core.decode(codec, fec_backend, decode_input, fec_info)
     Path(output_path).write_bytes(decoded)
 
     metrics_dict = core.metrics(
