@@ -14,11 +14,12 @@ installed:
 
 - **LDPC** via `pyldpc` – experimental low-density parity-check codes.
 - **Fountain** via `pyfinite` – simple rateless encoding with parity chunks.
-- **FrameD** wrapper via `cffi` – requires the external LGPL `FrameD` package installed separately.
+- **RaptorQ** via `raptorq` – high-throughput fountain-style repair symbols.
 
-Install these with Poetry extras. The FrameD wrapper is provided for
-compatibility but the underlying library is no longer bundled; install it
-manually with `pip install FrameD` if needed.
+Install these with Poetry extras. The former FrameD integration has been
+removed because the upstream project is unmaintained on modern platforms; the
+LDPC, Fountain and RaptorQ extras cover the advanced FEC use cases previously
+served by FrameD.
 
 ## Web Components
 
