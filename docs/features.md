@@ -4,7 +4,7 @@ GeneCoder provides a CLI and GUI for encoding and decoding data into simulated D
 
 * **CLI for encoding and decoding** using multiple methods.
 * **GC-Balanced encoding** with tunable constraints on [GC content](glossary.md#gc-content).
-* **[Forward Error Correction](glossary.md#forward-error-correction-fec)** options such as Triple-Repeat, Hamming(7,4), Reed-Solomon and optional third-party backends like FrameD (install manually due to LGPL licensing).
+* **[Forward Error Correction](glossary.md#forward-error-correction-fec)** options such as Triple-Repeat, Hamming(7,4), Reed-Solomon and optional extras for LDPC, Fountain or RaptorQ codes. FrameD integration has been removed because the upstream project is no longer maintained.
 * **Parity checks** for additional error detection.
 * **Batch processing** and streaming support for large files.
 * **Flet-based GUI** with analysis plots and asynchronous operations.

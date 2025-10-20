@@ -122,8 +122,7 @@ poetry install --with gui,web --no-interaction
 ```
 
 Additional plugins such as DNAformer can be installed via
-Poetry's ``--extras`` flag. FrameD remains available as a manual install due to
-its LGPL license:
+Poetry's ``--extras`` flag:
 
 ```bash
 poetry install --extras dnaformer --no-interaction
@@ -150,6 +149,11 @@ test suite:
 | `dnaformer`   | DNAformer AI codec                              |
 | `deepdna`     | DeepDNA FEC plugin                              |
 
+> **FrameD removal notice:** GeneCoder 0.2.0 and later no longer ship the
+> FrameD wrapper because the upstream library fell out of maintenance. The LDPC,
+> Fountain and RaptorQ extras cover the advanced FEC use cases previously
+> handled by FrameD.
+
 Install all groups required for development and testing with:
 
 ```bash
@@ -162,8 +166,9 @@ poetry install --with gui,web,dev \
 Installing all extras downloads many large packages such as Flet and
 framework backends. Expect the installation to consume around **2&nbsp;GB** of
 disk space and take roughly **10&nbsp;minutes** on a typical broadband
-connection. Install the third-party `FrameD` package separately if you need
-that codec's C++ acceleration.
+connection. FrameD support has been removed because the upstream LGPL bundle is
+no longer maintained; use the LDPC, Fountain or RaptorQ extras when you need
+advanced forward-error-correction.
 
 For running GeneCoder without any network access see the [offline usage guide](docs/offline_usage.md) and the [offline setup notes](docs/installation.md#offline-setup).
 

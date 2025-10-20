@@ -62,10 +62,10 @@ These packages are quite large (Flet and the various FEC backends in
 particular). Installing all of them uses roughly **2&nbsp;GB** of disk space and
 takes about **10&nbsp;minutes** on a typical broadband connection.
 
-> **FrameD availability:** GeneCoder still ships a Python wrapper for FrameD but
-> no longer bundles the LGPL-licensed C++ dependency. Install the
-> [`FrameD` package](https://pypi.org/project/FrameD/) manually if you need this
-> backend and ensure it is on the Python path before importing GeneCoder.
+> **FrameD availability:** FrameD support has been retired and the wrapper is no
+> longer distributed. The upstream LGPL package is unmaintained on modern
+> platforms, so GeneCoder now recommends the LDPC, Fountain or RaptorQ extras
+> when advanced forward-error-correction is required.
 
 ## Editable install with pip
 
@@ -182,9 +182,10 @@ optional extras come with additional requirements:
 
 * **DeepDNA** &ndash; [MIT](https://opensource.org/license/mit/)
 
-FrameD remains available under the LGPL but must be installed separately as it
-is no longer distributed with GeneCoder. Other components are only needed when
-installing the corresponding extras.
+FrameD is no longer supported by GeneCoder because the upstream project is
+unmaintained. LDPC, Fountain and RaptorQ extras provide advanced
+forward-error-correction under permissive licenses. Other components are only
+needed when installing the corresponding extras.
 
 ## Custom Temporary Directory
 

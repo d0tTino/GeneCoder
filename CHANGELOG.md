@@ -19,6 +19,8 @@ All notable changes to this project will be documented in this file.
 - **Breaking:** Simulator plugins must adopt the ``SequenceBatch`` API. Example
   packages now emit metadata for batch IDs, seeds and coverage, and declare a
   minimum dependency of ``genecoder>=0.2.0``.
+- Removed the deprecated FrameD wrapper and documented LDPC, Fountain and
+  RaptorQ extras as the supported advanced FEC alternatives.
 
 ## [0.1.0] - 2025-06-12
 ### Added
