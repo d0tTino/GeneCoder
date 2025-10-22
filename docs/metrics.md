@@ -44,3 +44,10 @@ $ curl http://localhost:8000/metrics
 Version 0.1.1 replaces the previous module-level helpers with a `Metrics` manager
 found in `genecoder.metrics`. The legacy `increment` and `get_metrics` functions
 remain as thin wrappers around this instance.
+
+## Simulation metric notes
+
+Simulation outputs such as `metrics.json` also include per-window distribution
+data. The `gc_distribution` entry records the GC fraction of each 50 base pair
+window as a value between 0 and 1. Visual dashboards multiply these values by
+100 to present min/mean/max summaries and line charts in percentage units.

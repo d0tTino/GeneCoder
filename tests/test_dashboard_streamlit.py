@@ -76,14 +76,21 @@ def test_dashboard_summary_plots_rendered(
     def contains_chart(target: object) -> bool:
         return any(chart == target for chart in charts)
 
-    assert contains_chart({"results": 0.0})
-    assert contains_chart({"results": pytest.approx(2.0)})
-    assert contains_chart({"results": 3.0})
+    assert contains_chart({"results": pytest.approx(10.0)})
+    assert contains_chart({"results": pytest.approx(25.0)})
+    assert contains_chart({"results": pytest.approx(40.0)})
     assert contains_chart({"results (Substitutions)": pytest.approx(2.0)})
     assert contains_chart({"results (Insertions)": pytest.approx(0.0)})
     assert contains_chart({"results (Deletions)": pytest.approx(0.0)})
     assert contains_chart({"results (Coverage)": pytest.approx(30.0)})
     assert [1, 3, 2] in charts
+    expected_gc_chart = {
+        "Window 1": pytest.approx(10.0),
+        "Window 2": pytest.approx(20.0),
+        "Window 3": pytest.approx(30.0),
+        "Window 4": pytest.approx(40.0),
+    }
+    assert any(chart == expected_gc_chart for chart in charts)
     assert any(isinstance(entry, dict) and "GC%" in entry for entry in writes)
 
 

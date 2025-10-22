@@ -9,6 +9,7 @@ side-by-side for easier comparison between datasets.
 
 import json
 import sys
+import math
 from collections import Counter
 from pathlib import Path
 from typing import IO, Any, Iterable, Callable, cast
@@ -103,6 +104,34 @@ def _iterable(val: Iterable[str] | str | None) -> list[str]:
     if isinstance(val, str):
         return [val]
     return list(val)
+
+
+def _gc_percentages(dist: object) -> list[float]:
+    """Return GC distribution values expressed as percentages."""
+
+    if not isinstance(dist, list) or not dist:
+        return []
+
+    values: list[float] = []
+    for value in dist:
+        if isinstance(value, bool):
+            continue
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):  # pragma: no cover - defensive
+            continue
+        if not math.isfinite(numeric):  # pragma: no cover - defensive
+            continue
+        values.append(numeric)
+
+    if not values:
+        return []
+
+    max_value = max(values)
+    min_value = min(values)
+    if max_value <= 1.0 and min_value >= 0.0:
+        return [val * 100.0 for val in values]
+    return values
 
 
 def _calc_error_hist(val: object) -> list[int]:
@@ -410,23 +439,27 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     if alt and pd and hasattr(st, "altair_chart"):
         rows: list[dict[str, Any]] = []
         for name in selected:
-            dist = datasets[name].get("gc_distribution")
-            if isinstance(dist, list) and dist:
-                for i, val in enumerate(dist):
-                    rows.append({"Bin": i, "Count": val, "Dataset": name})
+            dist = _gc_percentages(datasets[name].get("gc_distribution"))
+            if dist:
+                for idx, val in enumerate(dist, 1):
+                    rows.append({"Window": idx, "GC%": val, "Dataset": name})
         if rows:
             df = pd.DataFrame(rows)
             gc_chart = (
                 alt.Chart(df)
-                .mark_bar(opacity=0.5)
-                .encode(x="Bin:Q", y="Count:Q", color="Dataset:N")
+                .mark_line(point=True)
+                .encode(x="Window:Q", y="GC%:Q", color="Dataset:N")
             )
             st.altair_chart(gc_chart, use_container_width=True)
         else:
             st.write("No GC distribution data.")
     else:
-        if len(selected) == 1 and datasets[selected[0]]["gc_distribution"]:
-            st.bar_chart(datasets[selected[0]]["gc_distribution"])
+        if len(selected) == 1:
+            dist = _gc_percentages(datasets[selected[0]].get("gc_distribution"))
+            if dist:
+                st.bar_chart({f"Window {idx}": val for idx, val in enumerate(dist, 1)})
+            else:
+                st.write("No GC distribution data.")
         else:
             st.write("Install pandas and altair for multi-file GC charts.")
 
