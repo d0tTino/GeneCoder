@@ -9,6 +9,10 @@ GeneCoder provides a CLI and GUI for encoding and decoding data into simulated D
 * **Batch processing** and streaming support for large files.
 * **Flet-based GUI** with analysis plots and asynchronous operations.
 * **Drag-and-drop file selection** on the Encode tab.
+* **Nanopore and Illumina simulators** with built-in fallbacks and optional
+  [DeSP integration](simulators.md#desp-adapter) for advanced profiles. Refer to
+  the [Nanopore fallback profiles](simulators.md#nanopore-fallback-profiles) for
+  details on presets and context files.
 * **CSV export for synthesis** with length and [homopolymer](glossary.md#homopolymer) validation. The analysis command warns when sequences violate these constraints.
 * **Mirror encoding** via `--mirror` to output forward and reverse-complement sequences.
 * **Fix my sequence** button adjusts GC balance and homopolymers on the fly.
