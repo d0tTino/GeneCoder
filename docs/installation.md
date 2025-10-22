@@ -32,6 +32,12 @@ poetry install --with gui,web,dnaformer --no-interaction
 The `gui` group installs Flet, Matplotlib and `flet-webview` while the `web`
 group pulls in FastAPI, Uvicorn (with the `standard` extras) and HTTPX.
 
+Install the Chamaeleo-backed codecs for the classic DNA storage schemes with:
+
+```bash
+poetry install --extras chamaeleo --no-interaction
+```
+
 ## Extras Required for the Full Test Suite
 
 Install all extras needed to exercise the complete test suite. This table lists
@@ -46,6 +52,7 @@ the optional groups and what they provide:
 | `fountain`    | Fountain code support                           |
 | `bch`         | BCH error-correcting codes                      |
 | `raptorq`     | RaptorQ FEC algorithms                          |
+| `chamaeleo`   | Chamaeleo-backed codecs (GC, Fountain, Goldman, Church, Grass, Blawat) |
 | `dnaformer`   | DNAformer AI codec                              |
 | `deepdna`     | DeepDNA FEC plugin                              |
 

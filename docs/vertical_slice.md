@@ -64,6 +64,45 @@ genecli --version
 poetry run pytest -q
 ```
 
+## Chamaeleo Codec Extras
+
+GeneCoder bundles optional adapters for the
+[Chamaeleo](https://github.com/Biocomputing-Research-Group/Chamaeleo)
+library. Install the extra dependencies before using any of the
+`chamaeleo_*` codecs:
+
+```bash
+poetry install --extras chamaeleo --no-interaction
+```
+
+The following identifiers mirror the classic schemes exposed by
+Chamaeleo:
+
+- `chamaeleo_gc` – GC-balanced mapping with a Yin–Yang fallback.
+- `chamaeleo_fountain` – DNA Fountain implementation for robust random access.
+- `chamaeleo_goldman` – Encodes data following the Goldman et al. 2013 method.
+- `chamaeleo_church` – Implements the Church et al. 2012 encoding.
+- `chamaeleo_grass` – Grass et al. constrained code aimed at archival density.
+- `chamaeleo_blawat` – Blawat et al. fountain-style constrained encoder.
+
+### Sample CLI usage
+
+Run an encode/decode cycle with the GC-balanced preset:
+
+```bash
+genecli encode --input-files input.bin --output-file output_gc.fasta --method chamaeleo_gc
+genecli decode --input-files output_gc.fasta --output-file recovered.bin --method chamaeleo_gc
+```
+
+Switch to another method by replacing `chamaeleo_gc` with any of the other
+identifiers listed above. Pair the codecs with FEC and simulators just like the
+built-in methods:
+
+```bash
+genecli encode --input-files demo.bin --output-file demo_chamaeleo.fasta \
+    --method chamaeleo_fountain --fec reed_solomon --channel illumina
+```
+
 ## Bundle Workflow
 
 An example configuration file at `configs/vertical_slice_demo.yaml` demonstrates
@@ -72,6 +111,15 @@ using a simulator and Hamming FEC. The `pipeline` section selects the built-in
 
 ```bash
 genecli bundle run configs/vertical_slice_demo.yaml --cache-dir runs
+```
+
+To experiment with the Chamaeleo codecs inside any bundle, change the
+`method:` entries in the YAML preset to one of the new identifiers. For example,
+to GC-balance a payload with Chamaeleo swap the encode stage to:
+
+```yaml
+encode:
+  method: chamaeleo_gc  # or chamaeleo_fountain, chamaeleo_goldman, etc.
 ```
 
 For a pipeline run that records usage statistics see
@@ -125,7 +173,7 @@ genecli channel run configs/decay_demo.yaml
 Run a single encode step with error correction and channel simulation:
 
 ```bash
-genecli encode input.bin output.fasta --codec chamaeleo_gc --fec reed_solomon --channel illumina
+genecli encode input.bin output.fasta --method chamaeleo_gc --fec reed_solomon --channel illumina
 ```
 
 This creates `output.fasta.manifest.json` containing encoding metrics.
