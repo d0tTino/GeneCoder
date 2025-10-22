@@ -84,6 +84,8 @@ handle personal or medical DNA data.
 - Flet-based GUI with analysis plots and an enhanced 3D helix viewer.
 - Base5 and base6 alphabet options for alternative nucleotide letters. These
   modes remap the standard ACGT symbols but **do not increase capacity**.
+- Chamaeleo-backed codecs (GC, Fountain, Goldman, Church, Grass, Blawat) available
+  via an optional extra for reproducing published DNA storage schemes.
 - External read simulators can be invoked with ``--simulator``.
   Extra parameters may be supplied via ``--d2sim-options``,
   ``--dnarsim-options`` or ``--squigulator-options``. The same values can be
@@ -128,6 +130,13 @@ Poetry's ``--extras`` flag:
 poetry install --extras dnaformer --no-interaction
 ```
 
+Install the Chamaeleo-backed codecs to try the historical schemes referenced in
+the documentation:
+
+```bash
+poetry install --extras chamaeleo --no-interaction
+```
+
 GeneCoder now uses a single `poetry.lock` across Linux, macOS and Windows.
 Previous OS-specific lock files have been removed and the unified lock file
 should be used on all platforms.
@@ -146,6 +155,7 @@ test suite:
 | `fountain`    | Fountain code support                           |
 | `bch`         | BCH error-correcting codes                      |
 | `raptorq`     | RaptorQ FEC algorithms                          |
+| `chamaeleo`   | Chamaeleo-backed codecs (GC, Fountain, Goldman, Church, Grass, Blawat) |
 | `dnaformer`   | DNAformer AI codec                              |
 | `deepdna`     | DeepDNA FEC plugin                              |
 
