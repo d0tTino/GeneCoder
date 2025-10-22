@@ -1,0 +1,21 @@
+# configs/desp_pipeline.yaml
+# Pipeline preset using the external DeSP nanopore simulator. The default
+# error rate of 0.12 mirrors common R10.4 flow cell runs (~12% aggregate
+# substitutions+insertions+deletions). Adjust between 0.08 and 0.15 to match
+# other DeSP profiles.
+encode:
+  input_files:
+    - examples/pipeline_demo_input.txt
+  method: base4_direct
+  fec: reed_solomon
+simulate:
+  simulators:
+    - name: desp
+      error_rate: 0.12  # Typical R10.x DeSP runs land between 8–15% aggregate error.
+  pipeline:
+    parallel: false
+    workers: null
+    use_process_pool: false
+    use_mpi: false
+decode:
+  method: base4_direct
