@@ -11,6 +11,7 @@ across multiple datasets.
 from pathlib import Path
 import json
 import sys
+import math
 from typing import Any, Iterable, IO, cast
 from types import ModuleType
 
@@ -73,23 +74,44 @@ def _load_metrics(src: str | Path | IO[str]) -> dict[str, Any]:
     return {}
 
 
+def _gc_percentages(dist: object) -> list[float]:
+    """Return GC distribution values expressed as percentages."""
+
+    if not isinstance(dist, list) or not dist:
+        return []
+
+    values: list[float] = []
+    for value in dist:
+        if isinstance(value, bool):
+            continue
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):  # pragma: no cover - defensive
+            continue
+        if not math.isfinite(numeric):  # pragma: no cover - defensive
+            continue
+        values.append(numeric)
+
+    if not values:
+        return []
+
+    max_value = max(values)
+    min_value = min(values)
+    if max_value <= 1.0 and min_value >= 0.0:
+        return [val * 100.0 for val in values]
+    return values
+
+
 def _gc_stats(dist: object) -> tuple[float | None, float | None, float | None]:
     """Return (min, mean, max) GC percentage from ``dist`` if possible."""
 
-    if isinstance(dist, list) and dist:
-        try:
-            total = float(sum(dist))
-            if total <= 0:
-                return (None, None, None)
-            min_gc = next(i for i, v in enumerate(dist) if v)
-            max_gc = len(dist) - 1 - next(
-                i for i, v in enumerate(reversed(dist)) if v
-            )
-            mean_gc = sum(i * v for i, v in enumerate(dist)) / total
-            return float(min_gc), float(mean_gc), float(max_gc)
-        except Exception:  # pragma: no cover - defensive
-            return (None, None, None)
-    return (None, None, None)
+    values = _gc_percentages(dist)
+    if not values:
+        return (None, None, None)
+    min_gc = min(values)
+    mean_gc = sum(values) / len(values)
+    max_gc = max(values)
+    return float(min_gc), float(mean_gc), float(max_gc)
 
 
 def _longest_homopolymer(runs: object) -> float | None:
@@ -355,15 +377,24 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     for name, data in datasets.items():
         st.header(Path(name).name)
 
-        gc = data.get("gc_distribution")
+        gc = _gc_percentages(data.get("gc_distribution"))
         st.subheader("GC Content (%)")
-        if isinstance(gc, list) and gc:
+        if gc:
             if alt and pd:
-                df = pd.DataFrame({"gc": list(range(len(gc))), "count": gc})
-                chart = alt.Chart(df).mark_bar().encode(x="gc", y="count")
+                df = pd.DataFrame(
+                    {
+                        "Window": list(range(1, len(gc) + 1)),
+                        "GC%": gc,
+                    }
+                )
+                chart = (
+                    alt.Chart(df)
+                    .mark_line(point=True)
+                    .encode(x="Window:Q", y="GC%:Q")
+                )
                 st.altair_chart(chart, use_container_width=True)
             else:  # pragma: no cover - basic fallback
-                st.bar_chart(gc)
+                st.bar_chart({f"Window {idx}": val for idx, val in enumerate(gc, 1)})
         else:
             st.write("No GC data.")
 
