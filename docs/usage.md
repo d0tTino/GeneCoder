@@ -191,22 +191,29 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
    Add `--checksum` to the encode and decode commands for automatic validation.
 13. **Decode using an external simulator**
 
-   The ``--simulator`` option accepts ``d2sim``, ``dnarsim`` or ``squigulator``.
-   Install the desired simulator separately and ensure the command is on your
-   ``PATH``:
+   The ``--simulator`` option accepts ``d2sim``, ``dnarsim``, ``squigulator`` or
+   ``desp``. Install the desired simulator separately and ensure the command is
+   on your ``PATH``:
 
    * ``d2sim`` — [D2Sim](https://github.com/kurimsw/d2sim). Follow the
      instructions in the repository to build the binary and place ``d2sim`` on
      your ``PATH``.
    * ``dnarsim`` — [DNArSim](https://github.com/Purdue-ScottLab/DNArSim)
    * ``squigulator`` — [Squigulator](https://github.com/hasindu2008/squigulator)
+   * ``desp`` — [DeSP](https://github.com/atcg/deSP). See the
+     [DeSP adapter](simulators.md#desp-adapter) notes for CLI flags and
+     environment variables.
 
    The ``d2sim`` adapter is bundled with GeneCoder and is registered
    automatically. Once the ``d2sim`` command is available you can invoke it with
-   ``--simulator d2sim``.
+   ``--simulator d2sim``. The DeSP adapter is loaded in the same way; pass
+   additional flags via ``--desp-options`` or by setting
+   ``GENECODER_DESP_OPTIONS``.
 
    When a command is missing GeneCoder automatically falls back to an internal
-   error model.
+   error model. For Nanopore presets this means the built-in profiles described
+   under [Nanopore fallback profiles](simulators.md#nanopore-fallback-profiles)
+   continue to be applied.
 
    The same simulators can be accessed programmatically via
    ``genecoder.simulators.simulate_reads``.
@@ -244,7 +251,9 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
    Named sequencing profiles are available:
 
    - **Illumina** – `miseq`, `hiseq`, `novaseq` (alias `nova`)
-   - **Nanopore** – `minion`, `promethion`, `r10`, `r9`, `r10.3`, `r10.4`
+   - **Nanopore** – `minion`, `promethion`, `r10`, `r9`, `r10.3`, `r10.4` (see
+     [Nanopore fallback profiles](simulators.md#nanopore-fallback-profiles) for
+     details on how these presets behave without external binaries)
 
    List available presets:
 

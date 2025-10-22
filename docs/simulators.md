@@ -15,6 +15,24 @@ GeneCoder supports both built-in error models and adapters to external nanopore 
 - **nanopore** — alias for `d2sim`. Customize rates with `--nanopore-sub-rate`,
   `--nanopore-ins-rate` and `--nanopore-del-rate`.
 
+### Nanopore fallback profiles
+
+GeneCoder ships Nanopore presets that mirror `d2sim` profiles so decoding
+pipelines continue to work even when the external binary is unavailable. The
+fallback draws its defaults from:
+
+- `configs/nanopore.yml` – substitution/indel/coverage values for profiles such
+  as `minion`, `promethion` and `r10`.
+- `configs/nanopore_context.yaml` – context-aware insertion/deletion tables used
+  when the external simulator cannot provide them.
+
+Both files are optional; if they are missing the embedded presets bundled with
+GeneCoder are used instead. Custom profiles or context overrides can be supplied
+with `--profile`, `--nanopore-profile`, `--nanopore-context` or the YAML
+configuration helpers. When the `d2sim` or `desp` executables are unavailable,
+the CLI falls back to these presets to mutate reads before continuing with the
+decode pipeline.
+
 Example YAML:
 
 ```yaml
@@ -41,9 +59,31 @@ your `PATH`:
 - **squigulator** — [Squigulator](https://github.com/hasindu2008/squigulator).
     Download a release or build from source so that the `squigulator` command is
     available.
+- **desp** — [DeSP](https://github.com/atcg/deSP) nanopore simulator. Install
+  the `desp` binary and ensure it is on your `PATH` to activate the adapter.
 
 GeneCoder automatically falls back to the internal error model when an external
 simulator is missing or fails.
+
+### DeSP adapter
+
+The optional DeSP integration is registered under both `desp` and
+`nanopore_desp`. Provide the binary via your `PATH` or a virtual environment and
+install any dependencies recommended by the
+[DeSP project](https://github.com/atcg/deSP). Once installed you can invoke it
+from the CLI or YAML pipelines:
+
+```bash
+genecli decode --simulator desp --desp-options "--model r10" <other options>
+genecli channel --simulator nanopore_desp --profile promethion <other options>
+```
+
+Use `--desp-options` or set `GENECODER_DESP_OPTIONS` to forward additional
+flags to the `desp` binary. Arguments are validated for safety before being
+passed through. If the executable exits with an error or is not present the
+channel automatically reverts to the built-in Nanopore fallback described
+above, so decode commands succeed with deterministic settings even without the
+external dependency.
 
 ### Installation tips
 
@@ -158,10 +198,12 @@ Provide extra flags to ``dnarsim`` or ``squigulator`` in the same way:
 ```bash
 genecli decode --simulator dnarsim --dnarsim-options "<opts>" <other options>
 genecli decode --simulator squigulator --squigulator-options "<opts>" <other options>
+genecli decode --simulator desp --desp-options "<opts>" <other options>
 ```
 
 Use `GENECODER_SIM_SEED=<seed>` to make runs reproducible.
-Set `GENECODER_D2SIM_OPTIONS`, `GENECODER_DNARSIM_OPTIONS` or
-`GENECODER_SQUIGULATOR_OPTIONS` to forward extra flags to the respective
-simulator automatically. The same options can be specified on the command line
-with ``--d2sim-options``, ``--dnarsim-options`` and ``--squigulator-options``.
+Set `GENECODER_D2SIM_OPTIONS`, `GENECODER_DNARSIM_OPTIONS`,
+`GENECODER_SQUIGULATOR_OPTIONS` or `GENECODER_DESP_OPTIONS` to forward extra
+flags to the respective simulator automatically. The same options can be
+specified on the command line with ``--d2sim-options``, ``--dnarsim-options``,
+``--squigulator-options`` and ``--desp-options``.
