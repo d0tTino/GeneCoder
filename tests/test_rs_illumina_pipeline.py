@@ -38,4 +38,9 @@ def test_rs_illumina_pipeline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
 
     assert result == data
     assert outp.read_bytes() == data
-    assert metrics["constraint_violations"] == 0
+    violations = metrics.get("constraint_violations")
+    if isinstance(violations, dict):
+        assert violations.get("count") == 0
+        assert violations.get("violations") == []
+    else:
+        assert violations == 0

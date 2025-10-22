@@ -17,10 +17,11 @@
   "constraint_violations": {
     "count": 3,
     "violations": [
-      {"sequence_id": "seq-1", "type": "gc_high"},
-      {"sequence_id": "seq-1", "type": "homopolymer"},
-      {"sequence_id": "seq-2", "type": "gc_low"}
-    ]
+      {"sequence_id": "seq-1", "type": "gc_high", "length": 100},
+      {"sequence_id": "seq-1", "type": "homopolymer", "length": 100},
+      {"sequence_id": "seq-2", "type": "gc_low", "length": 80}
+    ],
+    "type_counts": {"gc_high": 1, "homopolymer": 1, "gc_low": 1}
   },
   "oligo_metrics": {
     "gc_percentages": [0.45, 0.52, 0.61],

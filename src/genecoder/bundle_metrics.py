@@ -2,6 +2,28 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
+
+def _extract_violation_count(value: object) -> int:
+    """Return an integer count from ``constraint_violations`` values."""
+
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, dict):
+        count_val = value.get("count")
+        if isinstance(count_val, (int, float)):
+            return int(count_val)
+        violations = value.get("violations")
+        if isinstance(violations, list):
+            return len(violations)
+        total = value.get("total") or value.get("violation_count")
+        if isinstance(total, (int, float)):
+            return int(total)
+    if isinstance(value, list):
+        return len(value)
+    return 0
+
 __all__ = ["parse_manifests", "aggregate_metrics"]
 
 
@@ -57,8 +79,7 @@ def aggregate_metrics(root: Path) -> dict[str, Any]:
             if isinstance(cov, int):
                 total_cov += cov
             viol = metrics.get("constraint_violations")
-            if isinstance(viol, int):
-                total_viol += viol
+            total_viol += _extract_violation_count(viol)
     avg_bpn = sum(bpn_values) / len(bpn_values) if bpn_values else 0.0
     return {
         "files": total_files,

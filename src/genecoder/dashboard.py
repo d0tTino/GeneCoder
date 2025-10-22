@@ -239,6 +239,7 @@ def _parse_constraint_violations(value: object) -> dict[str, Any]:
 
     sequences: list[str] = []
     type_counts: Counter[str] = Counter()
+    explicit_type_counts: dict[str, int] | None = None
     explicit_count: int | None = None
 
     def add_sequence(seq: object) -> None:
@@ -265,7 +266,7 @@ def _parse_constraint_violations(value: object) -> dict[str, Any]:
         type_counts[label] += amount
 
     def parse_collection(collection: object) -> None:
-        nonlocal explicit_count
+        nonlocal explicit_count, explicit_type_counts
         if isinstance(collection, dict):
             for key, val in collection.items():
                 if key in {"count", "total", "violation_count"}:
@@ -285,15 +286,18 @@ def _parse_constraint_violations(value: object) -> dict[str, Any]:
                     continue
                 if isinstance(val, dict):
                     if key in {"type_counts", "counts", "violations_by_type"}:
+                        parsed_counts: dict[str, int] = {}
                         for sub_key, sub_val in val.items():
                             if isinstance(sub_val, (int, float)):
-                                add_type(sub_key, int(sub_val))
+                                parsed_counts[str(sub_key)] = int(sub_val)
                             elif isinstance(sub_val, list):
-                                add_type(sub_key, len(sub_val))
+                                parsed_counts[str(sub_key)] = len(sub_val)
                                 for item in sub_val:
                                     parse_item(item)
                             else:
-                                add_type(sub_key)
+                                parsed_counts[str(sub_key)] = parsed_counts.get(str(sub_key), 0) + 1
+                        if parsed_counts:
+                            explicit_type_counts = parsed_counts
                         continue
                     parse_collection(val)
                     continue
@@ -360,7 +364,8 @@ def _parse_constraint_violations(value: object) -> dict[str, Any]:
         except Exception:
             pass
 
-    total_types = sum(type_counts.values())
+    final_type_counts = explicit_type_counts or dict(type_counts)
+    total_types = sum(final_type_counts.values())
     count = explicit_count if explicit_count is not None else 0
     if count == 0:
         if sequences:
@@ -371,7 +376,7 @@ def _parse_constraint_violations(value: object) -> dict[str, Any]:
     return {
         "count": count,
         "sequence_ids": sequences,
-        "type_counts": dict(type_counts),
+        "type_counts": final_type_counts,
     }
 
 
@@ -705,6 +710,8 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         count = 0
         sequences: list[str] = []
         type_counts: dict[str, int] = {}
+        detail_records: list[dict[str, Any]] = []
+        details_source: object | None = None
         if isinstance(summary, dict):
             try:
                 count = int(summary.get("count", 0))
@@ -725,16 +732,52 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                         except Exception:
                             continue
                 type_counts = {k: v for k, v in cleaned.items() if v}
+            details_source = summary.get("violations")
         original_value = data.get("constraint_violations")
+        if details_source is None and isinstance(original_value, dict):
+            details_source = original_value.get("violations")
+        if isinstance(details_source, list):
+            for entry in details_source:
+                if not isinstance(entry, dict):
+                    continue
+                record: dict[str, Any] = {}
+                if entry.get("sequence_id"):
+                    record["Sequence ID"] = str(entry["sequence_id"])
+                if entry.get("oligo_id"):
+                    record["Oligo ID"] = str(entry["oligo_id"])
+                if entry.get("index") is not None:
+                    record["Index"] = entry.get("index")
+                if entry.get("oligo_index") is not None:
+                    record["Oligo Index"] = entry.get("oligo_index")
+                if entry.get("length") is not None:
+                    record["Length"] = entry.get("length")
+                if entry.get("types"):
+                    types_val = entry["types"]
+                    if isinstance(types_val, list):
+                        record["Types"] = ", ".join(str(v) for v in types_val if str(v))
+                    else:
+                        record["Types"] = str(types_val)
+                elif entry.get("type"):
+                    record["Type"] = str(entry["type"])
+                if record:
+                    detail_records.append(record)
         has_data = not (
-            original_value is None and not sequences and not type_counts and count == 0
+            original_value is None
+            and not sequences
+            and not type_counts
+            and not detail_records
+            and count == 0
         )
         if has_data:
             st.metric("Constraint Violations", f"{count}")
             if sequences:
                 st.write("Offending sequence IDs:", ", ".join(sequences))
-            if not type_counts and count:
+            if type_counts:
+                st.bar_chart(type_counts)
+            elif count:
                 st.bar_chart({"Violations": count})
+            if detail_records:
+                st.dataframe(detail_records)
         else:
             st.write("No constraint violation data.")
 

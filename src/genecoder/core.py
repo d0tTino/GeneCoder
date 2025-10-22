@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any, Mapping, Tuple, Dict, List, Sequence
 from typing import get_args, get_origin
@@ -49,7 +50,7 @@ def _has_batch_flag(candidate: object) -> bool:
     )
 
 
-def _codec_accepts_sequence_batch(decode_fn: Any) -> bool:
+def _codec_accepts_sequence_batch(decode_fn: object) -> bool:
     """Return ``True`` when ``decode_fn`` opts into ``SequenceBatch`` inputs."""
 
     for candidate in (decode_fn, getattr(decode_fn, "__self__", None), getattr(decode_fn, "__func__", None)):
@@ -393,14 +394,89 @@ def metrics(
     )
 
     success = 1.0 if decoded == original_data else 0.0
-    constraint_violations = 0
+    constraint_violations: Dict[str, Any]
     try:
-        from .synthesis import validate_sequence
+        from .synthesis import SynthesisConstraints, validate_sequence
 
-        if not validate_sequence(base_sequence):
-            constraint_violations = 1
+        constraints = SynthesisConstraints()
+        violation_records: list[dict[str, Any]] = []
+        type_counts: Counter[str] = Counter()
+
+        target_oligos: list[tuple[int, str, dict[str, Any]]] = []
+        if batch is not None:
+            for idx, oligo in enumerate(primary_oligos, start=1):
+                sequence_id = (
+                    oligo.metadata.get("oligo_id")
+                    or oligo.metadata.get("sequence_id")
+                    or oligo.oligo_id
+                    or oligo.metadata.get("oligo_index")
+                    or f"oligo-{idx}"
+                )
+                info: dict[str, Any] = {
+                    "sequence_id": str(sequence_id),
+                    "oligo_index": oligo.metadata.get("oligo_index") or str(idx),
+                }
+                oligo_id_val = oligo.metadata.get("oligo_id") or oligo.oligo_id
+                if oligo_id_val is not None:
+                    info["oligo_id"] = str(oligo_id_val)
+                target_oligos.append((idx, oligo.sequence, info))
+        else:
+            for idx, sequence in enumerate(sequences, start=1):
+                info = {"sequence_id": f"sequence-{idx}", "oligo_index": str(idx)}
+                target_oligos.append((idx, sequence, info))
+
+        for idx, sequence, info in target_oligos:
+            try:
+                is_valid = validate_sequence(sequence, constraints)
+            except Exception:
+                continue
+            if is_valid:
+                continue
+
+            reasons: list[str] = []
+            length = len(sequence)
+            if length < constraints.min_length:
+                reasons.append("length_short")
+            elif length > constraints.max_length:
+                reasons.append("length_long")
+
+            homopolymer = get_max_homopolymer_length(sequence)
+            if homopolymer > constraints.max_homopolymer:
+                reasons.append("homopolymer")
+
+            gc_fraction = calculate_gc_content(sequence) if sequence else 0.0
+            if gc_fraction < constraints.gc_min:
+                reasons.append("gc_low")
+            elif gc_fraction > constraints.gc_max:
+                reasons.append("gc_high")
+
+            if not reasons:
+                reasons.append("unknown")
+
+            for name in reasons:
+                type_counts[name] += 1
+
+            record: dict[str, Any] = {
+                "sequence_id": info.get("sequence_id", f"oligo-{idx}"),
+                "index": idx,
+                "length": length,
+                "type": reasons[0],
+            }
+            if len(reasons) > 1:
+                record["types"] = reasons
+            if info.get("oligo_id"):
+                record["oligo_id"] = info["oligo_id"]
+            if info.get("oligo_index") is not None:
+                record["oligo_index"] = info["oligo_index"]
+            violation_records.append(record)
+
+        constraint_violations = {
+            "count": len(violation_records),
+            "violations": violation_records,
+            "type_counts": dict(type_counts),
+        }
     except Exception:  # pragma: no cover - optional dependency
-        constraint_violations = 0
+        constraint_violations = {"count": 0, "violations": [], "type_counts": {}}
 
     per_oligo_gc = [calculate_gc_content(seq) for seq in sequences]
     per_oligo_hp = [get_max_homopolymer_length(seq) for seq in sequences]

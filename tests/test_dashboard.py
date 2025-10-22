@@ -9,13 +9,16 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def dummy_streamlit(monkeypatch: pytest.MonkeyPatch) -> dict[str, list]:
-    calls: dict[str, list] = {"metric": [], "bar_chart": []}
+    calls: dict[str, list] = {"metric": [], "bar_chart": [], "dataframe": []}
 
     def metric(*args, **kwargs) -> None:
         calls["metric"].append((args, kwargs))
 
     def bar_chart(*args, **kwargs) -> None:
         calls["bar_chart"].append((args, kwargs))
+
+    def dataframe(*args, **kwargs) -> None:
+        calls["dataframe"].append((args, kwargs))
 
     dummy = SimpleNamespace(
         title=lambda *a, **k: None,
@@ -25,7 +28,7 @@ def dummy_streamlit(monkeypatch: pytest.MonkeyPatch) -> dict[str, list]:
         metric=metric,
         bar_chart=bar_chart,
         error=lambda *a, **k: None,
-        dataframe=lambda *a, **k: None,
+        dataframe=dataframe,
     )
     monkeypatch.setitem(sys.modules, "streamlit", dummy)
     return calls
@@ -119,7 +122,19 @@ def test_display_coverage_and_constraint_metrics(
 ) -> None:
     data = {
         "coverage_distribution": [1, 3, 2],
-        "constraint_violations": 2,
+        "constraint_violations": {
+            "count": 2,
+            "violations": [
+                {"sequence_id": "oligo-1", "type": "gc_low", "length": 48},
+                {
+                    "sequence_id": "oligo-2",
+                    "types": ["length_short", "gc_low"],
+                    "type": "length_short",
+                    "length": 10,
+                },
+            ],
+            "type_counts": {"gc_low": 2, "length_short": 1},
+        },
     }
     path = tmp_path / "metrics.json"
     path.write_text(json.dumps(data))
@@ -131,7 +146,11 @@ def test_display_coverage_and_constraint_metrics(
     assert dummy_streamlit["bar_chart"], "bar_chart not called"
     charts = [args[0] for args, _ in dummy_streamlit["bar_chart"]]
     assert [1, 3, 2] in charts
-    assert {"Violations": 2} in charts
+    assert {"gc_low": 2, "length_short": 1} in charts
+    assert dummy_streamlit["dataframe"], "dataframe not called"
+    rows = dummy_streamlit["dataframe"][0][0][0]
+    assert isinstance(rows, list)
+    assert any(row.get("Sequence ID") == "oligo-1" for row in rows)
 
 
 def test_error_histograms_rendered(
