@@ -37,7 +37,17 @@ def test_bundle_metrics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
                 "insertions": 1,
                 "deletions": 1,
                 "coverage": 5,
-                "constraint_violations": 1,
+                "constraint_violations": {
+                    "count": 1,
+                    "violations": [
+                        {
+                            "sequence_id": "oligo-1",
+                            "type": "gc_low",
+                            "length": 42,
+                        }
+                    ],
+                    "type_counts": {"gc_low": 1},
+                },
             },
         })
     )

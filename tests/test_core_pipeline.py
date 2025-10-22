@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from typing import Any, Mapping, Sequence
+from typing import Mapping, Sequence
 
 from genecoder.core import encode, simulate, decode, metrics as gather_metrics, run_pipeline
 from genecoder.formats import SequenceBatch
@@ -30,7 +30,7 @@ class _BatchAwareCodec(Codec):
         self.last_batch_metadata: Mapping[str, str] | None = None
         self.last_oligo_metadata: list[Mapping[str, str]] | None = None
 
-    def encode(self, data: bytes, /, **kwargs: Any) -> SequenceBatch:  # type: ignore[override]
+    def encode(self, data: bytes, /, **kwargs: object) -> SequenceBatch:  # type: ignore[override]
         from genecoder.encoders import encode_base4_direct
 
         dna = encode_base4_direct(data)
@@ -48,7 +48,7 @@ class _BatchAwareCodec(Codec):
         *,
         batch_metadata: Mapping[str, str] | None = None,
         oligo_metadata: Sequence[Mapping[str, str]] | None = None,
-        **_kwargs: Any,
+        **_kwargs: object,
     ) -> bytes:  # type: ignore[override]
         from genecoder.encoders import decode_base4_direct
 
@@ -127,3 +127,32 @@ def test_metrics_helper() -> None:
     assert "gc_content" in m
     assert m["oligo_metrics"]["dropout_flags"] == [False]
     assert m["oligo_metrics"]["coverage"] == [None]
+
+
+def test_metrics_constraint_violations_per_oligo() -> None:
+    init_plugins()
+    sequences = ["ACGT" * 20] * 4  # Each oligo valid but combined length exceeds constraints
+    records = [
+        (f"batch_id=batch-valid oligo_index={idx+1}", seq)
+        for idx, seq in enumerate(sequences)
+    ]
+    batch = SequenceBatch.build(records, batch_id="batch-valid")
+
+    result = gather_metrics(batch, b"payload", b"payload", None)
+    violations = result.get("constraint_violations")
+    assert isinstance(violations, dict)
+    assert violations["count"] == 0
+    assert violations["violations"] == []
+
+    failing_records = records[:]
+    failing_records[1] = ("batch_id=batch-valid oligo_index=2", "AT" * 20)
+    failing_batch = SequenceBatch.build(failing_records, batch_id="batch-valid")
+    failing = gather_metrics(failing_batch, b"payload", b"payload", None)
+    failing_violations = failing.get("constraint_violations")
+    assert isinstance(failing_violations, dict)
+    assert failing_violations["count"] == 1
+    assert failing_violations["type_counts"].get("gc_low") == 1
+    assert failing_violations["violations"]
+    first_violation = failing_violations["violations"][0]
+    assert "gc_low" in (first_violation.get("types") or [first_violation.get("type")])
+    assert first_violation.get("sequence_id")
