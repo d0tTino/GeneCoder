@@ -171,6 +171,49 @@ GENECODER_METRICS_PATH=examples/nanopore_metrics.json \
   genecli bundle run configs/fountain_nanopore_pipeline.yaml
 ```
 
+### DeSP Nanopore Simulation
+
+```yaml
+# configs/desp_pipeline.yaml
+# Pipeline preset using the external DeSP nanopore simulator. The default
+# error rate of 0.12 mirrors common R10.4 flow cell runs (~12% aggregate
+# substitutions+insertions+deletions). Adjust between 0.08 and 0.15 to match
+# other DeSP profiles.
+encode:
+  input_files:
+    - examples/pipeline_demo_input.txt
+  method: base4_direct
+  fec: reed_solomon
+simulate:
+  simulators:
+    - name: desp
+      error_rate: 0.12  # Typical R10.x DeSP runs land between 8–15% aggregate error.
+  pipeline:
+    parallel: false
+    workers: null
+    use_process_pool: false
+    use_mpi: false
+decode:
+  method: base4_direct
+```
+
+Install the [DeSP](https://github.com/atcg/deSP) binary and ensure it is on your
+`PATH` before running the preset. GeneCoder forwards the aggregated error rate
+to the adapter, so start with the included 12% setting for R10.4 data and tweak
+between 0.08 and 0.15 for other pore models.
+
+Run the preset while capturing metrics and writing artefacts to a temporary
+bundle cache:
+
+```bash
+GENECODER_METRICS_PATH=examples/desp_metrics.json \
+  genecli bundle run configs/desp_pipeline.yaml --cache-dir runs/desp
+```
+
+If the `desp` executable is missing the adapter falls back to the deterministic
+internal Nanopore error model, ensuring the preset still runs for documentation
+and CI scenarios.
+
 ### Multi-oligo Illumina Dropout Pipeline
 
 The `configs/channel_multi_oligo.yaml` file demonstrates the new dropout-aware channel pipeline. It mixes an Illumina simulator with a coverage distribution and enforces synthesis constraints for the streamed FASTA output.
