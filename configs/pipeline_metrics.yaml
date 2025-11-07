@@ -14,6 +14,10 @@ simulate:
   simulators:
     - name: simple
       error_rate: 0.01
+  synthesis:
+    gc_min: 0.0
+    gc_max: 1.0
+    max_homopolymer: 8
   pipeline:
     dropout_rate: 0.2
     coverage_distribution:
