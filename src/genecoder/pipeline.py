@@ -3,6 +3,7 @@ from __future__ import annotations
 """Simple pipeline for processing sequences step by step."""
 
 import json
+from collections.abc import MutableMapping
 from pathlib import Path
 import warnings
 from typing import Any, Callable, Iterable, Mapping, Sequence, Tuple
@@ -16,6 +17,7 @@ from .simulators.batch_utils import (
     RESULT_MUTATION_TOTALS_KEY,
 )
 from . import core
+from .simulators.batch_utils import RESULT_COVERAGE_KEY, RESULT_DROPOUT_FLAG_KEY
 
 __all__ = ["SequencePipeline", "run_pipeline"]
 
@@ -109,6 +111,51 @@ class SequencePipeline:
         return [self.run(s) for s in sequences]
 
 
+def _flag_from_metadata(value: object) -> bool:
+    """Return ``True`` when ``value`` signals a simulated dropout."""
+
+    if isinstance(value, str):
+        raw = value.strip().lower()
+        return raw in {"1", "true", "yes", "y"}
+    return bool(value)
+
+
+def _channel_report(batch: SequenceBatch) -> tuple[dict[str, Any], list[bool]]:
+    """Return dropout statistics and flags for ``batch``."""
+
+    primaries = batch.primary_oligos() or batch.oligos
+    dropout_flags: list[bool] = []
+    coverage_values: list[int] = []
+    for oligo in primaries:
+        dropout_flags.append(_flag_from_metadata(oligo.metadata.get(RESULT_DROPOUT_FLAG_KEY)))
+        coverage_val = oligo.metadata.get(RESULT_COVERAGE_KEY)
+        try:
+            coverage_values.append(int(coverage_val))
+        except (TypeError, ValueError):
+            continue
+
+    total = len(primaries)
+    dropout_count = sum(1 for flag in dropout_flags if flag)
+    dropout_fraction = dropout_count / max(1, total) if total else 0.0
+    coverage_avg = (
+        sum(coverage_values) / len(coverage_values)
+        if coverage_values
+        else None
+    )
+
+    channel_info: dict[str, Any] = {
+        "dropout": {
+            "count": dropout_count,
+            "fraction": dropout_fraction,
+        },
+        "oligo_count": total,
+    }
+    if coverage_avg is not None:
+        channel_info["coverage"] = {"average": coverage_avg}
+
+    return channel_info, dropout_flags
+
+
 def run_pipeline(
     codec: str,
     fec_backend: str | None,
@@ -173,6 +220,33 @@ def run_pipeline(
         fec_info,
         survivor_batch=survivor_batch,
     )
+    channel_report: dict[str, Any] | None = None
+    dropout_flags: list[bool] = []
+    if isinstance(simulated_batch, SequenceBatch):
+        channel_report, dropout_flags = _channel_report(simulated_batch)
+    if (
+        fec_backend == "fountain"
+        and channel_report is not None
+        and isinstance(fec_info, MutableMapping)
+    ):
+        channel_report.setdefault("decode_success_rate", 0.0)
+        channel_report.setdefault("decode_success", None)
+        channel_report.setdefault("status", "pending")
+        fec_info["channel"] = channel_report
+
+    decode_input = simulated_batch
+    try:
+        decoded = core.decode(codec, fec_backend, decode_input, fec_info)
+    except Exception:
+        if (
+            fec_backend == "fountain"
+            and channel_report is not None
+            and isinstance(fec_info, MutableMapping)
+        ):
+            channel_report["decode_success"] = False
+            channel_report["decode_success_rate"] = 0.0
+            channel_report["status"] = "failed"
+        raise
     Path(output_path).write_bytes(decoded)
 
     metrics_dict = core.metrics(
@@ -185,5 +259,21 @@ def run_pipeline(
         dels,
         coverage,
     )
+
+    if (
+        fec_backend == "fountain"
+        and channel_report is not None
+        and isinstance(fec_info, MutableMapping)
+    ):
+        success_rate = float(metrics_dict.get("decode_success_rate") or 0.0)
+        channel_report["decode_success_rate"] = success_rate
+        channel_report["decode_success"] = success_rate >= 1.0
+        channel_report["status"] = "success" if channel_report["decode_success"] else "failed"
+        if dropout_flags:
+            dropout_count = sum(1 for flag in dropout_flags if flag)
+            channel_report.setdefault("dropout", {})
+            channel_report["dropout"]["count"] = dropout_count
+            channel_report["dropout"]["fraction"] = dropout_count / max(1, len(dropout_flags))
+
     return decoded, metrics_dict, fec_info
 
