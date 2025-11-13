@@ -24,6 +24,7 @@ from itertools import accumulate
 from pathlib import Path
 
 from .formats import SequenceBatch, SequenceOligo
+from .simulators.batch_utils import RESULT_COVERAGE_KEY, RESULT_DROPOUT_FLAG_KEY
 
 
 _HAS_PYFINITE = True  # compatibility with older tests
@@ -86,6 +87,45 @@ def _oligo_seed(oligo: SequenceOligo) -> int:
     if seed_token is None:
         raise ValueError("Droplet missing seed metadata")
     return int(seed_token)
+
+
+def _metadata_flag_true(metadata: Mapping[str, Any], key: str) -> bool:
+    value = metadata.get(key)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        token = value.strip().lower()
+        return token in {"1", "true", "yes", "y", "on"}
+    return False
+
+
+def _metadata_int(metadata: Mapping[str, Any], key: str) -> int | None:
+    value = metadata.get(key)
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _survivor_oligos(batch: SequenceBatch) -> list[SequenceOligo]:
+    survivors: list[SequenceOligo] = []
+    for oligo in batch.oligos:
+        dropout_flag = _metadata_flag_true(oligo.metadata, RESULT_DROPOUT_FLAG_KEY)
+        coverage_val = _metadata_int(oligo.metadata, RESULT_COVERAGE_KEY)
+        if dropout_flag or (coverage_val is not None and coverage_val <= 0):
+            continue
+        survivors.append(oligo)
+    return survivors
+
+
+def _has_valid_seed(oligo: SequenceOligo) -> bool:
+    try:
+        _oligo_seed(oligo)
+    except Exception:
+        return False
+    return True
 
 
 def _batch_to_bytes(batch: SequenceBatch) -> bytes:
@@ -336,7 +376,9 @@ def decode_data_fountain(
     base_seed = int(info.get("seed", 0))
     droplets: list[tuple[int, bytearray]] = []
     if isinstance(encoded, SequenceBatch):
-        for oligo in encoded.oligos:
+        candidates = _survivor_oligos(encoded) or list(encoded.oligos)
+
+        for oligo in candidates:
             seed_val = _oligo_seed(oligo)
             payload_hex = oligo.sequence.strip()
             if len(payload_hex) % 2 != 0:
@@ -496,9 +538,17 @@ class FountainFEC(FEC):
         *,
         c: float | None = None,
         delta: float | None = None,
+        survivor_batch: SequenceBatch | None = None,
         **kwargs: Any,
     ) -> Tuple[bytes, int]:  # noqa: ANN401
-        return decode_data_fountain(encoded, info, c=c, delta=delta)
+        source_batch = None
+        if survivor_batch is not None:
+            candidates = _survivor_oligos(survivor_batch) or list(survivor_batch.oligos)
+            if candidates and all(_has_valid_seed(oligo) for oligo in candidates):
+                source_batch = survivor_batch
+
+        source: SequenceBatch | bytes = source_batch if source_batch is not None else encoded
+        return decode_data_fountain(source, info, c=c, delta=delta)
 
 
 from typing import Callable

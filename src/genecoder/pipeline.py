@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Simple pipeline for processing sequences step by step."""
 
+import json
 from collections.abc import MutableMapping
 from pathlib import Path
 import warnings
@@ -10,10 +11,59 @@ from typing import Any, Callable, Iterable, Mapping, Sequence, Tuple
 from .plugin_manager import init_plugins
 from .parallel import parallel_map
 from .formats import SequenceBatch
+from .simulators.batch_utils import (
+    RESULT_COVERAGE_KEY,
+    RESULT_DROPOUT_FLAG_KEY,
+    RESULT_MUTATION_TOTALS_KEY,
+)
 from . import core
 from .simulators.batch_utils import RESULT_COVERAGE_KEY, RESULT_DROPOUT_FLAG_KEY
 
 __all__ = ["SequencePipeline", "run_pipeline"]
+
+
+def _metadata_flag_true(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return False
+
+
+def _metadata_int(value: object) -> int | None:
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _has_mutations(metadata: Mapping[str, Any]) -> bool:
+    value = metadata.get(RESULT_MUTATION_TOTALS_KEY)
+    if value in (None, ""):
+        return False
+    data: Mapping[str, Any] | None
+    if isinstance(value, Mapping):
+        data = value
+    elif isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return False
+        if isinstance(parsed, Mapping):
+            data = parsed
+        else:
+            return False
+    else:
+        return False
+    for key in ("substitutions", "insertions", "deletions"):
+        try:
+            if int(data.get(key, 0)) > 0:
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
 
 
 class SequencePipeline:
@@ -142,6 +192,34 @@ def run_pipeline(
             batch_id=dna_batch.batch_id,
         )
 
+    decode_input: SequenceBatch | str = simulated_batch
+    survivor_batch = simulated_batch if isinstance(simulated_batch, SequenceBatch) else None
+    if survivor_batch is not None:
+        filtered = [
+            oligo
+            for oligo in survivor_batch.oligos
+            if not _metadata_flag_true(oligo.metadata.get(RESULT_DROPOUT_FLAG_KEY))
+            and not (
+                (coverage_val := _metadata_int(oligo.metadata.get(RESULT_COVERAGE_KEY)))
+                is not None
+                and coverage_val <= 0
+            )
+            and not _has_mutations(oligo.metadata)
+        ]
+        if len(filtered) != len(survivor_batch.oligos):
+            decode_input = SequenceBatch(
+                batch_id=survivor_batch.batch_id,
+                metadata=dict(survivor_batch.metadata),
+                seed=survivor_batch.seed,
+                oligos=list(filtered),
+            )
+    decoded = core.decode(
+        codec,
+        fec_backend,
+        decode_input,
+        fec_info,
+        survivor_batch=survivor_batch,
+    )
     channel_report: dict[str, Any] | None = None
     dropout_flags: list[bool] = []
     if isinstance(simulated_batch, SequenceBatch):

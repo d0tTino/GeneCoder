@@ -18,6 +18,10 @@ from genecoder.fountain_codec import (
     droplet_batch_to_bytes,
     encode_data_fountain,
 )
+from genecoder.simulators.batch_utils import (
+    RESULT_COVERAGE_KEY,
+    RESULT_DROPOUT_FLAG_KEY,
+)
 from genecoder.reed_solomon_codec import decode_data_rs, encode_data_rs
 
 
@@ -133,6 +137,49 @@ def test_fountain_droplet_loss_with_explicit_count() -> None:
     )
     survivors = _select_survivors(batch, info, keep_count=30)
     decoded, _ = decode_data_fountain(survivors, info)
+    assert decoded == data
+
+
+def test_fountain_decode_skips_dropout_metadata() -> None:
+    data = b"dropout metadata" * 3
+    batch, info = encode_data_fountain(
+        data,
+        chunk_size=4,
+        redundancy=2.0,
+        seed=7,
+    )
+    k = int(info["k"])
+    drop_count = max(1, k // 3)
+    mutated_oligos: list[SequenceOligo] = []
+    for idx, oligo in enumerate(batch.oligos):
+        metadata = dict(oligo.metadata)
+        payload = oligo.sequence
+        if idx < drop_count:
+            metadata[RESULT_DROPOUT_FLAG_KEY] = "true"
+            metadata[RESULT_COVERAGE_KEY] = "0"
+            bad_payload = (
+                "DEADBEEF" * ((len(payload) + 7) // 8)
+            )[: len(payload)]
+            payload = bad_payload.upper()
+        mutated_oligos.append(
+            SequenceOligo(
+                sequence=payload,
+                header=oligo.header,
+                index=oligo.index,
+                oligo_id=oligo.oligo_id,
+                metadata=metadata,
+                seed=oligo.seed,
+            )
+        )
+
+    mutated_batch = SequenceBatch(
+        batch_id=batch.batch_id,
+        metadata=dict(batch.metadata),
+        seed=batch.seed,
+        oligos=mutated_oligos,
+    )
+
+    decoded, _ = decode_data_fountain(mutated_batch, info)
     assert decoded == data
 
 
