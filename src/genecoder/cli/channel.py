@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import random
+import shlex
 from pathlib import Path
 from typing import Sequence, Dict, Any, Mapping
 from difflib import SequenceMatcher
@@ -51,6 +52,46 @@ PROFILE_MAP: dict[str, tuple[str, str]] = {
     "r10.3": ("nanopore_dnarsim", "r10.3"),
     "r10.4": ("nanopore_dnarsim", "r10.4"),
 }
+
+
+def _normalize_stage_options(value: object) -> list[str]:
+    """Return ``value`` as a list of command-line options."""
+
+    if value in (None, ""):
+        return []
+    if isinstance(value, str):
+        try:
+            return [opt for opt in shlex.split(value) if opt]
+        except ValueError:
+            return [chunk for chunk in value.split() if chunk]
+    if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray, str)):
+        return [str(opt) for opt in value if str(opt)]
+    return [str(value)]
+
+
+def _extract_stage_parameters(
+    params: Dict[str, Any]
+) -> tuple[Dict[str, Any], str | None, list[str]]:
+    """Split stage-related keys from simulator ``params``."""
+
+    clean_params = dict(params)
+    stage_raw = None
+    for key in ("stage", "stage_name"):
+        if key in clean_params:
+            stage_raw = clean_params.pop(key)
+            break
+    stage = None
+    if stage_raw is not None:
+        stage = str(stage_raw).strip() or None
+
+    options_raw = None
+    for key in ("options", "stage_options", "flags", "cli_options"):
+        if key in clean_params:
+            options_raw = clean_params.pop(key)
+            break
+
+    options = _normalize_stage_options(options_raw)
+    return clean_params, stage, options
 
 
 def _load_config(
@@ -164,29 +205,61 @@ def _apply_simulators(
     ],
     *,
     config: ChannelConfig,
-) -> SequenceBatch:
+) -> tuple[SequenceBatch, list[dict[str, Any]]]:
     channels: list[BaseChannel] = []
+    stages: list[dict[str, Any]] = []
     for item in simulators:
         if isinstance(item, BaseChannel):
             channel = item
             name = channel.__class__.__name__
+            stage_label = getattr(channel, "stage", None)
+            options = list(getattr(channel, "options", ()))
+            params_view: dict[str, Any] = {}
+            if hasattr(channel, "error_rate"):
+                params_view["error_rate"] = getattr(channel, "error_rate")
+            stage_info: dict[str, Any] = {"name": name}
+            if stage_label:
+                stage_info["stage"] = stage_label
+            if params_view:
+                stage_info["parameters"] = params_view
+            if options:
+                stage_info["options"] = options
+            if any(key in stage_info for key in ("stage", "parameters", "options")):
+                stages.append(stage_info)
         else:
             name, params = item
             if name not in SIMULATOR_REGISTRY:
                 logger.error("Unknown simulator: %s", name)
                 raise SystemExit(1)
-            channel = SIMULATOR_REGISTRY[name]
-            if params:
-                try:
-                    channel = type(channel)(**params)
-                except Exception as exc:
-                    logger.error("Invalid parameters for %s: %s", name, exc)
-                    raise SystemExit(1)
+            channel_template = SIMULATOR_REGISTRY[name]
+            clean_params, stage, options = _extract_stage_parameters(params)
+            stage_info: dict[str, Any] = {"name": name}
+            if clean_params:
+                stage_info["parameters"] = clean_params
+            if stage:
+                stage_info["stage"] = stage
+            if options:
+                stage_info["options"] = options
+            try:
+                if name == "desp":
+                    channel = type(channel_template)(
+                        **clean_params,
+                        stage=stage,
+                        options=options or None,
+                    )
+                else:
+                    channel = type(channel_template)(**clean_params)
+            except Exception as exc:
+                logger.error("Invalid parameters for %s: %s", name, exc)
+                raise SystemExit(1)
+            if any(key in stage_info for key in ("stage", "parameters", "options")):
+                stages.append(stage_info)
         channels.append(channel)
         logger.info("Applied %s simulator", name)
     pipeline = ChannelPipeline(channels)
     result = pipeline.simulate(batch, config=config)
-    return result if isinstance(result, SequenceBatch) else _batch_from_string(result)
+    final = result if isinstance(result, SequenceBatch) else _batch_from_string(result)
+    return final, stages
 
 
 def _batch_from_string(sequence: str) -> SequenceBatch:
@@ -367,8 +440,11 @@ def process_channel(
         synth = SynthesisConstraints()
 
     cfg = config or ChannelConfig()
+    stage_metadata: list[dict[str, Any]] = []
     if simulators:
-        processed_batch = _apply_simulators(batch, simulators, config=cfg)
+        processed_batch, stage_metadata = _apply_simulators(
+            batch, simulators, config=cfg
+        )
     else:
         processed_batch = _simulate_probabilities(
             batch,
@@ -416,6 +492,9 @@ def process_channel(
     os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
     with open(output_file, "w", encoding="utf-8") as f_out:
         f_out.write(fasta_out)
+
+    if stage_metadata:
+        processed_batch.metadata["sim_stages"] = json.dumps(stage_metadata)
 
     coverage_hist = {}
     coverage_raw = processed_batch.metadata.get("sim_coverage_histogram")
@@ -491,6 +570,8 @@ def process_channel(
     }
     if mutation_totals is not None:
         manifest["mutation_totals"] = mutation_totals
+    if stage_metadata:
+        manifest["stages"] = stage_metadata
 
     manifest_path = os.path.splitext(output_file)[0] + ".manifest.json"
     with open(manifest_path, "w", encoding="utf-8") as m_out:

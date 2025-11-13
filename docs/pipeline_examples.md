@@ -175,10 +175,10 @@ GENECODER_METRICS_PATH=examples/nanopore_metrics.json \
 
 ```yaml
 # configs/desp_pipeline.yaml
-# Pipeline preset using the external DeSP nanopore simulator. The default
-# error rate of 0.12 mirrors common R10.4 flow cell runs (~12% aggregate
-# substitutions+insertions+deletions). Adjust between 0.08 and 0.15 to match
-# other DeSP profiles.
+# Pipeline preset using the external DeSP nanopore simulator with stage-aware
+# options. The synthesis pass uses a lower error rate, while the sequencing
+# stage mirrors typical R10.4 aggregate errors. Both invocations forward stage-
+# specific flags to the binary so manifests capture the provenance.
 encode:
   input_files:
     - examples/pipeline_demo_input.txt
@@ -187,7 +187,15 @@ encode:
 simulate:
   simulators:
     - name: desp
+      stage: synthesis
+      error_rate: 0.08
+      options:
+        - --model
+        - r10
+    - name: desp
+      stage: sequencing
       error_rate: 0.12  # Typical R10.x DeSP runs land between 8–15% aggregate error.
+      options: --temperature 5
   pipeline:
     parallel: false
     workers: null
@@ -198,9 +206,11 @@ decode:
 ```
 
 Install the [DeSP](https://github.com/atcg/deSP) binary and ensure it is on your
-`PATH` before running the preset. GeneCoder forwards the aggregated error rate
-to the adapter, so start with the included 12% setting for R10.4 data and tweak
-between 0.08 and 0.15 for other pore models.
+`PATH` before running the preset. GeneCoder invokes the simulator once per
+stage, forwarding both the stage label and any `options` entries. The resulting
+`*.manifest.json` contains a `stages` section summarising the error rates,
+options and stage names so downstream analysis can reason about each
+invocation.
 
 Run the preset while capturing metrics and writing artefacts to a temporary
 bundle cache:

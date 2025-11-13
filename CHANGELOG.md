@@ -21,6 +21,10 @@ All notable changes to this project will be documented in this file.
   minimum dependency of ``genecoder>=0.2.0``.
 - Removed the deprecated FrameD wrapper and documented LDPC, Fountain and
   RaptorQ extras as the supported advanced FEC alternatives.
+- DeSP adapter now supports multi-stage presets with per-stage CLI options.
+  Generated manifests include a ``stages`` section summarising each
+  invocation, and the ``configs/desp_pipeline.yaml`` preset documents the
+  synthesis and sequencing passes.
 
 ## [0.1.0] - 2025-06-12
 ### Added

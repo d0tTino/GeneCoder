@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 from dataclasses import dataclass, fields, asdict
-from typing import Any, Mapping, cast
+from typing import Any, Mapping, Sequence, cast
 
 from . import cli as cli_module
 from genecoder.formats import SequenceBatch
@@ -206,6 +206,24 @@ def _write_decoded_metrics(
     manifest_path = simulated_path.with_suffix(".manifest.json")
     manifest_data = _load_simulated_manifest(manifest_path)
 
+    stages_raw = manifest_data.get("stages", [])
+    stage_metadata: list[dict[str, Any]] = []
+    if isinstance(stages_raw, Sequence):
+        for item in stages_raw:
+            if isinstance(item, Mapping):
+                normalized: dict[str, Any] = {"name": item.get("name", "")}
+                if item.get("stage"):
+                    normalized["stage"] = item.get("stage")
+                params = item.get("parameters")
+                if isinstance(params, Mapping):
+                    normalized["parameters"] = dict(params)
+                opts = item.get("options")
+                if isinstance(opts, Sequence) and not isinstance(opts, (str, bytes, bytearray)):
+                    normalized["options"] = [str(opt) for opt in opts if str(opt)]
+                elif isinstance(opts, str) and opts:
+                    normalized["options"] = [opt for opt in opts.split() if opt]
+                stage_metadata.append(normalized)
+
     coverage_info = manifest_data.get("coverage", {})
     histogram_raw = (
         coverage_info.get("histogram", {})
@@ -329,6 +347,8 @@ def _write_decoded_metrics(
         channel_metrics["configuration"] = pipeline_cfg
     if channel_config:
         channel_metrics["parameters"] = channel_config
+    if stage_metadata:
+        channel_metrics["stages"] = stage_metadata
 
     sequence_metadata: dict[str, Any] = {
         "sim_dropout_total": str(dropout_count),
@@ -337,6 +357,8 @@ def _write_decoded_metrics(
         "sim_total_reads": str(total_reads_int),
         "sim_average_coverage": f"{average_cov_float:.6f}",
     }
+    if stage_metadata:
+        sequence_metadata["sim_stages"] = json.dumps(stage_metadata)
     if pipeline_cfg:
         if "dropout_rate" in pipeline_cfg:
             sequence_metadata["sim_dropout_rate"] = str(pipeline_cfg["dropout_rate"])
