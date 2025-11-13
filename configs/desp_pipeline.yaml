@@ -11,7 +11,15 @@ encode:
 simulate:
   simulators:
     - name: desp
-      error_rate: 0.12  # Typical R10.x DeSP runs land between 8–15% aggregate error.
+      stage: synthesis
+      error_rate: 0.08  # Synthesis-focused stage draws from low-error presets.
+      options:
+        - --model
+        - r10
+    - name: desp
+      stage: sequencing
+      error_rate: 0.12  # Sequencing stage mirrors the R10.x aggregate error range.
+      options: --temperature 5
   pipeline:
     parallel: false
     workers: null
