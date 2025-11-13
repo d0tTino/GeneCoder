@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, Mapping
 
 import pytest
 
 from genecoder.pipeline import run_pipeline
 from genecoder import core
 from genecoder.formats import SequenceBatch
-from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
+from genecoder.plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.channel_sim import Channel
 from genecoder.api import Codec
@@ -49,12 +50,34 @@ def test_pipeline_roundtrip(
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
     init_plugins()
     _register_base_codec()
-    _setup_simple_channel(rate=0.1)
+    _setup_simple_channel(rate=0.0 if fec_backend == "fountain" else 0.1)
 
     data = f"pipeline {fec_backend}".encode()
     inp = tmp_path / "data.bin"
     outp = tmp_path / "out.bin"
     inp.write_bytes(data)
+
+    observed_batches: list[SequenceBatch | None] = []
+    if fec_backend == "fountain":
+        original_decode = FEC_REGISTRY["fountain"]["decode"]
+
+        def _recording_decode(
+            encoded: bytes,
+            info: Mapping[str, Any],
+            /,
+            *,
+            survivor_batch: SequenceBatch | None = None,
+            **kwargs: object,
+        ) -> tuple[bytes, int]:
+            observed_batches.append(survivor_batch)
+            return original_decode(
+                encoded,
+                info,
+                survivor_batch=survivor_batch,
+                **kwargs,
+            )
+
+        monkeypatch.setitem(FEC_REGISTRY["fountain"], "decode", _recording_decode)
 
     result, metrics, info = run_pipeline("base4", fec_backend, "simple", str(inp), str(outp))
     assert result == data
@@ -85,8 +108,14 @@ def test_pipeline_roundtrip(
             batch_id=dna_batch.batch_id,
         )
     assert isinstance(simulated, SequenceBatch)
-    decode_input = simulated if fec_backend != "fountain" else dna_batch
-    decoded_core = core.decode("base4", fec_backend, decode_input, fec_info)
+    decode_input = simulated
+    decoded_core = core.decode(
+        "base4",
+        fec_backend,
+        decode_input,
+        fec_info,
+        survivor_batch=decode_input if isinstance(decode_input, SequenceBatch) else None,
+    )
     metrics_core = core.metrics(
         simulated,
         data,
@@ -98,6 +127,10 @@ def test_pipeline_roundtrip(
         coverage,
     )
     assert decoded_core == data
+    if fec_backend == "fountain":
+        assert observed_batches
+        assert all(isinstance(batch, SequenceBatch) for batch in observed_batches if batch is not None)
+        assert observed_batches[-1] is decode_input
     assert metrics_core == metrics
 
 
@@ -164,6 +197,14 @@ def test_pipeline_roundtrip_fountain_channels(
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
     init_plugins()
     _register_base_codec()
+
+    class _IdentitySimulator:
+        __genecoder_accepts_batch__ = True
+
+        def simulate(self, sequence: SequenceBatch | str) -> SequenceBatch | str:
+            return sequence
+
+    SIMULATOR_REGISTRY[channel_name] = _IdentitySimulator()
 
     data = f"pipeline fountain {channel_name}".encode()
     inp = tmp_path / "data.bin"

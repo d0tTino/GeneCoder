@@ -14,7 +14,7 @@ from .utils import get_max_homopolymer_length
 
 from .plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
 from .simulators import SIMULATOR_REGISTRY
-from .formats import SequenceBatch
+from .formats import SequenceBatch, SequenceOligo
 from .simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
     RESULT_DROPOUT_FLAG_KEY,
@@ -272,6 +272,8 @@ def decode(
     fec: str | None,
     dna: SequenceBatch | str,
     fec_info: Mapping[str, Any] | None,
+    *,
+    survivor_batch: SequenceBatch | None = None,
 ) -> bytes:
     """Return decoded bytes from ``dna`` applying optional FEC."""
 
@@ -279,6 +281,50 @@ def decode(
         raise ValueError(f"Unknown codec: {codec}")
 
     batch = dna if isinstance(dna, SequenceBatch) else _wrap_single_sequence(str(dna))
+    if isinstance(dna, SequenceBatch):
+        filtered: list[SequenceOligo] = []
+        for oligo in dna.oligos:
+            dropout_flag = _parse_bool(oligo.metadata.get(RESULT_DROPOUT_FLAG_KEY, False))
+            coverage_raw = oligo.metadata.get(RESULT_COVERAGE_KEY)
+            try:
+                coverage_int = int(coverage_raw) if coverage_raw is not None else None
+            except (TypeError, ValueError):
+                coverage_int = None
+            mutation_raw = oligo.metadata.get(RESULT_MUTATION_TOTALS_KEY)
+            mutation_flag = False
+            if mutation_raw not in (None, ""):
+                mutation_data: Mapping[str, Any] | None
+                if isinstance(mutation_raw, Mapping):
+                    mutation_data = mutation_raw
+                elif isinstance(mutation_raw, str):
+                    try:
+                        parsed = json.loads(mutation_raw)
+                    except json.JSONDecodeError:
+                        mutation_data = None
+                    else:
+                        mutation_data = parsed if isinstance(parsed, Mapping) else None
+                else:
+                    mutation_data = None
+                if mutation_data is not None:
+                    for key in ("substitutions", "insertions", "deletions"):
+                        try:
+                            if int(mutation_data.get(key, 0)) > 0:
+                                mutation_flag = True
+                                break
+                        except (TypeError, ValueError):
+                            continue
+            if dropout_flag or (coverage_int is not None and coverage_int <= 0) or mutation_flag:
+                continue
+            filtered.append(oligo)
+        if len(filtered) != len(dna.oligos):
+            batch = SequenceBatch(
+                batch_id=dna.batch_id,
+                metadata=dict(dna.metadata),
+                seed=dna.seed,
+                oligos=list(filtered),
+            )
+    if survivor_batch is None and isinstance(dna, SequenceBatch):
+        survivor_batch = dna
     decode_fn = CODEC_REGISTRY[codec]["decode"]
     primary_sequence = batch.primary_sequence()
     if _codec_accepts_sequence_batch(decode_fn):
@@ -298,7 +344,10 @@ def decode(
         assert fec_info is not None
         combined_info: dict[str, Any] = {"batch_id": batch.batch_id, **batch.metadata}
         combined_info.update(fec_info)
-        decoded, _ = FEC_REGISTRY[fec]["decode"](decoded, combined_info)
+        fec_kwargs: dict[str, Any] = {}
+        if survivor_batch is not None:
+            fec_kwargs["survivor_batch"] = survivor_batch
+        decoded, _ = FEC_REGISTRY[fec]["decode"](decoded, combined_info, **fec_kwargs)
 
     return decoded
 
@@ -537,7 +586,14 @@ def run_pipeline(
     dna_batch, fec_info = encode(codec, fec, original_data)
     simulated, subs, ins, dels, coverage = simulate(channel, dna_batch)
     batch_result = simulated if isinstance(simulated, SequenceBatch) else _wrap_single_sequence(simulated)
-    decoded = decode(codec, fec, batch_result, fec_info)
+    survivor_batch = batch_result if isinstance(batch_result, SequenceBatch) else None
+    decoded = decode(
+        codec,
+        fec,
+        batch_result,
+        fec_info,
+        survivor_batch=survivor_batch,
+    )
 
     Path(output_path).write_bytes(decoded)
     metrics_dict = metrics(
