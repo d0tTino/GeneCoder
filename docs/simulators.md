@@ -80,10 +80,20 @@ genecli channel --simulator nanopore_desp --profile promethion <other options>
 
 Use `--desp-options` or set `GENECODER_DESP_OPTIONS` to forward additional
 flags to the `desp` binary. Arguments are validated for safety before being
-passed through. If the executable exits with an error or is not present the
-channel automatically reverts to the built-in Nanopore fallback described
-above, so decode commands succeed with deterministic settings even without the
-external dependency.
+passed through. The adapter also honours per-stage options defined in YAML
+pipelines: every DeSP entry can include a `stage` label and a list (or string)
+of `options`. The runner will invoke DeSP once per stage with the specified
+flags and record the resulting metadata in the manifest. For example, the
+updated [`configs/desp_pipeline.yaml`](../configs/desp_pipeline.yaml) preset
+contains two stages—`synthesis` and `sequencing`—with distinct error rates and
+CLI arguments. When the pipeline finishes the emitted
+`*.manifest.json` contains a `stages` array summarising the parameters and
+flags used for each invocation.
+
+If the executable exits with an error or is not present the channel
+automatically reverts to the built-in Nanopore fallback described above, so
+decode commands succeed with deterministic settings even without the external
+dependency.
 
 ### Installation tips
 
