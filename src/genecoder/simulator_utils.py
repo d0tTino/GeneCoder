@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import random
@@ -9,7 +10,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 from .formats import from_fasta, to_fasta
 from .random_utils import make_rng
@@ -63,17 +64,15 @@ def _parse_env_options(command: str) -> list[str]:
     return options
 
 
-def _run_external(command: Sequence[str] | str, sequence: str) -> str:
-    """Run an external simulator command on ``sequence``.
-
-    The command must accept an input FASTA file and output FASTA to a
-    second file: ``command <in> <out>``.
-    """
+def _execute_external(
+    command: Sequence[str] | str, input_fasta: str
+) -> tuple[str, dict[str, Any] | None]:
+    """Execute ``command`` on ``input_fasta`` and return FASTA output."""
 
     with tempfile.TemporaryDirectory(dir=get_temp_dir()) as tmpdir:
         input_path = Path(tmpdir) / "input.fasta"
         output_path = Path(tmpdir) / "output.fasta"
-        input_path.write_text(to_fasta(sequence, "seq"))
+        input_path.write_text(input_fasta)
         cmd_list = [command] if isinstance(command, str) else list(command)
         full_cmd = cmd_list + [str(input_path), str(output_path)]
         logger.debug("Running external command: %s", " ".join(full_cmd))
@@ -83,10 +82,38 @@ def _run_external(command: Sequence[str] | str, sequence: str) -> str:
             raise RuntimeError(
                 f"{cmd_list[0]} failed with exit code {exc.returncode}"
             ) from exc
-        records = from_fasta(output_path.read_text())
-        if not records:
-            raise RuntimeError(f"{cmd_list[0]} produced no FASTA output")
-        return records[0][1]
+
+        output_text = output_path.read_text()
+        metadata: dict[str, Any] | None = None
+        metadata_candidates = [
+            output_path.with_suffix(output_path.suffix + ".json"),
+            output_path.with_suffix(".json"),
+        ]
+        for meta_path in metadata_candidates:
+            if meta_path.exists():
+                try:
+                    metadata = json.loads(meta_path.read_text())
+                except json.JSONDecodeError:  # pragma: no cover - error path
+                    logger.warning("Invalid metadata JSON from %s", meta_path)
+                    metadata = None
+                break
+
+        return output_text, metadata
+
+
+def _run_external(command: Sequence[str] | str, sequence: str) -> str:
+    """Run an external simulator command on ``sequence``.
+
+    The command must accept an input FASTA file and output FASTA to a
+    second file: ``command <in> <out>``.
+    """
+
+    output_text, _ = _execute_external(command, to_fasta(sequence, "seq"))
+    records = from_fasta(output_text)
+    if not records:
+        cmd_list = [command] if isinstance(command, str) else list(command)
+        raise RuntimeError(f"{cmd_list[0]} produced no FASTA output")
+    return records[0][1]
 
 
 def _simulate_adapter(
