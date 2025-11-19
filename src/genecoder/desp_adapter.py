@@ -6,8 +6,7 @@ import json
 import logging
 import random
 import shutil
-from typing import Any, Callable, Mapping
-from typing import Callable, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from .api import Simulator
 from .formats import SequenceBatch, from_fasta
@@ -333,9 +332,6 @@ def simulate_desp(
     stage_parameters: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> str | SequenceBatch:
     """Use ``desp`` if available, else fall back to internal simulators."""
-    extra_args: Sequence[str] | None = None,
-) -> str:
-    """Use ``desp`` if available, else fall back to :func:`simulate_errors`."""
 
     if rng is None:
         rng = make_rng()
@@ -343,9 +339,9 @@ def simulate_desp(
     if isinstance(sequence, SequenceBatch):
         return _simulate_desp_batch(sequence, error_rate, rng, stage_parameters)
 
-    extra_args = _stage_cli_args(_normalise_stage_config(stage_parameters))
+    stage_config = _normalise_stage_config(stage_parameters)
+    extra_args = _stage_cli_args(stage_config)
     return _simulate_adapter(_DeSP.command, sequence, error_rate, rng, extra_args)
-    return _simulate_adapter("desp", sequence, error_rate, rng, extra_args)
 
 
 class DeSPChannel(Simulator):
@@ -361,28 +357,11 @@ class DeSPChannel(Simulator):
         self.stage_parameters = stage_parameters
 
     def simulate(self, sequence: str | SequenceBatch) -> str | SequenceBatch:
-        stage: str | None = None,
-        options: Sequence[str] | None = None,
-    ) -> None:
-        self.error_rate = error_rate
-        self.stage = stage.strip() if isinstance(stage, str) and stage.strip() else None
-        if options is None:
-            self.options: tuple[str, ...] = ()
-        else:
-            self.options = tuple(str(opt) for opt in options if str(opt))
-
-    def simulate(self, sequence: str) -> str:
-        extra_args: list[str] = []
-        if self.stage:
-            extra_args.extend(["--stage", self.stage])
-        if self.options:
-            extra_args.extend(self.options)
         return simulate_desp(
             sequence,
             error_rate=self.error_rate,
             rng=make_rng(),
             stage_parameters=self.stage_parameters,
-            extra_args=extra_args or None,
         )
 
 
