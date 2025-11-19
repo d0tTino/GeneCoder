@@ -213,13 +213,6 @@ def run_pipeline(
                 seed=survivor_batch.seed,
                 oligos=list(filtered),
             )
-    decoded = core.decode(
-        codec,
-        fec_backend,
-        decode_input,
-        fec_info,
-        survivor_batch=survivor_batch,
-    )
     channel_report: dict[str, Any] | None = None
     dropout_flags: list[bool] = []
     if isinstance(simulated_batch, SequenceBatch):
@@ -234,9 +227,14 @@ def run_pipeline(
         channel_report.setdefault("status", "pending")
         fec_info["channel"] = channel_report
 
-    decode_input = simulated_batch
     try:
-        decoded = core.decode(codec, fec_backend, decode_input, fec_info)
+        decoded = core.decode(
+            codec,
+            fec_backend,
+            decode_input,
+            fec_info,
+            survivor_batch=survivor_batch,
+        )
     except Exception:
         if (
             fec_backend == "fountain"
