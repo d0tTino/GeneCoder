@@ -244,11 +244,17 @@ def test_fountain_channel_dropout_manifest_success(
     decode_calls: list[SequenceBatch] = []
 
     def _fake_decode(
-        codec: str, fec_backend: str | None, dna: SequenceBatch, info: dict[str, object]
+        codec: str,
+        fec_backend: str | None,
+        dna: SequenceBatch,
+        info: dict[str, object],
+        **kwargs: object,
     ) -> bytes:
         decode_calls.append(dna)
-        assert dna is mutated_batch
+        assert isinstance(dna, SequenceBatch)
+        assert [ol.sequence for ol in dna.oligos] == ["AAAT", "GGGT"]
         assert info is fec_info
+        assert kwargs.get("survivor_batch") is dna
         return b"dropout-success"
 
     monkeypatch.setattr(core, "decode", _fake_decode)
@@ -262,7 +268,7 @@ def test_fountain_channel_dropout_manifest_success(
         "base4", "fountain", "simple", str(inp), str(outp)
     )
 
-    assert decode_calls == [mutated_batch]
+    assert len(decode_calls) == 1
     assert result == data
     assert outp.read_bytes() == data
 
@@ -312,11 +318,17 @@ def test_fountain_channel_dropout_manifest_failure(
     decode_calls: list[SequenceBatch] = []
 
     def _failing_decode(
-        codec: str, fec_backend: str | None, dna: SequenceBatch, info: dict[str, object]
+        codec: str,
+        fec_backend: str | None,
+        dna: SequenceBatch,
+        info: dict[str, object],
+        **kwargs: object,
     ) -> bytes:
         decode_calls.append(dna)
-        assert dna is mutated_batch
+        assert isinstance(dna, SequenceBatch)
+        assert [ol.sequence for ol in dna.oligos] == ["GGGA"]
         assert info is fec_info
+        assert kwargs.get("survivor_batch") is dna
         return b"corrupted-output"
 
     monkeypatch.setattr(core, "decode", _failing_decode)
@@ -330,7 +342,7 @@ def test_fountain_channel_dropout_manifest_failure(
         "base4", "fountain", "simple", str(inp), str(outp)
     )
 
-    assert decode_calls == [mutated_batch]
+    assert len(decode_calls) == 1
     assert result == b"corrupted-output"
     assert outp.read_bytes() == b"corrupted-output"
 
