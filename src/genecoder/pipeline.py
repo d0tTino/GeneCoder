@@ -193,7 +193,9 @@ def run_pipeline(
         )
 
     decode_input: SequenceBatch | str = simulated_batch
-    survivor_batch = simulated_batch if isinstance(simulated_batch, SequenceBatch) else None
+    survivor_batch: SequenceBatch | None = (
+        simulated_batch if isinstance(simulated_batch, SequenceBatch) else None
+    )
     if survivor_batch is not None:
         filtered = [
             oligo
@@ -213,10 +215,15 @@ def run_pipeline(
                 seed=survivor_batch.seed,
                 oligos=list(filtered),
             )
+            survivor_batch = decode_input
+        else:
+            decode_input = survivor_batch
+
+    channel_source = simulated_batch if isinstance(simulated_batch, SequenceBatch) else None
     channel_report: dict[str, Any] | None = None
     dropout_flags: list[bool] = []
-    if isinstance(simulated_batch, SequenceBatch):
-        channel_report, dropout_flags = _channel_report(simulated_batch)
+    if channel_source is not None:
+        channel_report, dropout_flags = _channel_report(channel_source)
     if (
         fec_backend == "fountain"
         and channel_report is not None
