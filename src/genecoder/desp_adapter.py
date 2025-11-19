@@ -7,6 +7,7 @@ import logging
 import random
 import shutil
 from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 from .api import Simulator
 from .formats import SequenceBatch, from_fasta
@@ -339,7 +340,8 @@ def simulate_desp(
     if isinstance(sequence, SequenceBatch):
         return _simulate_desp_batch(sequence, error_rate, rng, stage_parameters)
 
-    extra_args = _stage_cli_args(_normalise_stage_config(stage_parameters))
+    stage_config = _normalise_stage_config(stage_parameters)
+    extra_args = _stage_cli_args(stage_config)
     return _simulate_adapter(_DeSP.command, sequence, error_rate, rng, extra_args)
 
 
