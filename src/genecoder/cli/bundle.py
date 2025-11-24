@@ -89,6 +89,57 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     )
     run_parser.set_defaults(func=_handle_run)
 
+    sweep_parser = bundle_sub.add_parser(
+        "sweep", help="Run multiple bundle configs with shared cache and metrics"
+    )
+    sweep_parser.add_argument(
+        "configs",
+        nargs="+",
+        help="YAML bundle configs or glob patterns to run sequentially",
+    )
+    sweep_parser.add_argument(
+        "--cache-dir",
+        type=str,
+        default="bundle_runs",
+        help="Directory to store bundle outputs",
+    )
+    sweep_parser.add_argument(
+        "--metrics-path",
+        type=str,
+        help="Path to the aggregate metrics JSON file shared across runs",
+    )
+    sweep_parser.add_argument(
+        "--manifest-index",
+        type=str,
+        help="Path to write a manifest index JSON for dashboard aggregation",
+    )
+    sweep_parser.add_argument(
+        "--export-archive",
+        type=str,
+        help="Path to write a tar.gz archive of the final run directory",
+    )
+    sweep_parser.add_argument(
+        "--author",
+        type=str,
+        help="Author name to include in summary.json files",
+    )
+    sweep_parser.add_argument(
+        "--description",
+        type=str,
+        help="Description to include in summary.json files",
+    )
+    sweep_parser.add_argument(
+        "--emit-manifest-report",
+        action="store_true",
+        help="Generate HTML reports for decoded manifests",
+    )
+    sweep_parser.add_argument(
+        "--launch-dashboard",
+        action="store_true",
+        help="Launch the dashboard for the metrics file after the sweep",
+    )
+    sweep_parser.set_defaults(func=_handle_sweep)
+
 
 def _channel_args(opts: Mapping[str, object]) -> list[str]:
     if not isinstance(opts, dict):
@@ -155,22 +206,24 @@ def _create_archive(
     author: str | None = None,
     description: str | None = None,
     batch_metadata: Mapping[str, object] | None = None,
+    *,
+    config_name: str | None = None,
+    channel_profile: str | None = None,
+    ecc_type: str | None = None,
+    metrics_target: Path | None = None,
 ) -> None:
     """Create a gzipped tar archive of ``run_dir`` with a summary manifest."""
-    summary = {
-        "config_hash": config_hash,
-        "timestamp": run_dir.name,
-        "files": [str(p.relative_to(run_dir)) for p in run_dir.rglob("*") if p.is_file()],
-    }
-    if batch_metadata:
-        summary["sequence_batches"] = batch_metadata
-    if author is not None:
-        summary["author"] = author
-    if description is not None:
-        summary["description"] = description
-    summary_path = run_dir / "summary.json"
-    with open(summary_path, "w", encoding="utf-8") as fh:
-        json.dump(summary, fh, indent=2)
+    summary_path = _write_summary_file(
+        run_dir,
+        config_hash,
+        batch_metadata=batch_metadata,
+        author=author,
+        description=description,
+        config_name=config_name,
+        channel_profile=channel_profile,
+        ecc_type=ecc_type,
+        metrics_target=metrics_target,
+    )
 
     with tarfile.open(archive_path, "w:gz") as tf:
         tf.add(run_dir, arcname=run_dir.name)
@@ -423,30 +476,106 @@ def _write_decoded_metrics(
         html = generate_html_report(str(manifest_output))
         html_report_path.write_text(html, encoding="utf-8")
 
-def _handle_run(args: argparse.Namespace) -> None:
+def _launch_dashboard_if_requested(launch_dashboard: bool, metrics_override: Path | None) -> None:
+    if not launch_dashboard:
+        return
+    target = metrics_override or metrics.path
+    if not target.exists():
+        logger.warning(
+            "Metrics file %s not found, skipping dashboard launch", target
+        )
+        return
+    _run_cli(["dashboard", str(target)])
+
+
+def _extract_channel_profile(sim_cfg: Mapping[str, object] | None) -> str | None:
+    if not isinstance(sim_cfg, Mapping):
+        return None
+    pipeline_cfg = sim_cfg.get("pipeline")
+    if isinstance(pipeline_cfg, Mapping):
+        profile = pipeline_cfg.get("profile") or pipeline_cfg.get("name")
+        if profile:
+            return str(profile)
+    config_path = sim_cfg.get("config")
+    if isinstance(config_path, str):
+        return config_path
+    simulators = sim_cfg.get("simulators")
+    if isinstance(simulators, Sequence) and simulators:
+        first = simulators[0]
+        if isinstance(first, str):
+            return first
+    return None
+
+
+def _write_summary_file(
+    run_dir: Path,
+    config_hash: str,
+    *,
+    batch_metadata: Mapping[str, object] | None = None,
+    author: str | None = None,
+    description: str | None = None,
+    config_name: str | None = None,
+    channel_profile: str | None = None,
+    ecc_type: str | None = None,
+    metrics_target: Path | None = None,
+) -> Path:
+    summary = {
+        "config_hash": config_hash,
+        "timestamp": run_dir.name,
+        "files": [
+            str(p.relative_to(run_dir)) for p in run_dir.rglob("*") if p.is_file()
+        ],
+    }
+    if batch_metadata:
+        summary["sequence_batches"] = batch_metadata
+    if author is not None:
+        summary["author"] = author
+    if description is not None:
+        summary["description"] = description
+    summary["config_name"] = config_name
+    summary["channel_profile"] = channel_profile
+    summary["ecc"] = ecc_type
+    if metrics_target is not None:
+        summary["metrics_path"] = str(metrics_target)
+
+    summary_path = run_dir / "summary.json"
+    with open(summary_path, "w", encoding="utf-8") as fh:
+        json.dump(summary, fh, indent=2)
+    return summary_path
+
+
+@dataclass
+class BundleRunResult:
+    config_path: Path
+    config_hash: str
+    run_dir: Path
+    config_name: str | None
+    channel_profile: str | None
+    ecc_type: str | None
+    summary_path: Path
+
+
+def _run_single_bundle(
+    config_path: Path,
+    *,
+    cache_dir: Path,
+    export_archive: Path | None,
+    author: str | None,
+    description: str | None,
+    emit_manifest_report: bool,
+    metrics_override: Path | None,
+    launch_dashboard: bool,
+) -> BundleRunResult:
     import yaml
 
-    metrics_override: Path | None = None
-    if args.metrics_path:
-        metrics_override = Path(args.metrics_path)
+    if metrics_override:
         set_metrics_path(metrics_override)
 
-    def _launch_dashboard_if_requested() -> None:
-        if not args.launch_dashboard:
-            return
-        target = metrics_override or metrics.path
-        if not target.exists():
-            logger.warning(
-                "Metrics file %s not found, skipping dashboard launch", target
-            )
-            return
-        _run_cli(["dashboard", str(target)])
-
-    with open(args.config, "r", encoding="utf-8") as fh:
+    with open(config_path, "r", encoding="utf-8") as fh:
         try:
             config = yaml.safe_load(fh.read()) or {}
         except yaml.YAMLError as exc:  # pragma: no cover - invalid YAML path
-            logger.error("Invalid YAML in %s: %s", args.config, exc)
+            logger.error("Invalid YAML in %s: %s", config_path, exc)
             raise SystemExit(1)
 
     if not isinstance(config, dict):
@@ -462,22 +591,58 @@ def _handle_run(args: argparse.Namespace) -> None:
     config_hash = hashlib.sha256(
         json.dumps(config, sort_keys=True).encode()
     ).hexdigest()
-    hash_dir = Path(args.cache_dir) / config_hash
+    config_name = config_path.name
+
+    enc_cfg = config.get("encode", {})
+    if not isinstance(enc_cfg, dict):
+        raise TypeError("encode section must be a mapping")
+    sim_cfg_raw = config.get("simulate")
+    if sim_cfg_raw is not None and not isinstance(sim_cfg_raw, dict):
+        raise TypeError("simulate section must be a mapping")
+    dec_cfg = config.get("decode")
+    if dec_cfg is not None and not isinstance(dec_cfg, dict):
+        raise TypeError("decode section must be a mapping")
+
+    hash_dir = cache_dir / config_hash
     if hash_dir.exists():
         logger.info("Cached result found in %s", hash_dir)
-        if args.export_archive:
-            run_dirs = sorted(hash_dir.iterdir())
-            if run_dirs:
-                _create_archive(
-                    run_dirs[-1],
-                    Path(args.export_archive),
-                    config_hash,
-                    args.author,
-                    args.description,
-                    batch_metadata=None,
-                )
-        _launch_dashboard_if_requested()
-        return
+        run_dirs = sorted(hash_dir.iterdir())
+        if not run_dirs:
+            raise RuntimeError(f"Cache directory {hash_dir} is empty")
+        run_dir = run_dirs[-1]
+        summary_path = _write_summary_file(
+            run_dir,
+            config_hash,
+            author=author,
+            description=description,
+            config_name=config_name,
+            channel_profile=_extract_channel_profile(sim_cfg_raw),
+            ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            metrics_target=metrics_override or metrics.path,
+        )
+        if export_archive:
+            _create_archive(
+                run_dir,
+                export_archive,
+                config_hash,
+                author,
+                description,
+                batch_metadata=None,
+                config_name=config_name,
+                channel_profile=_extract_channel_profile(sim_cfg_raw),
+                ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+                metrics_target=metrics_override or metrics.path,
+            )
+        _launch_dashboard_if_requested(launch_dashboard, metrics_override)
+        return BundleRunResult(
+            config_path=config_path,
+            config_hash=config_hash,
+            run_dir=run_dir,
+            config_name=config_name,
+            channel_profile=_extract_channel_profile(sim_cfg_raw),
+            ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            summary_path=summary_path,
+        )
 
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     run_dir = hash_dir / timestamp
@@ -487,9 +652,6 @@ def _handle_run(args: argparse.Namespace) -> None:
     encoded_dir.mkdir(parents=True, exist_ok=True)
     decoded_dir.mkdir(parents=True, exist_ok=True)
 
-    enc_cfg = config.get("encode", {})
-    if not isinstance(enc_cfg, dict):
-        raise TypeError("encode section must be a mapping")
     enc_args = _simple_args("encode", enc_cfg, {"input_files", "method", "fec"})
     enc_args += ["--output-dir", str(encoded_dir)]
     _run_cli(enc_args)
@@ -532,9 +694,7 @@ def _handle_run(args: argparse.Namespace) -> None:
         with open(run_dir / "sequence_batches.json", "w", encoding="utf-8") as fh:
             json.dump(batch_summary, fh, indent=2)
 
-    sim_cfg = config.get("simulate")
-    if sim_cfg is not None and not isinstance(sim_cfg, dict):
-        raise TypeError("simulate section must be a mapping")
+    sim_cfg = sim_cfg_raw if isinstance(sim_cfg_raw, dict) else None
     if sim_cfg:
         simulated_dir.mkdir(parents=True, exist_ok=True)
         new_inputs = []
@@ -567,13 +727,13 @@ def _handle_run(args: argparse.Namespace) -> None:
                     "w", suffix=".yaml", delete=False, encoding="utf-8"
                 ) as tmp:
                     yaml.safe_dump(channel_config, tmp)
-                    config_path = Path(tmp.name)
+                    config_inline_path = Path(tmp.name)
 
                 try:
-                    _run_cli(["channel", "run", str(config_path)])
+                    _run_cli(["channel", "run", str(config_inline_path)])
                 finally:
                     try:
-                        os.unlink(config_path)
+                        os.unlink(config_inline_path)
                     except FileNotFoundError:  # pragma: no cover - already removed
                         pass
 
@@ -593,9 +753,6 @@ def _handle_run(args: argparse.Namespace) -> None:
 
         input_files = new_inputs
 
-    dec_cfg = config.get("decode")
-    if dec_cfg is not None and not isinstance(dec_cfg, dict):
-        raise TypeError("decode section must be a mapping")
     if dec_cfg:
         dec_args = _simple_args("decode", dec_cfg, {"method"})
         dec_args += ["--input-files"] + [str(p) for p in input_files]
@@ -611,19 +768,156 @@ def _handle_run(args: argparse.Namespace) -> None:
                     decoded_file,
                     enc_cfg,
                     sim_cfg if isinstance(sim_cfg, dict) else None,
-                    emit_manifest_report=args.emit_manifest_report,
+                    emit_manifest_report=emit_manifest_report,
                 )
 
     logger.info("Bundle output written to %s", run_dir)
-    if args.export_archive:
+    summary_path = _write_summary_file(
+        run_dir,
+        config_hash,
+        batch_metadata=batch_summary,
+        author=author,
+        description=description,
+        config_name=config_name,
+        channel_profile=_extract_channel_profile(sim_cfg),
+        ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+        metrics_target=metrics_override or metrics.path,
+    )
+    if export_archive:
         _create_archive(
             run_dir,
-            Path(args.export_archive),
+            export_archive,
             config_hash,
-            args.author,
-            args.description,
+            author,
+            description,
             batch_summary,
+            config_name=config_name,
+            channel_profile=_extract_channel_profile(sim_cfg),
+            ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            metrics_target=metrics_override or metrics.path,
         )
 
     metrics.increment("bundle_runs")
-    _launch_dashboard_if_requested()
+    _launch_dashboard_if_requested(launch_dashboard, metrics_override)
+
+    return BundleRunResult(
+        config_path=config_path,
+        config_hash=config_hash,
+        run_dir=run_dir,
+        config_name=config_name,
+        channel_profile=_extract_channel_profile(sim_cfg),
+        ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+        summary_path=summary_path,
+    )
+
+
+def _expand_config_patterns(config_patterns: Sequence[str]) -> list[Path]:
+    paths: list[Path] = []
+    for pattern in config_patterns:
+        path = Path(pattern)
+        if any(ch in pattern for ch in "*?["):
+            if path.is_absolute():
+                matched = sorted(path.parent.glob(path.name))
+            else:
+                matched = sorted(Path().glob(pattern))
+            paths.extend([p for p in matched if p.is_file()])
+        elif path.exists():
+            paths.append(path)
+    return paths
+
+
+def _collect_manifest_index(
+    results: Sequence[BundleRunResult],
+    *,
+    manifest_index_path: Path,
+) -> None:
+    manifest_index_path.parent.mkdir(parents=True, exist_ok=True)
+    index_data: dict[str, list[dict[str, object]]] = {"runs": []}
+    if manifest_index_path.exists():
+        try:
+            loaded = json.loads(manifest_index_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict) and isinstance(loaded.get("runs"), list):
+                index_data = {"runs": list(loaded["runs"])}
+        except json.JSONDecodeError:
+            logger.warning("Existing manifest index at %s is invalid; regenerating", manifest_index_path)
+
+    new_entries = []
+    for res in results:
+        encoded_manifests = sorted(res.run_dir.glob("encoded/*.manifest.json"))
+        decoded_metrics = sorted(res.run_dir.glob("decoded/*.json"))
+        new_entries.append(
+            {
+                "config_path": str(res.config_path),
+                "config_hash": res.config_hash,
+                "config_name": res.config_name,
+                "run_dir": str(res.run_dir),
+                "summary": str(res.summary_path),
+                "manifests": [str(p) for p in encoded_manifests],
+                "decoded_metrics": [str(p) for p in decoded_metrics],
+                "channel_profile": res.channel_profile,
+                "ecc": res.ecc_type,
+            }
+        )
+
+    deduped = [
+        entry
+        for entry in index_data["runs"]
+        if entry.get("config_hash")
+        not in {e["config_hash"] for e in new_entries}
+    ]
+    deduped.extend(new_entries)
+    index_data["runs"] = deduped
+    manifest_index_path.write_text(json.dumps(index_data, indent=2), encoding="utf-8")
+
+
+def _handle_run(args: argparse.Namespace) -> None:
+    metrics_override: Path | None = Path(args.metrics_path) if args.metrics_path else None
+    if metrics_override:
+        set_metrics_path(metrics_override)
+
+    _run_single_bundle(
+        Path(args.config),
+        cache_dir=Path(args.cache_dir),
+        export_archive=Path(args.export_archive) if args.export_archive else None,
+        author=args.author,
+        description=args.description,
+        emit_manifest_report=args.emit_manifest_report,
+        metrics_override=metrics_override,
+        launch_dashboard=args.launch_dashboard,
+    )
+
+
+def _handle_sweep(args: argparse.Namespace) -> None:
+    metrics_override: Path | None = Path(args.metrics_path) if args.metrics_path else None
+    if metrics_override:
+        set_metrics_path(metrics_override)
+
+    config_paths = _expand_config_patterns(args.configs)
+    if not config_paths:
+        raise FileNotFoundError("No bundle configs matched the supplied patterns")
+
+    results: list[BundleRunResult] = []
+    for cfg_path in config_paths:
+        results.append(
+            _run_single_bundle(
+                cfg_path,
+                cache_dir=Path(args.cache_dir),
+                export_archive=Path(args.export_archive) if args.export_archive else None,
+                author=args.author,
+                description=args.description,
+                emit_manifest_report=args.emit_manifest_report,
+                metrics_override=metrics_override,
+                launch_dashboard=False,
+            )
+        )
+
+    _collect_manifest_index(
+        results,
+        manifest_index_path=Path(
+            args.manifest_index
+            if args.manifest_index
+            else Path(args.cache_dir) / "manifest_index.json"
+        ),
+    )
+
+    _launch_dashboard_if_requested(args.launch_dashboard, metrics_override)

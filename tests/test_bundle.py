@@ -133,6 +133,9 @@ def test_bundle_export_archive(tmp_path: Path) -> None:
         summary = [n for n in names if n.endswith("summary.json")][0]
         data = json.loads(tf.extractfile(summary).read().decode())
     assert "config_hash" in data
+    assert data.get("config_name") == cfg_path.name
+    assert "channel_profile" in data
+    assert "ecc" in data
 
 
 def test_bundle_export_archive_cached(tmp_path: Path) -> None:
@@ -215,3 +218,59 @@ def test_bundle_bad_yaml(tmp_path: Path) -> None:
     ])
     assert res.returncode != 0
     assert "Invalid YAML" in res.stderr
+
+
+def test_bundle_sweep_multiple_configs(tmp_path: Path) -> None:
+    input_one = tmp_path / "one.txt"
+    input_two = tmp_path / "two.txt"
+    input_one.write_text("first")
+    input_two.write_text("second")
+
+    cfg_one = {
+        "encode": {"input_files": [str(input_one)], "method": "base4_direct"},
+        "decode": {"method": "base4_direct"},
+    }
+    cfg_two = {
+        "encode": {"input_files": [str(input_two)], "method": "base4_direct"},
+        "decode": {"method": "base4_direct"},
+    }
+
+    cfg_one_path = tmp_path / "cfg_one.yaml"
+    cfg_two_path = tmp_path / "cfg_two.yaml"
+    cfg_one_path.write_text(yaml.safe_dump(cfg_one))
+    cfg_two_path.write_text(yaml.safe_dump(cfg_two))
+
+    cache = tmp_path / "runs"
+    metrics_path = tmp_path / "metrics.json"
+    manifest_index = tmp_path / "manifest_index.json"
+
+    result = run_cli_command(
+        [
+            "bundle",
+            "sweep",
+            str(tmp_path / "cfg_*.yaml"),
+            "--cache-dir",
+            str(cache),
+            "--metrics-path",
+            str(metrics_path),
+            "--manifest-index",
+            str(manifest_index),
+        ]
+    )
+    assert result.returncode == 0, result.stderr
+    assert manifest_index.exists()
+
+    cfg_one_hash = hashlib.sha256(json.dumps(cfg_one, sort_keys=True).encode()).hexdigest()
+    cfg_two_hash = hashlib.sha256(json.dumps(cfg_two, sort_keys=True).encode()).hexdigest()
+    run_one_root = cache / cfg_one_hash
+    run_two_root = cache / cfg_two_hash
+    assert run_one_root.exists()
+    assert run_two_root.exists()
+
+    manifest_data = json.loads(manifest_index.read_text())
+    assert len(manifest_data.get("runs", [])) == 2
+    summaries = {Path(entry["summary"]).name for entry in manifest_data["runs"]}
+    assert "summary.json" in summaries
+
+    # Distinct caches should be created for each config
+    assert run_one_root != run_two_root
