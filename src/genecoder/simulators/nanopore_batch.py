@@ -23,6 +23,7 @@ except Exception:  # pragma: no cover - fallback when numba missing
 from ..error_simulation import NUCLEOTIDES, _random_substitution
 from ..formats import SequenceBatch
 from ..random_utils import make_rng
+from .error_metrics import MutationObservation
 from .batch_utils import (
     CONFIG_COVERAGE_KEY,
     CONFIG_DROPOUT_KEY,
@@ -47,6 +48,7 @@ __all__ = [
     "mutate_read",
     "consensus",
     "simulate_batch",
+    "observe_error_rates",
 ]
 
 
@@ -86,10 +88,14 @@ def mutate_read_jit(
     deletion_profile: Dict[int, float],
     context_insertions: Dict[str, Dict[int, float]],
     context_deletions: Dict[str, Dict[int, float]],
+    observation: MutationObservation | None = None,
 ) -> str:
     mutated: list[str] = []
     prev = ""
     run_len = 0
+    subs = 0
+    ins = 0
+    dels = 0
 
     for idx, nt in enumerate(read):
         if nt == prev:
@@ -107,6 +113,7 @@ def mutate_read_jit(
                 del_p = ctx_profile.get(run_len, ctx_profile.get(1, del_p))
         del_p = min(1.0, del_p)
         if rng.random() < del_p:
+            dels += 1
             continue
 
         sub_p = (
@@ -117,6 +124,7 @@ def mutate_read_jit(
 
         if rng.random() < sub_p:
             nt = _random_substitution(nt, rng)
+            subs += 1
 
         mutated.append(nt)
         ins_p = insertion_profile.get(run_len, insertion_rate)
@@ -126,7 +134,9 @@ def mutate_read_jit(
                 ins_p = ctx_profile.get(run_len, ctx_profile.get(1, ins_p))
         if rng.random() < ins_p:
             mutated.append(rng.choice(NUCLEOTIDES))
-
+            ins += 1
+    if observation is not None:
+        observation.extend(subs, ins, dels, len(read))
     return "".join(mutated)
 
 
@@ -135,6 +145,8 @@ def mutate_read(
     quality: Sequence[float] | None,
     rng: random.Random,
     channel: NanoporeBatchProtocol,
+    *,
+    observation: MutationObservation | None = None,
 ) -> str:
     """Mutate ``read`` using the provided ``channel`` parameters."""
 
@@ -154,6 +166,7 @@ def mutate_read(
             channel.deletion_profile,
             channel.context_insertions,
             channel.context_deletions,
+            observation,
         ),
     )
 
@@ -294,4 +307,32 @@ def simulate_batch(
         mutated, coverage_counts, dropout_flags, synthesis_flags, consensus_totals
     )
     return mutated
+
+
+def observe_error_rates(
+    channel: NanoporeBatchProtocol,
+    sequence: str,
+    *,
+    reads: int | None = None,
+    seed: int | None = None,
+) -> MutationObservation:
+    """Return aggregate mutation counts observed for ``channel``.
+
+    The helper drives ``channel`` using the same hooks as the production
+    simulator, making it suitable for regression tests that validate profile
+    parameters.
+    """
+
+    rng = random.Random(seed if seed is not None else 0)
+    total_reads = reads if reads is not None else max(1, channel.get_coverage(sequence))
+    observation = MutationObservation()
+    for _ in range(total_reads):
+        mutate_read(
+            sequence,
+            channel.quality_profile,
+            rng,
+            channel,
+            observation=observation,
+        )
+    return observation
 

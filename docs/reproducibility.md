@@ -94,3 +94,26 @@ Switch `illumina_profile` to `novaseq` (or any other registered profile) to lock
 in different quality curves. When combined with a fixed `GENECODER_SIM_SEED`,
 MiSeq and NovaSeq simulations yield identical error statistics across repeated
 runs, which is ideal for regression testing and benchmarking new codecs.
+
+## Validating sequencing profile error rates
+
+Both the Nanopore and Illumina simulators now expose helper hooks that emit
+aggregate substitution/insertion/deletion counts for a deterministic run. The
+pytest suite drives these hooks to ensure the bundled configuration files stay
+in sync with the observed behaviour:
+
+- `tests/test_nanopore_context_profile.py` calls
+  `genecoder.simulators.nanopore_batch.observe_error_rates` for each profile in
+  `configs/nanopore.yml` and fails if the measured error rates drift beyond the
+  documented tolerances.
+- `tests/test_illumina_coverage_quality.py` uses
+  `IlluminaChannel.observe_error_rates` together with the presets defined in
+  `src/genecoder/simulators/illumina/profiles.py` to guarantee the short-read
+  channel matches its specification.
+
+When new empirical data arrives you only need to update the profile files and
+adjust the tolerances in the corresponding tests. Use the helper functions to
+measure the new rates (optionally seeding `GENECODER_SIM_SEED` for repeatable
+experiments) and tighten the assertions once the numbers stabilise. This keeps
+future regression runs honest and provides a lightweight checklist for
+contributors submitting improved sequencing statistics.

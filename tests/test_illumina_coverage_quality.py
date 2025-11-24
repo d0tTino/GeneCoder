@@ -1,6 +1,8 @@
 import random
 
 from genecoder import illumina_sim
+from genecoder.simulators.illumina.channel import IlluminaChannel
+from genecoder.simulators.illumina.profiles import ILLUMINA_PROFILES
 
 
 def _hamming(a: str, b: str) -> int:
@@ -56,4 +58,17 @@ def test_quality_distribution_controls_errors() -> None:
     )
     assert out_none == seq
     assert _hamming(seq, out_all) == len(seq)
+
+
+def test_illumina_profile_error_rates() -> None:
+    sequence = "ACGT" * 250
+    for name, params in ILLUMINA_PROFILES.items():
+        channel = IlluminaChannel(profile=name)
+        reads = int(max(1, channel.coverage)) * 500
+        observation = channel.observe_error_rates(sequence, reads=reads, seed=2024)
+        rates = observation.rates()
+        for key in ("substitution_rate", "insertion_rate", "deletion_rate"):
+            expected = float(params[key])
+            tolerance = max(0.0001, expected * 0.5)
+            assert abs(rates[key] - expected) <= tolerance
 
