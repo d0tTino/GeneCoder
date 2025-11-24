@@ -8,6 +8,7 @@ import random
 from ..base import BaseSimulator
 from ...formats import SequenceBatch
 from ...random_utils import make_rng
+from ..error_metrics import MutationObservation
 from .batch import simulate_batch as _simulate_batch
 from .mutations import mutate_read
 from .profiles import (
@@ -165,6 +166,39 @@ class IlluminaChannel(BaseSimulator):
         if coverage == 1:
             return reads[0]
         return self._consensus(reads)
+
+    def observe_error_rates(
+        self,
+        sequence: str,
+        *,
+        reads: int | None = None,
+        seed: int | None = None,
+    ) -> MutationObservation:
+        """Return aggregate mutation counts for ``sequence``.
+
+        This helper enables deterministic regression tests that validate the
+        substitution/insertion/deletion parameters baked into Illumina
+        profiles.
+        """
+
+        rng = random.Random(seed if seed is not None else 0)
+        read_length = self.get_read_length(sequence)
+        template = sequence[:read_length]
+        quality = self.get_quality_profile(sequence, read_length)
+        total_reads = reads if reads is not None else max(1, int(self.coverage))
+        observation = MutationObservation()
+        for _ in range(total_reads):
+            mutate_read(
+                template,
+                quality,
+                rng,
+                substitution_rate=self.substitution_rate,
+                insertion_rate=self.insertion_rate,
+                deletion_rate=self.deletion_rate,
+                context_errors=self.context_errors,
+                observation=observation,
+            )
+        return observation
 
     def with_profile(self, profile: str) -> "IlluminaChannel":
         """Return a new channel configured to use ``profile``.

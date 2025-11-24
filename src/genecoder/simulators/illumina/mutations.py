@@ -19,6 +19,7 @@ except Exception:  # pragma: no cover - fallback when numba missing
         return wrapper
 
 from ...error_simulation import _random_substitution, NUCLEOTIDES
+from ..error_metrics import MutationObservation
 
 
 __all__ = ["mutate_read"]
@@ -33,10 +34,15 @@ def _mutate_read_jit(
     deletion_rate: float,
     context_errors: Dict[str, float],
     rng: random.Random,
+    observation: MutationObservation | None = None,
 ) -> str:
     mutated: list[str] = []
+    subs = 0
+    ins = 0
+    dels = 0
     for idx, nt in enumerate(read):
         if rng.random() < deletion_rate:
+            dels += 1
             continue
 
         sub_rate = (
@@ -48,11 +54,15 @@ def _mutate_read_jit(
 
         if rng.random() < sub_rate:
             nt = _random_substitution(nt, rng)
+            subs += 1
 
         mutated.append(nt)
         if rng.random() < insertion_rate:
             mutated.append(rng.choice(NUCLEOTIDES))
+            ins += 1
 
+    if observation is not None:
+        observation.extend(subs, ins, dels, len(read))
     return "".join(mutated)
 
 
@@ -65,6 +75,7 @@ def mutate_read(
     insertion_rate: float,
     deletion_rate: float,
     context_errors: Dict[str, float],
+    observation: MutationObservation | None = None,
 ) -> str:
     """Return a mutated ``read`` using the configured error rates."""
 
@@ -76,4 +87,5 @@ def mutate_read(
         deletion_rate,
         context_errors,
         rng,
+        observation,
     )

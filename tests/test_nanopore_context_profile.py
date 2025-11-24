@@ -6,8 +6,8 @@ from typing import Tuple
 
 import pytest
 
-from genecoder.simulators.nanopore import NanoporeChannel
-from genecoder.simulators.nanopore_batch import mutate_read
+from genecoder.simulators.nanopore import NanoporeChannel, NANOPORE_PROFILES
+from genecoder.simulators.nanopore_batch import mutate_read, observe_error_rates
 
 
 def _simulate_many(
@@ -60,3 +60,16 @@ def test_builtin_profile_context_bias() -> None:
     control_ins, control_del = _simulate_many(channel, "ACGTACGT")
     assert poly_ins > control_ins
     assert poly_del > control_del
+
+
+@pytest.mark.parametrize("profile", sorted(NANOPORE_PROFILES))
+def test_nanopore_profile_error_rates(profile: str) -> None:
+    channel = NanoporeChannel(profile=profile)
+    sequence = "ACGT" * 256
+    reads = int(max(1, channel.coverage)) * 40
+    observation = observe_error_rates(channel, sequence, reads=reads, seed=1234)
+    rates = observation.rates()
+    expected = NANOPORE_PROFILES[profile]
+    for key in ("substitution_rate", "insertion_rate", "deletion_rate"):
+        tolerance = max(0.005, 0.3 * float(expected[key]))
+        assert abs(rates[key] - float(expected[key])) <= tolerance
