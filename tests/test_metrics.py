@@ -11,6 +11,8 @@ from genecoder.metrics import (
     Metrics,
     append_gc_distribution,
     append_homopolymer_runs,
+    metrics,
+    set_metrics_path,
 )
 
 
@@ -178,3 +180,14 @@ def test_metrics_accumulate_across_runs(tmp_path: Path, monkeypatch) -> None:
     data = json.loads(metrics_path.read_text())
     assert data["gc_distribution"] == [0.1, 0.2, 0.3]
     assert data["homopolymer_runs"] == [3, 3, 1]
+
+
+def test_set_metrics_path_override(tmp_path: Path) -> None:
+    override_path = tmp_path / "override.json"
+    set_metrics_path(override_path)
+    try:
+        metrics.increment("bundle_runs")
+        data = json.loads(override_path.read_text())
+        assert data["bundle_runs"] == 1
+    finally:
+        set_metrics_path(None)

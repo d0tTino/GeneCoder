@@ -1,7 +1,8 @@
 # Pipeline demonstration configuration that performs encoding, simulated sequencing,
-# decoding and metrics export. Set GENECODER_METRICS_PATH before running to capture
-# metrics:
-#   GENECODER_METRICS_PATH=examples/pipeline_metrics.json genecli bundle run configs/pipeline_demo.yaml
+# decoding and metrics export. Provide --metrics-path when invoking the bundle command
+# to capture metrics:
+#   genecli bundle run configs/pipeline_demo.yaml --metrics-path examples/pipeline_metrics.json \
+#     --emit-manifest-report
 encode:
   input_files:
     - examples/pipeline_demo_input.txt

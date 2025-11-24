@@ -4,6 +4,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, IO, Mapping, Sequence, cast
+from os import PathLike
 
 try:  # pragma: no cover - optional dependency
     import portalocker
@@ -37,6 +38,7 @@ __all__ = [
     "append_gc_distribution",
     "append_homopolymer_runs",
     "append_oligo_metrics",
+    "set_metrics_path",
 ]
 
 
@@ -92,14 +94,20 @@ def _save(path: Path, metrics: dict[str, object], fh: IO[str] | None = None) -> 
 class Metrics:
     """Simple metrics manager for atomic updates."""
 
-    def __init__(self, path: Path | None = None) -> None:
-        self._path = path
+    def __init__(self, path: Path | str | PathLike[str] | None = None) -> None:
+        self._path = Path(path) if path is not None else None
         self._lock = threading.Lock()
 
     @property
     def path(self) -> Path:
         """Metrics file path, respecting environment overrides."""
         return self._path or _get_metrics_path()
+
+    def set_path(self, path: Path | str | PathLike[str] | None) -> None:
+        """Override the metrics destination used by this manager."""
+
+        with self._lock:
+            self._path = Path(path) if path is not None else None
 
     def increment(self, key: str, counts: Sequence[float | int] | None = None) -> None:
         with self._lock:
@@ -242,5 +250,9 @@ def get_metrics() -> dict[str, object]:
 
 def oligos_per_week() -> dict[str, int]:
     return metrics.oligos_per_week()
+
+
+def set_metrics_path(path: Path | str | PathLike[str] | None) -> None:
+    metrics.set_path(path)
 
 

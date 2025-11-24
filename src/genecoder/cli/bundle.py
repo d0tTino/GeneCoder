@@ -16,7 +16,8 @@ from typing import Any, Mapping, Sequence, cast
 
 from . import cli as cli_module
 from genecoder.formats import SequenceBatch
-from genecoder.metrics import metrics
+from genecoder.html_report import generate_html_report
+from genecoder.metrics import metrics, set_metrics_path
 from genecoder.core import metrics as gather_metrics
 from genecoder.manifest import generate_manifest
 
@@ -70,6 +71,21 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--description",
         type=str,
         help="Description to include in summary.json",
+    )
+    run_parser.add_argument(
+        "--metrics-path",
+        type=str,
+        help="Path to the aggregate metrics JSON file",
+    )
+    run_parser.add_argument(
+        "--emit-manifest-report",
+        action="store_true",
+        help="Generate HTML reports for decoded manifests",
+    )
+    run_parser.add_argument(
+        "--launch-dashboard",
+        action="store_true",
+        help="Launch the dashboard for the metrics file after the run",
     )
     run_parser.set_defaults(func=_handle_run)
 
@@ -191,6 +207,8 @@ def _write_decoded_metrics(
     decoded_path: Path,
     enc_cfg: Mapping[str, object],
     sim_cfg: Mapping[str, object] | None,
+    *,
+    emit_manifest_report: bool = False,
 ) -> None:
     try:
         batch = SequenceBatch.from_fasta(
@@ -400,13 +418,33 @@ def _write_decoded_metrics(
     manifest = generate_manifest(original_path, manifest_params, metrics_data)
     manifest_output = metrics_path.with_suffix(".manifest.json")
     manifest_output.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    if emit_manifest_report:
+        html_report_path = manifest_output.with_suffix(".html")
+        html = generate_html_report(str(manifest_output))
+        html_report_path.write_text(html, encoding="utf-8")
 
 def _handle_run(args: argparse.Namespace) -> None:
     import yaml
 
+    metrics_override: Path | None = None
+    if args.metrics_path:
+        metrics_override = Path(args.metrics_path)
+        set_metrics_path(metrics_override)
+
+    def _launch_dashboard_if_requested() -> None:
+        if not args.launch_dashboard:
+            return
+        target = metrics_override or metrics.path
+        if not target.exists():
+            logger.warning(
+                "Metrics file %s not found, skipping dashboard launch", target
+            )
+            return
+        _run_cli(["dashboard", str(target)])
+
     with open(args.config, "r", encoding="utf-8") as fh:
         try:
-            config = yaml.safe_load(fh) or {}
+            config = yaml.safe_load(fh.read()) or {}
         except yaml.YAMLError as exc:  # pragma: no cover - invalid YAML path
             logger.error("Invalid YAML in %s: %s", args.config, exc)
             raise SystemExit(1)
@@ -438,6 +476,7 @@ def _handle_run(args: argparse.Namespace) -> None:
                     args.description,
                     batch_metadata=None,
                 )
+        _launch_dashboard_if_requested()
         return
 
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
@@ -572,6 +611,7 @@ def _handle_run(args: argparse.Namespace) -> None:
                     decoded_file,
                     enc_cfg,
                     sim_cfg if isinstance(sim_cfg, dict) else None,
+                    emit_manifest_report=args.emit_manifest_report,
                 )
 
     logger.info("Bundle output written to %s", run_dir)
@@ -586,3 +626,4 @@ def _handle_run(args: argparse.Namespace) -> None:
         )
 
     metrics.increment("bundle_runs")
+    _launch_dashboard_if_requested()

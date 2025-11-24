@@ -33,10 +33,11 @@ The commands below also write metrics for later inspection.
 ### RaptorQ FEC
 
 ```bash
-GENECODER_METRICS_PATH=examples/raptorq_metrics.json \
-  genecli pipeline examples/pipeline_demo_input.txt decoded_raptorq.txt \
-    --codec base4_direct --fec raptorq \
-    --channel illumina --profile hiseq
+genecli pipeline examples/pipeline_demo_input.txt decoded_raptorq.txt \
+  --codec base4_direct --fec raptorq \
+  --channel illumina --profile hiseq \
+  --metrics-path examples/raptorq_metrics.json \
+  --emit-manifest-report
 ```
 
 After the run finishes inspect the dropout-aware metrics that accompany the decoded payload:
@@ -52,10 +53,11 @@ jq '.metrics.sequence_batch.metadata.sim_dropout_total' decoded_raptorq.txt.json
 ### Fountain FEC
 
 ```bash
-GENECODER_METRICS_PATH=examples/fountain_metrics.json \
-  genecli pipeline examples/pipeline_demo_input.txt decoded_fountain.txt \
-    --codec base4_direct --fec fountain \
-    --channel nanopore --profile r10
+genecli pipeline examples/pipeline_demo_input.txt decoded_fountain.txt \
+  --codec base4_direct --fec fountain \
+  --channel nanopore --profile r10 \
+  --metrics-path examples/fountain_metrics.json \
+  --emit-manifest-report
 ```
 
 The Fountain pipeline emits the same `sequence_batch` manifest metadata, making it easy to compare per-oligo dropout between
@@ -99,8 +101,9 @@ decode:
 Run the pipeline while capturing metrics:
 
 ```bash
-GENECODER_METRICS_PATH=examples/illumina_metrics.json \
-  genecli bundle run configs/rs_illumina_pipeline.yaml
+genecli bundle run configs/rs_illumina_pipeline.yaml \
+  --metrics-path examples/illumina_metrics.json \
+  --emit-manifest-report
 ```
 Set `GENECODER_SIM_SEED` (as described in the
 [Reproducibility Guide](reproducibility.md#seeding-the-simulation-rng)) and pin
@@ -134,8 +137,9 @@ Run the preset with metrics enabled to mirror the MiSeq 18× coverage and 150 bp
 read defaults highlighted in the channel walkthrough:
 
 ```bash
-GENECODER_METRICS_PATH=examples/gold_metrics.json \
-  genecli bundle run configs/gold.yaml
+genecli bundle run configs/gold.yaml \
+  --metrics-path examples/gold_metrics.json \
+  --emit-manifest-report
 ```
 
 `genecli` will prefer the external
@@ -167,8 +171,9 @@ decode:
 Execute with metrics enabled:
 
 ```bash
-GENECODER_METRICS_PATH=examples/nanopore_metrics.json \
-  genecli bundle run configs/fountain_nanopore_pipeline.yaml
+genecli bundle run configs/fountain_nanopore_pipeline.yaml \
+  --metrics-path examples/nanopore_metrics.json \
+  --emit-manifest-report
 ```
 
 ### DeSP Nanopore Simulation
@@ -216,8 +221,9 @@ Run the preset while capturing metrics and writing artefacts to a temporary
 bundle cache:
 
 ```bash
-GENECODER_METRICS_PATH=examples/desp_metrics.json \
-  genecli bundle run configs/desp_pipeline.yaml --cache-dir runs/desp
+genecli bundle run configs/desp_pipeline.yaml --cache-dir runs/desp \
+  --metrics-path examples/desp_metrics.json \
+  --emit-manifest-report
 ```
 
 If the `desp` executable is missing the adapter falls back to the deterministic
@@ -271,6 +277,6 @@ genecli html-report --manifest simulated_multi_oligo.fasta.manifest.json \
   `PATH`.
 - **Simulator errors** – install optional dependencies such as `pyfinite`
   for Fountain codes or provide valid profile names like `hiseq` or `r10`.
-- **No metrics output** – set `GENECODER_METRICS_PATH` to a writable file
+- **No metrics output** – pass `--metrics-path` to the command and ensure the path is writable
   before running the pipeline.
 

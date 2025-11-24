@@ -8,7 +8,16 @@ GeneCoder is an educational toolkit for exploring DNA-based data storage. It pro
 For full usage instructions and additional documentation see the [docs/](docs/) directory or the hosted documentation linked above.
 For instructions on launching the GUI see the [usage guide](docs/usage.md#launching-the-flet-app).
 For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md).
-The configuration at `configs/pipeline_metrics.yaml` shows how to run the pipeline while recording metrics.
+The configuration at `configs/pipeline_metrics.yaml` shows how to run the pipeline while recording metrics. Supply the metrics destination and optional extras directly via CLI flags:
+
+```bash
+genecli bundle run configs/pipeline_metrics.yaml \
+  --cache-dir pipeline_runs \
+  --metrics-path examples/pipeline_metrics.json \
+  --emit-manifest-report
+```
+
+Append `--launch-dashboard` to open the Streamlit dashboard for the captured metrics immediately after the run completes.
 For deployment instructions including building the React dashboard see the
 [deployment guide](docs/deployment.md).
 
