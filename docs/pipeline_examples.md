@@ -176,6 +176,25 @@ genecli bundle run configs/fountain_nanopore_pipeline.yaml \
   --emit-manifest-report
 ```
 
+### Sweep RS vs Fountain
+
+Use the sweep helper to process multiple presets sequentially while writing a
+shared metrics file and a manifest index that dashboard tooling can ingest
+directly:
+
+```bash
+genecli bundle sweep configs/rs_illumina_pipeline.yaml configs/fountain_nanopore_pipeline.yaml \
+  --cache-dir runs/pipeline_sweep \
+  --metrics-path runs/pipeline_sweep/metrics.json \
+  --manifest-index runs/pipeline_sweep/manifest_index.json \
+  --emit-manifest-report
+```
+
+Each run reuses the same metrics destination so aggregates capture both
+pipelines. The manifest index enumerates the encoded manifests and decoded
+metric payloads under the cache so dashboards can show RS and Fountain runs
+side-by-side without additional curation.
+
 ### DeSP Nanopore Simulation
 
 ```yaml

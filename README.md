@@ -21,6 +21,17 @@ Append `--launch-dashboard` to open the Streamlit dashboard for the captured met
 For deployment instructions including building the React dashboard see the
 [deployment guide](docs/deployment.md).
 
+Run multiple presets back-to-back with shared metrics and a manifest index for
+side-by-side dashboards using the new sweep helper:
+
+```bash
+genecli bundle sweep configs/rs_illumina_pipeline.yaml configs/fountain_nanopore_pipeline.yaml \
+  --cache-dir pipeline_runs \
+  --metrics-path examples/pipeline_metrics.json \
+  --manifest-index pipeline_runs/manifest_index.json \
+  --emit-manifest-report
+```
+
 ## End-to-End CLI Example
 
 Run the entire encode → simulate → decode loop with a single command using the gold-standard preset:
