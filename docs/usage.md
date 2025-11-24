@@ -619,6 +619,16 @@ Example metrics snippet:
 }
 ```
 
+If you prefer to analyze bundles without running the FastAPI service, export the
+aggregated manifest metrics directly from the cache directory:
+
+```bash
+genecli stats bundle --runs runs/desp --output runs/desp/bundle_metrics.json
+```
+
+The resulting JSON mirrors the `/bundle-metrics` endpoint output and can be
+passed to `genecli dashboard` for offline comparison plots.
+
 ### Constraint Fix Suggestions
 
 Both the CLI `analyze` command and the GUI provide simple suggestions when a
