@@ -582,13 +582,16 @@ configuration and then launch the Streamlit interface:
 
 ```bash
 poetry install --with gui --no-interaction
-GENECODER_METRICS_PATH=examples/pipeline_metrics.json \
-    genecli bundle run configs/pipeline_demo.yaml
-genecli dashboard examples/pipeline_metrics.json
+genecli bundle run configs/pipeline_demo.yaml \
+    --metrics-path examples/pipeline_metrics.json \
+    --emit-manifest-report \
+    --launch-dashboard
 ```
 
 This encodes and decodes `examples/pipeline_demo_input.txt`, stores metrics in
-`examples/pipeline_metrics.json` and opens the dashboard with the results.
+`examples/pipeline_metrics.json` and opens the dashboard with the results. Drop
+`--launch-dashboard` if you prefer to open the file later via
+`genecli dashboard examples/pipeline_metrics.json`.
 
 The interface visualizes key metrics:
 

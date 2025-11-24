@@ -35,6 +35,7 @@ from genecoder.simulators.batch_utils import (
     load_coverage_distribution,
     mutation_counts,
 )
+from genecoder.metrics import metrics as aggregate_metrics, set_metrics_path
 
 
 logger = logging.getLogger(__name__)
@@ -523,6 +524,21 @@ def register_subcommand(
         default=None,
         help="Distribute encoding tasks across MPI workers",
     )
+    parser.add_argument(
+        "--metrics-path",
+        type=str,
+        help="Path to the aggregate metrics JSON file",
+    )
+    parser.add_argument(
+        "--emit-manifest-report",
+        action="store_true",
+        help="Generate HTML reports for decoded manifests",
+    )
+    parser.add_argument(
+        "--launch-dashboard",
+        action="store_true",
+        help="Launch the dashboard for the metrics file after the run",
+    )
 
     parser.set_defaults(func=_handle_command)
 
@@ -530,6 +546,24 @@ def register_subcommand(
 def _handle_command(args: argparse.Namespace) -> None:
     if args.seed is not None:
         os.environ["GENECODER_SIM_SEED"] = str(args.seed)
+    metrics_override: Path | None = None
+    if args.metrics_path:
+        metrics_override = Path(args.metrics_path)
+        set_metrics_path(metrics_override)
+
+    def _launch_dashboard_if_requested() -> None:
+        if not args.launch_dashboard:
+            return
+        target = metrics_override or aggregate_metrics.path
+        if not target.exists():
+            logger.warning(
+                "Metrics file %s not found, skipping dashboard launch", target
+            )
+            return
+        from genecoder.dashboard_streamlit import launch
+
+        launch(str(target))
+
     cfg_codec = cfg_fec = cfg_channel = None
     cfg_params: Dict[str, Any] = {}
 
@@ -598,7 +632,10 @@ def _handle_command(args: argparse.Namespace) -> None:
     manifest_path.write_text(json.dumps(manifest, indent=2))
     logger.info("Manifest written to %s", manifest_path)
 
-    html_report_path = metrics_path.with_suffix(".html")
-    html = generate_html_report(str(manifest_path))
-    html_report_path.write_text(html, encoding="utf-8")
-    logger.info("HTML report written to %s", html_report_path)
+    if args.emit_manifest_report:
+        html_report_path = metrics_path.with_suffix(".html")
+        html = generate_html_report(str(manifest_path))
+        html_report_path.write_text(html, encoding="utf-8")
+        logger.info("HTML report written to %s", html_report_path)
+
+    _launch_dashboard_if_requested()

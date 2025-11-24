@@ -9,8 +9,11 @@ GeneCoder records basic usage statistics in a `metrics.json` file located in `~/
   aggregation.
 - `oligos_per_week` – aggregated counts of simulated sequences per ISO week.
 
-Set the `GENECODER_METRICS_PATH` environment variable to override the default
-metrics file location.
+Pass `--metrics-path /path/to/metrics.json` to `genecli bundle run` or
+`genecli pipeline` to override the default metrics destination for a specific
+invocation. Set the `GENECODER_METRICS_PATH` environment variable to update the
+default location for every command (useful for web dashboards or headless
+deployments).
 
 GeneCoder's north-star goal is to accelerate DNA storage research by enabling more oligos to be simulated each week. The `oligos_per_week` metric aggregates `oligos_simulated_ts` into ISO weeks, providing a clear view of weekly usage trends.
 
