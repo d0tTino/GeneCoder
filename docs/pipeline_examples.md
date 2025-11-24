@@ -226,6 +226,13 @@ genecli bundle run configs/desp_pipeline.yaml --cache-dir runs/desp \
   --emit-manifest-report
 ```
 
+Summaries for dashboard plots can be generated offline by pointing
+`genecli stats bundle` at the cache directory:
+
+```bash
+genecli stats bundle --runs runs/desp --output runs/desp/bundle_metrics.json
+```
+
 If the `desp` executable is missing the adapter falls back to the deterministic
 internal Nanopore error model, ensuring the preset still runs for documentation
 and CI scenarios.
