@@ -307,6 +307,36 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
    | indel illumina | `genecli channel --indel-profile illumina --input-file encoded.fasta --output-file indel_illumina.fasta` |
    | indel nanopore | `genecli channel --indel-profile nanopore --input-file encoded.fasta --output-file indel_nanopore.fasta` |
 
+   **Pair constraint-aware encoders with broadened sequencing presets**
+
+   The broadened Illumina (`hiseq`, `miseq`, `novaseq`) and Nanopore (`r9`,
+   `r10`, `r10.3`, `r10.4`, `minion`, `promethion`) presets work well with
+   constraint-aware codecs such as `gc_balanced` or `base4_direct` paired with
+   explicit guardrails. The snippet below enforces a 40–60% GC window and a
+   five-base homopolymer cap while targeting an Illumina NovaSeq-style error
+   model:
+
+   ```bash
+   genecli encode --input-files payload.bin --output-file encoded_gc_guarded.fasta \
+       --method gc_balanced --gc-min 0.40 --gc-max 0.60 --max-homopolymer 5
+   genecli channel --profile novaseq --input-file encoded_gc_guarded.fasta \
+       --output-file novaseq_guarded.fasta
+   genecli decode --input-files novaseq_guarded.fasta --output-file roundtrip.bin
+   ```
+
+   Swap in a Nanopore preset to exercise the broadened long-read models while
+   keeping the same constraints intact:
+
+   ```bash
+   genecli channel --nanopore-profile r10.4 --input-file encoded_gc_guarded.fasta \
+       --output-file r10_4_guarded.fasta
+   ```
+
+   The generated `.manifest.json` files for the encode and channel steps record
+   the GC-content and maximum homopolymer length that were enforced. Open the
+   manifest in the dashboard (`genecli dashboard encoded_gc_guarded.fasta.manifest.json`)
+   to view the GC/homopolymer gauges alongside coverage and dropout plots.
+
    Illumina profile files should list `substitution_rate`, `insertion_rate`,
    `deletion_rate`, `coverage`, and `read_length`:
 
