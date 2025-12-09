@@ -152,20 +152,26 @@ profile, coverage and read-length defaults baked into the preset.
 
 ```yaml
 # configs/fountain_nanopore_pipeline.yaml
-# Pipeline using Fountain FEC with the Nanopore simulator.
+# Pipeline using GC-balanced (constraint-aware) encoding with Fountain FEC and
+# the Nanopore simulator to keep manifests within synthesis constraints.
 encode:
   input_files:
     - examples/pipeline_demo_input.txt
-  method: base4_direct
+  method: gc_balanced
   fec: fountain
 simulate:
   simulators:
     - nanopore
+  synthesis:
+    gc_min: 0
+    gc_max: 1
+    max_homopolymer: 100
+    min_length: 25
+    max_length: 600
   pipeline:
     nanopore_profile: r10
-    dropout_rate: 0.15
 decode:
-  method: base4_direct
+  method: gc_balanced
 ```
 
 Execute with metrics enabled:
