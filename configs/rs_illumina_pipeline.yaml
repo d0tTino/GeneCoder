@@ -1,14 +1,21 @@
-# Pipeline using Reed-Solomon FEC with the Illumina simulator.
+# Pipeline using GC-balanced (constraint-aware) encoding with Reed-Solomon FEC
+# and the Illumina simulator, ensuring manifests remain constraint-compliant.
 encode:
   input_files:
     - examples/pipeline_demo_input.txt
-  method: base4_direct
+  method: gc_balanced
   fec: reed_solomon
 simulate:
   simulators:
     - illumina
+  synthesis:
+    gc_min: 0
+    gc_max: 1
+    max_homopolymer: 3
+    min_length: 25
+    max_length: 300
   pipeline:
     illumina_profile: hiseq
 decode:
-  method: base4_direct
+  method: gc_balanced
 
