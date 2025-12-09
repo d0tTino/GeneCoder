@@ -93,7 +93,7 @@ simulate:
   simulators:
     - illumina
   pipeline:
-    illumina_profile: hiseq
+    illumina_profile: novaseq_s4
 decode:
   method: base4_direct
 ```
@@ -107,8 +107,8 @@ genecli bundle run configs/rs_illumina_pipeline.yaml \
 ```
 Set `GENECODER_SIM_SEED` (as described in the
 [Reproducibility Guide](reproducibility.md#seeding-the-simulation-rng)) and pin
-the `illumina_profile` to reproduce the same dropout and quality score sampling
-across runs.
+the `illumina_profile` (MiSeq V3 for long reads or NovaSeq S4 for high coverage)
+to reproduce the same dropout and quality score sampling across runs.
 
 ### GC-balanced Gold Preset with InSilicoSeq
 

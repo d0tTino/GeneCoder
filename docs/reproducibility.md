@@ -87,13 +87,14 @@ simulate:
   simulators:
     - illumina
   pipeline:
-    illumina_profile: miseq
+    illumina_profile: miseq_v3
 ```
 
-Switch `illumina_profile` to `novaseq` (or any other registered profile) to lock
-in different quality curves. When combined with a fixed `GENECODER_SIM_SEED`,
-MiSeq and NovaSeq simulations yield identical error statistics across repeated
-runs, which is ideal for regression testing and benchmarking new codecs.
+Switch `illumina_profile` to `hiseq_high_coverage`, `novaseq_s4`, or any other
+registered profile to lock in different quality curves. When combined with a
+fixed `GENECODER_SIM_SEED`, MiSeq V3 and NovaSeq S4 simulations yield identical
+error statistics across repeated runs, which is ideal for regression testing and
+benchmarking new codecs.
 
 ## Validating sequencing profile error rates
 

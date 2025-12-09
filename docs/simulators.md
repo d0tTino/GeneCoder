@@ -152,12 +152,13 @@ Illumina model otherwise.
 ### Command-line options
 
 ```bash
-genecli decode --simulator illumina_insilicoseq --profile hiseq <other options>
+genecli decode --simulator illumina_insilicoseq --profile novaseq_s4 <other options>
 genecli decode --simulator illumina_insilicoseq --insilicoseq-options "--num_reads 1000" <other options>
 ```
 
-Profiles such as `miseq` and `hiseq` map to the corresponding InSilicoSeq
-presets. Additional flags can be supplied with `--insilicoseq-options`.
+Profiles such as `miseq_v3`, `hiseq_high_coverage`, and `novaseq_s4` map to the
+corresponding built-in presets with adjusted coverage and read-length targets.
+Additional flags can be supplied with `--insilicoseq-options`.
 
 ### Sample quality-profile file
 
@@ -169,7 +170,7 @@ simulators:
   - name: insilicoseq
     read_length: 150
 pipeline:
-  illumina_profile: hiseq
+  illumina_profile: hiseq_high_coverage
   illumina_depth: 1
   illumina_quality_distribution: null
 ```

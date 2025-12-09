@@ -154,7 +154,7 @@ decay:
   variation: 0.1
 
 pipeline:
-  illumina_profile: hiseq
+  illumina_profile: novaseq_s4
 ```
 
 The ``half_life`` value indicates the time required for half the DNA to
