@@ -1,4 +1,11 @@
-"""Profile utilities for the Illumina simulator."""
+"""Profile utilities for the Illumina simulator.
+
+This module defines :data:`ILLUMINA_PROFILES`, a set of named presets that
+represent common Illumina platforms and quality tiers.  Each profile combines
+substitution, insertion, and deletion rates with default read-length and
+coverage targets so callers can quickly swap between MiSeq-style high-fidelity
+reads and NovaSeq-scale high-throughput runs.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -45,7 +52,12 @@ def _parse_quality_profile(value: str) -> Sequence[float]:
 
 @dataclass
 class IlluminaProfile:
-    """Parameters controlling Illumina simulation behaviour."""
+    """Parameters controlling Illumina simulation behaviour.
+
+    The bundled :data:`ILLUMINA_PROFILES` cover MiSeq V3, HiSeq and NovaSeq
+    quality tiers with adjusted coverage and read-length defaults to mirror each
+    platform's typical output.
+    """
 
     substitution_rate: float
     insertion_rate: float
@@ -143,5 +155,33 @@ ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
         "deletion_rate": 0.00003,
         "read_length": 150,
         "coverage": 1,
+    },
+    "miseq_v3": {
+        "substitution_rate": 0.0009,
+        "insertion_rate": 0.00012,
+        "deletion_rate": 0.00012,
+        "read_length": 300,
+        "coverage": 1.5,
+    },
+    "hiseq_high_coverage": {
+        "substitution_rate": 0.00045,
+        "insertion_rate": 0.00005,
+        "deletion_rate": 0.00005,
+        "read_length": 150,
+        "coverage": 2.5,
+    },
+    "novaseq_s4": {
+        "substitution_rate": 0.00025,
+        "insertion_rate": 0.00002,
+        "deletion_rate": 0.00002,
+        "read_length": 150,
+        "coverage": 3.0,
+    },
+    "nextseq": {
+        "substitution_rate": 0.0006,
+        "insertion_rate": 0.00006,
+        "deletion_rate": 0.00006,
+        "read_length": 100,
+        "coverage": 1.2,
     },
 }

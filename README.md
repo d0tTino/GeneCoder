@@ -72,6 +72,21 @@ genecli html-report \
 
 The manifest view highlights GC balance, droplet survival and homopolymer limits so you can confirm the preset behaved as expected before moving on to custom experiments. Re-run the command to refresh the cache or append `--export-archive gold_runs.tar.gz` for an easily shareable bundle complete with a `summary.json` index of cached files.
 
+### Selecting Illumina profiles
+
+The Illumina simulator ships with platform-aware presets covering MiSeq V3, HiSeq high-coverage runs and NovaSeq S4 throughput. Pick a profile on the command line with `--illumina-profile`:
+
+```bash
+# Drive the built-in simulator with NovaSeq-scale coverage
+genecli decode --simulator illumina --illumina-profile novaseq_s4 \
+  --input-file encoded/message.fasta --output-file simulated.fasta
+
+# Override a channel config without editing YAML
+genecli channel run configs/illumina_profile.yaml --illumina-profile hiseq_high_coverage
+```
+
+Bundle configurations can also lock the preset under `pipeline.illumina_profile` so sweeps stay reproducible. For example, `configs/illumina_profile.yaml` now demonstrates the higher-coverage HiSeq preset alongside the quality distribution hook.
+
 ## Introductory notebooks
 
 Introductory Jupyter notebooks with encoding and decoding examples are available in the [notebooks/](notebooks) directory. A small series of lessons covers the basics:

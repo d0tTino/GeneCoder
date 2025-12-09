@@ -2,6 +2,6 @@ simulators:
   - name: insilicoseq
     read_length: 150
 pipeline:
-  illumina_profile: hiseq
+  illumina_profile: hiseq_high_coverage
   illumina_depth: 1
   illumina_quality_distribution: null
