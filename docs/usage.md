@@ -586,6 +586,45 @@ Simulator profiles used by external tools are cached under
 location. Provide pre-downloaded profiles via `GENECODER_PROFILE_DIR` to
 run simulators without network access.
 
+### Validating bundle configurations
+
+Bundle runs are validated against `configs/schema/bundle.schema.json` before
+execution. A minimal configuration demonstrating valid `encode`, `simulate` and
+`decode` blocks looks like:
+
+```yaml
+encode:
+  input_files:
+    - examples/pipeline_demo_input.txt
+  method: base4_direct
+  fec: hamming_7_4
+simulate:
+  simulators:
+    - illumina
+  pipeline:
+    illumina_profile: hiseq
+decode:
+  method: base4_direct
+```
+
+To lint a bundle without running it, load the YAML and apply the schema:
+
+```bash
+python - <<'PY'
+import json
+import yaml
+from jsonschema import Draft202012Validator
+
+schema = json.load(open("configs/schema/bundle.schema.json", "r", encoding="utf-8"))
+data = yaml.safe_load(open("configs/pipeline_demo.yaml", "r", encoding="utf-8"))
+Draft202012Validator(schema).validate(data)
+print("bundle config is valid")
+PY
+```
+
+`genecli bundle run` will emit a clear error if the schema is violated (for
+example, due to unknown keys or type mismatches).
+
 ## Graphical User Interface (GUI)
 
 ### Launching the Flet App

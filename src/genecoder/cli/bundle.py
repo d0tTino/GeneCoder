@@ -14,12 +14,17 @@ from pathlib import Path
 from dataclasses import dataclass, fields, asdict
 from typing import Any, Mapping, Sequence, cast
 
+from jsonschema import Draft202012Validator, ValidationError
+from jsonschema.exceptions import best_match
+
 from . import cli as cli_module
 from genecoder.formats import SequenceBatch
 from genecoder.html_report import generate_html_report
 from genecoder.metrics import metrics, set_metrics_path
 from genecoder.core import metrics as gather_metrics
 from genecoder.manifest import generate_manifest
+from genecoder.plugin_manager import FEC_REGISTRY
+from genecoder.simulators import SIMULATOR_REGISTRY
 
 
 @dataclass
@@ -40,6 +45,84 @@ class ChannelArgs:
     processes: int | None = None
 
 logger = logging.getLogger(__name__)
+
+
+def _load_bundle_schema() -> dict[str, Any]:
+    schema_path = (
+        Path(__file__).resolve().parents[3]
+        / "configs"
+        / "schema"
+        / "bundle.schema.json"
+    )
+    with open(schema_path, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _augment_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    schema = copy.deepcopy(schema)
+    defs = schema.setdefault("$defs", {})
+
+    fec_choices = sorted({"triple_repeat", "hamming_7_4", *FEC_REGISTRY.keys()})
+    fec_prop = defs.get("encode", {}).get("properties", {}).get("fec")
+    if isinstance(fec_prop, dict):
+        if fec_choices:
+            fec_prop["enum"] = fec_choices
+        else:
+            fec_prop.pop("enum", None)
+
+    simulator_choices = sorted(SIMULATOR_REGISTRY.keys())
+    sim_name_def = defs.get("simulatorName")
+    if isinstance(sim_name_def, dict):
+        if simulator_choices:
+            sim_name_def["enum"] = simulator_choices
+        else:
+            sim_name_def.pop("enum", None)
+
+    return schema
+
+
+def _format_schema_error(error: ValidationError) -> str:
+    params = getattr(error, "params", {}) or {}
+    extra = params.get("additionalProperties") if isinstance(params, dict) else None
+    if error.validator == "additionalProperties":
+        extras: list[str] = []
+        if isinstance(extra, list):
+            extras = [str(item) for item in extra]
+        elif isinstance(error.instance, Mapping):
+            instance_keys = {str(k) for k in error.instance}
+            schema_props = (
+                error.schema.get("properties") if isinstance(error.schema, dict) else {}
+            )
+            allowed = {str(k) for k in schema_props} if isinstance(schema_props, Mapping) else set()
+            extras = sorted(instance_keys - allowed)
+        if not extras and "'" in error.message:
+            parts = [seg for seg in error.message.split("'") if seg.strip()]
+            if parts:
+                extras = [parts[0]]
+
+        if not error.path:
+            return f"Unknown top-level keys: {', '.join(extras)}"
+        section = str(error.path[0]) if error.path else ""
+        return f"Unknown {section} options: {', '.join(extras)}"
+
+    if error.validator == "type" and error.validator_value == "object" and error.path:
+        section = str(error.path[0])
+        return f"{section} section must be a mapping"
+
+    path = "".join(f"[{p!r}]" if isinstance(p, int) else f".{p}" for p in error.path)
+    prefix = path.lstrip(".") or "<root>"
+    return f"{prefix}: {error.message}"
+
+
+def _validate_bundle_config(config: Mapping[str, object], config_path: Path) -> None:
+    schema = _augment_schema(_load_bundle_schema())
+    validator = Draft202012Validator(schema)
+    error = best_match(validator.iter_errors(config))
+    if error is None:
+        return
+
+    message = _format_schema_error(error)
+    raise ValueError(f"Invalid bundle config at {config_path} ({message})")
 
 
 def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -213,7 +296,7 @@ def _create_archive(
     metrics_target: Path | None = None,
 ) -> None:
     """Create a gzipped tar archive of ``run_dir`` with a summary manifest."""
-    summary_path = _write_summary_file(
+    _write_summary_file(
         run_dir,
         config_hash,
         batch_metadata=batch_metadata,
@@ -580,6 +663,8 @@ def _run_single_bundle(
 
     if not isinstance(config, dict):
         raise TypeError("Top level YAML must be a mapping")
+
+    _validate_bundle_config(config, config_path)
 
     allowed_sections = {"encode", "simulate", "decode"}
     unknown_sections = set(config) - allowed_sections
