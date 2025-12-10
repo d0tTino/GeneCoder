@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GeneCoder bundle configuration",
+  "type": "object",
+  "required": ["encode"],
+  "additionalProperties": false,
+  "properties": {
+    "encode": {"$ref": "#/$defs/encode"},
+    "simulate": {"$ref": "#/$defs/simulate"},
+    "decode": {"$ref": "#/$defs/decode"}
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1
+    },
+    "stringOrNumber": {
+      "type": ["string", "number"]
+    },
+    "primitiveValue": {
+      "type": ["string", "number", "boolean", "null"]
+    },
+    "encode": {
+      "type": "object",
+      "required": ["input_files", "method"],
+      "additionalProperties": false,
+      "properties": {
+        "input_files": {"$ref": "#/$defs/stringList"},
+        "method": {"type": "string"},
+        "fec": {"type": "string", "enum": []}
+      }
+    },
+    "decode": {
+      "type": "object",
+      "required": ["method"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {"type": "string"}
+      }
+    },
+    "pipeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parallel": {"type": ["boolean", "null"]},
+        "workers": {"type": ["integer", "null"]},
+        "use_process_pool": {"type": ["boolean", "null"]},
+        "use_mpi": {"type": ["boolean", "null"]},
+        "illumina_profile": {"type": ["string", "null"]},
+        "nanopore_profile": {"type": ["string", "null"]},
+        "dropout_rate": {"type": ["number", "null"]},
+        "coverage_distribution": {
+          "oneOf": [
+            {"type": "object"},
+            {"type": "array"},
+            {"type": "null"}
+          ]
+        },
+        "synthesis_loss": {"type": ["number", "null"]},
+        "profile": {"type": ["string", "null"]},
+        "name": {"type": ["string", "null"]}
+      }
+    },
+    "simulatorName": {
+      "type": "string",
+      "enum": []
+    },
+    "simulator": {
+      "anyOf": [
+        {"$ref": "#/$defs/simulatorName"},
+        {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": {"$ref": "#/$defs/simulatorName"},
+            "stage": {"type": "string"},
+            "options": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/primitiveValue"}
+            }
+          },
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "array", "object", "null"]
+          }
+        }
+      ]
+    },
+    "simulate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "simulators": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/simulator"},
+          "minItems": 1
+        },
+        "pipeline": {"$ref": "#/$defs/pipeline"},
+        "config": {"type": "string"},
+        "sub_prob": {"type": ["number", "null"]},
+        "ins_prob": {"type": ["number", "null"]},
+        "del_prob": {"type": ["number", "null"]},
+        "seed": {"type": ["integer", "null"]},
+        "min_length": {"type": ["integer", "null"]},
+        "max_length": {"type": ["integer", "null"]},
+        "max_homopolymer": {"type": ["integer", "null"]},
+        "parallel": {"type": ["boolean", "null"]},
+        "threads": {"type": ["integer", "null"]},
+        "processes": {"type": ["integer", "null"]}
+      }
+    }
+  }
+}
