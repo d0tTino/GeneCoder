@@ -359,6 +359,62 @@ def test_cli_indel_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     )]
 
 
+def test_cli_indel_default_adapter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_fasta = tmp_path / "in_indel_default.fasta"
+    create_fasta(input_fasta)
+    output_fasta = tmp_path / "out_indel_default.fasta"
+    observed_profiles: list[str | None] = []
+
+    from genecoder.error_simulation import (
+        Channel as IndelChannel,
+        DEFAULT_ADAPTER_PROFILE,
+    )
+
+    def fake_init(
+        self: IndelChannel,
+        substitution_prob: float = 0.0,
+        insertion_prob: float = 0.0,
+        deletion_prob: float = 0.0,
+        error_rate: float | None = None,
+        profile: str | None = None,
+    ) -> None:
+        observed_profiles.append(profile)
+        self._delegate = None
+        self._substitution_prob = substitution_prob if error_rate is None else error_rate
+        self.insertion_prob = insertion_prob
+        self.deletion_prob = deletion_prob
+
+    monkeypatch.setattr(IndelChannel, "__init__", fake_init)
+    monkeypatch.setattr(IndelChannel, "simulate", lambda self, seq: seq)
+
+    env = os.environ.copy()
+    from pathlib import Path as _Path
+    src_path = _Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    result = run_cli_command(
+        [
+            "channel",
+            "apply",
+            "--input-file",
+            str(input_fasta),
+            "--output-file",
+            str(output_fasta),
+            "--simulator",
+            "indel",
+            "--min-length",
+            "1",
+        ],
+        env=env,
+    )
+    assert result.returncode == 0, result.stderr
+    adapter_profiles = [p for p in observed_profiles if p is not None]
+    assert adapter_profiles[-1:] == [DEFAULT_ADAPTER_PROFILE]
+
+
 def test_channel_cli_yaml(tmp_path: Path) -> None:
     input_fasta = tmp_path / "in.fasta"
     create_fasta(input_fasta)
