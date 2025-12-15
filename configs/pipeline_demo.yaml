@@ -10,8 +10,8 @@ encode:
   fec: hamming_7_4
 simulate:
   simulators:
-    - name: simple
-      error_rate: 0.01
+    - name: indel
+      profile: illumina_adapter
   pipeline:
     parallel: false
     workers: null

@@ -18,6 +18,8 @@ __all__ = [
     "Channel",
     "register",
     "INDEL_PROFILES",
+    "ADAPTER_PROFILES",
+    "DEFAULT_ADAPTER_PROFILE",
 ]
 
 NUCLEOTIDES = ["A", "T", "C", "G"]
@@ -37,7 +39,26 @@ INDEL_PROFILES: dict[str, dict[str, float]] = {
         "insertion_prob": 0.02,
         "deletion_prob": 0.02,
     },
+    # Higher-level adapters that delegate to richer simulators.
+    "illumina_adapter": {
+        "substitution_prob": 0.0,
+        "insertion_prob": 0.0,
+        "deletion_prob": 0.0,
+    },
+    "nanopore_adapter": {
+        "substitution_prob": 0.0,
+        "insertion_prob": 0.0,
+        "deletion_prob": 0.0,
+    },
 }
+
+# Adapter presets that delegate to richer simulator implementations.
+ADAPTER_PROFILES: dict[str, tuple[str, str]] = {
+    "illumina_adapter": ("illumina", "miseq"),
+    "nanopore_adapter": ("nanopore", "r10.4"),
+}
+
+DEFAULT_ADAPTER_PROFILE = "illumina_adapter"
 
 
 def _random_substitution(nucleotide: str, rng: random.Random) -> str:
@@ -142,12 +163,24 @@ class Channel(Simulator):
         error_rate: float | None = None,
         profile: str | None = None,
     ) -> None:
+        self._delegate: Simulator | None = None
         if profile is not None:
             params = INDEL_PROFILES.get(profile.lower())
             if params is not None:
                 substitution_prob = params["substitution_prob"]
                 insertion_prob = params["insertion_prob"]
                 deletion_prob = params["deletion_prob"]
+            adapter = ADAPTER_PROFILES.get(profile.lower())
+            if adapter is not None:
+                family, preset = adapter
+                if family == "illumina":
+                    from .simulators.illumina import IlluminaChannel
+
+                    self._delegate = IlluminaChannel(profile=preset)
+                elif family == "nanopore":
+                    from .simulators.nanopore import NanoporeChannel
+
+                    self._delegate = NanoporeChannel(profile=preset)
         if error_rate is not None:
             substitution_prob = error_rate
         self._substitution_prob = substitution_prob
@@ -182,6 +215,8 @@ class Channel(Simulator):
         self._substitution_prob = value
 
     def simulate(self, sequence: str) -> str:
+        if self._delegate is not None:
+            return self._delegate.simulate(sequence)
         return simulate_errors(
             sequence,
             substitution_prob=self.substitution_prob,

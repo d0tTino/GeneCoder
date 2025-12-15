@@ -22,7 +22,11 @@ from genecoder.error_simulation import introduce_errors
 from genecoder.metrics import metrics
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES, DNARSIM_RATE_TABLES
-from genecoder.error_simulation import INDEL_PROFILES
+from genecoder.error_simulation import (
+    ADAPTER_PROFILES,
+    DEFAULT_ADAPTER_PROFILE,
+    INDEL_PROFILES,
+)
 from genecoder.simulators.decay import DegradationChannel
 from genecoder.simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
@@ -878,11 +882,17 @@ def run_channel(args: argparse.Namespace) -> None:
             if name == "nanopore_dnarsim" and opts.dnarsim_profile:
                 new_params.setdefault("profile", opts.dnarsim_profile)
         if name == "indel":
-            if opts.indel_profile is not None:
-                if opts.indel_profile not in INDEL_PROFILES:
-                    logger.error("Unknown indel profile: %s", opts.indel_profile)
+            indel_profile = opts.indel_profile
+            if indel_profile is None and not any(
+                rate is not None
+                for rate in (opts.sub_rate, opts.ins_rate, opts.del_rate)
+            ):
+                indel_profile = DEFAULT_ADAPTER_PROFILE
+            if indel_profile is not None:
+                if indel_profile not in INDEL_PROFILES and indel_profile not in ADAPTER_PROFILES:
+                    logger.error("Unknown indel profile: %s", indel_profile)
                     raise SystemExit(1)
-                new_params.setdefault("profile", opts.indel_profile)
+                new_params.setdefault("profile", indel_profile)
             if opts.sub_rate is not None:
                 new_params["substitution_prob"] = opts.sub_rate
             if opts.ins_rate is not None:
@@ -945,12 +955,21 @@ def _handle_run(args: argparse.Namespace) -> None:
             if name == "nanopore_dnarsim":
                 params.setdefault("profile", args.dnarsim_profile)
     if args.indel_profile is not None:
-        if args.indel_profile not in INDEL_PROFILES:
+        if args.indel_profile not in INDEL_PROFILES and args.indel_profile not in ADAPTER_PROFILES:
             logger.error("Unknown indel profile: %s", args.indel_profile)
             raise SystemExit(1)
         for name, params in simulators:
             if name == "indel":
                 params.setdefault("profile", args.indel_profile)
+    else:
+        for name, params in simulators:
+            if name == "indel" and "profile" not in params:
+                if any(
+                    key in params
+                    for key in ("substitution_prob", "insertion_prob", "deletion_prob", "error_rate")
+                ):
+                    continue
+                params.setdefault("profile", DEFAULT_ADAPTER_PROFILE)
     if args.nanopore_profile_file is not None:
         prof = _load_profile_file(args.nanopore_profile_file)
         for name, params in simulators:

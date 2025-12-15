@@ -145,6 +145,18 @@ genecli channel --input-file encoded.fasta --output-file corrupted.fasta \
 genecli decode corrupted.fasta --output-file decoded.bin
 ```
 
+The ``indel`` simulator now defaults to richer adapter presets that route to the
+technology-specific simulators:
+
+* ``illumina_adapter`` (default) delegates to ``IlluminaChannel`` with the
+  ``miseq`` profile.
+* ``nanopore_adapter`` delegates to ``NanoporeChannel`` with the ``r10.4``
+  profile.
+
+Override the default with ``--indel-profile nanopore_adapter`` or fall back to
+the legacy probability-only profiles with ``--indel-profile illumina`` or
+``--indel-profile nanopore``.
+
 Pass `--seed <int>` to `genecli encode`, `genecli decode`, `genecli channel`, or
 `genecli pipeline` to seed random components for reproducible runs.
 Alternatively set the `GENECODER_SIM_SEED` environment variable.
