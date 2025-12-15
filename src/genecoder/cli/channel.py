@@ -438,10 +438,14 @@ def process_channel(
         logger.error("No FASTA records found in %s", input_file)
         raise SystemExit(1)
 
-    try:
-        synth = SynthesisConstraints(**constraints)
-    except ValueError:
-        synth = SynthesisConstraints()
+    synth: SynthesisConstraints | None
+    if constraints:
+        try:
+            synth = SynthesisConstraints(**constraints)
+        except ValueError:
+            synth = SynthesisConstraints()
+    else:
+        synth = None
 
     cfg = config or ChannelConfig()
     stage_metadata: list[dict[str, Any]] = []
@@ -472,7 +476,7 @@ def process_channel(
             synth_failures += 1
         if dropout or synth_fail:
             continue
-        if not validate_sequence(processed.sequence, synth):
+        if synth is not None and not validate_sequence(processed.sequence, synth):
             raise ValueError("Sequence violates synthesis constraints")
         totals_json = processed.metadata.get(RESULT_MUTATION_TOTALS_KEY)
         totals = None
