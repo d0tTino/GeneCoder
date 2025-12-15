@@ -23,7 +23,7 @@ from genecoder.html_report import generate_html_report
 from genecoder.metrics import metrics, set_metrics_path
 from genecoder.core import metrics as gather_metrics
 from genecoder.manifest import generate_manifest
-from genecoder.plugin_manager import FEC_REGISTRY
+from genecoder.plugin_manager import FEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
 
 
@@ -62,19 +62,23 @@ def _augment_schema(schema: dict[str, Any]) -> dict[str, Any]:
     schema = copy.deepcopy(schema)
     defs = schema.setdefault("$defs", {})
 
-    fec_choices = sorted({"triple_repeat", "hamming_7_4", *FEC_REGISTRY.keys()})
+    fec_choices = set(FEC_REGISTRY.keys()) | {"triple_repeat", "hamming_7_4"}
     fec_prop = defs.get("encode", {}).get("properties", {}).get("fec")
     if isinstance(fec_prop, dict):
-        if fec_choices:
-            fec_prop["enum"] = fec_choices
+        existing = set(fec_prop.get("enum", [])) if isinstance(fec_prop.get("enum"), list) else set()
+        values = sorted(existing | fec_choices)
+        if values:
+            fec_prop["enum"] = values
         else:
             fec_prop.pop("enum", None)
 
-    simulator_choices = sorted(SIMULATOR_REGISTRY.keys())
+    simulator_choices = set(SIMULATOR_REGISTRY.keys())
     sim_name_def = defs.get("simulatorName")
     if isinstance(sim_name_def, dict):
-        if simulator_choices:
-            sim_name_def["enum"] = simulator_choices
+        existing = set(sim_name_def.get("enum", [])) if isinstance(sim_name_def.get("enum"), list) else set()
+        values = sorted(existing | simulator_choices)
+        if values:
+            sim_name_def["enum"] = values
         else:
             sim_name_def.pop("enum", None)
 
@@ -115,6 +119,7 @@ def _format_schema_error(error: ValidationError) -> str:
 
 
 def _validate_bundle_config(config: Mapping[str, object], config_path: Path) -> None:
+    init_plugins()
     schema = _augment_schema(_load_bundle_schema())
     validator = Draft202012Validator(schema)
     error = best_match(validator.iter_errors(config))

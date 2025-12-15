@@ -766,3 +766,36 @@ You can also provide the parameters when calling `genecli analyze`, `genecli
 bundle`, or the dashboard pipeline presets. If you simply want to silence the
 warnings while keeping the defaults, pass `--suppress-constraint-warnings` to
 `genecli encode`.
+
+### Bundle configs and schema validation
+
+Use `genecli bundle run` to connect encoding, simulation and decoding in a single
+YAML config. A minimal, schema-compliant configuration looks like:
+
+```yaml
+encode:
+  input_files:
+    - examples/pipeline_demo_input.txt
+  method: base4_direct
+  fec: hamming_7_4
+simulate:
+  simulators:
+    - illumina
+  pipeline:
+    illumina_profile: hiseq
+decode:
+  method: base4_direct
+```
+
+The `fec` field is validated against the registered error-correcting codes
+(`triple_repeat`, `hamming_7_4`, `reed_solomon`, `ldpc`, `fountain`, `bch`,
+`raptorq`, plus any plugins), and simulators must match known adapters such as
+`illumina`, `nanopore`, `squigulator`, or `desp`. Run the JSON Schema linter
+before executing a bundle to catch typos and type mismatches:
+
+```bash
+python -m jsonschema -i configs/pipeline_demo.yaml configs/schema/bundle.schema.json
+```
+
+Successful validation means `genecli bundle run` will accept the config without
+extra flag parsing errors.

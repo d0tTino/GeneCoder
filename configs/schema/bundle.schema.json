@@ -10,9 +10,13 @@
     "decode": {"$ref": "#/$defs/decode"}
   },
   "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
     "stringList": {
       "type": "array",
-      "items": {"type": "string"},
+      "items": {"$ref": "#/$defs/nonEmptyString"},
       "minItems": 1
     },
     "stringOrNumber": {
@@ -27,8 +31,19 @@
       "additionalProperties": false,
       "properties": {
         "input_files": {"$ref": "#/$defs/stringList"},
-        "method": {"type": "string"},
-        "fec": {"type": "string", "enum": []}
+        "method": {"$ref": "#/$defs/nonEmptyString"},
+        "fec": {
+          "type": "string",
+          "enum": [
+            "triple_repeat",
+            "hamming_7_4",
+            "reed_solomon",
+            "ldpc",
+            "fountain",
+            "bch",
+            "raptorq"
+          ]
+        }
       }
     },
     "decode": {
@@ -36,7 +51,7 @@
       "required": ["method"],
       "additionalProperties": false,
       "properties": {
-        "method": {"type": "string"}
+        "method": {"$ref": "#/$defs/nonEmptyString"}
       }
     },
     "pipeline": {
@@ -58,13 +73,41 @@
           ]
         },
         "synthesis_loss": {"type": ["number", "null"]},
-        "profile": {"type": ["string", "null"]},
         "name": {"type": ["string", "null"]}
+      }
+    },
+    "synthesisConstraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_length": {"type": "integer", "minimum": 1},
+        "max_length": {"type": "integer", "minimum": 1},
+        "max_homopolymer": {"type": "integer", "minimum": 1},
+        "gc_min": {"type": "number", "minimum": 0, "maximum": 1},
+        "gc_max": {"type": "number", "minimum": 0, "maximum": 1}
       }
     },
     "simulatorName": {
       "type": "string",
-      "enum": []
+      "enum": [
+        "none",
+        "simple",
+        "indel",
+        "illumina",
+        "illumina_builtin",
+        "illumina_d2sim",
+        "illumina_insilicoseq",
+        "insilicoseq",
+        "nanopore",
+        "nanopore_d2sim",
+        "nanopore_desp",
+        "nanopore_dnarsim",
+        "d2sim",
+        "dnarsim",
+        "desp",
+        "decay",
+        "squigulator"
+      ]
     },
     "simulator": {
       "anyOf": [
@@ -74,10 +117,15 @@
           "required": ["name"],
           "properties": {
             "name": {"$ref": "#/$defs/simulatorName"},
-            "stage": {"type": "string"},
+            "stage": {"$ref": "#/$defs/nonEmptyString"},
             "options": {
-              "type": "array",
-              "items": {"$ref": "#/$defs/primitiveValue"}
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": {"$ref": "#/$defs/primitiveValue"}
+                },
+                {"type": "string"}
+              ]
             }
           },
           "additionalProperties": {
@@ -96,7 +144,11 @@
           "minItems": 1
         },
         "pipeline": {"$ref": "#/$defs/pipeline"},
+        "synthesis": {"$ref": "#/$defs/synthesisConstraints"},
+        "constraints": {"$ref": "#/$defs/synthesisConstraints"},
         "config": {"type": "string"},
+        "decay_rate": {"type": ["number", "null"]},
+        "batch_workers": {"type": ["integer", "null"]},
         "sub_prob": {"type": ["number", "null"]},
         "ins_prob": {"type": ["number", "null"]},
         "del_prob": {"type": ["number", "null"]},

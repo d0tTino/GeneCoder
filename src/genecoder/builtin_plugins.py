@@ -59,6 +59,7 @@ def register_builtin_plugins() -> None:
             "genecoder.illumina_sim",
             "genecoder.simulators.decay",
             "genecoder.simulators.illumina",
+            "genecoder.insilicoseq_adapter",
             "genecoder.simulators.nanopore",
             "genecoder.d2sim_adapter",
             "genecoder.dnarsim_adapter",

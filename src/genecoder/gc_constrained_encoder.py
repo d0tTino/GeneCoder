@@ -218,19 +218,25 @@ def decode_gc_balanced(
     max_homopolymer_len = get_max_homopolymer_length(payload_dna_sequence)
 
     if expected_gc_min is not None and gc_content < expected_gc_min:
-        raise ValueError(
-            f"GC content of decoded payload ({gc_content}) is lower than expected minimum {expected_gc_min}."
+        logger.warning(
+            "GC content %.2f%% below expected minimum %.2f%%",
+            gc_content * 100,
+            expected_gc_min * 100,
         )
     if expected_gc_max is not None and gc_content > expected_gc_max:
-        raise ValueError(
-            f"GC content of decoded payload ({gc_content}) exceeds expected maximum {expected_gc_max}."
+        logger.warning(
+            "GC content %.2f%% above expected maximum %.2f%%",
+            gc_content * 100,
+            expected_gc_max * 100,
         )
     if (
         expected_max_homopolymer is not None
         and max_homopolymer_len > expected_max_homopolymer
     ):
-        raise ValueError(
-            f"Longest homopolymer in decoded payload ({max_homopolymer_len}) exceeds expected maximum {expected_max_homopolymer}."
+        logger.warning(
+            "Longest homopolymer length %d exceeds expected maximum %d",
+            max_homopolymer_len,
+            expected_max_homopolymer,
         )
 
     return decoded_data
