@@ -16,7 +16,7 @@ simulate:
     min_length: 25
     max_length: 600
   pipeline:
-    nanopore_profile: r10
+    nanopore_profile: r10.4
 decode:
   method: gc_balanced
 

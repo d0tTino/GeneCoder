@@ -11,7 +11,7 @@ encode:
 simulate:
   simulators:
     - name: indel
-      profile: illumina_adapter
+      profile: illumina_adapter  # Delegates to IlluminaChannel (MiSeq V3 preset)
   pipeline:
     parallel: false
     workers: null

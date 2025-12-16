@@ -149,13 +149,16 @@ The ``indel`` simulator now defaults to richer adapter presets that route to the
 technology-specific simulators:
 
 * ``illumina_adapter`` (default) delegates to ``IlluminaChannel`` with the
-  ``miseq`` profile.
+  MiSeq V3 profile and approximates its rates when falling back to probability
+  mode.
 * ``nanopore_adapter`` delegates to ``NanoporeChannel`` with the ``r10.4``
-  profile.
+  profile and reuses its probability estimates when the full simulator is not
+  available.
 
-Override the default with ``--indel-profile nanopore_adapter`` or fall back to
+Override the defaults with ``--indel-profile nanopore_adapter`` or fall back to
 the legacy probability-only profiles with ``--indel-profile illumina`` or
-``--indel-profile nanopore``.
+``--indel-profile nanopore``. Passing ``--indel-profile`` with a legacy name
+explicitly keeps the older behaviour.
 
 Pass `--seed <int>` to `genecli encode`, `genecli decode`, `genecli channel`, or
 `genecli pipeline` to seed random components for reproducible runs.
