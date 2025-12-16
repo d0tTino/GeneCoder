@@ -26,7 +26,7 @@ NUCLEOTIDES = ["A", "T", "C", "G"]
 
 
 # Preset substitution/indel probability profiles for :class:`Channel`.
-INDEL_PROFILES: dict[str, dict[str, float]] = {
+LEGACY_INDEL_PROFILES: dict[str, dict[str, float]] = {
     # Typical Illumina error characteristics favour substitutions over indels.
     "illumina": {
         "substitution_prob": 0.002,
@@ -39,23 +39,33 @@ INDEL_PROFILES: dict[str, dict[str, float]] = {
         "insertion_prob": 0.02,
         "deletion_prob": 0.02,
     },
-    # Higher-level adapters that delegate to richer simulators.
-    "illumina_adapter": {
-        "substitution_prob": 0.0,
-        "insertion_prob": 0.0,
-        "deletion_prob": 0.0,
-    },
-    "nanopore_adapter": {
-        "substitution_prob": 0.0,
-        "insertion_prob": 0.0,
-        "deletion_prob": 0.0,
-    },
 }
 
 # Adapter presets that delegate to richer simulator implementations.
-ADAPTER_PROFILES: dict[str, tuple[str, str]] = {
-    "illumina_adapter": ("illumina", "miseq"),
-    "nanopore_adapter": ("nanopore", "r10.4"),
+ADAPTER_PROFILES: dict[str, dict[str, object]] = {
+    "illumina_adapter": {
+        "family": "illumina",
+        "profile": "miseq_v3",
+        "fallback": {
+            "substitution_prob": 0.0009,
+            "insertion_prob": 0.0001,
+            "deletion_prob": 0.0001,
+        },
+    },
+    "nanopore_adapter": {
+        "family": "nanopore",
+        "profile": "r10.4",
+        "fallback": {
+            "substitution_prob": 0.045,
+            "insertion_prob": 0.015,
+            "deletion_prob": 0.025,
+        },
+    },
+}
+
+INDEL_PROFILES: dict[str, dict[str, float]] = {
+    **LEGACY_INDEL_PROFILES,
+    **{name: profile["fallback"] for name, profile in ADAPTER_PROFILES.items()},
 }
 
 DEFAULT_ADAPTER_PROFILE = "illumina_adapter"
@@ -157,35 +167,42 @@ class Channel(Simulator):
 
     def __init__(
         self,
-        substitution_prob: float = 0.0,
-        insertion_prob: float = 0.0,
-        deletion_prob: float = 0.0,
+        substitution_prob: float | None = None,
+        insertion_prob: float | None = None,
+        deletion_prob: float | None = None,
         error_rate: float | None = None,
         profile: str | None = None,
     ) -> None:
         self._delegate: Simulator | None = None
+        sub_prob = substitution_prob
+        ins_prob = insertion_prob
+        del_prob = deletion_prob
+
         if profile is not None:
             params = INDEL_PROFILES.get(profile.lower())
             if params is not None:
-                substitution_prob = params["substitution_prob"]
-                insertion_prob = params["insertion_prob"]
-                deletion_prob = params["deletion_prob"]
+                sub_prob = params["substitution_prob"] if sub_prob is None else sub_prob
+                ins_prob = params["insertion_prob"] if ins_prob is None else ins_prob
+                del_prob = params["deletion_prob"] if del_prob is None else del_prob
             adapter = ADAPTER_PROFILES.get(profile.lower())
             if adapter is not None:
-                family, preset = adapter
+                family = adapter["family"]
+                preset = adapter["profile"]
                 if family == "illumina":
                     from .simulators.illumina import IlluminaChannel
 
-                    self._delegate = IlluminaChannel(profile=preset)
+                    self._delegate = IlluminaChannel(profile=str(preset))
                 elif family == "nanopore":
                     from .simulators.nanopore import NanoporeChannel
 
-                    self._delegate = NanoporeChannel(profile=preset)
+                    self._delegate = NanoporeChannel(profile=str(preset))
+
         if error_rate is not None:
-            substitution_prob = error_rate
-        self._substitution_prob = substitution_prob
-        self.insertion_prob = insertion_prob
-        self.deletion_prob = deletion_prob
+            sub_prob = error_rate
+
+        self._substitution_prob = 0.0 if sub_prob is None else sub_prob
+        self.insertion_prob = 0.0 if ins_prob is None else ins_prob
+        self.deletion_prob = 0.0 if del_prob is None else del_prob
 
     @property
     def substitution_prob(self) -> float:

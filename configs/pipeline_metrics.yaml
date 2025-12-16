@@ -14,7 +14,7 @@ encode:
 simulate:
   simulators:
     - name: indel
-      profile: nanopore_adapter
+      profile: nanopore_adapter  # Delegates to NanoporeChannel (R10.4 preset)
   synthesis:
     gc_min: 0.0
     gc_max: 1.0
