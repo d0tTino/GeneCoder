@@ -87,6 +87,8 @@ genecli channel run configs/illumina_profile.yaml --illumina-profile hiseq_high_
 
 Bundle configurations can also lock the preset under `pipeline.illumina_profile` so sweeps stay reproducible. For example, `configs/illumina_profile.yaml` now demonstrates the higher-coverage HiSeq preset alongside the quality distribution hook.
 
+See [docs/channel_profiles.md](docs/channel_profiles.md) for a full summary of built-in Illumina and Nanopore presets, their error rates, and usage examples.
+
 ## Introductory notebooks
 
 Introductory Jupyter notebooks with encoding and decoding examples are available in the [notebooks/](notebooks) directory. A small series of lessons covers the basics:
