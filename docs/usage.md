@@ -306,6 +306,9 @@ genecli decode corrupted.dna --output-dir decoded --auto-ext
    the chosen profile. Custom parameters can also be loaded from YAML files using
    `--illumina-profile-file` or `--nanopore-profile-file`.
 
+   A quick-reference table of each preset and its error rates lives in
+   [docs/channel_profiles.md](channel_profiles.md).
+
    Example end-to-end runs with each preset:
 
    | Profile | Command |
