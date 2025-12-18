@@ -175,6 +175,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         action="store_true",
         help="Launch the dashboard for the metrics file after the run",
     )
+    run_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate configs and create placeholder outputs without running the pipeline",
+    )
     run_parser.set_defaults(func=_handle_run)
 
     sweep_parser = bundle_sub.add_parser(
@@ -225,6 +230,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--launch-dashboard",
         action="store_true",
         help="Launch the dashboard for the metrics file after the sweep",
+    )
+    sweep_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate configs and create placeholder outputs without running the pipeline",
     )
     sweep_parser.set_defaults(func=_handle_sweep)
 
@@ -653,6 +663,7 @@ def _run_single_bundle(
     emit_manifest_report: bool,
     metrics_override: Path | None,
     launch_dashboard: bool,
+    dry_run: bool,
 ) -> BundleRunResult:
     import yaml
 
@@ -694,7 +705,7 @@ def _run_single_bundle(
         raise TypeError("decode section must be a mapping")
 
     hash_dir = cache_dir / config_hash
-    if hash_dir.exists():
+    if hash_dir.exists() and not dry_run:
         logger.info("Cached result found in %s", hash_dir)
         run_dirs = sorted(hash_dir.iterdir())
         if not run_dirs:
@@ -741,6 +752,50 @@ def _run_single_bundle(
     decoded_dir = run_dir / "decoded"
     encoded_dir.mkdir(parents=True, exist_ok=True)
     decoded_dir.mkdir(parents=True, exist_ok=True)
+
+    if dry_run:
+        simulated_dir.mkdir(parents=True, exist_ok=True)
+        placeholder_manifest = encoded_dir / "dry_run.manifest.json"
+        placeholder_manifest.write_text(
+            json.dumps(
+                {
+                    "config": config_name,
+                    "dry_run": True,
+                    "config_hash": config_hash,
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        decoded_placeholder = decoded_dir / "dry_run.json"
+        decoded_placeholder.write_text(
+            json.dumps({"config": config_name, "dry_run": True}, indent=2),
+            encoding="utf-8",
+        )
+        metrics_target = metrics_override or metrics.path
+        metrics_target.parent.mkdir(parents=True, exist_ok=True)
+        if not metrics_target.exists():
+            metrics_target.write_text("{}", encoding="utf-8")
+
+        summary_path = _write_summary_file(
+            run_dir,
+            config_hash,
+            author=author,
+            description=description,
+            config_name=config_name,
+            channel_profile=_extract_channel_profile(sim_cfg_raw),
+            ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            metrics_target=metrics_override or metrics.path,
+        )
+        return BundleRunResult(
+            config_path=config_path,
+            config_hash=config_hash,
+            run_dir=run_dir,
+            config_name=config_name,
+            channel_profile=_extract_channel_profile(sim_cfg_raw),
+            ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            summary_path=summary_path,
+        )
 
     enc_args = _simple_args("encode", enc_cfg, {"input_files", "method", "fec"})
     enc_args += ["--output-dir", str(encoded_dir)]
@@ -974,6 +1029,7 @@ def _handle_run(args: argparse.Namespace) -> None:
         emit_manifest_report=args.emit_manifest_report,
         metrics_override=metrics_override,
         launch_dashboard=args.launch_dashboard,
+        dry_run=args.dry_run,
     )
 
 
@@ -998,6 +1054,7 @@ def _handle_sweep(args: argparse.Namespace) -> None:
                 emit_manifest_report=args.emit_manifest_report,
                 metrics_override=metrics_override,
                 launch_dashboard=False,
+                dry_run=args.dry_run,
             )
         )
 

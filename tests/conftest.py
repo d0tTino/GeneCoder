@@ -72,6 +72,33 @@ except Exception:  # pragma: no cover - import guard
     yaml_stub.YAMLError = YAMLError
     sys.modules.setdefault("yaml", yaml_stub)
 
+# Provide minimal jsonschema shims when dependency is absent
+try:  # pragma: no cover - exercised only when jsonschema is absent
+    import jsonschema  # noqa: F401
+    import jsonschema.exceptions  # noqa: F401
+except Exception:  # pragma: no cover - import guard
+    class ValidationError(Exception):
+        pass
+
+    class Draft202012Validator:
+        def __init__(self, *_args, **_kwargs) -> None:
+            pass
+
+        def iter_errors(self, *_args, **_kwargs):
+            return []
+
+    def best_match(errors):
+        return None
+
+    js_mod = types.ModuleType("jsonschema")
+    js_mod.Draft202012Validator = Draft202012Validator
+    js_mod.ValidationError = ValidationError
+    js_exc = types.ModuleType("jsonschema.exceptions")
+    js_exc.best_match = best_match
+    js_exc.ValidationError = ValidationError
+    sys.modules.setdefault("jsonschema", js_mod)
+    sys.modules.setdefault("jsonschema.exceptions", js_exc)
+
 
 from genecoder.api import Codec
 from genecoder.encoders import decode_base4_direct, encode_base4_direct
