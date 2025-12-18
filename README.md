@@ -72,6 +72,22 @@ genecli html-report \
 
 The manifest view highlights GC balance, droplet survival and homopolymer limits so you can confirm the preset behaved as expected before moving on to custom experiments. Re-run the command to refresh the cache or append `--export-archive gold_runs.tar.gz` for an easily shareable bundle complete with a `summary.json` index of cached files.
 
+### Running the Nanopore Fountain preset
+
+Recreate the second MVP path without editing YAML by running the Nanopore bundle directly (or via the sweep helper shown above):
+
+```bash
+genecli bundle run configs/fountain_nanopore_pipeline.yaml --cache-dir nanopore_runs
+```
+
+This preset uses GC-balanced encoding with **Fountain** forward error correction (`encode.fec: fountain`) and drives the Nanopore simulator with the **R10.4** channel profile (`pipeline.nanopore_profile: r10.4`). GeneCoder writes the artifacts to `nanopore_runs/<config-hash>/<timestamp>/`:
+
+- Encoded GC-balanced oligos and manifests under `encoded/`, mirroring the gold preset so you can compare FEC choices side-by-side.
+- Nanopore-simulated reads in `simulated/` reflecting the R10.4 error model; pair them with the emitted `simulated.manifest.json` to inspect substitution/indel statistics.
+- Decoder outputs in `decoded/` plus the accompanying JSON manifest that summarizes coverage histograms, dropout flags, and per-oligo metrics for the Nanopore run.
+
+Use the sweep command (`genecli bundle sweep configs/rs_illumina_pipeline.yaml configs/fountain_nanopore_pipeline.yaml ...`) to populate a shared manifest index and metrics file, making it easy to contrast the MiSeq-style gold preset with the R10.4 Fountain pipeline in the dashboard.
+
 ### Selecting Illumina profiles
 
 The Illumina simulator ships with platform-aware presets covering MiSeq V3, HiSeq high-coverage runs and NovaSeq S4 throughput. Pick a profile on the command line with `--illumina-profile`:
