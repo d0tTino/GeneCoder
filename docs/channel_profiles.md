@@ -44,3 +44,20 @@ genecli channel --simulator nanopore --nanopore-profile minion \
 genecli channel --simulator nanopore --nanopore-profile r10 --nanopore-coverage 60 \
     --input-file encoded.fasta --output-file r10_cov60.fasta
 ```
+
+### What Nanopore presets record in manifests and dashboards
+
+Nanopore presets also populate manifest summaries and dashboard panels. When you
+run a profile such as `r10.4` (`genecli channel --nanopore-profile r10.4`), the
+resulting `.manifest.json` captures:
+
+* The GC guardrails in effect (`gc_min`/`gc_max`, defaulting to 45–55%).
+* The enforced homopolymer limit (`max_homopolymer`, default 3).
+* The preset coverage target for the selected profile (30× unless overridden).
+
+View the same fields in the generated HTML report (`genecli html-report` against
+the manifest) or in the Streamlit dashboard via `genecli dashboard <manifest>`
+or `--launch-dashboard` during a bundle run. Both UIs surface GC and
+homopolymer gauges next to coverage and dropout panels for Nanopore runs. See
+the [`dnarsim` preset file](../configs/dnarsim_rates.yaml) for the rates that
+back each profile.
