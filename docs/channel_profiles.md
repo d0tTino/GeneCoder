@@ -52,12 +52,12 @@ run a profile such as `r10.4` (`genecli channel --nanopore-profile r10.4`), the
 resulting `.manifest.json` captures:
 
 * The GC guardrails in effect (`gc_min`/`gc_max`, defaulting to 45–55%).
-* The enforced homopolymer limit (`max_homopolymer`, default 3).
+* The enforced homopolymer cap (`max_homopolymer`, default 3).
 * The preset coverage target for the selected profile (30× unless overridden).
 
-View the same fields in the generated HTML report (`genecli html-report` against
-the manifest) or in the Streamlit dashboard via `genecli dashboard <manifest>`
-or `--launch-dashboard` during a bundle run. Both UIs surface GC and
-homopolymer gauges next to coverage and dropout panels for Nanopore runs. See
-the [`dnarsim` preset file](../configs/dnarsim_rates.yaml) for the rates that
+View the same fields in the generated manifest HTML report (via
+`genecli html-report`) or in the Streamlit dashboard (`genecli dashboard
+<manifest>` or `--launch-dashboard` during bundle runs). Both UIs surface GC
+range and homopolymer panels alongside coverage gauges for Nanopore runs. See
+[`configs/nanopore.yml`](../configs/nanopore.yml) for the preset defaults that
 back each profile.
