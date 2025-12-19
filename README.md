@@ -80,13 +80,19 @@ Recreate the second MVP path without editing YAML by running the Nanopore bundle
 genecli bundle run configs/fountain_nanopore_pipeline.yaml --cache-dir nanopore_runs
 ```
 
-This preset uses GC-balanced encoding with **Fountain** forward error correction (`encode.fec: fountain`) and drives the Nanopore simulator with the **R10.4** channel profile (`pipeline.nanopore_profile: r10.4`). GeneCoder writes the artifacts to `nanopore_runs/<config-hash>/<timestamp>/`:
+You can also run the documented sweep command to keep runs side-by-side:
 
-- Encoded GC-balanced oligos and manifests under `encoded/`, mirroring the gold preset so you can compare FEC choices side-by-side.
-- Nanopore-simulated reads in `simulated/` reflecting the R10.4 error model; pair them with the emitted `simulated.manifest.json` to inspect substitution/indel statistics.
-- Decoder outputs in `decoded/` plus the accompanying JSON manifest that summarizes coverage histograms, dropout flags, and per-oligo metrics for the Nanopore run.
+```bash
+genecli bundle sweep configs/rs_illumina_pipeline.yaml configs/fountain_nanopore_pipeline.yaml --cache-dir bundle_runs
+```
 
-Use the sweep command (`genecli bundle sweep configs/rs_illumina_pipeline.yaml configs/fountain_nanopore_pipeline.yaml ...`) to populate a shared manifest index and metrics file, making it easy to contrast the MiSeq-style gold preset with the R10.4 Fountain pipeline in the dashboard.
+This preset uses GC-balanced encoding with **Fountain** forward error correction (`encode.fec: fountain`) and drives the Nanopore simulator with the **R10.4** channel profile (`pipeline.nanopore_profile: r10.4`). GeneCoder writes the artifacts to `nanopore_runs/<config-hash>/<timestamp>/` (or the `bundle_runs/` cache if sweeping):
+
+- `encoded/` contains the GC-balanced oligo payloads and manifest metadata so you can compare Fountain versus the gold preset FEC side-by-side.
+- `simulated/` includes the Nanopore **R10.4** reads plus `simulated.manifest.json` for the run-level stats (substitution/indel rates, channel parameters, and read summaries).
+- `decoded/` holds decoded outputs and the manifest JSON with coverage histograms and dropout flags, along with per-oligo metrics for the Nanopore pipeline.
+
+Use the sweep command to populate a shared manifest index and metrics file, making it easy to contrast the MiSeq-style gold preset with the R10.4 Fountain pipeline in the dashboard.
 
 ### Selecting Illumina profiles
 
