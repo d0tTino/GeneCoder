@@ -37,3 +37,7 @@ def test_readme_sweep_example_dry_run(tmp_path: Path) -> None:
         assert run_dir.exists()
         assert any(run_dir.glob("encoded/*.manifest.json"))
         assert any(run_dir.glob("decoded/*.json"))
+        summary_path = Path(entry["summary"])
+        assert summary_path.exists()
+        summary_data = json.loads(summary_path.read_text(encoding="utf-8"))
+        assert summary_data["metrics_path"] == str(metrics_path)
