@@ -35,6 +35,7 @@ def _prepare_fast_config(original: Path, tmp_path: Path) -> tuple[Path, dict[str
 
 
 def _run_bundle(config_path: Path, cache_dir: Path) -> Path:
+    cache_dir.mkdir(parents=True, exist_ok=True)
     result = run_cli_command(
         [
             "bundle",

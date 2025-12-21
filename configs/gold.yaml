@@ -1,5 +1,5 @@
 # Gold-standard pipeline preset using GC-balanced encoding and Reed-Solomon FEC
-# with MiSeq-style Illumina simulation.
+# with MiSeq-style Illumina simulation and balanced synthesis constraints.
 encode:
   input_files:
     - tests/data/vertical_slice.txt
@@ -9,6 +9,12 @@ simulate:
   simulators:
     - name: insilicoseq
       profile: miseq
+  synthesis:
+    gc_min: 0.4
+    gc_max: 0.6
+    max_homopolymer: 3
+    min_length: 25
+    max_length: 300
   pipeline:
     illumina_profile: miseq
     coverage_distribution:

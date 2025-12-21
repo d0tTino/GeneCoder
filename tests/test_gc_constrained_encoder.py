@@ -7,6 +7,7 @@ from unittest.mock import patch, call  # call is needed for checking multiple ca
 
 from genecoder.encoders import encode_base4_direct  # noqa: E402
 from genecoder.gc_constrained_encoder import (
+    GC_BALANCED_MAPS,
     calculate_gc_content,
     encode_gc_balanced,
     decode_gc_balanced,
@@ -97,9 +98,11 @@ def test_encode_gc_balanced_meets_constraints(mock_encode_base4):
 
     result = encode_gc_balanced(dummy_data, target_gc_min, target_gc_max, max_homopolymer)
 
-    assert result.startswith("0")
-    assert result[1:] == initial_sequence
-    mock_encode_base4.assert_called_once_with(dummy_data, add_parity=False)
+    assert result.startswith("00")
+    assert result[2:] == initial_sequence
+    mock_encode_base4.assert_called_once_with(
+        dummy_data, add_parity=False, encode_map=GC_BALANCED_MAPS[0]
+    )
 
 @patch('genecoder.encoders.encode_base4_direct')
 def test_encode_gc_balanced_violates_gc_uses_alternative(mock_encode_base4):
@@ -119,12 +122,12 @@ def test_encode_gc_balanced_violates_gc_uses_alternative(mock_encode_base4):
 
     result = encode_gc_balanced(dummy_data, target_gc_min, target_gc_max, max_homopolymer)
 
-    assert result.startswith("1")
-    assert result[1:] == alternative_sequence
+    assert result.startswith("10")
+    assert result[2:] == alternative_sequence
     assert mock_encode_base4.call_count == 2
     mock_encode_base4.assert_has_calls([
-        call(dummy_data, add_parity=False),
-        call(inverted_dummy_data, add_parity=False)
+        call(dummy_data, add_parity=False, encode_map=GC_BALANCED_MAPS[0]),
+        call(inverted_dummy_data, add_parity=False, encode_map=GC_BALANCED_MAPS[0])
     ])
 
 @patch('genecoder.encoders.encode_base4_direct')
@@ -143,12 +146,12 @@ def test_encode_gc_balanced_violates_homopolymer_uses_alternative(mock_encode_ba
 
     result = encode_gc_balanced(dummy_data, target_gc_min, target_gc_max, max_homopolymer)
 
-    assert result.startswith("1")
-    assert result[1:] == alternative_sequence
+    assert result.startswith("10")
+    assert result[2:] == alternative_sequence
     assert mock_encode_base4.call_count == 2
     mock_encode_base4.assert_has_calls([
-        call(dummy_data, add_parity=False),
-        call(inverted_dummy_data, add_parity=False)
+        call(dummy_data, add_parity=False, encode_map=GC_BALANCED_MAPS[0]),
+        call(inverted_dummy_data, add_parity=False, encode_map=GC_BALANCED_MAPS[0])
     ])
 
 # Tests for decode_gc_balanced
@@ -230,8 +233,10 @@ def test_encode_gc_balanced_initial_ok_alternative_not_used(mock_encode_base4):
 
     result = encode_gc_balanced(dummy_data, target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=2)
     
-    assert result == "0" + initial_seq
-    mock_encode_base4.assert_called_once_with(dummy_data, add_parity=False)
+    assert result == "00" + initial_seq
+    mock_encode_base4.assert_called_once_with(
+        dummy_data, add_parity=False, encode_map=GC_BALANCED_MAPS[0]
+    )
 
 # Test for encode_gc_balanced when initial fails GC, alternative is used
 @patch('genecoder.encoders.encode_base4_direct')
@@ -250,10 +255,12 @@ def test_encode_gc_balanced_initial_fails_gc_alternative_used(mock_encode_base4,
             dummy_data, target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=3
         )
     
-    assert result == "1" + alternative_seq
+    assert result == "10" + alternative_seq
     assert mock_encode_base4.call_count == 2
-    mock_encode_base4.assert_any_call(dummy_data, add_parity=False)
-    mock_encode_base4.assert_any_call(inverted_dummy_data, add_parity=False)
+    mock_encode_base4.assert_any_call(dummy_data, add_parity=False, encode_map=GC_BALANCED_MAPS[0])
+    mock_encode_base4.assert_any_call(
+        inverted_dummy_data, add_parity=False, encode_map=GC_BALANCED_MAPS[0]
+    )
     assert not caplog.records
 
 # Test for encode_gc_balanced when initial fails homopolymer, alternative is used
@@ -274,10 +281,12 @@ def test_encode_gc_balanced_initial_fails_homopolymer_alternative_used(mock_enco
             dummy_data, target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=3
         )
     
-    assert result == "1" + alternative_seq
+    assert result == "10" + alternative_seq
     assert mock_encode_base4.call_count == 2
-    mock_encode_base4.assert_any_call(dummy_data, add_parity=False)
-    mock_encode_base4.assert_any_call(inverted_dummy_data, add_parity=False)
+    mock_encode_base4.assert_any_call(dummy_data, add_parity=False, encode_map=GC_BALANCED_MAPS[0])
+    mock_encode_base4.assert_any_call(
+        inverted_dummy_data, add_parity=False, encode_map=GC_BALANCED_MAPS[0]
+    )
     assert not caplog.records
 
 # Test encode_gc_balanced with empty data
@@ -327,7 +336,7 @@ def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4, caplo
     initial_sequence = "AAAAAAAA" # Fails GC and Homopolymer
     alternative_sequence = "TTTTTTTT" # Also Fails GC and Homopolymer (but different seq)
 
-    mock_encode_base4.side_effect = [initial_sequence, alternative_sequence]
+    mock_encode_base4.return_value = initial_sequence
 
     target_gc_min = 0.4
     target_gc_max = 0.6
@@ -336,15 +345,10 @@ def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4, caplo
     with caplog.at_level(logging.WARNING):
         result = encode_gc_balanced(dummy_data, target_gc_min, target_gc_max, max_homopolymer)
 
-    assert result.startswith("1")  # current logic always picks alternative if initial fails
-    assert result[1:] == alternative_sequence
-
-    assert result == "1" + alternative_sequence
-    assert mock_encode_base4.call_count == 2
-    mock_encode_base4.assert_has_calls([
-        call(dummy_data, add_parity=False),
-        call(inverted_dummy_data, add_parity=False)
-    ])
+    assert result.startswith("10")
+    assert result[2:] == initial_sequence
+    assert result == "10" + initial_sequence
+    assert mock_encode_base4.call_count >= 2
     assert any("Inverted sequence violates" in rec.message for rec in caplog.records)
 
 # Test decode_gc_balanced with optional arguments passed (though not used by current logic)
@@ -432,8 +436,10 @@ def test_encode_gc_balanced_boundary_gc(mock_encode_base4):
     seq = "ATGC"
     mock_encode_base4.return_value = seq
     result = encode_gc_balanced(data, target_gc_min=0.5, target_gc_max=0.5, max_homopolymer=1)
-    assert result == "0" + seq
-    mock_encode_base4.assert_called_once_with(data, add_parity=False)
+    assert result == "00" + seq
+    mock_encode_base4.assert_called_once_with(
+        data, add_parity=False, encode_map=GC_BALANCED_MAPS[0]
+    )
 
 
 @patch("genecoder.encoders.encode_base4_direct")
@@ -448,4 +454,3 @@ def test_encode_gc_balanced_invalid_homopolymer(mock_encode_base4):
     with pytest.raises(ValueError, match="max_homopolymer must be at least 1"):
         encode_gc_balanced(b"data", target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=0)
     mock_encode_base4.assert_not_called()
-

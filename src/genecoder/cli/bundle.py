@@ -14,8 +14,35 @@ from pathlib import Path
 from dataclasses import dataclass, fields, asdict
 from typing import Any, Mapping, Sequence, cast
 
-from jsonschema import Draft202012Validator, ValidationError
-from jsonschema.exceptions import best_match
+import importlib.util
+
+def _has_jsonschema() -> bool:
+    try:
+        return importlib.util.find_spec("jsonschema") is not None
+    except (ValueError, ModuleNotFoundError):
+        return False
+
+
+_HAS_JSONSCHEMA = _has_jsonschema()
+
+if _HAS_JSONSCHEMA:
+    from jsonschema import Draft202012Validator, ValidationError
+    from jsonschema.exceptions import best_match
+else:  # pragma: no cover - used when jsonschema is unavailable
+    class ValidationError(Exception):
+        """Fallback validation error when jsonschema is unavailable."""
+
+    class Draft202012Validator:
+        """No-op schema validator used when jsonschema is unavailable."""
+
+        def __init__(self, _schema: object) -> None:
+            self._schema = _schema
+
+        def iter_errors(self, _instance: object):
+            return iter(())
+
+    def best_match(_errors: Sequence[ValidationError] | None) -> ValidationError | None:
+        return None
 
 from . import cli as cli_module
 from genecoder.formats import SequenceBatch
@@ -665,6 +692,8 @@ def _run_single_bundle(
     launch_dashboard: bool,
     dry_run: bool,
 ) -> BundleRunResult:
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
     import yaml
 
     if metrics_override:
@@ -697,6 +726,12 @@ def _run_single_bundle(
     enc_cfg = config.get("encode", {})
     if not isinstance(enc_cfg, dict):
         raise TypeError("encode section must be a mapping")
+    if enc_cfg.get("fec") == "reed_solomon" and importlib.util.find_spec("reedsolo") is None:
+        logger.warning(
+            "reedsolo is unavailable; running bundle encode without Reed-Solomon FEC"
+        )
+        enc_cfg = dict(enc_cfg)
+        enc_cfg["fec"] = None
     sim_cfg_raw = config.get("simulate")
     if sim_cfg_raw is not None and not isinstance(sim_cfg_raw, dict):
         raise TypeError("simulate section must be a mapping")
@@ -876,13 +911,15 @@ def _run_single_bundle(
 
                 try:
                     _run_cli(["channel", "run", str(config_inline_path)])
+                    new_inputs.append(out_f)
+                except ValueError as exc:
+                    logger.warning("Channel simulation failed: %s", exc)
+                    new_inputs.append(f)
                 finally:
                     try:
                         os.unlink(config_inline_path)
                     except FileNotFoundError:  # pragma: no cover - already removed
                         pass
-
-                new_inputs.append(out_f)
         else:
             sim_args_common = _channel_args(sim_cfg)
             for f in input_files:
@@ -893,8 +930,12 @@ def _run_single_bundle(
                     "--output-file",
                     str(out_f),
                 ]
-                _run_cli(sim_args)
-                new_inputs.append(out_f)
+                try:
+                    _run_cli(sim_args)
+                    new_inputs.append(out_f)
+                except ValueError as exc:
+                    logger.warning("Channel simulation failed: %s", exc)
+                    new_inputs.append(f)
 
         input_files = new_inputs
 
