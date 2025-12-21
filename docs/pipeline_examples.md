@@ -83,19 +83,26 @@ jq '.metrics.oligo_metrics.dropout_flags' decoded_fountain.txt.json
 
 ```yaml
 # configs/rs_illumina_pipeline.yaml
-# Pipeline using Reed-Solomon FEC with the Illumina simulator.
+# Pipeline using GC-balanced encoding with Reed-Solomon FEC and the Illumina
+# simulator, keeping GC between 45–55% and homopolymers capped at 3 bp.
 encode:
   input_files:
     - examples/pipeline_demo_input.txt
-  method: base4_direct
+  method: gc_balanced
   fec: reed_solomon
 simulate:
   simulators:
     - illumina
+  synthesis:
+    gc_min: 0.45
+    gc_max: 0.55
+    max_homopolymer: 3
+    min_length: 25
+    max_length: 300
   pipeline:
-    illumina_profile: novaseq_s4
+    illumina_profile: hiseq
 decode:
-  method: base4_direct
+  method: gc_balanced
 ```
 
 Run the pipeline while capturing metrics:
@@ -115,7 +122,7 @@ to reproduce the same dropout and quality score sampling across runs.
 ```yaml
 # configs/gold.yaml
 # Gold-standard pipeline preset using GC-balanced encoding and Reed-Solomon FEC
-# with MiSeq-style Illumina simulation.
+# with MiSeq-style Illumina simulation and balanced synthesis constraints.
 encode:
   input_files:
     - tests/data/vertical_slice.txt
@@ -125,6 +132,12 @@ simulate:
   simulators:
     - name: insilicoseq
       profile: miseq
+  synthesis:
+    gc_min: 0.4
+    gc_max: 0.6
+    max_homopolymer: 3
+    min_length: 25
+    max_length: 300
   pipeline:
     illumina_profile: miseq
     coverage_distribution:
@@ -152,8 +165,8 @@ profile, coverage and read-length defaults baked into the preset.
 
 ```yaml
 # configs/fountain_nanopore_pipeline.yaml
-# Pipeline using GC-balanced (constraint-aware) encoding with Fountain FEC and
-# the Nanopore simulator to keep manifests within synthesis constraints.
+# Pipeline using GC-balanced encoding with Fountain FEC and the Nanopore
+# simulator, allowing broader GC and homopolymer bounds for droplet payloads.
 encode:
   input_files:
     - examples/pipeline_demo_input.txt
@@ -163,13 +176,13 @@ simulate:
   simulators:
     - nanopore
   synthesis:
-    gc_min: 0
-    gc_max: 1
-    max_homopolymer: 100
+    gc_min: 0.25
+    gc_max: 0.75
+    max_homopolymer: 18
     min_length: 25
     max_length: 600
   pipeline:
-    nanopore_profile: r10
+    nanopore_profile: r10.4
 decode:
   method: gc_balanced
 ```
@@ -311,4 +324,3 @@ genecli html-report --manifest simulated_multi_oligo.fasta.manifest.json \
   for Fountain codes or provide valid profile names like `hiseq` or `r10`.
 - **No metrics output** – pass `--metrics-path` to the command and ensure the path is writable
   before running the pipeline.
-

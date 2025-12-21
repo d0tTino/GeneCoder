@@ -3,8 +3,21 @@
 from __future__ import annotations
 
 import base64
+import importlib.util
 
-from cryptography.exceptions import InvalidSignature
+
+def _has_cryptography() -> bool:
+    try:
+        return importlib.util.find_spec("cryptography.exceptions") is not None
+    except (ValueError, ModuleNotFoundError):
+        return False
+
+
+if _has_cryptography():
+    from cryptography.exceptions import InvalidSignature
+else:  # pragma: no cover - exercised when cryptography is unavailable
+    class InvalidSignature(Exception):
+        """Fallback signature error when cryptography is unavailable."""
 
 from .security import compute_checksum as _compute_checksum
 

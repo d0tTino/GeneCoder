@@ -1,6 +1,5 @@
-# Pipeline using GC-balanced (constraint-aware) encoding with Fountain FEC and
-# the Nanopore simulator, keeping encoded payloads within synthesis constraints
-# for manifest generation.
+# Pipeline using GC-balanced encoding with Fountain FEC and the Nanopore
+# simulator, allowing broader GC and homopolymer bounds for droplet payloads.
 encode:
   input_files:
     - examples/pipeline_demo_input.txt
@@ -10,13 +9,12 @@ simulate:
   simulators:
     - nanopore
   synthesis:
-    gc_min: 0
-    gc_max: 1
-    max_homopolymer: 100
+    gc_min: 0.25
+    gc_max: 0.75
+    max_homopolymer: 18
     min_length: 25
     max_length: 600
   pipeline:
     nanopore_profile: r10.4
 decode:
   method: gc_balanced
-

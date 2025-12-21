@@ -29,6 +29,17 @@ DEFAULT_GC_MIN = 0.45
 DEFAULT_GC_MAX = 0.55
 DEFAULT_MAX_HOMOPOLYMER = 3
 
+GC_BALANCED_MAPS = [
+    {"00": "A", "01": "C", "10": "G", "11": "T"},
+    {"00": "A", "01": "C", "10": "T", "11": "G"},
+    {"00": "C", "01": "A", "10": "G", "11": "T"},
+    {"00": "C", "01": "A", "10": "T", "11": "G"},
+]
+
+GC_BALANCED_DECODE_MAPS = [
+    {v: k for k, v in mapping.items()} for mapping in GC_BALANCED_MAPS
+]
+
 
 def check_default_constraints(
     dna_sequence: str, suppress_warnings: bool = False
@@ -89,7 +100,9 @@ def calculate_gc_content(dna_sequence: str) -> float:
     return gc_count / len(dna_sequence)
 
 
-def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, max_homopolymer: int) -> str:
+def encode_gc_balanced(
+    data: bytes, target_gc_min: float, target_gc_max: float, max_homopolymer: int
+) -> str:
     """Encodes binary data into a DNA sequence with GC content and homopolymer constraints.
 
     Encoding Strategy:
@@ -120,35 +133,36 @@ def encode_gc_balanced(data: bytes, target_gc_min: float, target_gc_max: float, 
     if not data:
         return "0"
 
-    initial_sequence = cast(str, encode_base4_direct(data, add_parity=False))
-
-    gc_content_ok = target_gc_min <= calculate_gc_content(initial_sequence) <= target_gc_max
-    homopolymer_ok = not check_homopolymer_length(initial_sequence, max_homopolymer)
-
-    if gc_content_ok and homopolymer_ok:
-        # Prefix with ``"0"`` to indicate that the sequence is the direct
-        # encoding of ``data`` without any modifications.
-        return "0" + initial_sequence
-
-    # The sequence violates the constraints. As a simple remediation the
-    # bits of ``data`` are inverted using XOR with ``0xFF`` (bitwise NOT for
-    # each byte) and that modified payload is encoded instead.
-    modified_data = bytes(b ^ 0xFF for b in data)
-    alternative_sequence = cast(
-        str, encode_base4_direct(modified_data, add_parity=False)
-    )
-
-    alt_gc_ok = target_gc_min <= calculate_gc_content(alternative_sequence) <= target_gc_max
-    alt_homopolymer_ok = not check_homopolymer_length(alternative_sequence, max_homopolymer)
-    if not (alt_gc_ok and alt_homopolymer_ok):
-        logger.warning(
-            "Inverted sequence violates GC content or homopolymer constraints"
+    def _constraints_ok(sequence: str) -> bool:
+        return (
+            target_gc_min <= calculate_gc_content(sequence) <= target_gc_max
+            and not check_homopolymer_length(sequence, max_homopolymer)
         )
 
-    # ``"1"`` is prepended so the decoder knows to invert the bits again.
-    # A more sophisticated implementation could attempt multiple
-    # alternatives before falling back to this simple inversion.
-    return "1" + alternative_sequence
+    modified_data = bytes(b ^ 0xFF for b in data)
+
+    for idx, mapping in enumerate(GC_BALANCED_MAPS):
+        initial_sequence = cast(
+            str, encode_base4_direct(data, add_parity=False, encode_map=mapping)
+        )
+        if _constraints_ok(initial_sequence):
+            return f"0{idx}" + initial_sequence
+
+        alternative_sequence = cast(
+            str,
+            encode_base4_direct(modified_data, add_parity=False, encode_map=mapping),
+        )
+        if _constraints_ok(alternative_sequence):
+            return f"1{idx}" + alternative_sequence
+
+    logger.warning(
+        "Inverted sequence violates GC content or homopolymer constraints"
+    )
+    fallback_mapping = GC_BALANCED_MAPS[0]
+    fallback_sequence = cast(
+        str, encode_base4_direct(modified_data, add_parity=False, encode_map=fallback_mapping)
+    )
+    return "10" + fallback_sequence
 
 def decode_gc_balanced(
     dna_sequence: str,
@@ -196,16 +210,30 @@ def decode_gc_balanced(
     # first character is the actual payload.
     signal_bit = dna_sequence[0]
     payload_dna_sequence = dna_sequence[1:]
+    map_index = 0
+    if payload_dna_sequence and payload_dna_sequence[0].isdigit():
+        map_index = int(payload_dna_sequence[0])
+        payload_dna_sequence = payload_dna_sequence[1:]
+    if map_index >= len(GC_BALANCED_DECODE_MAPS):
+        raise ValueError(f"Invalid map index: {map_index}.")
 
     if not payload_dna_sequence: # Check if after removing signal bit, sequence is empty
         raise ValueError("Input DNA sequence is too short (only signal bit found, no payload).")
 
     if signal_bit == "0":
-        decoded_tuple = decode_base4_direct(payload_dna_sequence, check_parity=False)
+        decoded_tuple = decode_base4_direct(
+            payload_dna_sequence,
+            check_parity=False,
+            decode_map=GC_BALANCED_DECODE_MAPS[map_index],
+        )
         decoded_data = cast(Tuple[bytes, list[int]], decoded_tuple)[0]
     elif signal_bit == "1":
         # Decode the payload first
-        decoded_tuple = decode_base4_direct(payload_dna_sequence, check_parity=False)
+        decoded_tuple = decode_base4_direct(
+            payload_dna_sequence,
+            check_parity=False,
+            decode_map=GC_BALANCED_DECODE_MAPS[map_index],
+        )
         temp_decoded_data = cast(Tuple[bytes, list[int]], decoded_tuple)[0]
         # Then invert the bits of the decoded data
         decoded_data = bytes(b ^ 0xFF for b in temp_decoded_data)
@@ -218,25 +246,20 @@ def decode_gc_balanced(
     max_homopolymer_len = get_max_homopolymer_length(payload_dna_sequence)
 
     if expected_gc_min is not None and gc_content < expected_gc_min:
-        logger.warning(
-            "GC content %.2f%% below expected minimum %.2f%%",
-            gc_content * 100,
-            expected_gc_min * 100,
+        raise ValueError(
+            f"GC content {gc_content:.2%} below expected minimum {expected_gc_min:.2%}"
         )
     if expected_gc_max is not None and gc_content > expected_gc_max:
-        logger.warning(
-            "GC content %.2f%% above expected maximum %.2f%%",
-            gc_content * 100,
-            expected_gc_max * 100,
+        raise ValueError(
+            f"GC content {gc_content:.2%} above expected maximum {expected_gc_max:.2%}"
         )
     if (
         expected_max_homopolymer is not None
         and max_homopolymer_len > expected_max_homopolymer
     ):
-        logger.warning(
-            "Longest homopolymer length %d exceeds expected maximum %d",
-            max_homopolymer_len,
-            expected_max_homopolymer,
+        raise ValueError(
+            "Longest homopolymer length "
+            f"{max_homopolymer_len} exceeds expected maximum {expected_max_homopolymer}"
         )
 
     return decoded_data
