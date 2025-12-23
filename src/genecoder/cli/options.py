@@ -14,7 +14,7 @@ class ChannelOptions:
     """Options for the ``channel`` subcommand."""
 
     simulators: List[str]
-    constraints: Dict[str, int]
+    constraints: Dict[str, float | int]
     sub_prob: float = 0.0
     ins_prob: float = 0.0
     del_prob: float = 0.0
@@ -273,6 +273,9 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         raise ValueError("batch_workers must be greater than 0")
     if coverage_distribution is not None:
         coverage_distribution = dict(coverage_distribution)
+    if constraints:
+        constraints.setdefault("gc_min", 0.0)
+        constraints.setdefault("gc_max", 1.0)
     return ChannelOptions(
         simulators=simulators,
         constraints=constraints,

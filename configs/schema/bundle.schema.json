@@ -43,7 +43,10 @@
             "bch",
             "raptorq"
           ]
-        }
+        },
+        "gc_min": {"type": "number", "minimum": 0, "maximum": 1},
+        "gc_max": {"type": "number", "minimum": 0, "maximum": 1},
+        "max_homopolymer": {"type": "integer", "minimum": 1}
       }
     },
     "decode": {

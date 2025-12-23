@@ -4,7 +4,6 @@ from genecoder.constraint_fixer import fix_sequence
 from genecoder.random_utils import reset_rng
 from genecoder.encoders import encode_base4_direct, decode_base4_direct
 from genecoder.simulators.illumina import IlluminaChannel
-import pytest
 
 import genecoder.simulators.nanopore as nanopore
 import genecoder.simulators.nanopore_external as nanopore_external
@@ -29,7 +28,10 @@ def _noop_patch(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _nanopore_patch(monkeypatch: pytest.MonkeyPatch) -> None:
-    fallback = lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("fallback"))
+
+    def fallback(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("fallback")
+
     monkeypatch.setattr(nanopore_external, "run_dnarsim_cli", fallback)
     monkeypatch.setattr(nanopore, "run_dnarsim_cli", fallback)
 

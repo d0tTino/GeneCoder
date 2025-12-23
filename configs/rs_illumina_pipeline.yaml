@@ -1,5 +1,5 @@
 # Pipeline using GC-balanced encoding with Reed-Solomon FEC and the Illumina
-# simulator, keeping GC between 45–55% and homopolymers capped at 3 bp.
+# simulator, matching default synthesis constraints (45–55% GC, ≤3 bp homopolymers).
 encode:
   input_files:
     - examples/pipeline_demo_input.txt
