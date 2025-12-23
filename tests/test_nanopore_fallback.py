@@ -1,5 +1,4 @@
 
-import genecoder.simulators.nanopore as nanopore
 import genecoder.simulators.nanopore_external as nanopore_external
 from genecoder.simulators.nanopore import NanoporeDNArSimChannel
 

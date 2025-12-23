@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import random
-import random
 from pathlib import Path
 from typing import Mapping
 
@@ -101,7 +100,10 @@ def test_fountain_nanopore_pipeline(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("GENECODER_SIM_SEED", "1")
-    fallback = lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("fallback"))
+
+    def fallback(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("fallback")
+
     monkeypatch.setattr(nanopore_external, "run_dnarsim_cli", fallback)
     monkeypatch.setattr(nanopore, "run_dnarsim_cli", fallback)
 

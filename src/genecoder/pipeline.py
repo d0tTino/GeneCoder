@@ -17,7 +17,6 @@ from .simulators.batch_utils import (
     RESULT_MUTATION_TOTALS_KEY,
 )
 from . import core
-from .simulators.batch_utils import RESULT_COVERAGE_KEY, RESULT_DROPOUT_FLAG_KEY
 
 __all__ = ["SequencePipeline", "run_pipeline"]
 
@@ -281,4 +280,3 @@ def run_pipeline(
             channel_report["dropout"]["fraction"] = dropout_count / max(1, len(dropout_flags))
 
     return decoded, metrics_dict, fec_info
-

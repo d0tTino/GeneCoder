@@ -3,10 +3,7 @@ from __future__ import annotations
 import random
 
 from genecoder.simulators.illumina import IlluminaChannel
-from genecoder.simulators.nanopore import (
-    NanoporeChannel,
-    NanoporeDNArSimChannel,
-)
+from genecoder.simulators.nanopore import NanoporeChannel
 from genecoder.simulators.nanopore_batch import mutate_read
 from genecoder.simulators.nanopore_external import simulate_simple_model
 

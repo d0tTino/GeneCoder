@@ -27,7 +27,6 @@ from genecoder.error_simulation import (
     DEFAULT_ADAPTER_PROFILE,
     INDEL_PROFILES,
 )
-from genecoder.simulators.decay import DegradationChannel
 from genecoder.simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
     RESULT_DROPOUT_FLAG_KEY,
@@ -174,10 +173,30 @@ def _load_config(
         "seed": data.get("seed"),
         "batch_workers": data.get("batch_workers"),
     }
+    decay_section = data.get("decay")
+    if isinstance(decay_section, dict):
+        half_life = float(decay_section.get("half_life", 0.0) or 0.0)
+        variation = float(decay_section.get("variation", 0.0) or 0.0)
+        if half_life > 0.0:
+            decay_rate = 1.0 - 0.5 ** (1.0 / half_life)
+            decay_rate *= 1.0 + variation
+            extra["decay_rate"] = min(max(decay_rate, 0.0), 1.0)
     if "decay_rate" in data:
         extra["decay_rate"] = float(data["decay_rate"])
 
-    return simulators, {k: int(v) for k, v in synth_section.items()}, cfg, extra
+    constraints: dict[str, float | int] = {}
+    for key, value in synth_section.items():
+        if key in {"min_length", "max_length", "max_homopolymer"}:
+            constraints[key] = int(value)
+        elif key in {"gc_min", "gc_max"}:
+            constraints[key] = float(value)
+        else:
+            constraints[key] = value
+    if constraints:
+        constraints.setdefault("gc_min", 0.0)
+        constraints.setdefault("gc_max", 1.0)
+
+    return simulators, constraints, cfg, extra
 
 
 def _load_profile_file(path: str) -> Dict[str, Any]:
@@ -228,8 +247,7 @@ def _apply_simulators(
                 stage_info["parameters"] = params_view
             if options:
                 stage_info["options"] = options
-            if any(key in stage_info for key in ("stage", "parameters", "options")):
-                stages.append(stage_info)
+            stages.append(stage_info)
         else:
             name, params = item
             if name not in SIMULATOR_REGISTRY:
@@ -256,8 +274,7 @@ def _apply_simulators(
             except Exception as exc:
                 logger.error("Invalid parameters for %s: %s", name, exc)
                 raise SystemExit(1)
-            if any(key in stage_info for key in ("stage", "parameters", "options")):
-                stages.append(stage_info)
+            stages.append(stage_info)
         channels.append(channel)
         logger.info("Applied %s simulator", name)
     pipeline = ChannelPipeline(channels)
@@ -412,7 +429,7 @@ def process_channel(
     input_file: str,
     output_file: str,
     simulators: Sequence[BaseChannel | tuple[str, Dict[str, Any]]],
-    constraints: dict[str, int],
+    constraints: dict[str, float | int],
     *,
     sub_prob: float = 0.0,
     ins_prob: float = 0.0,
@@ -834,7 +851,7 @@ def run_channel(args: argparse.Namespace) -> None:
         simulators = [(name, {}) for name in opts.simulators]
 
     if opts.decay_rate is not None:
-        simulators.append(DegradationChannel(deletion_prob=opts.decay_rate))
+        simulators.append(("decay", {"deletion_prob": opts.decay_rate}))
 
     updated: list[tuple[str, dict[str, object]]] = []
     for name, params in simulators:
@@ -989,7 +1006,7 @@ def _handle_run(args: argparse.Namespace) -> None:
 
     decay_rate = args.decay_rate if args.decay_rate is not None else extra.get("decay_rate")
     if decay_rate is not None:
-        simulators.append(DegradationChannel(deletion_prob=decay_rate))
+        simulators.append(("decay", {"deletion_prob": decay_rate}))
 
     process_channel(
         input_file,

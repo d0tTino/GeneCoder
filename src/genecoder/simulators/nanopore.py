@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Iterable, Mapping, Sequence, cast
 from copy import deepcopy
 from types import ModuleType
-import json
 import random
 from pathlib import Path
 
@@ -15,15 +14,9 @@ from ..api import Simulator
 from ..formats import SequenceBatch
 from . import register_simulator as _register_simulator
 from .base import BaseChannel
-from .nanopore_batch import (
-    mutate_read as _mutate_read,
-    mutate_read_jit as _mutate_read_jit,
-    consensus as _consensus,
-    simulate_batch as _simulate_batch_impl,
-)
+from .nanopore_batch import mutate_read_jit as _mutate_read_jit, simulate_batch as _simulate_batch_impl
 from .nanopore_external import run_dnarsim_cli, simulate_simple_model as _simulate_fallback_jit
 from .nanopore_profiles import (
-    BASE_PROFILE_KEYS as _BASE_PROFILE_KEYS,
     load_yaml_data as _load_yaml_data,
     merge_profiles as _merge_profiles,
     parse_context_overrides as _parse_context_overrides,
@@ -34,6 +27,7 @@ from .nanopore_profiles import (
     validate_indel_profile as _validate_indel_profile,
     validate_rate as _validate_rate,
 )
+from .batch_utils import load_coverage_distribution
 
 __all__ = [
     "NanoporeChannel",
@@ -42,6 +36,7 @@ __all__ = [
     "register",
     "NANOPORE_PROFILES",
     "DNARSIM_RATE_TABLES",
+    "load_coverage_distribution",
 ]
 
 # ---------------------------------------------------------------------------
@@ -593,4 +588,3 @@ def register(
     registrar("nanopore_d2sim", NanoporeChannel())
     registrar("nanopore_desp", NanoporeDeSPChannel())
     registrar("nanopore_dnarsim", NanoporeDNArSimChannel())
-

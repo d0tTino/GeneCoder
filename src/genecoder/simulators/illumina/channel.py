@@ -151,6 +151,8 @@ class IlluminaChannel(BaseSimulator):
     def _consensus(reads: Sequence[str]) -> str:
         return consensus(reads)
 
+    _simulate_batch = staticmethod(_simulate_batch)
+
     def simulate(self, sequence: str | SequenceBatch) -> str | SequenceBatch:
         if isinstance(sequence, SequenceBatch):
             return _simulate_batch(self, sequence)
