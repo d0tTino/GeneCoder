@@ -276,6 +276,8 @@ def _update_entry_point_metadata(entry_name: str, module: ModuleType) -> None:
     try:
         meta = _validate_plugin_metadata(getattr(module, "PLUGIN_METADATA", None))
     except Exception as exc:
+        cached = _ENTRY_POINT_METADATA.setdefault(entry_name, {})
+        cached["invalid"] = True
         logger.warning("Incompatible plugin %s: %s", entry_name, exc)
         cached = _ENTRY_POINT_METADATA.setdefault(entry_name, {})
         cached["invalid_metadata"] = True
@@ -818,6 +820,8 @@ def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
             _update_entry_point_metadata(entry_name, module)
 
     for cached in _ENTRY_POINT_METADATA.values():
+        if cached.get("invalid"):
+            continue
         entry_name = str(cached.get("entry_name") or "")
         plugin_name = str(cached.get("metadata_name") or entry_name)
         if cached.get("invalid_metadata") or not plugin_name:
@@ -896,6 +900,8 @@ def load_entry_point_plugins() -> list[str]:
     for loaders in _ENTRY_POINT_LOADERS.values():
         loaders.clear()
     offline = bool(os.getenv("GENECODER_OFFLINE"))
+
+    lazy_load = bool(os.getenv("GENECODER_OFFLINE"))
 
     groups: dict[str, tuple[Callable[..., Any], str]] = {
         "genecoder.plugins": (register_codec, "codec"),

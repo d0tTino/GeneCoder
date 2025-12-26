@@ -155,8 +155,11 @@ class IlluminaChannel(BaseSimulator):
 
     def simulate(self, sequence: str | SequenceBatch) -> str | SequenceBatch:
         if isinstance(sequence, SequenceBatch):
-            return _simulate_batch(self, sequence)
+            return self._simulate_batch(sequence)
         return self._simulate_string(sequence)
+
+    def _simulate_batch(self, batch: SequenceBatch) -> SequenceBatch:
+        return _simulate_batch(self, batch)
 
     def _simulate_string(self, sequence: str) -> str:
         rng = make_rng()

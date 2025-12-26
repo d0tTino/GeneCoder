@@ -9,6 +9,7 @@ simulate:
   simulators:
     - name: insilicoseq
       profile: miseq
+      error_rate: 0.0
   synthesis:
     gc_min: 0.4
     gc_max: 0.6

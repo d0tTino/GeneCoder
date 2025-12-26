@@ -16,6 +16,7 @@ from .utils import get_max_homopolymer_length
 from .plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
 from .random_utils import reset_rng
 from .simulators import SIMULATOR_REGISTRY
+from .random_utils import reset_rng
 from .formats import SequenceBatch, SequenceOligo
 from .simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
@@ -273,6 +274,8 @@ def simulate(
     if channel and channel != "none":
         if channel not in SIMULATOR_REGISTRY:
             raise ValueError(f"Unknown channel: {channel}")
+        if os.getenv("GENECODER_SIM_SEED") is not None:
+            reset_rng()
         sim = SIMULATOR_REGISTRY[channel]
         result = sim.simulate(original_batch)
         mutated_batch = (
@@ -355,12 +358,15 @@ def decode(
                 continue
             filtered.append(oligo)
         if len(filtered) != len(dna.oligos):
-            batch = SequenceBatch(
-                batch_id=dna.batch_id,
-                metadata=dict(dna.metadata),
-                seed=dna.seed,
-                oligos=list(filtered),
-            )
+            if filtered:
+                batch = SequenceBatch(
+                    batch_id=dna.batch_id,
+                    metadata=dict(dna.metadata),
+                    seed=dna.seed,
+                    oligos=list(filtered),
+                )
+            else:
+                batch = dna
     if survivor_batch is None and isinstance(dna, SequenceBatch):
         survivor_batch = dna
     decode_fn = CODEC_REGISTRY[codec]["decode"]

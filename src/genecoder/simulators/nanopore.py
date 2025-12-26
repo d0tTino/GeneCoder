@@ -33,6 +33,7 @@ __all__ = [
     "NanoporeChannel",
     "NanoporeDeSPChannel",
     "NanoporeDNArSimChannel",
+    "load_coverage_distribution",
     "register",
     "NANOPORE_PROFILES",
     "DNARSIM_RATE_TABLES",

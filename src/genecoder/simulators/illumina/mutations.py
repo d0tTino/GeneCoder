@@ -41,6 +41,9 @@ def _mutate_read_jit(
     ins = 0
     dels = 0
     for idx, nt in enumerate(read):
+        if nt.upper() not in NUCLEOTIDES:
+            mutated.append(nt)
+            continue
         if rng.random() < deletion_rate:
             dels += 1
             continue

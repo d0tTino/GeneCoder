@@ -10,7 +10,6 @@ import random
 import shlex
 from pathlib import Path
 from typing import Sequence, Dict, Any, Mapping
-from difflib import SequenceMatcher
 
 
 from genecoder.formats import SequenceBatch
@@ -142,6 +141,10 @@ def _load_config(
     synth_section = data.get("synthesis", data.get("constraints", {}))
     if not isinstance(synth_section, dict):
         raise ValueError("'synthesis' must be a mapping")
+
+    decay_section = data.get("decay")
+    if decay_section is not None and not isinstance(decay_section, dict):
+        raise ValueError("'decay' must be a mapping")
 
     pipeline = data.get("pipeline", {})
     if not isinstance(pipeline, dict):
@@ -414,14 +417,33 @@ def _simulate_probabilities(
 def _count_errors(original: str, mutated: str) -> tuple[int, int, int]:
     """Return substitution, insertion and deletion counts."""
     subs = ins = dels = 0
-    sm = SequenceMatcher(None, original, mutated)
-    for tag, i1, i2, j1, j2 in sm.get_opcodes():
-        if tag == "replace":
-            subs += max(i2 - i1, j2 - j1)
-        elif tag == "delete":
-            dels += i2 - i1
-        elif tag == "insert":
-            ins += j2 - j1
+    i = j = 0
+    orig_len = len(original)
+    mut_len = len(mutated)
+    if orig_len == mut_len:
+        subs = sum(1 for a, b in zip(original, mutated) if a != b)
+        return subs, 0, 0
+    while i < orig_len and j < mut_len:
+        if original[i] == mutated[j]:
+            i += 1
+            j += 1
+            continue
+        if j + 1 < mut_len and original[i] == mutated[j + 1]:
+            ins += 1
+            j += 1
+            continue
+        if i + 1 < orig_len and original[i + 1] == mutated[j]:
+            dels += 1
+            i += 1
+            continue
+        subs += 1
+        i += 1
+        j += 1
+
+    if i < orig_len:
+        dels += orig_len - i
+    if j < mut_len:
+        ins += mut_len - j
     return subs, ins, dels
 
 
@@ -456,9 +478,14 @@ def process_channel(
         raise SystemExit(1)
 
     synth: SynthesisConstraints | None
-    if constraints:
+    normalized_constraints = dict(constraints)
+    if normalized_constraints:
+        normalized_constraints.setdefault("gc_min", 0.0)
+        normalized_constraints.setdefault("gc_max", 1.0)
+
+    if normalized_constraints:
         try:
-            synth = SynthesisConstraints(**constraints)
+            synth = SynthesisConstraints(**normalized_constraints)
         except ValueError:
             synth = SynthesisConstraints()
     else:

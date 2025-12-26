@@ -185,8 +185,8 @@ def test_decode_gc_balanced_with_inversion():
 @pytest.mark.parametrize("invalid_sequence, error_message_match", [
     ("", "Input DNA sequence is too short to decode (missing signal bit)."),
     ("1", "Input DNA sequence is too short (only signal bit found, no payload)."),
-    ("2ATGC", "Invalid signal bit: '2'. Expected '0' or '1'."),
-    ("AATGC", "Invalid signal bit: 'A'. Expected '0' or '1'."), # Another invalid signal bit
+    ("2ATGC", "Masked sequence missing XOR key"),
+    ("AATGC", "Invalid signal bit: 'A'. Expected '0', '1', or '2'."), # Another invalid signal bit
 ])
 def test_decode_gc_balanced_error_cases(invalid_sequence, error_message_match):
     with pytest.raises(ValueError, match=re.escape(error_message_match)):
