@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-from typing import Any, Iterable, Iterator, List, Tuple
+from typing import Iterable, Iterator, List, Tuple
 
 
 class YAMLError(Exception):
@@ -56,7 +56,7 @@ def _strip_inline_comment(value: str) -> str:
     return value
 
 
-def _coerce_scalar(value: str) -> Any:
+def _coerce_scalar(value: str) -> object:
     cleaned = _strip_inline_comment(value).strip()
     if not cleaned:
         return ""
@@ -94,7 +94,7 @@ def _is_list_item(content: str) -> bool:
     return content == "-" or content.startswith("- ")
 
 
-def _parse_block(lines: List[_Line], start: int, indent: int) -> Tuple[Any, int]:
+def _parse_block(lines: List[_Line], start: int, indent: int) -> Tuple[object, int]:
     if start >= len(lines):
         return {}, start
     if lines[start].indent < indent:
@@ -102,7 +102,7 @@ def _parse_block(lines: List[_Line], start: int, indent: int) -> Tuple[Any, int]
 
     is_list = _is_list_item(lines[start].content)
     if is_list:
-        items: List[Any] = []
+        items: List[object] = []
         index = start
         while index < len(lines):
             line = lines[index]
@@ -119,7 +119,7 @@ def _parse_block(lines: List[_Line], start: int, indent: int) -> Tuple[Any, int]
                 key, _, remainder = item_content.partition(":")
                 key = key.strip()
                 remainder = remainder.strip()
-                item_map: dict[str, Any] = {}
+                item_map: dict[str, object] = {}
                 if remainder:
                     item_map[key] = _coerce_scalar(remainder)
                     index += 1
@@ -139,7 +139,7 @@ def _parse_block(lines: List[_Line], start: int, indent: int) -> Tuple[Any, int]
                 index += 1
         return items, index
 
-    mapping: dict[str, Any] = {}
+    mapping: dict[str, object] = {}
     index = start
     while index < len(lines):
         line = lines[index]
@@ -163,7 +163,31 @@ def _parse_block(lines: List[_Line], start: int, indent: int) -> Tuple[Any, int]
     return mapping, index
 
 
-def safe_load(stream: Any) -> Any:
+def _has_unbalanced_brackets(text: str) -> bool:
+    stack: list[str] = []
+    in_quotes = False
+    quote_char = ""
+    for char in text:
+        if char in {"'", '"'}:
+            if not in_quotes:
+                in_quotes = True
+                quote_char = char
+            elif quote_char == char:
+                in_quotes = False
+        if in_quotes:
+            continue
+        if char in {"[", "{"}:
+            stack.append(char)
+        elif char in {"]", "}"}:
+            if not stack:
+                return True
+            opener = stack.pop()
+            if (opener == "[" and char != "]") or (opener == "{" and char != "}"):
+                return True
+    return bool(stack)
+
+
+def safe_load(stream: object) -> object:
     if hasattr(stream, "read"):
         text = stream.read()
     else:
@@ -175,6 +199,8 @@ def safe_load(stream: Any) -> Any:
         return json.loads(stripped)
     except json.JSONDecodeError:
         pass
+    if _has_unbalanced_brackets(text):
+        raise YAMLError("Invalid YAML: unbalanced brackets")
     lines = list(_iter_lines(text))
     if not lines:
         return {}
@@ -182,7 +208,7 @@ def safe_load(stream: Any) -> Any:
     return parsed
 
 
-def _dump_mapping(mapping: dict[str, Any], indent: int, lines: List[str]) -> None:
+def _dump_mapping(mapping: dict[str, object], indent: int, lines: List[str]) -> None:
     pad = " " * indent
     for key, value in mapping.items():
         if isinstance(value, dict):
@@ -195,7 +221,7 @@ def _dump_mapping(mapping: dict[str, Any], indent: int, lines: List[str]) -> Non
             lines.append(f"{pad}{key}: {_format_scalar(value)}")
 
 
-def _dump_list(items: Iterable[Any], indent: int, lines: List[str]) -> None:
+def _dump_list(items: Iterable[object], indent: int, lines: List[str]) -> None:
     pad = " " * indent
     for item in items:
         if isinstance(item, dict):
@@ -208,7 +234,7 @@ def _dump_list(items: Iterable[Any], indent: int, lines: List[str]) -> None:
             lines.append(f"{pad}- {_format_scalar(item)}")
 
 
-def _format_scalar(value: Any) -> str:
+def _format_scalar(value: object) -> str:
     if value is None:
         return "null"
     if isinstance(value, bool):
@@ -222,8 +248,8 @@ def _format_scalar(value: Any) -> str:
 
 
 def safe_dump(
-    data: Any,
-    stream: Any | None = None,
+    data: object,
+    stream: object | None = None,
     sort_keys: bool = True,
 ) -> str | None:
     if isinstance(stream, bool):

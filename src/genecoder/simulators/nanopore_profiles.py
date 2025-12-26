@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from typing import Any, Dict, Mapping, MutableMapping, Tuple
+from typing import Dict, Mapping, MutableMapping, Tuple
 
 try:  # Optional dependency in minimal environments
     import yaml as _yaml  # type: ignore[import]
@@ -42,7 +42,7 @@ def _coerce_key(value: str) -> str | int:
         return value
 
 
-def _coerce_scalar(value: str) -> Any:
+def _coerce_scalar(value: str) -> object:
     lower = value.lower()
     if lower in {"null", "none", "~"}:
         return None
@@ -67,11 +67,11 @@ def _coerce_scalar(value: str) -> Any:
         return value.strip("'\"")
 
 
-def _parse_simple_yaml(text: str) -> Any:
+def _parse_simple_yaml(text: str) -> object:
     """Parse a minimal subset of YAML when PyYAML is unavailable."""
 
-    root: MutableMapping[str | int, Any] = {}
-    stack: list[Tuple[MutableMapping[str | int, Any], int]] = [(root, -1)]
+    root: MutableMapping[str | int, object] = {}
+    stack: list[Tuple[MutableMapping[str | int, object], int]] = [(root, -1)]
 
     for raw_line in text.splitlines():
         if not raw_line.strip() or raw_line.lstrip().startswith("#"):
@@ -90,7 +90,7 @@ def _parse_simple_yaml(text: str) -> Any:
         current, _ = stack[-1]
 
         if not value:
-            new_map: MutableMapping[str | int, Any] = {}
+            new_map: MutableMapping[str | int, object] = {}
             current[key] = new_map
             stack.append((new_map, indent))
             continue
@@ -100,7 +100,7 @@ def _parse_simple_yaml(text: str) -> Any:
     return root
 
 
-def load_yaml_data(text: str, yaml_module: Any | None = None) -> Any:
+def load_yaml_data(text: str, yaml_module: object | None = None) -> object:
     """Return parsed YAML data with graceful fallback when PyYAML is missing."""
 
     yaml_mod = yaml_module or _yaml
@@ -164,7 +164,7 @@ def validate_context_profiles(
 
 
 def split_context_indels(
-    profiles: Mapping[str, Mapping[Any, Any]] | None,
+    profiles: Mapping[str, Mapping[object, object]] | None,
     name: str,
 ) -> tuple[Dict[str, Dict[int, float]], Dict[str, Dict[int, float]]]:
     """Normalise combined context indel definitions.
@@ -245,10 +245,10 @@ def split_context_indels(
     return ctx_ins, ctx_del
 
 
-def parse_profile(params: Mapping[str, Any]) -> dict[str, Any]:
+def parse_profile(params: Mapping[str, object]) -> dict[str, object]:
     """Return a validated profile dictionary from ``params``."""
 
-    parsed: dict[str, Any] = {}
+    parsed: dict[str, object] = {}
     for key, value in params.items():
         if key in {"insertion_profile", "deletion_profile"}:
             prof = value if isinstance(value, Mapping) else None
@@ -272,7 +272,7 @@ def parse_profile(params: Mapping[str, Any]) -> dict[str, Any]:
     return parsed
 
 
-def parse_context_overrides(params: Mapping[str, Any], name: str) -> dict[str, Any]:
+def parse_context_overrides(params: Mapping[str, object], name: str) -> dict[str, object]:
     """Return context overrides without the base-rate fields."""
 
     parsed = parse_profile(params)
@@ -284,10 +284,10 @@ def parse_context_overrides(params: Mapping[str, Any], name: str) -> dict[str, A
     return parsed
 
 
-def merge_profiles(base: Mapping[str, Any], overrides: Mapping[str, Any]) -> dict[str, Any]:
+def merge_profiles(base: Mapping[str, object], overrides: Mapping[str, object]) -> dict[str, object]:
     """Merge two profile dictionaries, deep-copying nested mappings."""
 
-    merged: dict[str, Any] = {}
+    merged: dict[str, object] = {}
     for key, value in base.items():
         if isinstance(value, Mapping):
             merged[key] = {k: deepcopy(v) for k, v in value.items()}
@@ -315,10 +315,10 @@ def merge_profiles(base: Mapping[str, Any], overrides: Mapping[str, Any]) -> dic
     return merged
 
 
-def parse_rate_table(tbl: Mapping[str, Any]) -> dict[str, Any]:
+def parse_rate_table(tbl: Mapping[str, object]) -> dict[str, object]:
     """Parse a DNArSim rate table definition."""
 
-    parsed: dict[str, Any] = {
+    parsed: dict[str, object] = {
         "substitution_rate": float(tbl.get("substitution_rate", 0.0)),
         "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
         "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
@@ -352,4 +352,3 @@ def parse_rate_table(tbl: Mapping[str, Any]) -> dict[str, Any]:
         if ctx_del:
             parsed.setdefault("context_deletions", {}).update(ctx_del)
     return parsed
-

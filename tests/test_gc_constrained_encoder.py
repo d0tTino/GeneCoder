@@ -331,10 +331,7 @@ def test_get_max_homopolymer_length_single_char():
 def test_encode_gc_balanced_both_fail_picks_alternative(mock_encode_base4, caplog):
 
     dummy_data = b"test"
-    inverted_dummy_data = bytes(b ^ 0xFF for b in dummy_data)
-    
     initial_sequence = "AAAAAAAA" # Fails GC and Homopolymer
-    alternative_sequence = "TTTTTTTT" # Also Fails GC and Homopolymer (but different seq)
 
     mock_encode_base4.return_value = initial_sequence
 

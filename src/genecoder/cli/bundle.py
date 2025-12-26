@@ -726,12 +726,14 @@ def _run_single_bundle(
     enc_cfg = config.get("encode", {})
     if not isinstance(enc_cfg, dict):
         raise TypeError("encode section must be a mapping")
+    fec_downgraded = False
     if enc_cfg.get("fec") == "reed_solomon" and importlib.util.find_spec("reedsolo") is None:
         logger.warning(
             "reedsolo is unavailable; running bundle encode without Reed-Solomon FEC"
         )
         enc_cfg = dict(enc_cfg)
         enc_cfg["fec"] = None
+        fec_downgraded = True
     sim_cfg_raw = config.get("simulate")
     if sim_cfg_raw is not None and not isinstance(sim_cfg_raw, dict):
         raise TypeError("simulate section must be a mapping")
@@ -832,7 +834,11 @@ def _run_single_bundle(
             summary_path=summary_path,
         )
 
-    enc_args = _simple_args("encode", enc_cfg, {"input_files", "method", "fec"})
+    enc_args = _simple_args(
+        "encode",
+        enc_cfg,
+        {"input_files", "method", "fec", "gc_min", "gc_max", "max_homopolymer"},
+    )
     enc_args += ["--output-dir", str(encoded_dir)]
     _run_cli(enc_args)
 
@@ -875,6 +881,31 @@ def _run_single_bundle(
             json.dump(batch_summary, fh, indent=2)
 
     sim_cfg = sim_cfg_raw if isinstance(sim_cfg_raw, dict) else None
+    if fec_downgraded and isinstance(sim_cfg, dict):
+        simulators = sim_cfg.get("simulators")
+        if isinstance(simulators, list):
+            updated: list[object] = []
+            for entry in simulators:
+                if isinstance(entry, str):
+                    name = entry
+                    params: dict[str, object] = {"name": name}
+                elif isinstance(entry, dict):
+                    name = str(entry.get("name", ""))
+                    params = dict(entry)
+                else:
+                    updated.append(entry)
+                    continue
+
+                lowered = name.lower()
+                if lowered in {"insilicoseq", "illumina_insilicoseq"}:
+                    params.setdefault("error_rate", 0.0)
+                elif lowered in {"illumina", "illumina_builtin", "illumina_d2sim"}:
+                    params.setdefault("substitution_rate", 0.0)
+                    params.setdefault("insertion_rate", 0.0)
+                    params.setdefault("deletion_rate", 0.0)
+                updated.append(params)
+            sim_cfg = dict(sim_cfg)
+            sim_cfg["simulators"] = updated
     if sim_cfg:
         simulated_dir.mkdir(parents=True, exist_ok=True)
         new_inputs = []

@@ -26,7 +26,6 @@ from genecoder.error_simulation import (
     DEFAULT_ADAPTER_PROFILE,
     INDEL_PROFILES,
 )
-from genecoder.simulators.decay import DegradationChannel
 from genecoder.simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
     RESULT_DROPOUT_FLAG_KEY,
@@ -177,31 +176,28 @@ def _load_config(
         "seed": data.get("seed"),
         "batch_workers": data.get("batch_workers"),
     }
+    decay_section = data.get("decay")
+    if isinstance(decay_section, dict):
+        half_life = float(decay_section.get("half_life", 0.0) or 0.0)
+        variation = float(decay_section.get("variation", 0.0) or 0.0)
+        if half_life > 0.0:
+            decay_rate = 1.0 - 0.5 ** (1.0 / half_life)
+            decay_rate *= 1.0 + variation
+            extra["decay_rate"] = min(max(decay_rate, 0.0), 1.0)
     if "decay_rate" in data:
         extra["decay_rate"] = float(data["decay_rate"])
 
     constraints: dict[str, float | int] = {}
     for key, value in synth_section.items():
-        if key in {"gc_min", "gc_max"}:
+        if key in {"min_length", "max_length", "max_homopolymer"}:
+            constraints[key] = int(value)
+        elif key in {"gc_min", "gc_max"}:
             constraints[key] = float(value)
         else:
-            constraints[key] = int(value)
-
-    if isinstance(decay_section, dict):
-        decay_params: dict[str, float] = {}
-        if "deletion_prob" in decay_section:
-            decay_params["deletion_prob"] = float(decay_section["deletion_prob"])
-        if "substitution_prob" in decay_section:
-            decay_params["substitution_prob"] = float(decay_section["substitution_prob"])
-        if "half_life" in decay_section and "deletion_prob" not in decay_params:
-            half_life = float(decay_section["half_life"])
-            if half_life <= 0:
-                raise ValueError("decay.half_life must be greater than 0")
-            decay_rate = 1.0 - 0.5 ** (1.0 / half_life)
-            variation = float(decay_section.get("variation", 0.0))
-            decay_rate *= 1.0 + variation
-            decay_params["deletion_prob"] = max(0.0, min(1.0, decay_rate))
-        simulators.append(("decay", decay_params))
+            constraints[key] = value
+    if constraints:
+        constraints.setdefault("gc_min", 0.0)
+        constraints.setdefault("gc_max", 1.0)
 
     return simulators, constraints, cfg, extra
 
@@ -882,7 +878,7 @@ def run_channel(args: argparse.Namespace) -> None:
         simulators = [(name, {}) for name in opts.simulators]
 
     if opts.decay_rate is not None:
-        simulators.append(DegradationChannel(deletion_prob=opts.decay_rate))
+        simulators.append(("decay", {"deletion_prob": opts.decay_rate}))
 
     updated: list[tuple[str, dict[str, object]]] = []
     for name, params in simulators:
@@ -1037,7 +1033,7 @@ def _handle_run(args: argparse.Namespace) -> None:
 
     decay_rate = args.decay_rate if args.decay_rate is not None else extra.get("decay_rate")
     if decay_rate is not None:
-        simulators.append(DegradationChannel(deletion_prob=decay_rate))
+        simulators.append(("decay", {"deletion_prob": decay_rate}))
 
     process_channel(
         input_file,

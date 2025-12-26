@@ -14,6 +14,7 @@ from .gc_constrained_encoder import calculate_gc_content
 from .utils import get_max_homopolymer_length
 
 from .plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
+from .random_utils import reset_rng
 from .simulators import SIMULATOR_REGISTRY
 from .random_utils import reset_rng
 from .formats import SequenceBatch, SequenceOligo
@@ -90,36 +91,48 @@ def _levenshtein_counts(original: str, mutated: str) -> tuple[int, int, int]:
                 return str(op.tag)
 
         except Exception:
-            orig_len = len(original)
-            mut_len = len(mutated)
-            if orig_len == mut_len:
-                subs = sum(1 for a, b in zip(original, mutated) if a != b)
-                return subs, 0, 0
+            import difflib
 
-            subs = ins = dels = 0
-            i = j = 0
-            while i < orig_len and j < mut_len:
-                if original[i] == mutated[j]:
-                    i += 1
-                    j += 1
-                    continue
-                if j + 1 < mut_len and original[i] == mutated[j + 1]:
-                    ins += 1
-                    j += 1
-                    continue
-                if i + 1 < orig_len and original[i + 1] == mutated[j]:
-                    dels += 1
-                    i += 1
-                    continue
-                subs += 1
-                i += 1
-                j += 1
+            def _trim_common_affixes(left: str, right: str) -> tuple[str, str]:
+                min_len = min(len(left), len(right))
+                start = 0
+                while start < min_len and left[start] == right[start]:
+                    start += 1
+                if start == len(left) and start == len(right):
+                    return "", ""
+                end = 0
+                while end < min_len - start and left[-1 - end] == right[-1 - end]:
+                    end += 1
+                left_mid = left[start : len(left) - end if end else len(left)]
+                right_mid = right[start : len(right) - end if end else len(right)]
+                return left_mid, right_mid
 
-            if i < orig_len:
-                dels += orig_len - i
-            if j < mut_len:
-                ins += mut_len - j
-            return subs, ins, dels
+            def _difflib_counts(left: str, right: str) -> tuple[int, int, int]:
+                left_mid, right_mid = _trim_common_affixes(left, right)
+                if not left_mid and not right_mid:
+                    return 0, 0, 0
+                if not left_mid:
+                    return 0, len(right_mid), 0
+                if not right_mid:
+                    return 0, 0, len(left_mid)
+                if len(left_mid) == len(right_mid):
+                    subs = sum(1 for a, b in zip(left_mid, right_mid) if a != b)
+                    return subs, 0, 0
+                subs = ins = dels = 0
+                ops = difflib.SequenceMatcher(None, left_mid, right_mid).get_opcodes()
+                for tag, i1, i2, j1, j2 in ops:
+                    if tag == "replace":
+                        overlap = min(i2 - i1, j2 - j1)
+                        subs += overlap
+                        dels += (i2 - i1) - overlap
+                        ins += (j2 - j1) - overlap
+                    elif tag == "insert":
+                        ins += j2 - j1
+                    elif tag == "delete":
+                        dels += i2 - i1
+                return subs, ins, dels
+
+            return _difflib_counts(original, mutated)
 
     subs = ins = dels = 0
     for op in ops:
@@ -612,6 +625,8 @@ def run_pipeline(
     The decoded bytes are written to ``output_path`` and also returned.
     """
     init_plugins()
+    if os.getenv("GENECODER_SIM_SEED") is not None:
+        reset_rng()
 
     original_data = Path(input_path).read_bytes()
     dna_batch, fec_info = encode(codec, fec, original_data)

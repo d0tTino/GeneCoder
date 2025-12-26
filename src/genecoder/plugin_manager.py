@@ -133,16 +133,16 @@ class _LazyVisualizer:
     __slots__ = ("_name", "_fallback", "_loading")
 
     def __init__(
-        self, name: str, fallback: Callable[..., Any] | None = None
+        self, name: str, fallback: Callable[..., object] | None = None
     ) -> None:
         self._name = name
         self._fallback = fallback
         self._loading = False
 
-    def _resolve(self) -> Callable[..., Any]:
+    def _resolve(self) -> Callable[..., object]:
         value = VISUALIZER_REGISTRY.get(self._name)
         if value is not self:
-            return cast(Callable[..., Any], value)
+            return cast(Callable[..., object], value)
         if self._loading:
             raise RuntimeError(f"Recursive load for visualizer {self._name}")
         self._loading = True
@@ -161,12 +161,12 @@ class _LazyVisualizer:
                 VISUALIZER_REGISTRY[self._name] = self._fallback
                 return self._fallback
             raise RuntimeError(f"Visualizer {self._name} failed to register")
-        return cast(Callable[..., Any], value)
+        return cast(Callable[..., object], value)
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+    def __call__(self, *args: object, **kwargs: object) -> object:
         return self._resolve()(*args, **kwargs)
 
-    def __getattr__(self, attr: str) -> Any:
+    def __getattr__(self, attr: str) -> object:
         return getattr(self._resolve(), attr)
 
     def __repr__(self) -> str:  # pragma: no cover - representation helper
@@ -215,7 +215,7 @@ class _LazySimulator(Simulator):
     def with_profile(self, profile: str) -> Simulator:
         return self._resolve().with_profile(profile)
 
-    def __getattr__(self, attr: str) -> Any:
+    def __getattr__(self, attr: str) -> object:
         return getattr(self._resolve(), attr)
 
     def __repr__(self) -> str:  # pragma: no cover - representation helper
@@ -231,7 +231,7 @@ def _load_pending_entry_point(kind: str, name: str) -> None:
     loader()
 
 
-def _entry_point_version(entry_point: Any) -> str:
+def _entry_point_version(entry_point: object) -> str:
     dist = getattr(entry_point, "dist", None)
     version = getattr(dist, "version", None)
     if version:
@@ -253,7 +253,7 @@ def _entry_point_version(entry_point: Any) -> str:
     return ""
 
 
-def _record_entry_point_metadata(entry_name: str, kind: str, entry_point: Any) -> None:
+def _record_entry_point_metadata(entry_name: str, kind: str, entry_point: object) -> None:
     meta = _ENTRY_POINT_METADATA.setdefault(entry_name, {})
     meta.setdefault("entry_name", entry_name)
     meta.setdefault("metadata_name", meta.get("metadata_name") or entry_name)
@@ -279,6 +279,8 @@ def _update_entry_point_metadata(entry_name: str, module: ModuleType) -> None:
         cached = _ENTRY_POINT_METADATA.setdefault(entry_name, {})
         cached["invalid"] = True
         logger.warning("Incompatible plugin %s: %s", entry_name, exc)
+        cached = _ENTRY_POINT_METADATA.setdefault(entry_name, {})
+        cached["invalid_metadata"] = True
         return
     cached = _ENTRY_POINT_METADATA.setdefault(entry_name, {})
     cached["entry_name"] = entry_name
@@ -307,8 +309,8 @@ def _register_lazy_placeholder(kind: str, name: str) -> None:
 
 
 def _load_entry_point_module(
-    entry_point: Any,
-    registrar: Callable[..., Any],
+    entry_point: object,
+    registrar: Callable[..., object],
     kind: str,
     entry_name: str,
 ) -> None:
@@ -801,11 +803,13 @@ def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
             else:  # pragma: no cover - legacy path
                 entries = [ep for ep in eps if getattr(ep, "group", None) == group]
         for ep in entries:
-            entry_name = str(getattr(ep, "name", getattr(ep, "value", "")))
+            entry_name = str(getattr(ep, "value", getattr(ep, "name", "")))
             if entry_name:
                 _record_entry_point_metadata(entry_name, kind, ep)
 
     for entry_name, cached in list(_ENTRY_POINT_METADATA.items()):
+        if cached.get("invalid_metadata"):
+            continue
         if cached.get("metadata_name") and cached.get("metadata_name") != cached.get("entry_name"):
             continue
         module_name = cached.get("module")
@@ -820,7 +824,7 @@ def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
             continue
         entry_name = str(cached.get("entry_name") or "")
         plugin_name = str(cached.get("metadata_name") or entry_name)
-        if not plugin_name:
+        if cached.get("invalid_metadata") or not plugin_name:
             continue
         interfaces_raw = cached.get("interfaces") or set()
         interfaces = {str(interface) for interface in interfaces_raw}
@@ -895,6 +899,7 @@ def load_entry_point_plugins() -> list[str]:
     failures: list[str] = []
     for loaders in _ENTRY_POINT_LOADERS.values():
         loaders.clear()
+    offline = bool(os.getenv("GENECODER_OFFLINE"))
 
     lazy_load = bool(os.getenv("GENECODER_OFFLINE"))
 
@@ -919,34 +924,28 @@ def load_entry_point_plugins() -> list[str]:
 
         seen: set[str] = set()
         for ep in entries:
-            entry_name = str(getattr(ep, "name", getattr(ep, "value", "")))
-            if not entry_name:
+            entry_name = str(getattr(ep, "name", ""))
+            entry_value = str(getattr(ep, "value", entry_name))
+            entry_key = entry_name or entry_value
+            if not entry_key:
                 failures.append(f"{kind}:unknown")
                 continue
-            seen.add(entry_name)
-            module_name = str(getattr(ep, "value", entry_name))
-            if lazy_load:
-                _ENTRY_POINT_LOADERS[kind][entry_name] = (
-                    lambda entry=ep, reg=registrar, k=kind, name=entry_name: _load_entry_point_module(
+            seen.add(entry_key)
+            _record_entry_point_metadata(entry_key, kind, ep)
+            if offline:
+                _ENTRY_POINT_LOADERS[kind][entry_key] = (
+                    lambda entry=ep, reg=registrar, k=kind, name=entry_value: _load_entry_point_module(
                         entry, reg, k, name
                     )
                 )
-                _record_entry_point_metadata(entry_name, kind, ep)
-                _register_lazy_placeholder(kind, entry_name)
+                _register_lazy_placeholder(kind, entry_key)
                 continue
             try:
-                _load_entry_point_module(ep, registrar, kind, entry_name)
-            except (ImportError, ModuleNotFoundError):
-                failures.append(f"{kind}:{module_name}")
-                logger.warning("Failed to load %s:%s", kind, module_name)
-                continue
-            except TypeError:
-                raise
-            except Exception:
-                failures.append(f"{kind}:{module_name}")
-                logger.warning("Failed to load %s:%s", kind, module_name)
-                continue
-            _record_entry_point_metadata(entry_name, kind, ep)
+                _load_entry_point_module(ep, registrar, kind, entry_value)
+            except (ImportError, ModuleNotFoundError) as exc:
+                failures.append(f"{kind}:{entry_value}")
+                logger.warning("Failed to import %s:%s", kind, entry_value)
+                logger.debug("Entry point import error for %s:%s: %s", kind, entry_value, exc)
 
         # prune metadata for removed entry points of this kind
         for meta in _ENTRY_POINT_METADATA.values():

@@ -6,18 +6,24 @@ import os
 from typing import Iterable, List
 
 
-def _run_channel(batch: "SequenceBatch" | str, channel: BaseChannel) -> "SequenceBatch" | str:
-    input_is_str = isinstance(batch, str)
-    current = batch if isinstance(batch, SequenceBatch) else _batch_from_string(batch)
+def _run_channel(
+    sequence: "SequenceBatch | str", channel: BaseChannel
+) -> "SequenceBatch | str":
+    if isinstance(sequence, SequenceBatch):
+        if not getattr(channel, "supports_batches", False):
+            return apply_legacy_simulator(sequence, channel.simulate)
+        result = channel.simulate(sequence)
+        if isinstance(result, SequenceBatch):
+            return result
+        return _batch_from_string(result)
+
     if getattr(channel, "supports_batches", False):
-        result = channel.simulate(current)
-    else:
-        result = apply_legacy_simulator(current, channel.simulate)
-    if isinstance(result, SequenceBatch):
-        if input_is_str:
+        result = channel.simulate(_batch_from_string(sequence))
+        if isinstance(result, SequenceBatch):
             return result.oligos[0].sequence if result.oligos else ""
         return result
-    return result if input_is_str else _batch_from_string(result)
+
+    return channel.simulate(sequence)
 
 from ..channels.base import BaseChannel
 from ..metrics import metrics
@@ -129,11 +135,7 @@ class ChannelPipeline(BaseChannel):
 
         if not parallel or len(channels) <= 1:
             for channel in channels:
-                if getattr(channel, "supports_batches", False):
-                    result = channel.simulate(batch)
-                else:
-                    result = apply_legacy_simulator(batch, channel.simulate)
-                batch = result if isinstance(result, SequenceBatch) else _batch_from_string(result)
+                batch = _run_channel(batch, channel)
             metrics.increment("oligos_simulated")
             return batch if is_batch else (batch.oligos[0].sequence if batch.oligos else "")
 

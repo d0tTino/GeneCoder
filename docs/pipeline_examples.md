@@ -173,6 +173,9 @@ encode:
     - examples/pipeline_demo_input.txt
   method: gc_balanced
   fec: fountain
+  gc_min: 0.25
+  gc_max: 0.75
+  max_homopolymer: 18
 simulate:
   simulators:
     - nanopore
