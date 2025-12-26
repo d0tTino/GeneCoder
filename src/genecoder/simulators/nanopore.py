@@ -15,6 +15,7 @@ from ..api import Simulator
 from ..formats import SequenceBatch
 from . import register_simulator as _register_simulator
 from .base import BaseChannel
+from .batch_utils import load_coverage_distribution
 from .nanopore_batch import (
     mutate_read as _mutate_read,
     mutate_read_jit as _mutate_read_jit,
@@ -39,6 +40,7 @@ __all__ = [
     "NanoporeChannel",
     "NanoporeDeSPChannel",
     "NanoporeDNArSimChannel",
+    "load_coverage_distribution",
     "register",
     "NANOPORE_PROFILES",
     "DNARSIM_RATE_TABLES",
@@ -593,4 +595,3 @@ def register(
     registrar("nanopore_d2sim", NanoporeChannel())
     registrar("nanopore_desp", NanoporeDeSPChannel())
     registrar("nanopore_dnarsim", NanoporeDNArSimChannel())
-

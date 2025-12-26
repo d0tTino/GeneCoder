@@ -276,6 +276,8 @@ def _update_entry_point_metadata(entry_name: str, module: ModuleType) -> None:
     try:
         meta = _validate_plugin_metadata(getattr(module, "PLUGIN_METADATA", None))
     except Exception as exc:
+        cached = _ENTRY_POINT_METADATA.setdefault(entry_name, {})
+        cached["invalid"] = True
         logger.warning("Incompatible plugin %s: %s", entry_name, exc)
         return
     cached = _ENTRY_POINT_METADATA.setdefault(entry_name, {})
@@ -814,6 +816,8 @@ def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
             _update_entry_point_metadata(entry_name, module)
 
     for cached in _ENTRY_POINT_METADATA.values():
+        if cached.get("invalid"):
+            continue
         entry_name = str(cached.get("entry_name") or "")
         plugin_name = str(cached.get("metadata_name") or entry_name)
         if not plugin_name:
@@ -892,6 +896,8 @@ def load_entry_point_plugins() -> list[str]:
     for loaders in _ENTRY_POINT_LOADERS.values():
         loaders.clear()
 
+    lazy_load = bool(os.getenv("GENECODER_OFFLINE"))
+
     groups: dict[str, tuple[Callable[..., Any], str]] = {
         "genecoder.plugins": (register_codec, "codec"),
         "genecoder.fec": (register_fec, "FEC"),
@@ -918,9 +924,29 @@ def load_entry_point_plugins() -> list[str]:
                 failures.append(f"{kind}:unknown")
                 continue
             seen.add(entry_name)
-            _ENTRY_POINT_LOADERS[kind][entry_name] = (lambda entry=ep, reg=registrar, k=kind, name=entry_name: _load_entry_point_module(entry, reg, k, name))
+            module_name = str(getattr(ep, "value", entry_name))
+            if lazy_load:
+                _ENTRY_POINT_LOADERS[kind][entry_name] = (
+                    lambda entry=ep, reg=registrar, k=kind, name=entry_name: _load_entry_point_module(
+                        entry, reg, k, name
+                    )
+                )
+                _record_entry_point_metadata(entry_name, kind, ep)
+                _register_lazy_placeholder(kind, entry_name)
+                continue
+            try:
+                _load_entry_point_module(ep, registrar, kind, entry_name)
+            except (ImportError, ModuleNotFoundError):
+                failures.append(f"{kind}:{module_name}")
+                logger.warning("Failed to load %s:%s", kind, module_name)
+                continue
+            except TypeError:
+                raise
+            except Exception:
+                failures.append(f"{kind}:{module_name}")
+                logger.warning("Failed to load %s:%s", kind, module_name)
+                continue
             _record_entry_point_metadata(entry_name, kind, ep)
-            _register_lazy_placeholder(kind, entry_name)
 
         # prune metadata for removed entry points of this kind
         for meta in _ENTRY_POINT_METADATA.values():
@@ -1094,4 +1120,3 @@ def _verify_catalog_signature(
     except Exception:
         return False
     return True
-

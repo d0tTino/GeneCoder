@@ -132,6 +132,7 @@ simulate:
   simulators:
     - name: insilicoseq
       profile: miseq
+      error_rate: 0.0
   synthesis:
     gc_min: 0.4
     gc_max: 0.6
@@ -166,7 +167,7 @@ profile, coverage and read-length defaults baked into the preset.
 ```yaml
 # configs/fountain_nanopore_pipeline.yaml
 # Pipeline using GC-balanced encoding with Fountain FEC and the Nanopore
-# simulator, allowing broader GC and homopolymer bounds for droplet payloads.
+# simulator, keeping GC between 45–55% and homopolymers capped at 3 bp.
 encode:
   input_files:
     - examples/pipeline_demo_input.txt
@@ -176,9 +177,9 @@ simulate:
   simulators:
     - nanopore
   synthesis:
-    gc_min: 0.25
-    gc_max: 0.75
-    max_homopolymer: 18
+    gc_min: 0.45
+    gc_max: 0.55
+    max_homopolymer: 3
     min_length: 25
     max_length: 600
   pipeline:

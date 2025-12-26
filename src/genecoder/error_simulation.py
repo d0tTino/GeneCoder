@@ -8,6 +8,8 @@ from typing import Callable
 from .random_utils import make_rng
 from .api import Simulator
 from .simulators import register_simulator as _register_simulator
+from .formats import SequenceBatch
+from .simulators.batch_utils import apply_legacy_simulator
 
 __all__ = [
     "simulate_errors",
@@ -124,6 +126,9 @@ def simulate_errors(
 
     mutated: list[str] = []
     for nt in sequence:
+        if nt.upper() not in NUCLEOTIDES:
+            mutated.append(nt)
+            continue
         # deletion
         if rng.random() < deletion_prob:
             continue
@@ -164,6 +169,8 @@ def apply_deletions(sequence: str, prob: float, rng: random.Random | None = None
 
 class Channel(Simulator):
     """Channel applying substitution, insertion and deletion errors."""
+
+    supports_batches = True
 
     def __init__(
         self,
@@ -231,7 +238,7 @@ class Channel(Simulator):
         )
         self._substitution_prob = value
 
-    def simulate(self, sequence: str) -> str:
+    def _simulate_string(self, sequence: str) -> str:
         if self._delegate is not None:
             return self._delegate.simulate(sequence)
         return simulate_errors(
@@ -241,6 +248,11 @@ class Channel(Simulator):
             deletion_prob=self.deletion_prob,
             rng=make_rng(),
         )
+
+    def simulate(self, sequence: str | SequenceBatch) -> str | SequenceBatch:
+        if isinstance(sequence, SequenceBatch):
+            return apply_legacy_simulator(sequence, self._simulate_string)
+        return self._simulate_string(sequence)
 
     def with_profile(self, profile: str) -> "Channel":
         """Return a new channel configured to use ``profile``."""

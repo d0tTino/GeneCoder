@@ -155,6 +155,16 @@ def encode_gc_balanced(
         if _constraints_ok(alternative_sequence):
             return f"1{idx}" + alternative_sequence
 
+    for mask in range(1, 255):
+        masked_data = bytes(b ^ mask for b in data)
+        for idx, mapping in enumerate(GC_BALANCED_MAPS):
+            candidate_sequence = cast(
+                str,
+                encode_base4_direct(masked_data, add_parity=False, encode_map=mapping),
+            )
+            if _constraints_ok(candidate_sequence):
+                return f"2{idx}{mask:03d}" + candidate_sequence
+
     logger.warning(
         "Inverted sequence violates GC content or homopolymer constraints"
     )
@@ -217,10 +227,22 @@ def decode_gc_balanced(
     if map_index >= len(GC_BALANCED_DECODE_MAPS):
         raise ValueError(f"Invalid map index: {map_index}.")
 
-    if not payload_dna_sequence: # Check if after removing signal bit, sequence is empty
+    if not payload_dna_sequence:  # Check if after removing signal bit, sequence is empty
         raise ValueError("Input DNA sequence is too short (only signal bit found, no payload).")
 
-    if signal_bit == "0":
+    if signal_bit == "2":
+        if len(payload_dna_sequence) < 3 or not payload_dna_sequence[:3].isdigit():
+            raise ValueError("Masked sequence missing XOR key")
+        mask = int(payload_dna_sequence[:3])
+        payload_dna_sequence = payload_dna_sequence[3:]
+        decoded_tuple = decode_base4_direct(
+            payload_dna_sequence,
+            check_parity=False,
+            decode_map=GC_BALANCED_DECODE_MAPS[map_index],
+        )
+        temp_decoded_data = cast(Tuple[bytes, list[int]], decoded_tuple)[0]
+        decoded_data = bytes(b ^ mask for b in temp_decoded_data)
+    elif signal_bit == "0":
         decoded_tuple = decode_base4_direct(
             payload_dna_sequence,
             check_parity=False,
@@ -228,17 +250,17 @@ def decode_gc_balanced(
         )
         decoded_data = cast(Tuple[bytes, list[int]], decoded_tuple)[0]
     elif signal_bit == "1":
-        # Decode the payload first
         decoded_tuple = decode_base4_direct(
             payload_dna_sequence,
             check_parity=False,
             decode_map=GC_BALANCED_DECODE_MAPS[map_index],
         )
         temp_decoded_data = cast(Tuple[bytes, list[int]], decoded_tuple)[0]
-        # Then invert the bits of the decoded data
         decoded_data = bytes(b ^ 0xFF for b in temp_decoded_data)
     else:
-        raise ValueError(f"Invalid signal bit: '{signal_bit}'. Expected '0' or '1'.")
+        raise ValueError(
+            f"Invalid signal bit: '{signal_bit}'. Expected '0', '1', or '2'."
+        )
 
     # Recalculate constraints on the payload so the caller can optionally check
     # that the received sequence still satisfies them.

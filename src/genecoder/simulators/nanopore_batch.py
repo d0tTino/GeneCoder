@@ -98,6 +98,11 @@ def mutate_read_jit(
     dels = 0
 
     for idx, nt in enumerate(read):
+        if nt.upper() not in {"A", "T", "C", "G"}:
+            mutated.append(nt)
+            prev = ""
+            run_len = 0
+            continue
         if nt == prev:
             run_len += 1
         else:
@@ -335,4 +340,3 @@ def observe_error_rates(
             observation=observation,
         )
     return observation
-

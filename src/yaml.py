@@ -60,6 +60,10 @@ def _coerce_scalar(value: str) -> Any:
     cleaned = _strip_inline_comment(value).strip()
     if not cleaned:
         return ""
+    if cleaned.startswith("[") and not cleaned.endswith("]"):
+        raise YAMLError("Invalid YAML: unmatched '['")
+    if cleaned.startswith("{") and not cleaned.endswith("}"):
+        raise YAMLError("Invalid YAML: unmatched '{'")
     lower = cleaned.lower()
     if lower in _NULL_VALUES:
         return None

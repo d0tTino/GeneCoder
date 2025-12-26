@@ -10,7 +10,6 @@ import random
 import shlex
 from pathlib import Path
 from typing import Sequence, Dict, Any, Mapping
-from difflib import SequenceMatcher
 
 
 from genecoder.formats import SequenceBatch
@@ -144,6 +143,10 @@ def _load_config(
     if not isinstance(synth_section, dict):
         raise ValueError("'synthesis' must be a mapping")
 
+    decay_section = data.get("decay")
+    if decay_section is not None and not isinstance(decay_section, dict):
+        raise ValueError("'decay' must be a mapping")
+
     pipeline = data.get("pipeline", {})
     if not isinstance(pipeline, dict):
         raise ValueError("'pipeline' must be a mapping")
@@ -177,7 +180,30 @@ def _load_config(
     if "decay_rate" in data:
         extra["decay_rate"] = float(data["decay_rate"])
 
-    return simulators, {k: int(v) for k, v in synth_section.items()}, cfg, extra
+    constraints: dict[str, float | int] = {}
+    for key, value in synth_section.items():
+        if key in {"gc_min", "gc_max"}:
+            constraints[key] = float(value)
+        else:
+            constraints[key] = int(value)
+
+    if isinstance(decay_section, dict):
+        decay_params: dict[str, float] = {}
+        if "deletion_prob" in decay_section:
+            decay_params["deletion_prob"] = float(decay_section["deletion_prob"])
+        if "substitution_prob" in decay_section:
+            decay_params["substitution_prob"] = float(decay_section["substitution_prob"])
+        if "half_life" in decay_section and "deletion_prob" not in decay_params:
+            half_life = float(decay_section["half_life"])
+            if half_life <= 0:
+                raise ValueError("decay.half_life must be greater than 0")
+            decay_rate = 1.0 - 0.5 ** (1.0 / half_life)
+            variation = float(decay_section.get("variation", 0.0))
+            decay_rate *= 1.0 + variation
+            decay_params["deletion_prob"] = max(0.0, min(1.0, decay_rate))
+        simulators.append(("decay", decay_params))
+
+    return simulators, constraints, cfg, extra
 
 
 def _load_profile_file(path: str) -> Dict[str, Any]:
@@ -228,8 +254,7 @@ def _apply_simulators(
                 stage_info["parameters"] = params_view
             if options:
                 stage_info["options"] = options
-            if any(key in stage_info for key in ("stage", "parameters", "options")):
-                stages.append(stage_info)
+            stages.append(stage_info)
         else:
             name, params = item
             if name not in SIMULATOR_REGISTRY:
@@ -256,8 +281,7 @@ def _apply_simulators(
             except Exception as exc:
                 logger.error("Invalid parameters for %s: %s", name, exc)
                 raise SystemExit(1)
-            if any(key in stage_info for key in ("stage", "parameters", "options")):
-                stages.append(stage_info)
+            stages.append(stage_info)
         channels.append(channel)
         logger.info("Applied %s simulator", name)
     pipeline = ChannelPipeline(channels)
@@ -397,14 +421,33 @@ def _simulate_probabilities(
 def _count_errors(original: str, mutated: str) -> tuple[int, int, int]:
     """Return substitution, insertion and deletion counts."""
     subs = ins = dels = 0
-    sm = SequenceMatcher(None, original, mutated)
-    for tag, i1, i2, j1, j2 in sm.get_opcodes():
-        if tag == "replace":
-            subs += max(i2 - i1, j2 - j1)
-        elif tag == "delete":
-            dels += i2 - i1
-        elif tag == "insert":
-            ins += j2 - j1
+    i = j = 0
+    orig_len = len(original)
+    mut_len = len(mutated)
+    if orig_len == mut_len:
+        subs = sum(1 for a, b in zip(original, mutated) if a != b)
+        return subs, 0, 0
+    while i < orig_len and j < mut_len:
+        if original[i] == mutated[j]:
+            i += 1
+            j += 1
+            continue
+        if j + 1 < mut_len and original[i] == mutated[j + 1]:
+            ins += 1
+            j += 1
+            continue
+        if i + 1 < orig_len and original[i + 1] == mutated[j]:
+            dels += 1
+            i += 1
+            continue
+        subs += 1
+        i += 1
+        j += 1
+
+    if i < orig_len:
+        dels += orig_len - i
+    if j < mut_len:
+        ins += mut_len - j
     return subs, ins, dels
 
 
@@ -412,7 +455,7 @@ def process_channel(
     input_file: str,
     output_file: str,
     simulators: Sequence[BaseChannel | tuple[str, Dict[str, Any]]],
-    constraints: dict[str, int],
+    constraints: dict[str, float | int],
     *,
     sub_prob: float = 0.0,
     ins_prob: float = 0.0,
@@ -439,9 +482,14 @@ def process_channel(
         raise SystemExit(1)
 
     synth: SynthesisConstraints | None
-    if constraints:
+    normalized_constraints = dict(constraints)
+    if normalized_constraints:
+        normalized_constraints.setdefault("gc_min", 0.0)
+        normalized_constraints.setdefault("gc_max", 1.0)
+
+    if normalized_constraints:
         try:
-            synth = SynthesisConstraints(**constraints)
+            synth = SynthesisConstraints(**normalized_constraints)
         except ValueError:
             synth = SynthesisConstraints()
     else:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import os
 from collections import Counter
 from pathlib import Path
 from typing import Any, Mapping, Tuple, Dict, List, Sequence
@@ -14,6 +15,7 @@ from .utils import get_max_homopolymer_length
 
 from .plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
 from .simulators import SIMULATOR_REGISTRY
+from .random_utils import reset_rng
 from .formats import SequenceBatch, SequenceOligo
 from .simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
@@ -88,12 +90,36 @@ def _levenshtein_counts(original: str, mutated: str) -> tuple[int, int, int]:
                 return str(op.tag)
 
         except Exception:
-            import difflib
+            orig_len = len(original)
+            mut_len = len(mutated)
+            if orig_len == mut_len:
+                subs = sum(1 for a, b in zip(original, mutated) if a != b)
+                return subs, 0, 0
 
-            ops = difflib.SequenceMatcher(None, original, mutated).get_opcodes()
+            subs = ins = dels = 0
+            i = j = 0
+            while i < orig_len and j < mut_len:
+                if original[i] == mutated[j]:
+                    i += 1
+                    j += 1
+                    continue
+                if j + 1 < mut_len and original[i] == mutated[j + 1]:
+                    ins += 1
+                    j += 1
+                    continue
+                if i + 1 < orig_len and original[i + 1] == mutated[j]:
+                    dels += 1
+                    i += 1
+                    continue
+                subs += 1
+                i += 1
+                j += 1
 
-            def get_tag(op: Any) -> str:  # noqa: D401,ANN401
-                return str(op[0])
+            if i < orig_len:
+                dels += orig_len - i
+            if j < mut_len:
+                ins += mut_len - j
+            return subs, ins, dels
 
     subs = ins = dels = 0
     for op in ops:
@@ -235,6 +261,8 @@ def simulate(
     if channel and channel != "none":
         if channel not in SIMULATOR_REGISTRY:
             raise ValueError(f"Unknown channel: {channel}")
+        if os.getenv("GENECODER_SIM_SEED") is not None:
+            reset_rng()
         sim = SIMULATOR_REGISTRY[channel]
         result = sim.simulate(original_batch)
         mutated_batch = (
@@ -317,12 +345,15 @@ def decode(
                 continue
             filtered.append(oligo)
         if len(filtered) != len(dna.oligos):
-            batch = SequenceBatch(
-                batch_id=dna.batch_id,
-                metadata=dict(dna.metadata),
-                seed=dna.seed,
-                oligos=list(filtered),
-            )
+            if filtered:
+                batch = SequenceBatch(
+                    batch_id=dna.batch_id,
+                    metadata=dict(dna.metadata),
+                    seed=dna.seed,
+                    oligos=list(filtered),
+                )
+            else:
+                batch = dna
     if survivor_batch is None and isinstance(dna, SequenceBatch):
         survivor_batch = dna
     decode_fn = CODEC_REGISTRY[codec]["decode"]

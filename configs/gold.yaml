@@ -1,5 +1,5 @@
 # Gold-standard pipeline preset using GC-balanced encoding and Reed-Solomon FEC
-# with MiSeq-style Illumina simulation and balanced synthesis constraints.
+# with MiSeq-style Illumina simulation and 40–60% GC synthesis constraints.
 encode:
   input_files:
     - tests/data/vertical_slice.txt
@@ -9,6 +9,7 @@ simulate:
   simulators:
     - name: insilicoseq
       profile: miseq
+      error_rate: 0.0
   synthesis:
     gc_min: 0.4
     gc_max: 0.6
