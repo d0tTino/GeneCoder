@@ -147,6 +147,18 @@ def _build_constraints_from_channel(channel_params: Mapping[str, Any]) -> Synthe
         return None
 
 
+def _constraints_limits(constraints: SynthesisConstraints | None) -> dict[str, float | int]:
+    if constraints is None:
+        return {}
+    return {
+        "min_length": constraints.min_length,
+        "max_length": constraints.max_length,
+        "max_homopolymer": constraints.max_homopolymer,
+        "gc_min": constraints.gc_min,
+        "gc_max": constraints.gc_max,
+    }
+
+
 def _run_with_params(
     codec: str,
     fec: str | None,
@@ -412,6 +424,12 @@ def _run_with_params(
         oligos=[ol.sequence for ol in mutated_batch.oligos],
         dropout_flags=dropout_flags,
     )
+
+    constraint_limits = _constraints_limits(constraints)
+    if constraint_limits:
+        metrics.setdefault("constraint_violations", {}).setdefault(
+            "limits", constraint_limits
+        )
 
     oligo_metrics = metrics.setdefault("oligo_metrics", {})
     oligo_metrics.setdefault("coverage_counts", coverage_counts)

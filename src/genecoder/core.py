@@ -494,7 +494,14 @@ def metrics(
     try:
         from .synthesis import SynthesisConstraints, validate_sequence
 
-        constraint_limits = constraints or SynthesisConstraints()
+        constraint_limits = constraints if constraints is not None else SynthesisConstraints()
+        constraint_limits_info = {
+            "min_length": constraint_limits.min_length,
+            "max_length": constraint_limits.max_length,
+            "max_homopolymer": constraint_limits.max_homopolymer,
+            "gc_min": constraint_limits.gc_min,
+            "gc_max": constraint_limits.gc_max,
+        }
         violation_records: list[dict[str, Any]] = []
         type_counts: Counter[str] = Counter()
 
@@ -570,9 +577,15 @@ def metrics(
             "count": len(violation_records),
             "violations": violation_records,
             "type_counts": dict(type_counts),
+            "limits": constraint_limits_info,
         }
     except Exception:  # pragma: no cover - optional dependency
-        constraint_violations = {"count": 0, "violations": [], "type_counts": {}}
+        constraint_violations = {
+            "count": 0,
+            "violations": [],
+            "type_counts": {},
+            "limits": {},
+        }
 
     per_oligo_gc = [calculate_gc_content(seq) for seq in sequences]
     per_oligo_hp = [get_max_homopolymer_length(seq) for seq in sequences]
