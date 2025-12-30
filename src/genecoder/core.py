@@ -7,7 +7,7 @@ import json
 import os
 from collections import Counter
 from pathlib import Path
-from typing import Any, Mapping, Tuple, Dict, List, Sequence
+from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Sequence, Tuple
 from typing import get_args, get_origin
 
 from .gc_constrained_encoder import calculate_gc_content
@@ -16,13 +16,15 @@ from .utils import get_max_homopolymer_length
 from .plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
 from .random_utils import reset_rng
 from .simulators import SIMULATOR_REGISTRY
-from .random_utils import reset_rng
 from .formats import SequenceBatch, SequenceOligo
 from .simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
     RESULT_DROPOUT_FLAG_KEY,
     RESULT_MUTATION_TOTALS_KEY,
 )
+
+if TYPE_CHECKING:
+    from .synthesis import SynthesisConstraints
 
 __all__ = ["encode", "simulate", "decode", "metrics", "run_pipeline"]
 
@@ -405,6 +407,7 @@ def metrics(
     ins: int | None = None,
     dels: int | None = None,
     coverage: int | None = None,
+    constraints: SynthesisConstraints | None = None,
     *,
     oligos: Sequence[str] | None = None,
     dropout_flags: Sequence[bool] | None = None,
@@ -491,7 +494,7 @@ def metrics(
     try:
         from .synthesis import SynthesisConstraints, validate_sequence
 
-        constraints = SynthesisConstraints()
+        constraint_limits = constraints or SynthesisConstraints()
         violation_records: list[dict[str, Any]] = []
         type_counts: Counter[str] = Counter()
 
@@ -520,7 +523,7 @@ def metrics(
 
         for idx, sequence, info in target_oligos:
             try:
-                is_valid = validate_sequence(sequence, constraints)
+                is_valid = validate_sequence(sequence, constraint_limits)
             except Exception:
                 continue
             if is_valid:
@@ -528,19 +531,19 @@ def metrics(
 
             reasons: list[str] = []
             length = len(sequence)
-            if length < constraints.min_length:
+            if length < constraint_limits.min_length:
                 reasons.append("length_short")
-            elif length > constraints.max_length:
+            elif length > constraint_limits.max_length:
                 reasons.append("length_long")
 
             homopolymer = get_max_homopolymer_length(sequence)
-            if homopolymer > constraints.max_homopolymer:
+            if homopolymer > constraint_limits.max_homopolymer:
                 reasons.append("homopolymer")
 
             gc_fraction = calculate_gc_content(sequence) if sequence else 0.0
-            if gc_fraction < constraints.gc_min:
+            if gc_fraction < constraint_limits.gc_min:
                 reasons.append("gc_low")
-            elif gc_fraction > constraints.gc_max:
+            elif gc_fraction > constraint_limits.gc_max:
                 reasons.append("gc_high")
 
             if not reasons:

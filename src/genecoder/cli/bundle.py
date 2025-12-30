@@ -52,6 +52,7 @@ from genecoder.core import metrics as gather_metrics
 from genecoder.manifest import generate_manifest
 from genecoder.plugin_manager import FEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
+from genecoder.synthesis import SynthesisConstraints
 
 
 @dataclass
@@ -72,6 +73,23 @@ class ChannelArgs:
     processes: int | None = None
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_int(value: object) -> int | None:
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        try:
+            return int(float(value))
+        except (TypeError, ValueError):
+            return None
+
+
+def _parse_float(value: object) -> float | None:
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _load_bundle_schema() -> dict[str, Any]:
@@ -379,6 +397,56 @@ def _expand_histogram(histogram: Mapping[str, object]) -> list[int]:
     return counts
 
 
+def _derive_constraints(
+    enc_cfg: Mapping[str, object] | None, sim_cfg: Mapping[str, object] | None
+) -> SynthesisConstraints | None:
+    """Return synthesis constraints from encoding and simulation configs."""
+
+    params: dict[str, float | int] = {}
+
+    def _apply_int(key: str, raw: object, *, prefer_min: bool = False) -> None:
+        val = _parse_int(raw)
+        if val is None:
+            return
+        if prefer_min and key in params:
+            try:
+                params[key] = min(int(params[key]), val)
+            except Exception:
+                params[key] = val
+        else:
+            params[key] = val
+
+    def _apply_float(key: str, raw: object) -> None:
+        val = _parse_float(raw)
+        if val is not None:
+            params[key] = val
+
+    if isinstance(sim_cfg, Mapping):
+        synth_cfg = sim_cfg.get("synthesis") if isinstance(sim_cfg, Mapping) else None
+        if isinstance(synth_cfg, Mapping):
+            _apply_int("min_length", synth_cfg.get("min_length"))
+            _apply_int("max_length", synth_cfg.get("max_length"))
+            _apply_int("max_homopolymer", synth_cfg.get("max_homopolymer"))
+            _apply_float("gc_min", synth_cfg.get("gc_min"))
+            _apply_float("gc_max", synth_cfg.get("gc_max"))
+
+    if isinstance(enc_cfg, Mapping):
+        _apply_int("min_length", enc_cfg.get("min_length"))
+        _apply_int("max_length", enc_cfg.get("max_length"))
+        _apply_int("max_homopolymer", enc_cfg.get("max_homopolymer"), prefer_min=True)
+        _apply_float("gc_min", enc_cfg.get("gc_min"))
+        _apply_float("gc_max", enc_cfg.get("gc_max"))
+
+    if not params:
+        return None
+
+    try:
+        return SynthesisConstraints(**params)
+    except Exception:
+        logger.warning("Ignoring invalid synthesis constraints in bundle config")
+        return None
+
+
 def _write_decoded_metrics(
     original_path: Path,
     simulated_path: Path,
@@ -388,6 +456,7 @@ def _write_decoded_metrics(
     *,
     emit_manifest_report: bool = False,
 ) -> None:
+    constraints = _derive_constraints(enc_cfg, sim_cfg)
     try:
         batch = SequenceBatch.from_fasta(
             simulated_path.read_text(encoding="utf-8")
@@ -498,6 +567,7 @@ def _write_decoded_metrics(
         decoded_bytes,
         str(fec) if fec else None,
         coverage=int(round(average_cov_float)),
+        constraints=constraints,
         oligos=oligos,
         dropout_flags=dropout_flags,
     )
@@ -723,15 +793,15 @@ def _run_single_bundle(
     ).hexdigest()
     config_name = config_path.name
 
-    enc_cfg = config.get("encode", {})
-    if not isinstance(enc_cfg, dict):
+    enc_cfg_raw = config.get("encode", {})
+    if not isinstance(enc_cfg_raw, dict):
         raise TypeError("encode section must be a mapping")
+    enc_cfg = dict(enc_cfg_raw)
     fec_downgraded = False
     if enc_cfg.get("fec") == "reed_solomon" and importlib.util.find_spec("reedsolo") is None:
         logger.warning(
             "reedsolo is unavailable; running bundle encode without Reed-Solomon FEC"
         )
-        enc_cfg = dict(enc_cfg)
         enc_cfg["fec"] = None
         fec_downgraded = True
     sim_cfg_raw = config.get("simulate")
@@ -781,6 +851,12 @@ def _run_single_bundle(
             ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
             summary_path=summary_path,
         )
+
+    constraints = _derive_constraints(enc_cfg, sim_cfg_raw if isinstance(sim_cfg_raw, dict) else None)
+    if constraints is not None:
+        enc_cfg["gc_min"] = constraints.gc_min
+        enc_cfg["gc_max"] = constraints.gc_max
+        enc_cfg["max_homopolymer"] = constraints.max_homopolymer
 
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     run_dir = hash_dir / timestamp
