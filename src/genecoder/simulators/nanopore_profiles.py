@@ -323,6 +323,8 @@ def parse_rate_table(tbl: Mapping[str, object]) -> dict[str, object]:
         "insertion_rate": float(tbl.get("insertion_rate", 0.0)),
         "deletion_rate": float(tbl.get("deletion_rate", 0.0)),
     }
+    if "coverage" in tbl:
+        parsed["coverage"] = float(tbl.get("coverage", 0.0))
     if "context_errors" in tbl and isinstance(tbl["context_errors"], Mapping):
         parsed["context_errors"] = {
             str(k).upper(): float(v)

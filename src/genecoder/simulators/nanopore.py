@@ -111,6 +111,8 @@ _FALLBACK_PROFILE_DATA: dict[
     },
 }
 
+_DEFAULT_NANOPORE_COVERAGE = 30.0
+
 # ---------------------------------------------------------------------------
 # Profile configuration helpers
 
@@ -188,11 +190,21 @@ def _load_profiles_from_directory(
             if isinstance(tbl, Mapping):
                 dnarsim_tables[str(name)] = _parse_rate_table(tbl)
 
-    combined = {
-        key: deepcopy(params) for key, params in profiles.items()
-    }
+    combined = {key: deepcopy(params) for key, params in profiles.items()}
     for name, table in dnarsim_tables.items():
-        combined[str(name).lower()] = deepcopy(table)
+        key = str(name).lower()
+        base_profile = combined.get(key, {})
+        merged = _merge_profiles(base_profile, table)
+        if "coverage" not in merged:
+            for candidate in (
+                base_profile.get("coverage") if isinstance(base_profile, Mapping) else None,
+                _FALLBACK_PROFILE_DATA.get(key, {}).get("coverage"),
+                _DEFAULT_NANOPORE_COVERAGE,
+            ):
+                if isinstance(candidate, (int, float)):
+                    merged["coverage"] = float(candidate)
+                    break
+        combined[key] = merged
 
     return combined, dnarsim_tables
 
