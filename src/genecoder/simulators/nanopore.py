@@ -113,6 +113,12 @@ _FALLBACK_PROFILE_DATA: dict[
 
 _DEFAULT_NANOPORE_COVERAGE = 30.0
 
+
+def _normalize_profile_name(name: object) -> str:
+    """Return a normalized profile name for lookup keys."""
+
+    return str(name).strip().strip("\"'").lower()
+
 # ---------------------------------------------------------------------------
 # Profile configuration helpers
 
@@ -124,7 +130,7 @@ def _load_profiles_from_directory(
         import yaml as yaml_module  # type: ignore[import]
 
     profiles: dict[str, dict[str, Any]] = {
-        str(name).lower(): deepcopy(params)
+        _normalize_profile_name(name): deepcopy(params)
         for name, params in _FALLBACK_PROFILE_DATA.items()
     }
 
@@ -137,7 +143,7 @@ def _load_profiles_from_directory(
     if isinstance(base_data, Mapping):
         for name, params in base_data.items():
             if isinstance(params, Mapping):
-                key = str(name).lower()
+                key = _normalize_profile_name(name)
                 parsed = _parse_profile(params)
                 existing = profiles.get(key, {})
                 profiles[key] = _merge_profiles(existing, parsed)
@@ -156,7 +162,7 @@ def _load_profiles_from_directory(
             }
         }
         if ctx:
-            context_defaults[str(name).lower()] = ctx
+            context_defaults[_normalize_profile_name(name)] = ctx
 
     context_path = cfg_dir / "nanopore_context.yaml"
     try:
@@ -167,7 +173,7 @@ def _load_profiles_from_directory(
     if not isinstance(context_data, Mapping):
         context_data = {}
     context_defaults.update({
-        str(name).lower(): params
+        _normalize_profile_name(name): params
         for name, params in context_data.items()
         if isinstance(params, Mapping)
     })
@@ -188,11 +194,12 @@ def _load_profiles_from_directory(
     if isinstance(rates_data, Mapping):
         for name, tbl in rates_data.items():
             if isinstance(tbl, Mapping):
-                dnarsim_tables[str(name)] = _parse_rate_table(tbl)
+                key = _normalize_profile_name(name)
+                dnarsim_tables[key] = _parse_rate_table(tbl)
 
     combined = {key: deepcopy(params) for key, params in profiles.items()}
     for name, table in dnarsim_tables.items():
-        key = str(name).lower()
+        key = _normalize_profile_name(name)
         base_profile = combined.get(key, {})
         merged = _merge_profiles(base_profile, table)
         if "coverage" not in merged:

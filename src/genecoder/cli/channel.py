@@ -872,6 +872,8 @@ def run_channel(args: argparse.Namespace) -> None:
         simulators = [(sim_name, {})]
         if sim_name == "illumina":
             opts.illumina_profile = prof
+        elif sim_name == "nanopore_dnarsim":
+            opts.dnarsim_profile = prof
         else:
             opts.nanopore_profile = prof
     elif simulators is None:
@@ -904,13 +906,23 @@ def run_channel(args: argparse.Namespace) -> None:
             if opts.illumina_del_rate is not None:
                 new_params["deletion_rate"] = opts.illumina_del_rate
         if name.startswith("nanopore"):
-            if opts.nanopore_profile:
-                prof = NANOPORE_PROFILES.get(opts.nanopore_profile)
+            selected_profile = opts.nanopore_profile
+            profile_source = NANOPORE_PROFILES
+            if name == "nanopore_dnarsim":
+                selected_profile = opts.dnarsim_profile or opts.nanopore_profile
+                profile_source = DNARSIM_RATE_TABLES
+
+            if selected_profile:
+                prof = profile_source.get(selected_profile)
                 if prof is None:
-                    logger.error("Unknown Nanopore profile: %s", opts.nanopore_profile)
+                    label = "DNArSim" if name == "nanopore_dnarsim" else "Nanopore"
+                    logger.error("Unknown %s profile: %s", label, selected_profile)
                     raise SystemExit(1)
                 for k, v in prof.items():
                     new_params.setdefault(k, v)
+                if name == "nanopore_dnarsim":
+                    new_params.setdefault("profile", selected_profile)
+
             if opts.nanopore_profile_file:
                 file_params = _load_profile_file(opts.nanopore_profile_file)
                 for k, v in file_params.items():
@@ -927,8 +939,9 @@ def run_channel(args: argparse.Namespace) -> None:
                 new_params["insertion_rate"] = opts.nanopore_ins_rate
             if opts.nanopore_del_rate is not None:
                 new_params["deletion_rate"] = opts.nanopore_del_rate
-            if name == "nanopore_dnarsim" and opts.dnarsim_profile:
-                new_params.setdefault("profile", opts.dnarsim_profile)
+            if name == "nanopore_dnarsim":
+                for unsupported in ("insertion_profile", "deletion_profile"):
+                    new_params.pop(unsupported, None)
         if name == "indel":
             indel_profile = opts.indel_profile
             if indel_profile is None and not any(
