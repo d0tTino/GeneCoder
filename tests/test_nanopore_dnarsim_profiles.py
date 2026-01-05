@@ -50,6 +50,21 @@ def test_loader_falls_back_to_context_defaults(tmp_path: Path) -> None:
     assert tables == {}
 
 
+def test_dnarsim_profiles_gain_default_coverage(tmp_path: Path) -> None:
+    dnarsim_rates = tmp_path / "dnarsim_rates.yaml"
+    dnarsim_rates.write_text(
+        "r9:\n"
+        "  substitution_rate: 0.1\n"
+        "  insertion_rate: 0.01\n"
+        "  deletion_rate: 0.02\n"
+    )
+
+    profiles, tables = nanopore._load_profiles_from_directory(tmp_path, yaml)
+
+    assert profiles["r9"]["coverage"] == pytest.approx(30.0)
+    assert "coverage" not in tables["r9"]
+
+
 def test_parse_valid_rate_table() -> None:
     data = yaml.safe_load((DATA_DIR / "dnarsim_rates_valid.yaml").read_text())
     tbl = next(iter(data.values()))
