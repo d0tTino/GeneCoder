@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 
 import pytest
@@ -12,6 +14,7 @@ from genecoder.simulators.nanopore import (
     NANOPORE_PROFILES,
     NanoporeDNArSimChannel,
 )
+from tests.test_cli import run_cli_command
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -123,3 +126,41 @@ def test_profile_simulation_statistics(monkeypatch: pytest.MonkeyPatch) -> None:
     assert subs == len(seq)
     assert ins == 0
     assert dele == 0
+
+
+@pytest.mark.parametrize("profile", ["r9", "r10.3", "r10.4"])
+def test_dnarsim_manifest_records_profile_coverage(tmp_path: Path, profile: str) -> None:
+    env = os.environ.copy()
+    src_path = Path(__file__).resolve().parent.parent / "src"
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+    env["GENECODER_SIM_SEED"] = "1"
+
+    input_file = tmp_path / "input.fasta"
+    input_file.write_text(">seq1\n" + "ACGT" * 8 + "\n", encoding="utf-8")
+    output_file = tmp_path / "out.fasta"
+
+    result = run_cli_command(
+        [
+            "channel",
+            "apply",
+            "--profile",
+            profile,
+            "--input-file",
+            str(input_file),
+            "--output-file",
+            str(output_file),
+        ],
+        env=env,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+    manifest_path = output_file.with_suffix(".manifest.json")
+    manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    coverage = manifest_data.get("coverage", {})
+
+    expected_coverage = NANOPORE_PROFILES[profile]["coverage"]
+    assert coverage.get("average") == pytest.approx(expected_coverage)
+    histogram = coverage.get("histogram", {})
+    assert histogram.get(str(int(expected_coverage))) == 1
+    assert coverage.get("total_reads") == int(expected_coverage)

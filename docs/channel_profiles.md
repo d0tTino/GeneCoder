@@ -32,7 +32,10 @@ The Nanopore channel falls back to `_FALLBACK_PROFILE_DATA` when YAML overrides 
 | --- | --- | --- | --- | --- | --- |
 | `minion` | 0.019 | 0.046 | 0.065 | 30 | Emulate portable MinION runs with elevated indels and a conservative 13% total error rate. |
 | `promethion` | 0.015 | 0.02 | 0.045 | 30 | Larger PromethION flow cells with moderate indels and higher throughput assumptions. |
-| `r10` | 0.01 | 0.015 | 0.025 | 30 | R10 chemistry with the lowest default indels among the presets; good for high-accuracy nanopore studies. |
+| `r9` | 0.09 | 0.03 | 0.04 | 30 | Legacy R9 flow cells with higher basecalling errors; use when matching older MinION/PromethION datasets. |
+| `r10` | 0.01 | 0.015 | 0.025 | 30 | R10 chemistry with lower indels; good for high-accuracy nanopore studies. |
+| `r10.3` | 0.06 | 0.02 | 0.035 | 30 | R10.3 duplex-style tuning; pairs well with consensus polishing pipelines expecting moderate indels. |
+| `r10.4` | 0.045 | 0.015 | 0.025 | 30 | R10.4 Q20+ style chemistry; pick when you want the cleanest Nanopore reads from the DNArSim presets. |
 
 Select a Nanopore profile from the CLI:
 
