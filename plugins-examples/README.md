@@ -14,6 +14,8 @@ Each subdirectory is an installable Python package using PEP 621 metadata:
   full ``SequenceBatch`` with coverage statistics in the metadata.
 - `example_visualizer` – registers a visualizer named `example`.
 - `advanced_fec` – registers an LDPC FEC backend named `advanced_ldpc`.
+- `starter_plugin` – a commented template that exposes metadata for the plugin
+  catalog and registers a reversible codec named `starter_template`.
 
 Install any of the packages with `pip` to experiment locally, e.g.:
 

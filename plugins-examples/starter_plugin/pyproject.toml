@@ -1,0 +1,16 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "genecoder-starter-plugin"
+version = "0.1.0"
+description = "Starter template for GeneCoder plugins"
+dependencies = ["genecoder>=0.2.0"]
+readme = "README.md"
+
+[tool.poetry]
+packages = [{ include = "starter_plugin" }]
+
+[project.entry-points."genecoder.plugins"]
+starter_template = "starter_plugin"
