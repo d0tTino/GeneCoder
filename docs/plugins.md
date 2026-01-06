@@ -9,6 +9,17 @@ installed in your current Python environment when loading plugins. Plugins that
 use the batch-aware simulator API must declare `genecoder>=0.2.0` in their
 project metadata.
 
+The registries themselves live in [`src/genecoder/plugin_manager.py`](../src/genecoder/plugin_manager.py).
+Built-in plugins register first, followed by entry-point modules and finally
+any explicitly loaded local modules. Later registrations override earlier ones,
+so you can replace shipped defaults with custom implementations during
+development.
+
+Plugins may optionally expose a ``PLUGIN_METADATA`` mapping with ``name``,
+``version`` and ``interfaces`` fields. The catalog and CLI surfaces use this
+metadata to present compatibility details when multiple plugins provide the
+same capability (for example, competing channel simulators).
+
 ## Interface Expectations
 
 Each plugin module must expose a ``register`` function that receives a callback
