@@ -48,12 +48,6 @@ _ERROR_METRICS: tuple[tuple[str, str], ...] = (
     ("deletions", "Deletions"),
 )
 
-_PLOT_DEPS: tuple[tuple[str, Any], ...] = (
-    ("pandas", pd),
-    ("altair", alt),
-)
-
-
 def _iterable(val: Iterable[str] | str | None) -> list[str]:
     if val is None:
         return []
@@ -208,7 +202,11 @@ def _extract_oligo_records(data: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _plotting_status() -> tuple[bool, list[str]]:
-    missing = [name for name, module in _PLOT_DEPS if module is None]
+    missing = []
+    if pd is None:
+        missing.append("pandas")
+    if alt is None:
+        missing.append("altair")
     return not missing, missing
 
 
