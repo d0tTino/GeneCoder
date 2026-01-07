@@ -6,15 +6,19 @@ See the [Disclaimer](../README.md#disclaimer) before using the toolkit.
 
 For a hands-on introduction check the Jupyter notebooks in the [notebooks/](../notebooks) directory.
 
-GeneCoder operations are performed with the `genecoder` CLI:
+GeneCoder operations are performed with the `genecli` CLI (also available as the `genecoder` alias):
 
 ```bash
 genecli <command> --input-files <path1> [<path2> ...] \
     [--output-file <path>] [--output-dir <dir>] \
     --method <method_name> [--fec <fec_method>] [options]
+# or
+genecoder <command> --input-files <path1> [<path2> ...] \
+    [--output-file <path>] [--output-dir <dir>] \
+    --method <method_name> [--fec <fec_method>] [options]
 ```
 
-Run `genecli --help` to see all available commands. Use `--offline` to disable
+Run `genecli --help` (or `genecoder --help`) to see all available commands. Use `--offline` to disable
 network features and avoid loading cloud integrations:
 
 ```bash
@@ -28,6 +32,15 @@ A quick sanity check is to run the command and ensure the usage header appears.
 ```bash
 $ genecli --help | head -n 5
 Usage: genecli [-h] [--version] {encode,decode,analyze,channel} ...
+GeneCoder: Encode and decode data into simulated DNA sequences.
+...
+```
+
+The alias reports the same usage header:
+
+```bash
+$ genecoder --help | head -n 5
+Usage: genecoder [-h] [--version] {encode,decode,analyze,channel} ...
 GeneCoder: Encode and decode data into simulated DNA sequences.
 ...
 ```

@@ -90,6 +90,7 @@ playwright = "*"
 
 [tool.poetry.scripts]
 genecli = "genecoder.cli.cli:main"
+genecoder = "genecoder.cli.cli:main"
 
 [tool.poetry.plugins."genecoder.plugins"]
 reverse = "plugins.reverse_codec"

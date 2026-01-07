@@ -8,6 +8,7 @@ GeneCoder is an educational toolkit for exploring DNA-based data storage. It pro
 For full usage instructions and additional documentation see the [docs/](docs/) directory or the hosted documentation linked above. The [MVP coverage checklist](docs/mvp_checklist.md) maps roadmap requirements to the shipped presets and example CLI commands. Developers adding new codecs, FEC backends, simulators, or visualizers can follow the [plugin development guide](docs/plugins.md) for step-by-step instructions and entry point examples.
 For instructions on launching the GUI see the [usage guide](docs/usage.md#launching-the-flet-app).
 For a quick end-to-end demo see [docs/vertical_slice.md](docs/vertical_slice.md).
+The CLI installs two equivalent entry points, `genecli` and `genecoder`, so you can use either in the examples below and in the documentation.
 The configuration at `configs/pipeline_metrics.yaml` shows how to run the pipeline while recording metrics. Supply the metrics destination and optional extras directly via CLI flags:
 
 ```bash
