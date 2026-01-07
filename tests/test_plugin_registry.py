@@ -40,8 +40,12 @@ def test_registry_install(monkeypatch: pytest.MonkeyPatch) -> None:
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkgA.whl\n    checksum: {checksum}\n"
-                f"  - spec: https://example.com/pkgB.whl\n    checksum: {checksum}\n"
+                "  - spec: https://example.com/pkgA.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {checksum}\n"
+                "  - spec: https://example.com/pkgB.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {checksum}\n"
             ).encode()
             return DummyResponse(data)
         elif url in ("https://example.com/pkgA.whl", "https://example.com/pkgB.whl"):
@@ -70,7 +74,9 @@ def test_registry_install_failure(monkeypatch: pytest.MonkeyPatch, caplog: pytes
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkgC.whl\n    checksum: {checksum}\n"
+                "  - spec: https://example.com/pkgC.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {checksum}\n"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkgC.whl":
@@ -122,7 +128,7 @@ def test_registry_install_offline_local(tmp_path: Path, monkeypatch: pytest.Monk
 
     registry = tmp_path / "registry.yaml"
     registry.write_text(
-        "packages:\n  - spec: {pkg}\n    checksum: {chk}\n".format(
+        "packages:\n  - spec: {pkg}\n    license: MIT\n    checksum: {chk}\n".format(
             pkg=pkg_path.as_uri(), chk=checksum
         )
     )
@@ -153,7 +159,7 @@ def test_registry_install_offline_local_env(monkeypatch: pytest.MonkeyPatch, tmp
 
     registry = tmp_path / "registry.yaml"
     registry.write_text(
-        "packages:\n  - spec: {pkg}\n    checksum: {chk}\n".format(
+        "packages:\n  - spec: {pkg}\n    license: MIT\n    checksum: {chk}\n".format(
             pkg=pkg_path.as_uri(), chk=checksum
         )
     )
@@ -204,7 +210,9 @@ def test_registry_install_via_httpx(monkeypatch: pytest.MonkeyPatch) -> None:
         if request.url.path == "/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {checksum}\n"
             )
             return httpx.Response(200, text=data)
         elif request.url.path == "/pkg.whl":
@@ -269,7 +277,9 @@ def test_registry_network_failure(
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkgD.whl\n    checksum: {checksum}\n"
+                "  - spec: https://example.com/pkgD.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {checksum}\n"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkgD.whl":
@@ -279,7 +289,11 @@ def test_registry_network_failure(
     class FakeYAML:
         @staticmethod
         def safe_load(raw: bytes) -> dict[str, list[dict[str, str]]]:
-            return {"packages": [{"spec": "https://example.com/pkgD.whl", "checksum": checksum}]}
+            return {
+                "packages": [
+                    {"spec": "https://example.com/pkgD.whl", "license": "MIT", "checksum": checksum}
+                ]
+            }
 
     monkeypatch.setattr(plugins.subprocess, "check_call", fake_check_call)
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)

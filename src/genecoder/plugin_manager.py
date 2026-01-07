@@ -331,6 +331,14 @@ def _load_entry_point_module(
         raise
 
 _VALID_INTERFACES = {"codec", "FEC", "simulator", "visualizer"}
+_ALLOWED_LICENSES = {
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+}
 
 # re-export for tests
 compute_checksum = plugin_security.compute_checksum
@@ -347,6 +355,24 @@ def _validate_spec(spec: str) -> None:
     if _SAFE_PKG_RE.fullmatch(spec) or _SAFE_URL_RE.fullmatch(spec):
         return
     raise ValueError("Unsafe plugin spec")
+
+
+def _validate_registry_license(entry: Mapping[str, Any], *, spec: str) -> str:
+    license_value = entry.get("license")
+    if not isinstance(license_value, str) or not license_value.strip():
+        message = f"Missing license for plugin entry {spec}"
+        logger.error(message)
+        raise ValueError(message)
+    normalized = license_value.strip()
+    if normalized not in _ALLOWED_LICENSES:
+        allowed = ", ".join(sorted(_ALLOWED_LICENSES))
+        message = (
+            f"Disallowed license {normalized!r} for plugin entry {spec}. "
+            f"Allowed licenses: {allowed}"
+        )
+        logger.error(message)
+        raise ValueError(message)
+    return normalized
 
 
 def _check_signature(
@@ -709,6 +735,13 @@ def install_registry_plugins(
             logger.warning("Missing spec for plugin entry %s", entry)
             continue
 
+        if isinstance(entry, dict):
+            _validate_registry_license(entry, spec=spec)
+        else:
+            message = f"Missing license for plugin entry {spec}"
+            logger.error(message)
+            raise ValueError(message)
+
         _validate_spec(spec)
 
         if checksum is None and sig_b64 is None:
@@ -900,8 +933,6 @@ def load_entry_point_plugins() -> list[str]:
     for loaders in _ENTRY_POINT_LOADERS.values():
         loaders.clear()
     offline = bool(os.getenv("GENECODER_OFFLINE"))
-
-    lazy_load = bool(os.getenv("GENECODER_OFFLINE"))
 
     groups: dict[str, tuple[Callable[..., Any], str]] = {
         "genecoder.plugins": (register_codec, "codec"),

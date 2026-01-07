@@ -36,7 +36,10 @@ def test_registry_invalid_signature(monkeypatch: pytest.MonkeyPatch, caplog: pyt
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n    signature: {sig_b64}"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {checksum}\n"
+                f"    signature: {sig_b64}"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkg.whl":
@@ -82,7 +85,10 @@ def test_registry_valid_checksum_and_signature(monkeypatch: pytest.MonkeyPatch) 
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n    signature: {sig_b64}"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {checksum}\n"
+                f"    signature: {sig_b64}"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkg.whl":
@@ -123,7 +129,9 @@ def test_registry_checksum_mismatch(monkeypatch: pytest.MonkeyPatch, caplog: pyt
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {wrong_checksum}"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {wrong_checksum}"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkg.whl":
@@ -148,7 +156,11 @@ def test_registry_missing_checksum_signature(monkeypatch: pytest.MonkeyPatch) ->
     def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
         assert timeout == 30
         assert url == "https://example.com/plugins.yaml"
-        data = "packages:\n  - spec: https://example.com/pkg.whl\n".encode()
+        data = (
+            "packages:\n"
+            "  - spec: https://example.com/pkg.whl\n"
+            "    license: MIT\n"
+        ).encode()
         return DummyResponse(data)
 
     monkeypatch.setenv("GENECODER_PLUGIN_REGISTRY_URL", "https://example.com/plugins.yaml")
@@ -177,7 +189,10 @@ def test_registry_real_signature(monkeypatch: pytest.MonkeyPatch) -> None:
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n    signature: {sig_b64}"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {checksum}\n"
+                f"    signature: {sig_b64}"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkg.whl":
@@ -207,7 +222,10 @@ def test_registry_real_invalid_signature(monkeypatch: pytest.MonkeyPatch, caplog
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n    signature: {bad_sig_b64}"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {checksum}\n"
+                f"    signature: {bad_sig_b64}"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkg.whl":
@@ -239,7 +257,10 @@ def test_registry_real_checksum_mismatch(monkeypatch: pytest.MonkeyPatch, caplog
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {wrong_checksum}\n    signature: {sig_b64}"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {wrong_checksum}\n"
+                f"    signature: {sig_b64}"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkg.whl":
