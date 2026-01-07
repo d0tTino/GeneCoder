@@ -1,10 +1,12 @@
 # Example plugin registry used in documentation
 packages:
   - spec: https://example.com/mycodec-1.0.0-py3-none-any.whl
+    license: MIT
     checksum: "91b6d490..."
     signature: "MEUCIQDf..."
   - spec: myplugin==0.2.4
+    license: Apache-2.0
     checksum: "5733a819..."
   - spec: https://example.com/vis-0.3.2-py3-none-any.whl
+    license: BSD-3-Clause
     signature: "MEQCIAID..."
-

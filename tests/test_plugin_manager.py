@@ -32,7 +32,7 @@ def _fake_urlopen(data: str) -> Callable[[str], DummyResponse]:
 
 @pytest.mark.parametrize("bad", ["bad;rm", "foo bar", "evil&&stuff"])
 def test_install_registry_bad_spec(monkeypatch: pytest.MonkeyPatch, bad: str) -> None:
-    data = f"packages:\n  - spec: {bad}\n"
+    data = f"packages:\n  - spec: {bad}\n    license: MIT\n    checksum: deadbeef\n"
     monkeypatch.setattr(plugins.urllib.request, "urlopen", _fake_urlopen(data))
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
 

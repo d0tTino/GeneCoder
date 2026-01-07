@@ -32,7 +32,9 @@ def test_load_plugins_with_registry(monkeypatch: pytest.MonkeyPatch) -> None:
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum}\n"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {checksum}\n"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkg.whl":
@@ -81,7 +83,9 @@ def test_load_plugins_with_signed_registry(
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    signature: {sig_b64}\n"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+                f"    signature: {sig_b64}\n"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkg.whl":
@@ -111,7 +115,11 @@ def test_registry_entry_missing_signature_checksum(
     def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
         assert timeout == 30
         if url == "https://example.com/plugins.yaml":
-            data = "packages:\n  - spec: https://example.com/pkg.whl\n".encode()
+            data = (
+                "packages:\n"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+            ).encode()
             return DummyResponse(data)
         raise AssertionError(url)
 
@@ -119,6 +127,45 @@ def test_registry_entry_missing_signature_checksum(
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
 
     with pytest.raises(ValueError):
+        plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
+
+
+def test_registry_entry_missing_license(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    checksum: deadbeef\n"
+            ).encode()
+            return DummyResponse(data)
+        raise AssertionError(url)
+
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+
+    with pytest.raises(ValueError, match="Missing license for plugin entry https://example.com/pkg.whl"):
+        plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
+
+
+def test_registry_entry_disallowed_license(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_urlopen(url: str, *, timeout: int | None = None) -> DummyResponse:
+        assert timeout == 30
+        if url == "https://example.com/plugins.yaml":
+            data = (
+                "packages:\n"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: Proprietary\n"
+                "    checksum: deadbeef\n"
+            ).encode()
+            return DummyResponse(data)
+        raise AssertionError(url)
+
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
+
+    with pytest.raises(ValueError, match="Disallowed license"):
         plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
 
 
@@ -172,7 +219,9 @@ def test_load_plugins_with_base64_checksum(monkeypatch: pytest.MonkeyPatch) -> N
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {checksum_b64}\n"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {checksum_b64}\n"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkg.whl":
@@ -197,7 +246,9 @@ def test_registry_base64_checksum_mismatch(
         if url == "https://example.com/plugins.yaml":
             data = (
                 "packages:\n"
-                f"  - spec: https://example.com/pkg.whl\n    checksum: {wrong_checksum}\n"
+                "  - spec: https://example.com/pkg.whl\n"
+                "    license: MIT\n"
+                f"    checksum: {wrong_checksum}\n"
             ).encode()
             return DummyResponse(data)
         elif url == "https://example.com/pkg.whl":
