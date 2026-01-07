@@ -48,6 +48,11 @@ _ERROR_METRICS: tuple[tuple[str, str], ...] = (
     ("deletions", "Deletions"),
 )
 
+_PLOT_DEPS: tuple[tuple[str, Any], ...] = (
+    ("pandas", pd),
+    ("altair", alt),
+)
+
 
 def _iterable(val: Iterable[str] | str | None) -> list[str]:
     if val is None:
@@ -202,6 +207,11 @@ def _extract_oligo_records(data: dict[str, Any]) -> list[dict[str, Any]]:
     return records
 
 
+def _plotting_status() -> tuple[bool, list[str]]:
+    missing = [name for name, module in _PLOT_DEPS if module is None]
+    return not missing, missing
+
+
 def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: no cover - UI logic
     """Render the dashboard from one or more metrics files."""
 
@@ -214,6 +224,15 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     for path in paths:
         data = {**_DEF_METRICS, **_load_metrics(path)}
         datasets[str(path)] = data
+
+    can_plot, missing_plot_deps = _plotting_status()
+    if not can_plot:
+        deps = ", ".join(missing_plot_deps)
+        st.error(
+            "Plotting dependencies missing: "
+            f"{deps}. Install with `pip install 'GeneCoder[dashboard]'` "
+            "or `poetry install --extras dashboard` to enable charts."
+        )
 
     gc_rows: list[dict[str, float | str]] = []
     hp_rows: list[dict[str, float | str]] = []
@@ -251,7 +270,7 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
 
     st.header("GC Summary (%)")
     if gc_rows:
-        if alt and pd:
+        if can_plot:
             df = pd.DataFrame(gc_rows)
             chart = (
                 alt.Chart(df)
@@ -260,20 +279,13 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             )
             st.altair_chart(chart, use_container_width=True)
         else:  # pragma: no cover - basic fallback
-            for metric in ("min", "mean", "max"):
-                chart_data = {
-                    row["Run"]: row["Value"]
-                    for row in gc_rows
-                    if row["Metric"] == metric
-                }
-                if chart_data:
-                    st.bar_chart(chart_data)
+            st.table(gc_rows)
     else:
         st.write("No GC summary data.")
 
     st.header("Per-oligo Distributions")
     if oligo_rows:
-        if alt and pd:
+        if can_plot:
             df = pd.DataFrame(oligo_rows)
             gc_chart = (
                 alt.Chart(df.dropna(subset=["GC%"]))
@@ -295,20 +307,7 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             st.altair_chart(gc_chart, use_container_width=True)
             st.altair_chart(hp_chart, use_container_width=True)
         else:  # pragma: no cover - basic fallback
-            gc_hist: dict[str, list[float]] = {}
-            hp_values: dict[str, list[float]] = {}
-            for row in oligo_rows:
-                run = row["Run"]
-                gc_hist.setdefault(run, [])
-                hp_values.setdefault(run, [])
-                if "GC%" in row:
-                    gc_hist[run].append(row["GC%"])
-                if "Max Homopolymer" in row:
-                    hp_values[run].append(row["Max Homopolymer"])
-            for run, values in gc_hist.items():
-                st.write(f"GC% for {run}: {[round(v, 3) for v in values]}")
-            for run, values in hp_values.items():
-                st.write(f"Homopolymer lengths for {run}: {values}")
+            st.table(oligo_rows)
 
         # Highlight out-of-bounds oligos (GC outside [0.4,0.6] or HP > 8)
         flagged = [
@@ -328,7 +327,7 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
 
     st.header("Error Summary")
     if error_rows:
-        if alt and pd:
+        if can_plot:
             df = pd.DataFrame(error_rows)
             chart = (
                 alt.Chart(df)
@@ -337,40 +336,29 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             )
             st.altair_chart(chart, use_container_width=True)
         else:  # pragma: no cover - basic fallback
-            for _, metric_label in _ERROR_METRICS:
-                chart_data = {
-                    f"{row['Run']} ({row['Metric']})": row["Value"]
-                    for row in error_rows
-                    if row["Metric"] == metric_label
-                }
-                if chart_data:
-                    st.bar_chart(chart_data)
+            st.table(error_rows)
     else:
         st.write("No error summary data.")
 
     st.header("Coverage Summary")
     if coverage_rows:
-        if alt and pd:
+        if can_plot:
             df = pd.DataFrame(coverage_rows)
             chart = alt.Chart(df).mark_bar().encode(x="Run:N", y="Value:Q")
             st.altair_chart(chart, use_container_width=True)
         else:  # pragma: no cover - basic fallback
-            chart_data = {
-                f"{row['Run']} ({row['Metric']})": row["Value"] for row in coverage_rows
-            }
-            if chart_data:
-                st.bar_chart(chart_data)
+            st.table(coverage_rows)
     else:
         st.write("No coverage summary data.")
 
     st.header("Longest Homopolymer Runs")
     if hp_rows:
-        if alt and pd:
+        if can_plot:
             df = pd.DataFrame(hp_rows)
             chart = alt.Chart(df).mark_bar().encode(x="Run:N", y="Value:Q")
             st.altair_chart(chart, use_container_width=True)
         else:  # pragma: no cover - basic fallback
-            st.bar_chart({row["Run"]: row["Value"] for row in hp_rows})
+            st.table(hp_rows)
     else:
         st.write("No homopolymer summary data.")
 
@@ -380,7 +368,7 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         gc = _gc_percentages(data.get("gc_distribution"))
         st.subheader("GC Content (%)")
         if gc:
-            if alt and pd:
+            if can_plot:
                 df = pd.DataFrame(
                     {
                         "Window": list(range(1, len(gc) + 1)),
@@ -394,31 +382,42 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                 )
                 st.altair_chart(chart, use_container_width=True)
             else:  # pragma: no cover - basic fallback
-                st.bar_chart({f"Window {idx}": val for idx, val in enumerate(gc, 1)})
+                st.table(
+                    [{"Window": idx, "GC%": val} for idx, val in enumerate(gc, 1)]
+                )
         else:
             st.write("No GC data.")
 
         hp = data.get("homopolymer_runs")
         st.subheader("Homopolymer Runs")
         if isinstance(hp, list) and hp:
-            if alt and pd:
+            if can_plot:
                 df = pd.DataFrame({"length": list(range(len(hp))), "count": hp})
                 chart = alt.Chart(df).mark_bar().encode(x="length", y="count")
                 st.altair_chart(chart, use_container_width=True)
             else:  # pragma: no cover
-                st.bar_chart(hp)
+                st.table(
+                    [
+                        {"Length": idx, "Count": count}
+                        for idx, count in enumerate(hp)
+                    ]
+                )
         else:
             st.write("No homopolymer data.")
 
         ecc = data.get("ecc_success_rates")
         st.subheader("ECC Success Rates")
         if isinstance(ecc, dict) and ecc:
-            if alt and pd:
-                df = pd.DataFrame({"method": list(ecc.keys()), "rate": list(ecc.values())})
+            if can_plot:
+                df = pd.DataFrame(
+                    {"method": list(ecc.keys()), "rate": list(ecc.values())}
+                )
                 chart = alt.Chart(df).mark_bar().encode(x="method", y="rate")
                 st.altair_chart(chart, use_container_width=True)
             else:  # pragma: no cover
-                st.bar_chart(ecc)
+                st.table(
+                    [{"Method": method, "Rate": rate} for method, rate in ecc.items()]
+                )
         else:
             st.write("No ECC data.")
 
@@ -427,21 +426,28 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         coverage_shown = False
         if coverage_value is not None:
             coverage_shown = True
-            if alt and pd:
+            if can_plot:
                 df = pd.DataFrame({"Run": [label], "Value": [coverage_value]})
                 chart = alt.Chart(df).mark_bar().encode(x="Run:N", y="Value:Q")
                 st.altair_chart(chart, use_container_width=True)
             else:  # pragma: no cover
-                st.bar_chart({label: coverage_value})
+                st.table([{"Run": label, "Coverage": coverage_value}])
         cov_dist = data.get("coverage_distribution")
         if isinstance(cov_dist, list) and cov_dist:
             coverage_shown = True
-            if alt and pd:
-                df = pd.DataFrame({"coverage": list(range(len(cov_dist))), "count": cov_dist})
+            if can_plot:
+                df = pd.DataFrame(
+                    {"coverage": list(range(len(cov_dist))), "count": cov_dist}
+                )
                 chart = alt.Chart(df).mark_bar().encode(x="coverage", y="count")
                 st.altair_chart(chart, use_container_width=True)
             else:  # pragma: no cover
-                st.bar_chart(cov_dist)
+                st.table(
+                    [
+                        {"Coverage": idx, "Count": count}
+                        for idx, count in enumerate(cov_dist)
+                    ]
+                )
         if not coverage_shown:
             st.write("No coverage data.")
 
