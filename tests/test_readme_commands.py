@@ -22,6 +22,7 @@ def test_readme_sweep_example_dry_run(tmp_path: Path) -> None:
             "--manifest-index",
             str(manifest_index),
             "--dry-run",
+            "--allow-missing-fec",
         ]
     )
 

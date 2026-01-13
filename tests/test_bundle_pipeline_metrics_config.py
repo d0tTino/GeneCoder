@@ -27,6 +27,7 @@ def test_bundle_pipeline_metrics_config(tmp_path: Path) -> None:
             "--metrics-path",
             str(metrics_path),
             "--emit-manifest-report",
+            "--allow-missing-fec",
         ]
     )
     assert result.returncode == 0, result.stderr

@@ -216,6 +216,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         help="Generate HTML reports for decoded manifests",
     )
     run_parser.add_argument(
+        "--allow-missing-fec",
+        action="store_true",
+        help="Allow bundle runs to disable Reed-Solomon FEC when reedsolo is unavailable",
+    )
+    run_parser.add_argument(
         "--launch-dashboard",
         action="store_true",
         help="Launch the dashboard for the metrics file after the run",
@@ -270,6 +275,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--emit-manifest-report",
         action="store_true",
         help="Generate HTML reports for decoded manifests",
+    )
+    sweep_parser.add_argument(
+        "--allow-missing-fec",
+        action="store_true",
+        help="Allow bundle runs to disable Reed-Solomon FEC when reedsolo is unavailable",
     )
     sweep_parser.add_argument(
         "--launch-dashboard",
@@ -353,6 +363,8 @@ def _create_archive(
     config_name: str | None = None,
     channel_profile: str | None = None,
     ecc_type: str | None = None,
+    ecc_status: str | None = None,
+    ecc_warning: str | None = None,
     metrics_target: Path | None = None,
 ) -> None:
     """Create a gzipped tar archive of ``run_dir`` with a summary manifest."""
@@ -365,6 +377,8 @@ def _create_archive(
         config_name=config_name,
         channel_profile=channel_profile,
         ecc_type=ecc_type,
+        ecc_status=ecc_status,
+        ecc_warning=ecc_warning,
         metrics_target=metrics_target,
     )
 
@@ -730,6 +744,8 @@ def _write_summary_file(
     config_name: str | None = None,
     channel_profile: str | None = None,
     ecc_type: str | None = None,
+    ecc_status: str | None = None,
+    ecc_warning: str | None = None,
     metrics_target: Path | None = None,
 ) -> Path:
     summary = {
@@ -748,6 +764,10 @@ def _write_summary_file(
     summary["config_name"] = config_name
     summary["channel_profile"] = channel_profile
     summary["ecc"] = ecc_type
+    if ecc_status:
+        summary["ecc_status"] = ecc_status
+    if ecc_warning:
+        summary["ecc_warning"] = ecc_warning
     if metrics_target is not None:
         summary["metrics_path"] = str(metrics_target)
 
@@ -779,6 +799,7 @@ def _run_single_bundle(
     metrics_override: Path | None,
     launch_dashboard: bool,
     dry_run: bool,
+    allow_missing_fec: bool,
 ) -> BundleRunResult:
     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -816,12 +837,21 @@ def _run_single_bundle(
         raise TypeError("encode section must be a mapping")
     enc_cfg = dict(enc_cfg_raw)
     fec_downgraded = False
+    ecc_status = None
+    ecc_warning = None
     if enc_cfg.get("fec") == "reed_solomon" and importlib.util.find_spec("reedsolo") is None:
+        if not allow_missing_fec:
+            raise RuntimeError(
+                "Reed-Solomon FEC requires the 'reedsolo' package. Install reedsolo "
+                "or re-run with --allow-missing-fec to disable FEC for this bundle."
+            )
         logger.warning(
             "reedsolo is unavailable; running bundle encode without Reed-Solomon FEC"
         )
         enc_cfg["fec"] = None
         fec_downgraded = True
+        ecc_status = "missing_dependency"
+        ecc_warning = "reedsolo is unavailable; Reed-Solomon FEC disabled"
     sim_cfg_raw = config.get("simulate")
     if sim_cfg_raw is not None and not isinstance(sim_cfg_raw, dict):
         raise TypeError("simulate section must be a mapping")
@@ -844,6 +874,8 @@ def _run_single_bundle(
             config_name=config_name,
             channel_profile=_extract_channel_profile(sim_cfg_raw),
             ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            ecc_status=ecc_status,
+            ecc_warning=ecc_warning,
             metrics_target=metrics_override or metrics.path,
         )
         if export_archive:
@@ -857,6 +889,8 @@ def _run_single_bundle(
                 config_name=config_name,
                 channel_profile=_extract_channel_profile(sim_cfg_raw),
                 ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+                ecc_status=ecc_status,
+                ecc_warning=ecc_warning,
                 metrics_target=metrics_override or metrics.path,
             )
         _launch_dashboard_if_requested(launch_dashboard, metrics_override)
@@ -916,6 +950,8 @@ def _run_single_bundle(
             config_name=config_name,
             channel_profile=_extract_channel_profile(sim_cfg_raw),
             ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            ecc_status=ecc_status,
+            ecc_warning=ecc_warning,
             metrics_target=metrics_override or metrics.path,
         )
         return BundleRunResult(
@@ -1092,6 +1128,8 @@ def _run_single_bundle(
         config_name=config_name,
         channel_profile=_extract_channel_profile(sim_cfg),
         ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+        ecc_status=ecc_status,
+        ecc_warning=ecc_warning,
         metrics_target=metrics_override or metrics.path,
     )
     if export_archive:
@@ -1105,10 +1143,14 @@ def _run_single_bundle(
             config_name=config_name,
             channel_profile=_extract_channel_profile(sim_cfg),
             ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            ecc_status=ecc_status,
+            ecc_warning=ecc_warning,
             metrics_target=metrics_override or metrics.path,
         )
 
     metrics.increment("bundle_runs")
+    if fec_downgraded:
+        metrics.increment("bundle_fec_missing")
     _launch_dashboard_if_requested(launch_dashboard, metrics_override)
 
     return BundleRunResult(
@@ -1196,6 +1238,7 @@ def _handle_run(args: argparse.Namespace) -> None:
         metrics_override=metrics_override,
         launch_dashboard=args.launch_dashboard,
         dry_run=args.dry_run,
+        allow_missing_fec=args.allow_missing_fec,
     )
 
 
@@ -1221,6 +1264,7 @@ def _handle_sweep(args: argparse.Namespace) -> None:
                 metrics_override=metrics_override,
                 launch_dashboard=False,
                 dry_run=args.dry_run,
+                allow_missing_fec=args.allow_missing_fec,
             )
         )
 
