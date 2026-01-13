@@ -1041,6 +1041,11 @@ def load_plugin_catalog(url: str | None = None) -> None:
     if url is None:
         url = os.getenv("GENECODER_PLUGIN_CATALOG_URL")
     catalog: Dict[str, Dict[str, Any]] = {}
+    offline = bool(os.getenv("GENECODER_OFFLINE"))
+
+    if offline:
+        logger.info("offline: skipped remote catalog")
+        url = None
 
     if url:
         try:
