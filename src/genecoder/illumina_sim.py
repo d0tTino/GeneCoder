@@ -4,20 +4,25 @@ This module implements a small Illumina error model dominated by base
 substitutions.  Earlier versions exposed a single ``error_rate`` parameter
 from which insertion and deletion probabilities were derived.  The model now
 accepts separate ``substitution_rate``, ``insertion_rate`` and
-``deletion_rate`` values which can also be loaded from named profiles defined
-in :mod:`configs/illumina.yml`.
+``deletion_rate`` values which can also be loaded from named profiles.
 """
 from __future__ import annotations
 
 import random
-import math
-from pathlib import Path
-from typing import Callable, Sequence, Mapping
+from typing import Callable, Sequence
 
-from .error_simulation import NUCLEOTIDES, _random_substitution
-from .random_utils import make_rng
 from .api import Simulator
+from .random_utils import make_rng
 from .simulators import register_simulator as _register_simulator
+from .simulators.illumina.mutations import mutate_read
+from .simulators.illumina.profiles import (
+    ILLUMINA_PROFILES as _ILLUMINA_PROFILES,
+    IlluminaProfile,
+    _resolve_profile,
+)
+from .simulators.illumina.utils import consensus, poisson
+
+ILLUMINA_PROFILES = _ILLUMINA_PROFILES
 
 __all__ = ["simulate", "Channel", "register", "ILLUMINA_PROFILES"]
 
@@ -25,63 +30,7 @@ __all__ = ["simulate", "Channel", "register", "ILLUMINA_PROFILES"]
 def _poisson(lam: float, rng: random.Random) -> int:
     """Return a Poisson-distributed integer with mean ``lam``."""
 
-    L = math.exp(-lam)
-    k = 0
-    p = 1.0
-    while p > L:
-        k += 1
-        p *= rng.random()
-    return k - 1
-
-
-_DEFAULT_PROFILES: dict[str, dict[str, float | int]] = {
-    "hiseq": {
-        "substitution_rate": 0.0005,
-        "insertion_rate": 0.00005,
-        "deletion_rate": 0.00005,
-        "coverage_depth": 1,
-    },
-    "miseq": {
-        "substitution_rate": 0.001,
-        "insertion_rate": 0.0001,
-        "deletion_rate": 0.0001,
-        "coverage_depth": 1,
-    },
-    "novaseq": {
-        "substitution_rate": 0.0003,
-        "insertion_rate": 0.00003,
-        "deletion_rate": 0.00003,
-        "coverage_depth": 1,
-    },
-    "nova": {
-        "substitution_rate": 0.0003,
-        "insertion_rate": 0.00003,
-        "deletion_rate": 0.00003,
-        "coverage_depth": 1,
-    },
-}
-
-try:  # pragma: no cover - optional dependency
-    import yaml
-
-    _cfg_dir = Path(__file__).resolve().parents[2] / "configs"
-    with open(_cfg_dir / "illumina.yml", "r", encoding="utf-8") as _fh:
-        _data = yaml.safe_load(_fh) or {}
-    if isinstance(_data, Mapping):
-        ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
-            str(name): {
-                "substitution_rate": float(params.get("substitution_rate", 0.001)),
-                "insertion_rate": float(params.get("insertion_rate", 0.0001)),
-                "deletion_rate": float(params.get("deletion_rate", 0.0001)),
-                "coverage_depth": float(params.get("coverage_depth", 1)),
-            }
-            for name, params in _data.items()
-            if isinstance(params, Mapping)
-        }
-    else:  # pragma: no cover - unexpected structure
-        ILLUMINA_PROFILES = _DEFAULT_PROFILES
-except Exception:  # pragma: no cover - fall back to defaults
-    ILLUMINA_PROFILES = _DEFAULT_PROFILES
+    return poisson(lam, rng)
 
 
 def _mutate_read(
@@ -95,44 +44,23 @@ def _mutate_read(
 ) -> str:
     """Return ``sequence`` mutated using the provided probabilities."""
 
-    mutated: list[str] = []
-    for idx, nt in enumerate(sequence):
-        if rng.random() < deletion_prob:
-            continue
-
-        if quality_profile is not None and idx < len(quality_profile):
-            sub_prob = quality_profile[idx]
-        elif quality_distribution is not None and len(quality_distribution) > 0:
-            sub_prob = rng.choice(quality_distribution)
+    if quality_distribution is not None and quality_profile is None:
+        if quality_distribution:
+            quality_profile = tuple(
+                rng.choice(quality_distribution) for _ in range(len(sequence))
+            )
         else:
-            sub_prob = substitution_prob
-        if rng.random() < sub_prob:
-            nt = _random_substitution(nt, rng)
+            quality_profile = None
 
-        mutated.append(nt)
-
-        if rng.random() < insertion_prob:
-            mutated.append(rng.choice(NUCLEOTIDES))
-
-    return "".join(mutated)
-
-
-def _consensus(reads: Sequence[str]) -> str:
-    """Return the per-base majority sequence from ``reads``."""
-
-    if not reads:
-        return ""
-    length = max(len(r) for r in reads)
-    result: list[str] = []
-    for i in range(length):
-        counts: dict[str, int] = {}
-        for r in reads:
-            if i < len(r):
-                base = r[i]
-                counts[base] = counts.get(base, 0) + 1
-        if counts:
-            result.append(max(counts, key=lambda b: counts.get(b, 0)))
-    return "".join(result)
+    return mutate_read(
+        sequence,
+        quality_profile,
+        rng,
+        substitution_rate=substitution_prob,
+        insertion_rate=insertion_prob,
+        deletion_rate=deletion_prob,
+        context_errors={},
+    )
 
 
 def simulate(
@@ -170,34 +98,35 @@ def simulate(
         Optional profile name defined in :data:`ILLUMINA_PROFILES`.
     """
 
-    prof = ILLUMINA_PROFILES.get(profile or "hiseq", {})
+    prof_defaults, prof_data = _resolve_profile(profile or "hiseq")
+    prof = prof_defaults
     substitution_rate = float(
         substitution_rate
         if substitution_rate is not None
-        else prof.get("substitution_rate", 0.001)
+        else (prof.substitution_rate if prof is not None else 0.001)
     )
     insertion_rate = float(
         insertion_rate
         if insertion_rate is not None
-        else prof.get("insertion_rate", 0.0001)
+        else (prof.insertion_rate if prof is not None else 0.0001)
     )
     deletion_rate = float(
         deletion_rate
         if deletion_rate is not None
-        else prof.get("deletion_rate", 0.0001)
+        else (prof.deletion_rate if prof is not None else 0.0001)
     )
     coverage_depth = float(
         coverage_depth
         if coverage_depth is not None
-        else float(prof.get("coverage_depth", 1))
+        else (prof.coverage if prof is not None else 1)
     )
+    if prof_data:
+        quality_profile = prof_data.get("quality_profile", quality_profile)
 
     if rng is None:
         rng = make_rng()
 
-    coverage = _poisson(coverage_depth, rng)
-    if coverage <= 0:
-        return ""
+    coverage = max(1, poisson(coverage_depth, rng))
     reads = [
         _mutate_read(
             sequence,
@@ -212,7 +141,7 @@ def simulate(
     ]
     if coverage == 1:
         return reads[0]
-    return _consensus(reads)
+    return consensus(reads)
 
 
 class Channel(Simulator):
@@ -229,27 +158,30 @@ class Channel(Simulator):
         quality_distribution: Sequence[float] | None = None,
         profile: str | None = None,
     ) -> None:
-        prof = ILLUMINA_PROFILES.get(profile or "hiseq", {})
+        prof_defaults, prof_data = _resolve_profile(profile or "hiseq")
+        prof: IlluminaProfile | None = prof_defaults
         self.substitution_rate = float(
             substitution_rate
             if substitution_rate is not None
-            else prof.get("substitution_rate", 0.001)
+            else (prof.substitution_rate if prof is not None else 0.001)
         )
         self.insertion_rate = float(
             insertion_rate
             if insertion_rate is not None
-            else prof.get("insertion_rate", 0.0001)
+            else (prof.insertion_rate if prof is not None else 0.0001)
         )
         self.deletion_rate = float(
             deletion_rate
             if deletion_rate is not None
-            else prof.get("deletion_rate", 0.0001)
+            else (prof.deletion_rate if prof is not None else 0.0001)
         )
         self.coverage_depth = float(
             coverage_depth
             if coverage_depth is not None
-            else float(prof.get("coverage_depth", 1))
+            else (prof.coverage if prof is not None else 1)
         )
+        if prof_data:
+            quality_profile = prof_data.get("quality_profile", quality_profile)
         self.quality_profile = (
             tuple(quality_profile) if quality_profile is not None else None
         )

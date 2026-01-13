@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Mapping, Sequence, cast
+from typing import Dict, Sequence, cast
 import random
 
 from ..base import BaseSimulator
@@ -14,8 +14,8 @@ from .mutations import mutate_read
 from .profiles import (
     ILLUMINA_PROFILES,
     IlluminaProfile,
-    _load_profile_file,
     _parse_quality_profile,
+    _resolve_profile,
     _validate_profile,
 )
 from .utils import consensus, poisson
@@ -40,16 +40,7 @@ class IlluminaChannel(BaseSimulator):
         context_errors: Dict[str, float] | None = None,
         profile: str | None = None,
     ) -> None:
-        profile_data: Mapping[str, Any] = {}
-        profile_defaults: IlluminaProfile | None = None
-        if profile is not None:
-            path = Path(profile)
-            if path.is_file():
-                profile_data = _load_profile_file(path) or {}
-            else:
-                profile_data = ILLUMINA_PROFILES.get(profile.lower(), {})
-            if profile_data:
-                profile_defaults = _validate_profile(profile_data)
+        profile_defaults, profile_data = _resolve_profile(profile)
 
         substitution_rate = float(
             substitution_rate

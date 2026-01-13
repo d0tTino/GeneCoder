@@ -20,6 +20,7 @@ __all__ = [
     "_parse_quality_profile",
     "_validate_profile",
     "_load_profile_file",
+    "_resolve_profile",
 ]
 
 
@@ -124,6 +125,22 @@ def _load_profile_file(path: str | Path) -> Mapping[str, Any]:
     if not isinstance(data, Mapping):
         raise ValueError("Profile file must map keys to values")
     return data
+
+
+def _resolve_profile(
+    profile: str | None,
+) -> tuple[IlluminaProfile | None, Mapping[str, Any]]:
+    """Return resolved profile defaults and raw data for ``profile``."""
+
+    if profile is None:
+        return None, {}
+    path = Path(profile)
+    if path.is_file():
+        profile_data = _load_profile_file(path) or {}
+    else:
+        profile_data = ILLUMINA_PROFILES.get(profile.lower(), {})
+    profile_defaults = _validate_profile(profile_data) if profile_data else None
+    return profile_defaults, profile_data
 
 
 # Preset parameter profiles for :class:`IlluminaChannel`.

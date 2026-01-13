@@ -61,7 +61,7 @@ def test_coverage_influences_read_count(monkeypatch):
         rng=rng,
         coverage_depth=5.0,
     )
-    expected = illumina_sim._poisson(5.0, random.Random(0))
+    expected = max(1, illumina_sim._poisson(5.0, random.Random(0)))
     assert len(calls) == expected
     assert out == seq
 
@@ -75,5 +75,6 @@ def test_coverage_influences_read_count(monkeypatch):
         rng=rng,
         coverage_depth=0.1,
     )
-    assert out == ""
-    assert len(calls) == 0
+    expected = max(1, illumina_sim._poisson(0.1, random.Random(0)))
+    assert len(calls) == expected
+    assert out == seq
