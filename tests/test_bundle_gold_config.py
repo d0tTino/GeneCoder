@@ -16,7 +16,14 @@ def test_bundle_gold_config(tmp_path: Path) -> None:
     env = {"GENECODER_SIM_SEED": "12345"}
 
     result = run_cli_command(
-        ["bundle", "run", "configs/gold.yaml", "--cache-dir", str(cache_dir)],
+        [
+            "bundle",
+            "run",
+            "configs/gold.yaml",
+            "--cache-dir",
+            str(cache_dir),
+            "--allow-missing-fec",
+        ],
         env=env,
     )
 

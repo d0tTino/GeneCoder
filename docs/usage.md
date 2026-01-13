@@ -74,6 +74,11 @@ poetry install --no-interaction
 * `--auto-ext` – save encoded files with a `.dna` suffix and decode back to the original extension.
 * `--seed` – seed random number generators for reproducible simulations.
 
+Reed‑Solomon FEC requires the `reedsolo` Python package. Install it before
+running `--fec reed_solomon` (including bundle configs that request it), or
+pass `genecli bundle run --allow-missing-fec` to explicitly disable FEC when the
+dependency is unavailable.
+
 See [WORKFLOWS.md](../WORKFLOWS.md) for a step-by-step overview.
 
 ### Examples
