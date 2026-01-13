@@ -51,6 +51,16 @@ API_TOKEN: str | None = os.getenv("GENECODER_API_TOKEN")
 CORS_ORIGINS = os.getenv("GENECODER_CORS_ORIGINS", "*")
 security = HTTPBearer(auto_error=False)
 BUNDLE_DIR = Path(os.getenv("GENECODER_BUNDLE_DIR", "bundle_runs"))
+GENECODER_OFFLINE = os.getenv("GENECODER_OFFLINE", "").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+PYODIDE_SRC = os.getenv(
+    "GENECODER_PYODIDE_SRC",
+    "https://cdn.jsdelivr.net/pyodide/v0.24.0/full/pyodide.js",
+)
 
 
 
@@ -125,7 +135,12 @@ if not design_index_path.is_file():
 
 @app.get("/", response_class=HTMLResponse)
 async def index() -> str:
-    return index_path.read_text(encoding="utf-8")
+    html = index_path.read_text(encoding="utf-8")
+    return (
+        html.replace(
+            "__GENECODER_OFFLINE__", "true" if GENECODER_OFFLINE else "false"
+        ).replace("__PYODIDE_SRC__", PYODIDE_SRC)
+    )
 
 
 @app.get("/helix", response_class=HTMLResponse)
