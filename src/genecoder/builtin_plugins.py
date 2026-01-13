@@ -56,7 +56,6 @@ def register_builtin_plugins() -> None:
     _load_and_register(
         [
             "genecoder.error_simulation",
-            "genecoder.illumina_sim",
             "genecoder.simulators.decay",
             "genecoder.simulators.illumina",
             "genecoder.insilicoseq_adapter",
@@ -75,4 +74,3 @@ def register_builtin_plugins() -> None:
         register_visualizer,
         "builtin",
     )
-

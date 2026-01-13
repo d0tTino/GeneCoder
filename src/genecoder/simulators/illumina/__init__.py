@@ -22,6 +22,8 @@ __all__ = [
 def register(
     registrar: Callable[[str, Simulator], None] = _register_simulator,
 ) -> None:
-    registrar("illumina", IlluminaChannel())
+    channel = IlluminaChannel()
+    registrar("illumina", channel)
+    registrar("illumina_builtin", channel)
     registrar("illumina_d2sim", IlluminaD2SimChannel())
     registrar("illumina_insilicoseq", IlluminaInSilicoSeqChannel())
