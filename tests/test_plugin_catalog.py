@@ -75,3 +75,25 @@ def test_load_catalog_bad_signature(monkeypatch: pytest.MonkeyPatch, caplog: pyt
 
     assert "Invalid catalog signature" in caplog.text
     assert not plugins.PLUGIN_CATALOG
+
+
+def test_load_catalog_offline_skips_remote(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    import genecoder.plugin_manager as plugins
+
+    calls: list[str] = []
+
+    def fake_urlopen(*args: object, **kwargs: object) -> None:
+        calls.append("urlopen")
+        raise AssertionError("urlopen should not be called while offline")
+
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setenv("GENECODER_OFFLINE", "1")
+    monkeypatch.setattr(plugins, "_collect_installed_plugins", lambda: ({"local": {"version": "1.0"}}, []))
+
+    plugins.PLUGIN_CATALOG.clear()
+    with caplog.at_level(logging.INFO):
+        plugins.load_plugin_catalog("https://example.com/catalog.json")
+
+    assert "offline: skipped remote catalog" in caplog.text
+    assert calls == []
+    assert plugins.PLUGIN_CATALOG == {"local": {"version": "1.0"}}
