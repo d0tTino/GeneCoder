@@ -26,13 +26,17 @@ def simulate_squigulator(
     sequence: str,
     error_rate: float = 0.05,
     rng: random.Random | None = None,
+    *,
+    seed: int | None = None,
 ) -> str:
     """Use ``squigulator`` if available, else fall back to :func:`simulate_errors`."""
 
     if rng is None:
         rng = make_rng()
 
-    return _simulate_adapter("squigulator", sequence, error_rate, rng, None)
+    return _simulate_adapter(
+        "squigulator", sequence, error_rate, rng, None, seed=seed
+    )
 
 
 class SquigulatorChannel(Simulator):

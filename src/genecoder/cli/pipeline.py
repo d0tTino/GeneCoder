@@ -77,6 +77,17 @@ def _is_truthy(value: object) -> bool:
     return bool(value)
 
 
+def _resolve_sim_seed() -> int | None:
+    seed_env = os.getenv("GENECODER_SIM_SEED")
+    if seed_env is None:
+        return None
+    try:
+        return int(seed_env)
+    except ValueError:
+        logger.warning("Invalid GENECODER_SIM_SEED %r", seed_env)
+        return None
+
+
 
 def _load_config(path: str) -> tuple[str, str | None, str | None, Dict[str, Any]]:
     """Parse pipeline settings from a YAML ``path``."""
@@ -498,6 +509,9 @@ def _run_with_params(
         channel_metrics["configuration"] = channel_configuration
     if channel_constructor_params:
         channel_metrics["parameters"] = channel_constructor_params
+    sim_seed = _resolve_sim_seed()
+    if sim_seed is not None:
+        channel_metrics["simulator_seed"] = sim_seed
 
     metrics["channel"] = channel_metrics
     metrics["dropout_count"] = dropout_total_meta

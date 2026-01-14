@@ -27,6 +27,8 @@ def simulate_dnarsim(
     error_rate: float = 0.05,
     rng: random.Random | None = None,
     profile: str | None = None,
+    *,
+    seed: int | None = None,
 ) -> str:
     """Use ``dnarsim`` if available, else fall back to :func:`simulate_errors`."""
 
@@ -34,7 +36,7 @@ def simulate_dnarsim(
         rng = make_rng()
 
     extra = ["-p", profile] if profile else None
-    return _simulate_adapter("dnarsim", sequence, error_rate, rng, extra)
+    return _simulate_adapter("dnarsim", sequence, error_rate, rng, extra, seed=seed)
 
 
 class DNArSimChannel(Simulator):

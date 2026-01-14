@@ -815,6 +815,7 @@ def _validate_plugin_metadata(meta: object) -> Dict[str, Any]:
 def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
     """Discover installed plugins via entry points and local modules."""
 
+    _ENTRY_POINT_METADATA.clear()
     catalog: Dict[str, Dict[str, Any]] = {}
     failures: list[str] = []
 

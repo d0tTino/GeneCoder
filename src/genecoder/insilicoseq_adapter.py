@@ -27,6 +27,8 @@ def simulate_insilicoseq(
     error_rate: float = 0.05,
     rng: random.Random | None = None,
     profile: str | None = None,
+    *,
+    seed: int | None = None,
 ) -> str:
     """Use ``InSilicoSeq`` if available, else fall back to ``IlluminaChannel``.
 
@@ -35,7 +37,13 @@ def simulate_insilicoseq(
 
     if profile:
         profile = INSILICOSEQ_PROFILES.get(profile.lower(), profile)
-    return _simulate_insilicoseq(sequence, error_rate=error_rate, profile=profile)
+    if seed is None:
+        return _simulate_insilicoseq(
+            sequence, error_rate=error_rate, profile=profile
+        )
+    return _simulate_insilicoseq(
+        sequence, error_rate=error_rate, profile=profile, seed=seed
+    )
 
 
 class InSilicoSeqChannel(_IlluminaInSilicoSeqChannel):
