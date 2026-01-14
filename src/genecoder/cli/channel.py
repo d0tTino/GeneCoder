@@ -322,6 +322,19 @@ def _parse_int(value: str | None, default: int = 0) -> int:
             return default
 
 
+def _resolve_sim_seed(seed: int | None) -> int | None:
+    if seed is not None:
+        return seed
+    seed_env = os.getenv("GENECODER_SIM_SEED")
+    if seed_env is None:
+        return None
+    try:
+        return int(seed_env)
+    except ValueError:
+        logger.warning("Invalid GENECODER_SIM_SEED %r", seed_env)
+        return None
+
+
 def _simulate_probabilities(
     batch: SequenceBatch,
     *,
@@ -460,6 +473,9 @@ def process_channel(
     config: ChannelConfig | None = None,
     batch_workers: int | None = None,
 ) -> None:
+    if seed is not None:
+        os.environ["GENECODER_SIM_SEED"] = str(seed)
+
     try:
         with open(input_file, "r", encoding="utf-8") as f:
             fasta_str = f.read()
@@ -620,6 +636,9 @@ def process_channel(
             "fraction": synthesis_fraction,
         },
     }
+    sim_seed = _resolve_sim_seed(seed)
+    if sim_seed is not None:
+        manifest["simulator_seed"] = sim_seed
     if mutation_totals is not None:
         manifest["mutation_totals"] = mutation_totals
     if stage_metadata:

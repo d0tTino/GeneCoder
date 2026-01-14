@@ -497,6 +497,19 @@ class NanoporeDNArSimChannel(NanoporeChannel):
             logger=logging.getLogger(__name__).warning,
         )
 
+    def _simulate_string(self, sequence: str) -> str:
+        rng = make_rng()
+        try:
+            base = self._simulate_cli(sequence)
+            self._current_rates = (
+                self.substitution_rate,
+                self.insertion_rate,
+                self.deletion_rate,
+            )
+            return self._mutate_observed_read(sequence, base, rng)
+        except Exception:
+            return super()._simulate_string(sequence)
+
     def with_profile(self, profile: str) -> "NanoporeDNArSimChannel":
         """Return a new channel configured to use ``profile``."""
         return type(self)(

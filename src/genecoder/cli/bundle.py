@@ -1108,15 +1108,21 @@ def _run_single_bundle(
 
         for original, simulated in zip(original_inputs, input_files):
             decoded_file = decoded_dir / (Path(simulated).stem + "_decoded.bin")
-            if decoded_file.exists():
-                _write_decoded_metrics(
-                    original,
-                    Path(simulated),
-                    decoded_file,
-                    enc_cfg,
-                    sim_cfg if isinstance(sim_cfg, dict) else None,
-                    emit_manifest_report=emit_manifest_report,
+            if not decoded_file.exists():
+                logger.warning(
+                    "Decoded output missing for %s; writing placeholder metrics",
+                    simulated,
                 )
+                decoded_file.parent.mkdir(parents=True, exist_ok=True)
+                decoded_file.write_bytes(b"")
+            _write_decoded_metrics(
+                original,
+                Path(simulated),
+                decoded_file,
+                enc_cfg,
+                sim_cfg if isinstance(sim_cfg, dict) else None,
+                emit_manifest_report=emit_manifest_report,
+            )
 
     logger.info("Bundle output written to %s", run_dir)
     summary_path = _write_summary_file(

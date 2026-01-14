@@ -65,7 +65,10 @@ def _parse_env_options(command: str) -> list[str]:
 
 
 def _execute_external(
-    command: Sequence[str] | str, input_fasta: str
+    command: Sequence[str] | str,
+    input_fasta: str,
+    *,
+    seed: int | None = None,
 ) -> tuple[str, dict[str, Any] | None]:
     """Execute ``command`` on ``input_fasta`` and return FASTA output."""
 
@@ -76,8 +79,12 @@ def _execute_external(
         cmd_list = [command] if isinstance(command, str) else list(command)
         full_cmd = cmd_list + [str(input_path), str(output_path)]
         logger.debug("Running external command: %s", " ".join(full_cmd))
+        env = None
+        if seed is not None:
+            env = os.environ.copy()
+            env["GENECODER_SIM_SEED"] = str(seed)
         try:
-            subprocess.run(full_cmd, check=True)
+            subprocess.run(full_cmd, check=True, env=env)
         except subprocess.CalledProcessError as exc:  # pragma: no cover - error path
             raise RuntimeError(
                 f"{cmd_list[0]} failed with exit code {exc.returncode}"
@@ -101,14 +108,16 @@ def _execute_external(
         return output_text, metadata
 
 
-def _run_external(command: Sequence[str] | str, sequence: str) -> str:
+def _run_external(
+    command: Sequence[str] | str, sequence: str, *, seed: int | None = None
+) -> str:
     """Run an external simulator command on ``sequence``.
 
     The command must accept an input FASTA file and output FASTA to a
     second file: ``command <in> <out>``.
     """
 
-    output_text, _ = _execute_external(command, to_fasta(sequence, "seq"))
+    output_text, _ = _execute_external(command, to_fasta(sequence, "seq"), seed=seed)
     records = from_fasta(output_text)
     if not records:
         cmd_list = [command] if isinstance(command, str) else list(command)
@@ -122,6 +131,8 @@ def _simulate_adapter(
     error_rate: float,
     rng: random.Random | None,
     extra_args: Sequence[str] | None = None,
+    *,
+    seed: int | None = None,
 ) -> str:
     """Return ``sequence`` processed by an external ``command`` if available."""
 
@@ -131,7 +142,9 @@ def _simulate_adapter(
             if extra_args:
                 cmd_list += list(extra_args)
             cmd_list += _parse_env_options(command)
-            return _run_external(cmd_list, sequence)
+            if seed is None:
+                return _run_external(cmd_list, sequence)
+            return _run_external(cmd_list, sequence, seed=seed)
         except (ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
             logger.warning(
                 "%s failed: %s; falling back to simple error model", command, exc
@@ -144,4 +157,3 @@ def _simulate_adapter(
     if rng is None:
         rng = make_rng()
     return simulate_errors(sequence, error_rate, rng=rng)
-

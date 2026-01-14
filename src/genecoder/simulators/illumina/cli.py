@@ -47,7 +47,11 @@ class IlluminaInSilicoSeqChannel(Simulator):
 
 
 def simulate_insilicoseq(
-    sequence: str, error_rate: float = 0.05, profile: str | None = None
+    sequence: str,
+    error_rate: float = 0.05,
+    profile: str | None = None,
+    *,
+    seed: int | None = None,
 ) -> str:
     """Use the ``insilicoseq`` CLI if available, else fall back to ``IlluminaChannel``."""
 
@@ -58,7 +62,9 @@ def simulate_insilicoseq(
             cmd_list += ["-p", profile]
         try:
             cmd_list += _parse_env_options(cmd)
-            return _run_external(cmd_list, sequence)
+            if seed is None:
+                return _run_external(cmd_list, sequence)
+            return _run_external(cmd_list, sequence, seed=seed)
         except (ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
             logging.getLogger(__name__).warning(
                 "%s failed: %s; falling back to simple Illumina model",
