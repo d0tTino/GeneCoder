@@ -161,8 +161,15 @@ def run_pipeline(
     channel: str | None,
     input_path: str,
     output_path: str,
+    filter_mutated: bool = False,
 ) -> Tuple[bytes, dict[str, Any], Mapping[str, Any] | None]:
-    """Process ``input_path`` through the selected codec, FEC and channel."""
+    """Process ``input_path`` through the selected codec, FEC and channel.
+
+    Args:
+        filter_mutated: When ``True``, drop oligos that contain mutation metadata
+            before decoding. Defaults to ``False`` so mutated oligos are retained
+            unless they are marked as dropouts or have zero coverage.
+    """
 
     init_plugins()
 
@@ -205,7 +212,7 @@ def run_pipeline(
                 is not None
                 and coverage_val <= 0
             )
-            and not _has_mutations(oligo.metadata)
+            and (not filter_mutated or not _has_mutations(oligo.metadata))
         ]
         if len(filtered) != len(survivor_batch.oligos):
             decode_input = SequenceBatch(

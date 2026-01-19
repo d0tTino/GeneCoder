@@ -15,7 +15,7 @@ from genecoder.plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.channel_sim import Channel
 from genecoder.simulators.nanopore import NanoporeChannel
-from genecoder.simulators.batch_utils import RESULT_DROPOUT_FLAG_KEY
+from genecoder.simulators.batch_utils import RESULT_DROPOUT_FLAG_KEY, RESULT_MUTATION_TOTALS_KEY
 from genecoder.reed_solomon_codec import _HAS_REEDSOLO
 
 SAMPLE_DATA = Path("tests/data/sample.txt")
@@ -164,3 +164,63 @@ def test_pipeline_legacy_fountain_nanopore_dropouts(
     assert 0.0 < float(dropout_info.get("fraction", 0.0)) <= 1.0
     assert channel_info.get("status") in {"success", "failed"}
     assert channel_info.get("decode_success_rate") == metrics.get("decode_success_rate")
+
+
+def test_pipeline_legacy_fountain_keeps_mutated_oligos_by_default(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, legacy_codec: tuple[str, _BatchCodec]
+) -> None:
+    codec_name, codec = legacy_codec
+    monkeypatch.setenv("GENECODER_SIM_SEED", "11")
+
+    class _MutatedNanopore(NanoporeChannel):
+        def __init__(self) -> None:
+            super().__init__(profile="rapid")
+            self.error_rate = 0.0
+            self.substitution_rate = 0.0
+            self.insertion_rate = 0.0
+            self.deletion_rate = 0.0
+
+        def simulate(self, sequence: SequenceBatch | str) -> SequenceBatch | str:  # type: ignore[override]
+            result = super().simulate(sequence)
+            if isinstance(result, SequenceBatch) and result.oligos:
+                result.oligos[0].metadata[RESULT_MUTATION_TOTALS_KEY] = {
+                    "substitutions": 1,
+                    "insertions": 0,
+                    "deletions": 0,
+                }
+            return result
+
+    monkeypatch.setitem(SIMULATOR_REGISTRY, "nanopore", _MutatedNanopore())
+
+    payload = SAMPLE_DATA.read_bytes()
+    inp = tmp_path / "sample.bin"
+    outp = tmp_path / "fountain-mutated.bin"
+    inp.write_bytes(payload)
+
+    decode_calls: list[SequenceBatch | str] = []
+    original_decode = pipeline_mod.core.decode
+
+    def _recording_decode(*args, **kwargs):  # type: ignore[no-untyped-def]
+        decode_calls.append(args[2])
+        return original_decode(*args, **kwargs)
+
+    monkeypatch.setattr(pipeline_mod.core, "decode", _recording_decode)
+
+    decoded, metrics, fec_info = run_pipeline(
+        codec_name,
+        "fountain",
+        "nanopore",
+        str(inp),
+        str(outp),
+    )
+
+    assert decoded == payload
+    assert outp.read_bytes() == payload
+    assert len(decode_calls) == 1
+    assert isinstance(decode_calls[0], SequenceBatch)
+    decode_batch = decode_calls[0]
+    assert any(
+        RESULT_MUTATION_TOTALS_KEY in oligo.metadata for oligo in decode_batch.oligos
+    )
+    assert fec_info is not None
+    assert metrics["gc_content"] >= 0.0
