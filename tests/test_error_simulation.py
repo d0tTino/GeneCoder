@@ -1,6 +1,6 @@
 import random
 import pytest
-from genecoder.error_simulation import simulate_errors
+from genecoder.error_simulation import Channel, simulate_errors
 from genecoder.random_utils import reset_rng
 
 
@@ -140,3 +140,14 @@ def test_simulate_errors_probability_sum_exceeds_one() -> None:
             deletion_prob=0.2,
             rng=random.Random(0),
         )
+
+
+def test_channel_error_rate_clamping() -> None:
+    channel = Channel(error_rate=0.6)
+    assert channel.substitution_prob == pytest.approx(1.0 / 3.0)
+    assert channel.insertion_prob == pytest.approx(1.0 / 3.0)
+    assert channel.deletion_prob == pytest.approx(1.0 / 3.0)
+    assert (
+        channel.substitution_prob + channel.insertion_prob + channel.deletion_prob
+        <= 1.0
+    )
