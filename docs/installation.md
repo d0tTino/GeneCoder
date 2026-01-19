@@ -194,6 +194,15 @@ unmaintained. LDPC, Fountain and RaptorQ extras provide advanced
 forward-error-correction under permissive licenses. Other components are only
 needed when installing the corresponding extras.
 
+Non-permissive dependencies (such as the optional `bch` extra powered by
+GPL-licensed `bchlib`) are not bundled with GeneCoder and remain opt-in extras
+that must be explicitly installed.
+
+## License Compliance
+
+Third-party attributions for bundled assets and declared dependencies are
+maintained in the repository's `NOTICE` file.
+
 ## Custom Temporary Directory
 
 GeneCoder writes short-lived files during testing and simulation. Set the
@@ -261,4 +270,3 @@ External simulators accept additional flags through environment variables. Set
 `GENECODER_D2SIM_OPTIONS`, `GENECODER_DNARSIM_OPTIONS` or
 `GENECODER_SQUIGULATOR_OPTIONS` to pass options to the respective tool. Use
 `GENECODER_SIM_SEED` to make runs reproducible.
-
