@@ -42,3 +42,21 @@ def test_bundle_launches_dashboard(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     )
     assert result.returncode == 0, result.stderr
     assert calls == [(str(metrics_path),)]
+
+
+def test_dashboard_missing_streamlit_warns(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    module = types.ModuleType("genecoder.dashboard_streamlit")
+
+    def _raise_missing(*_args: str) -> None:
+        raise RuntimeError("streamlit is required to launch the dashboard")
+
+    module.launch = _raise_missing  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "genecoder.dashboard_streamlit", module)
+
+    metrics_path = tmp_path / "metrics.json"
+    metrics_path.write_text("{}")
+
+    result = run_cli_command(["dashboard", str(metrics_path)])
+
+    assert result.returncode == 0, result.stderr
+    assert "Streamlit dashboard unavailable" in result.stderr

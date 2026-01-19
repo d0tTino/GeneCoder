@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def register_subcommand(
@@ -18,6 +22,12 @@ def register_subcommand(
 
 
 def _handle_command(args: argparse.Namespace) -> None:
-    from genecoder.dashboard_streamlit import launch
+    try:
+        from genecoder.dashboard_streamlit import launch
 
-    launch(*args.results_json)
+        launch(*args.results_json)
+    except (ImportError, RuntimeError) as exc:
+        logger.warning(
+            "Streamlit dashboard unavailable (%s). Install streamlit or use the HTML report workflow instead.",
+            exc,
+        )
