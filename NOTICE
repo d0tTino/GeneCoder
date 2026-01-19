@@ -1,17 +1,52 @@
-GeneCoder incorporates third-party libraries. The following components are licensed
-under MIT or BSD terms. Their original licenses and copyrights are retained by
-their respective authors:
+GeneCoder incorporates third-party libraries and bundled assets. The list below
+covers direct dependencies declared in pyproject.toml (core + optional groups +
+extras), along with bundled front-end assets. Original licenses and copyrights
+remain with their respective authors.
 
-- Cryptography – Apache-2.0 OR BSD-3-Clause
-- PyYAML – MIT License
-- Portalocker – BSD-3-Clause
-- NumPy – BSD License
-- Numba – BSD License
-- PyLDPC – MIT License
-- PyFinite – MIT License
-- HTTPX – BSD-3-Clause
-- Chamaeleo – MIT License
-- FastAPI – MIT License
-- Uvicorn – BSD License
-- Squigulator – MIT License
-- InSilicoSeq – MIT License
+Entries marked with * indicate optional dependencies whose versions are resolved
+at install time (unpinned in pyproject.toml).
+
+Python dependencies (direct)
+- altair 5.5.0 — BSD-3-Clause
+- bchlib 2.1.3 — GPL-2.0-only
+- chamaeleo 1.34 — MIT
+- cryptography 45.0.4 — Apache-2.0 OR BSD-3-Clause
+- deepdna * — MIT (optional; installed separately)
+- dnaformer * — MIT (optional; installed separately)
+- dnachisel * — MIT (optional; installed separately)
+- fastapi 0.115.14 — MIT
+- fastapi-limiter 0.1.6 — Apache-2.0
+- flet 0.28.3 — Apache-2.0
+- flet-webview 0.1.0 — Apache-2.0
+- httpx 0.27.2 — BSD-3-Clause
+- jsonschema 4.25.0 — MIT
+- matplotlib 3.10.3 — PSF-2.0
+- mypy 1.16.1 — MIT
+- numba 0.61.2 — BSD-3-Clause
+- numpy 2.2.6 — BSD-3-Clause
+- pandas 2.3.0 — BSD-3-Clause
+- playwright 1.54.0 — Apache-2.0
+- portalocker 3.2.0 — BSD-3-Clause
+- pre-commit 4.2.0 — MIT
+- pyfinite 1.9.1 — MIT
+- pyldpc 0.7.6 — MIT
+- pytest 8.4.1 — MIT
+- pytest-cov 6.2.1 — MIT
+- pytest-xdist 3.8.0 — MIT
+- pyyaml 6.0.2 — MIT
+- raptorq 2.0.0 — Apache-2.0
+- reedsolo 1.7.0 — Unlicense OR MIT-0
+- ruff 0.12.0 — MIT
+- streamlit 1.47.1 — Apache-2.0
+- torch * — BSD-3-Clause (optional; installed separately)
+- types-PyYAML 6.0.12.20250516 — Apache-2.0
+- uvicorn 0.34.3 — BSD-3-Clause
+
+Web UI dependencies (web/helix-ui/package.json)
+- react 18.2.0 — MIT
+- react-dom 18.2.0 — MIT
+- three 0.164.0 — MIT
+
+Bundled static assets (src/genecoder/static)
+- Three.js build (three.min.js) r150 — MIT
+- OrbitControls (OrbitControls.min.js) from three@0.150.1 — MIT
