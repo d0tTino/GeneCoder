@@ -765,7 +765,11 @@ def register_subcommand(
             "--sub-rate",
             type=float,
             default=None,
-            help="Substitution rate for generic simulators",
+            help=(
+                "Substitution rate for generic simulators. "
+                "When mapped to legacy error_rate, the value is applied to "
+                "substitution/insertion/deletion equally (clamped so total ≤ 1.0)."
+            ),
         )
         target.add_argument(
             "--ins-rate",

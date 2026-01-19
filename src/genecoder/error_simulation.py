@@ -168,7 +168,12 @@ def apply_deletions(sequence: str, prob: float, rng: random.Random | None = None
 
 
 class Channel(Simulator):
-    """Channel applying substitution, insertion and deletion errors."""
+    """Channel applying substitution, insertion and deletion errors.
+
+    ``error_rate`` is a legacy convenience parameter. When provided, any unset
+    substitution/insertion/deletion probabilities are set to the same clamped
+    rate (0.0 to 1/3) so the total error probability never exceeds 1.0.
+    """
 
     supports_batches = True
 
@@ -205,7 +210,10 @@ class Channel(Simulator):
                     self._delegate = NanoporeChannel(profile=str(preset))
 
         if error_rate is not None:
-            sub_prob = error_rate
+            clamped_rate = min(max(error_rate, 0.0), 1.0 / 3.0)
+            sub_prob = clamped_rate if sub_prob is None else sub_prob
+            ins_prob = clamped_rate if ins_prob is None else ins_prob
+            del_prob = clamped_rate if del_prob is None else del_prob
 
         self._substitution_prob = 0.0 if sub_prob is None else sub_prob
         self.insertion_prob = 0.0 if ins_prob is None else ins_prob
@@ -236,7 +244,10 @@ class Channel(Simulator):
             DeprecationWarning,
             stacklevel=2,
         )
-        self._substitution_prob = value
+        clamped_rate = min(max(value, 0.0), 1.0 / 3.0)
+        self._substitution_prob = clamped_rate
+        self.insertion_prob = clamped_rate
+        self.deletion_prob = clamped_rate
 
     def _simulate_string(self, sequence: str) -> str:
         if self._delegate is not None:
