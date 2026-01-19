@@ -6,7 +6,7 @@
 </head>
 <body>
     <h1>GeneCoder Web</h1>
-    <p id="status">Loading Pyodide...</p>
+    <p id="status">Checking Pyodide bundle...</p>
     <iframe src="/helix?seq=ACGT" width="600" height="400" style="border:none;"></iframe>
     <p>
         See the <a href="../README.md#disclaimer">Disclaimer</a> before using this tool.
@@ -25,16 +25,48 @@
             });
         }
 
-        async function main() {
+        function setStatus(message, isError = false) {
             const statusEl = document.getElementById("status");
+            statusEl.textContent = message;
+            statusEl.style.color = isError ? "crimson" : "inherit";
+        }
+
+        async function main() {
             if (GENECODER_OFFLINE) {
-                statusEl.textContent = "Pyodide disabled (offline mode)";
+                setStatus("Pyodide disabled (offline mode)");
                 return;
             }
 
-            await loadScript(PYODIDE_SRC);
-            const pyodide = await loadPyodide();
-            statusEl.textContent = "Pyodide loaded";
+            try {
+                await loadScript(PYODIDE_SRC);
+            } catch (error) {
+                setStatus(
+                    "Pyodide bundle not found locally. Copy the Pyodide distribution into /static/pyodide/ " +
+                    "or set GENECODER_PYODIDE_SRC to a custom URL.",
+                    true
+                );
+                return;
+            }
+
+            if (typeof loadPyodide !== "function") {
+                setStatus(
+                    "Pyodide bundle is missing required files. Rebuild or copy the full Pyodide distribution " +
+                    "into /static/pyodide/ or set GENECODER_PYODIDE_SRC to a custom URL.",
+                    true
+                );
+                return;
+            }
+
+            try {
+                await loadPyodide();
+                setStatus("Pyodide loaded");
+            } catch (error) {
+                setStatus(
+                    "Pyodide failed to initialize from the local bundle. Verify the files in /static/pyodide/ " +
+                    "or set GENECODER_PYODIDE_SRC to a custom URL.",
+                    true
+                );
+            }
         }
 
         main();

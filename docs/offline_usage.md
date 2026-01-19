@@ -9,6 +9,11 @@ manage the optional plugin registry.
 Most CLI commands accept `--offline` to disable all network operations.
 The same behaviour can be enabled globally by setting `GENECODER_OFFLINE=1`.
 
+The web UI uses a local Pyodide bundle by default. Place the Pyodide
+distribution under `web/static/pyodide/` so it is served from
+`/static/pyodide/pyodide.js`. To point the UI at a different (possibly remote)
+bundle, set `GENECODER_PYODIDE_SRC` to the desired `pyodide.js` URL.
+
 ## Profile Paths
 
 Sequencing simulators may download profile files the first time they run.
