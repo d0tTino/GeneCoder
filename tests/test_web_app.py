@@ -25,6 +25,31 @@ def test_root_route_serves_index_html() -> None:
     assert "GeneCoder Web" in response.text
 
 
+def test_index_injects_default_pyodide_src() -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    assert f'const PYODIDE_SRC = "{main.PYODIDE_SRC}";' in response.text
+    assert "__PYODIDE_SRC__" not in response.text
+
+
+def test_index_offline_mode_disables_pyodide(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GENECODER_OFFLINE", "1")
+    monkeypatch.setattr(main, "GENECODER_OFFLINE", True)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert 'const GENECODER_OFFLINE = "true" === "true";' in response.text
+    assert "Pyodide disabled (offline mode)" in response.text
+
+
+def test_index_injects_custom_pyodide_src(monkeypatch: pytest.MonkeyPatch) -> None:
+    custom_src = "/static/pyodide/custom/pyodide.js"
+    monkeypatch.setenv("GENECODER_PYODIDE_SRC", custom_src)
+    monkeypatch.setattr(main, "PYODIDE_SRC", custom_src)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert f'const PYODIDE_SRC = "{custom_src}";' in response.text
+
+
 def test_static_index_served() -> None:
     response = client.get("/static/index.html")
     assert response.status_code == 200
