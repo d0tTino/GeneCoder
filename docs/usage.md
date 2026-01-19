@@ -440,6 +440,9 @@ genecli channel run config.yml
    controls how quickly bases are lost and ``variation`` adds random jitter to
    the process. The stage randomly removes nucleotides from the sequence so
    lower values or higher variation lead to more dropouts.
+   For storage-focused simulations, raise ``half_life`` (and/or reduce
+   ``variation``) to model gentler archival conditions, or lower ``half_life``
+   to accelerate degradation when stress-testing downstream recovery.
 
    ```yaml
    simulators:

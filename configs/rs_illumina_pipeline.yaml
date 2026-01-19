@@ -8,6 +8,9 @@ encode:
 simulate:
   simulators:
     - illumina
+    - name: decay
+      deletion_prob: 0.001
+      substitution_prob: 0.0002
   synthesis:
     gc_min: 0.45
     gc_max: 0.55
