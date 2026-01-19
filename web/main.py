@@ -59,7 +59,7 @@ GENECODER_OFFLINE = os.getenv("GENECODER_OFFLINE", "").lower() in {
 }
 PYODIDE_SRC = os.getenv(
     "GENECODER_PYODIDE_SRC",
-    "https://cdn.jsdelivr.net/pyodide/v0.24.0/full/pyodide.js",
+    "/static/pyodide/pyodide.js",
 )
 
 

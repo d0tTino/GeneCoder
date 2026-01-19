@@ -27,17 +27,19 @@ genecli --help
 
 ## Web UI offline mode
 
-The web interface loads Pyodide (used for in-browser Python execution) from a CDN by default. If you
-need to run without network access, set `GENECODER_OFFLINE=1` when starting the web server to skip
-loading Pyodide and keep the UI functional offline:
+The web interface loads Pyodide (used for in-browser Python execution) from a **local** bundle by
+default. Populate `web/static/pyodide/` with the Pyodide distribution so it can be served from
+`/static/pyodide/pyodide.js`. If you need to run without network access, set `GENECODER_OFFLINE=1`
+when starting the web server to skip loading Pyodide and keep the UI functional offline:
 
 ```bash
 GENECODER_OFFLINE=1 uvicorn web.main:app --host 0.0.0.0 --port 8000
 ```
 
 When `GENECODER_OFFLINE` is enabled, the status banner will show that Pyodide is disabled and any
-features that depend on it will remain inactive until you run without the flag. If you host a local
-Pyodide bundle, set `GENECODER_PYODIDE_SRC=/static/pyodide/pyodide.js` (or similar) to use it.
+features that depend on it will remain inactive until you run without the flag. If you want to
+load Pyodide from a custom URL (for example a CDN or internal mirror), set
+`GENECODER_PYODIDE_SRC=https://.../pyodide.js` to override the default local asset path.
 
 Example output:
 
