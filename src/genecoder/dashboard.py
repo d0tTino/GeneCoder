@@ -30,6 +30,10 @@ except Exception:  # pragma: no cover
 pd = cast(Any, _pd)
 alt = cast(Any, _alt)
 
+_DEFAULT_GC_MIN = 0.4
+_DEFAULT_GC_MAX = 0.6
+_DEFAULT_MAX_HOMOPOLYMER = 8
+
 
 _DEF_METRICS: dict[str, Any] = {
     "gc_distribution": [],
@@ -225,6 +229,27 @@ def _extract_oligo_records(data: dict[str, Any]) -> list[dict[str, Any]]:
                 record[f"ECC:{name}"] = values[idx]
         records.append(record)
     return records
+
+
+def _constraint_limits(data: dict[str, Any]) -> tuple[float, float, int]:
+    gc_min = _DEFAULT_GC_MIN
+    gc_max = _DEFAULT_GC_MAX
+    max_hp = _DEFAULT_MAX_HOMOPOLYMER
+
+    violations = data.get("constraint_violations")
+    if isinstance(violations, dict):
+        limits = violations.get("limits")
+        if isinstance(limits, dict):
+            gc_min_val = limits.get("gc_min")
+            gc_max_val = limits.get("gc_max")
+            max_hp_val = limits.get("max_homopolymer")
+            if isinstance(gc_min_val, (int, float)) and not isinstance(gc_min_val, bool):
+                gc_min = float(gc_min_val)
+            if isinstance(gc_max_val, (int, float)) and not isinstance(gc_max_val, bool):
+                gc_max = float(gc_max_val)
+            if isinstance(max_hp_val, (int, float)) and not isinstance(max_hp_val, bool):
+                max_hp = int(max_hp_val)
+    return gc_min, gc_max, max_hp
 
 
 def _parse_constraint_violations(value: object) -> dict[str, Any]:
@@ -433,6 +458,8 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         st.write("No results files provided.")
         return
 
+    limits_by_run = {name: _constraint_limits(data) for name, data in datasets.items()}
+
     names = list(datasets.keys())
     multiselect = getattr(sidebar, "multiselect", lambda *a, **k: names)
     selected = multiselect("Datasets", names, default=names)
@@ -497,15 +524,18 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                 for row in relevant:
                     st.write(row)
 
-            flagged = [
-                row
-                for row in relevant
-                if (
-                    ("GC%" in row and (row["GC%"] < 0.4 or row["GC%"] > 0.6))
-                    or ("Max Homopolymer" in row and row["Max Homopolymer"] > 8)
-                    or row.get("Dropout")
+            def is_flagged(row: dict[str, Any]) -> bool:
+                gc_min, gc_max, max_hp = limits_by_run.get(
+                    row.get("Run", ""),
+                    (_DEFAULT_GC_MIN, _DEFAULT_GC_MAX, _DEFAULT_MAX_HOMOPOLYMER),
                 )
-            ]
+                if "GC%" in row and (row["GC%"] < gc_min or row["GC%"] > gc_max):
+                    return True
+                if "Max Homopolymer" in row and row["Max Homopolymer"] > max_hp:
+                    return True
+                return bool(row.get("Dropout"))
+
+            flagged = [row for row in relevant if is_flagged(row)]
             if flagged:
                 st.subheader("Out-of-bounds oligos")
                 if pd:

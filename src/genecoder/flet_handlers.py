@@ -22,7 +22,6 @@ from .gc_constrained_encoder import calculate_gc_content
 from .manifest import generate_manifest
 from .options import EncodeOptions
 from .utils import get_max_homopolymer_length
-from .synthesis import SynthesisConstraints
 from .cli.encode import reverse_complement
 from .formats import to_fasta, from_fasta
 from .plotting import (
@@ -39,6 +38,53 @@ logger = logging.getLogger(__name__)
 
 
 decoded_bytes_to_save: bytes = b""
+_DEFAULT_GC_MIN = 0.4
+_DEFAULT_GC_MAX = 0.6
+_DEFAULT_MAX_HOMOPOLYMER = 8
+_LAST_CONSTRAINT_LIMITS: tuple[float, float, int] = (
+    _DEFAULT_GC_MIN,
+    _DEFAULT_GC_MAX,
+    _DEFAULT_MAX_HOMOPOLYMER,
+)
+
+
+def _constraint_limits_from_payload(payload: object) -> tuple[float, float, int]:
+    gc_min = _DEFAULT_GC_MIN
+    gc_max = _DEFAULT_GC_MAX
+    max_hp = _DEFAULT_MAX_HOMOPOLYMER
+
+    def apply_limits(limits: dict[str, object]) -> None:
+        nonlocal gc_min, gc_max, max_hp
+        gc_min_val = limits.get("gc_min")
+        gc_max_val = limits.get("gc_max")
+        max_hp_val = limits.get("max_homopolymer")
+        if isinstance(gc_min_val, (int, float)) and not isinstance(gc_min_val, bool):
+            gc_min = float(gc_min_val)
+        if isinstance(gc_max_val, (int, float)) and not isinstance(gc_max_val, bool):
+            gc_max = float(gc_max_val)
+        if isinstance(max_hp_val, (int, float)) and not isinstance(max_hp_val, bool):
+            max_hp = int(max_hp_val)
+
+    metrics: dict[str, object] | None = None
+    if isinstance(payload, str):
+        try:
+            parsed = json.loads(payload)
+        except Exception:
+            parsed = None
+        if isinstance(parsed, dict):
+            payload = parsed
+    if isinstance(payload, dict):
+        if "metrics" in payload and isinstance(payload["metrics"], dict):
+            metrics = payload["metrics"]
+        else:
+            metrics = payload
+    if isinstance(metrics, dict):
+        violations = metrics.get("constraint_violations")
+        if isinstance(violations, dict):
+            limits = violations.get("limits")
+            if isinstance(limits, dict):
+                apply_limits(limits)
+    return gc_min, gc_max, max_hp
 
 
 def make_encode_handler(
@@ -176,6 +222,9 @@ def make_encode_handler(
             encode_manifest_save_button.visible = True
 
             metrics = result.metrics
+            global _LAST_CONSTRAINT_LIMITS
+            _LAST_CONSTRAINT_LIMITS = _constraint_limits_from_payload(metrics)
+            gc_min_limit, gc_max_limit, max_hp_limit = _LAST_CONSTRAINT_LIMITS
             encode_orig_size_text.value = (
                 f"Original size: {metrics['original_size']} bytes"
             )
@@ -220,8 +269,10 @@ def make_encode_handler(
                 drop_text = "yes" if drop else "no"
                 out_of_bounds = (
                     isinstance(gc_val, float)
-                    and (gc_val < 0.4 or gc_val > 0.6)
-                ) or (isinstance(hp_val, float) and hp_val > 8) or bool(drop)
+                    and (gc_val < gc_min_limit or gc_val > gc_max_limit)
+                ) or (
+                    isinstance(hp_val, float) and hp_val > max_hp_limit
+                ) or bool(drop)
                 suffix = " ⚠️" if out_of_bounds else ""
                 summary_lines.append(
                     f"Oligo {idx}: GC {gc_text}, HP {hp_text}, dropout {drop_text}{suffix}"
@@ -265,17 +316,16 @@ def make_encode_handler(
 
             gc_val = calculate_gc_content(forward_seq)
             hp_len = get_max_homopolymer_length(forward_seq)
-            constraints = SynthesisConstraints()
             if (
-                gc_val < 0.4
-                or gc_val > 0.6
-                or hp_len > constraints.max_homopolymer
+                gc_val < gc_min_limit
+                or gc_val > gc_max_limit
+                or hp_len > max_hp_limit
             ):
                 fixed = fix_sequence(
                     forward_seq,
-                    target_gc_min=0.4,
-                    target_gc_max=0.6,
-                    max_homopolymer=constraints.max_homopolymer,
+                    target_gc_min=gc_min_limit,
+                    target_gc_max=gc_max_limit,
+                    max_homopolymer=max_hp_limit,
                 )
                 fix_gc = calculate_gc_content(fixed)
                 fix_hp = get_max_homopolymer_length(fixed)
@@ -335,12 +385,12 @@ def make_fix_handler(
             page.update()
             return
 
-        constraints = SynthesisConstraints()
+        gc_min_limit, gc_max_limit, max_hp_limit = _LAST_CONSTRAINT_LIMITS
         fixed = fix_sequence(
             seq,
-            target_gc_min=0.4,
-            target_gc_max=0.6,
-            max_homopolymer=constraints.max_homopolymer,
+            target_gc_min=gc_min_limit,
+            target_gc_max=gc_max_limit,
+            max_homopolymer=max_hp_limit,
         )
 
         encode_hidden_sequence.value = fixed
