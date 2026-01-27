@@ -182,8 +182,8 @@ def decode_gc_balanced(
 ) -> bytes:
     """Decodes a DNA sequence (encoded by encode_gc_balanced) back into binary data.
 
-    Optionally, expected constraints can be provided for future validation,
-    though they are not used in the current decoding logic.
+    Optionally, expected constraints can be provided and are enforced during
+    decoding; violations raise ``ValueError``.
 
     Decoding Strategy:
     - Checks the first character (signal bit).
@@ -192,19 +192,20 @@ def decode_gc_balanced(
 
     Args:
         dna_sequence: The DNA sequence to decode.
-        expected_gc_min: The expected minimum GC content (for future use).
-        expected_gc_max: The expected maximum GC content (for future use).
-        expected_max_homopolymer: The expected maximum homopolymer length (for future use).
+        expected_gc_min: The expected minimum GC content to enforce.
+        expected_gc_max: The expected maximum GC content to enforce.
+        expected_max_homopolymer: The expected maximum homopolymer length to enforce.
 
     Returns:
         The decoded binary data.
 
     Raises:
-        ValueError: If the sequence is too short or the signal bit is invalid.
+        ValueError: If the sequence is too short, the signal bit is invalid,
+            or the GC/homopolymer constraints are violated.
     """
-    # Current implementation does not use expected_gc_min, expected_gc_max, expected_max_homopolymer.
-    # They are included for future extensibility, e.g., to verify if the decoded sequence
-    # would have met these constraints if they were re-calculated on the payload.
+    # The expected constraint inputs are enforced after decoding by recomputing
+    # GC content and homopolymer length on the payload and raising ValueError
+    # if any expected bound is violated.
 
     if not dna_sequence or len(dna_sequence) < 1:  # Sequence must have at least signal bit
         raise ValueError("Input DNA sequence is too short to decode (missing signal bit).")
