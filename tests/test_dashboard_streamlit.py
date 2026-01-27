@@ -248,3 +248,46 @@ def test_dashboard_summary_plots_with_plotting_deps(
 
     assert charts
     assert all(isinstance(chart, FakeChart) for chart in charts)
+
+
+def test_dashboard_flagged_oligos_use_custom_limits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data = {
+        "oligo_metrics": {
+            "gc_percentages": [0.7, 0.1],
+            "max_homopolymers": [4, 4],
+            "dropout_flags": [0, 0],
+        },
+        "constraint_violations": {
+            "limits": {"gc_min": 0.2, "gc_max": 0.8, "max_homopolymer": 6}
+        },
+    }
+    results = tmp_path / "results.json"
+    results.write_text(json.dumps(data))
+
+    tables: list[object] = []
+
+    def capture_table(data: object, *args: object, **kwargs: object) -> None:  # pragma: no cover - simple capture
+        tables.append(data)
+
+    monkeypatch.setattr(streamlit, "table", capture_table)
+
+    from genecoder import dashboard_streamlit as dash
+
+    monkeypatch.setattr(dash, "pd", None)
+    monkeypatch.setattr(dash, "alt", None)
+
+    dash.main(str(results))
+
+    flagged_tables = [
+        table
+        for table in tables
+        if isinstance(table, list)
+        and table
+        and isinstance(table[0], dict)
+        and "Index" in table[0]
+    ]
+    assert flagged_tables, "flagged oligo table not rendered"
+    flagged = flagged_tables[-1]
+    assert [row.get("Index") for row in flagged] == [2]

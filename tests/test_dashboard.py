@@ -9,7 +9,13 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def dummy_streamlit(monkeypatch: pytest.MonkeyPatch) -> dict[str, list]:
-    calls: dict[str, list] = {"metric": [], "bar_chart": [], "dataframe": []}
+    calls: dict[str, list] = {
+        "metric": [],
+        "bar_chart": [],
+        "dataframe": [],
+        "write": [],
+        "subheader": [],
+    }
 
     def metric(*args, **kwargs) -> None:
         calls["metric"].append((args, kwargs))
@@ -20,10 +26,17 @@ def dummy_streamlit(monkeypatch: pytest.MonkeyPatch) -> dict[str, list]:
     def dataframe(*args, **kwargs) -> None:
         calls["dataframe"].append((args, kwargs))
 
+    def write(*args, **kwargs) -> None:
+        calls["write"].append((args, kwargs))
+
+    def subheader(*args, **kwargs) -> None:
+        calls["subheader"].append((args, kwargs))
+
     dummy = SimpleNamespace(
         title=lambda *a, **k: None,
-        write=lambda *a, **k: None,
+        write=write,
         header=lambda *a, **k: None,
+        subheader=subheader,
         line_chart=lambda *a, **k: None,
         metric=metric,
         bar_chart=bar_chart,
@@ -169,3 +182,38 @@ def test_error_histograms_rendered(
     charts = [args[0] for args, _ in dummy_streamlit["bar_chart"]]
     assert [1, 2, 1] in charts
     assert [2, 1] in charts
+
+
+def test_custom_constraint_limits_drive_flagged_oligos(
+    tmp_path: Path, dummy_streamlit: dict[str, list]
+) -> None:
+    data = {
+        "oligo_metrics": {
+            "gc_percentages": [0.7, 0.1],
+            "max_homopolymers": [4, 4],
+            "dropout_flags": [0, 0],
+        },
+        "constraint_violations": {
+            "limits": {"gc_min": 0.2, "gc_max": 0.8, "max_homopolymer": 6}
+        },
+    }
+    path = tmp_path / "metrics.json"
+    path.write_text(json.dumps(data))
+
+    mod = importlib.reload(importlib.import_module("genecoder.dashboard"))
+    mod.pd = None
+    mod.alt = None
+    mod.main(str(path))
+
+    flagged_tables = [
+        args[0]
+        for args, _ in dummy_streamlit["write"]
+        if args
+        and isinstance(args[0], list)
+        and args[0]
+        and isinstance(args[0][0], dict)
+        and "Index" in args[0][0]
+    ]
+    assert flagged_tables, "flagged oligo table not written"
+    flagged = flagged_tables[-1]
+    assert [row.get("Index") for row in flagged] == [2]
