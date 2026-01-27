@@ -1043,18 +1043,18 @@ def load_plugin_catalog(url: str | None = None) -> None:
         url = os.getenv("GENECODER_PLUGIN_CATALOG_URL")
     catalog: Dict[str, Dict[str, Any]] = {}
     offline = bool(os.getenv("GENECODER_OFFLINE"))
-
-    if offline:
-        logger.info("offline: skipped remote catalog")
-        url = None
+    allow_network = bool(os.getenv("GENECODER_ALLOW_NETWORK"))
+    network_ok = allow_network and not offline
 
     if url:
-        try:
-            with urllib.request.urlopen(url, timeout=30) as response:
-                raw = response.read()
-        except Exception as exc:
-            logger.warning("Failed to fetch plugin catalog %s: %s", url, exc)
-            raw = b""
+        raw = b""
+        if (url.startswith("http://") or url.startswith("https://")) and not network_ok:
+            logger.info("Network access disabled; skipped remote catalog %s", url)
+        else:
+            try:
+                raw = _fetch_catalog(url, allow_network=network_ok)
+            except Exception as exc:
+                logger.warning("Failed to fetch plugin catalog %s: %s", url, exc)
 
         if raw:
             try:
