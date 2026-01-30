@@ -171,7 +171,12 @@ def test_registry_entry_disallowed_license(monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_entry_point_plugin_discovery(monkeypatch: pytest.MonkeyPatch) -> None:
     module = types.ModuleType("ep_mod")
-    module.PLUGIN_METADATA = {"name": "ep-demo", "version": "1.0", "interfaces": ["codec"]}
+    module.PLUGIN_METADATA = {
+        "name": "ep-demo",
+        "version": "1.0",
+        "interfaces": ["codec"],
+        "license": "MIT",
+    }
     sys.modules["ep_mod"] = module
 
     class EP:

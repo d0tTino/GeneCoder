@@ -287,6 +287,7 @@ def _update_entry_point_metadata(entry_name: str, module: ModuleType) -> None:
     cached["metadata_name"] = meta["name"]
     cached["version"] = meta["version"]
     cached["interfaces"] = set(meta["interfaces"])
+    cached["license"] = meta["license"]
 
 
 def _register_lazy_placeholder(kind: str, name: str) -> None:
@@ -801,6 +802,7 @@ def _validate_plugin_metadata(meta: object) -> Dict[str, Any]:
     name = meta.get("name")
     version = meta.get("version")
     interfaces = meta.get("interfaces")
+    license_value = meta.get("license")
     if not isinstance(name, str) or not name:
         raise ValueError("missing or invalid name")
     if not isinstance(version, str) or not version:
@@ -809,7 +811,18 @@ def _validate_plugin_metadata(meta: object) -> Dict[str, Any]:
         raise ValueError("missing interfaces")
     if any(i not in _VALID_INTERFACES for i in interfaces):
         raise ValueError("unknown interface")
-    return {"name": name, "version": version, "interfaces": list(interfaces)}
+    if not isinstance(license_value, str) or not license_value.strip():
+        raise ValueError("missing or invalid license")
+    normalized = license_value.strip()
+    if normalized not in _ALLOWED_LICENSES:
+        allowed = ", ".join(sorted(_ALLOWED_LICENSES))
+        raise ValueError(f"disallowed license {normalized!r}. Allowed licenses: {allowed}")
+    return {
+        "name": name,
+        "version": version,
+        "interfaces": list(interfaces),
+        "license": normalized,
+    }
 
 
 def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
@@ -863,16 +876,20 @@ def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
         interfaces_raw = cached.get("interfaces") or set()
         interfaces = {str(interface) for interface in interfaces_raw}
         version = str(cached.get("version") or "")
+        license_value = str(cached.get("license") or "")
         existing = catalog.get(plugin_name)
         if existing:
             combined = set(existing.get("interfaces", [])) | interfaces
             existing["interfaces"] = sorted(combined)
             if not existing.get("version") and version:
                 existing["version"] = version
+            if not existing.get("license") and license_value:
+                existing["license"] = license_value
         else:
             catalog[plugin_name] = {
                 "version": version,
                 "interfaces": sorted(interfaces) if interfaces else [],
+                "license": license_value,
             }
 
     def _handle_module(module: ModuleType, src: str) -> None:
@@ -887,7 +904,11 @@ def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
             failures.append(src)
             logger.warning("Duplicate plugin name %s from %s", name, src)
             return
-        catalog[name] = {"version": meta["version"], "interfaces": meta["interfaces"]}
+        catalog[name] = {
+            "version": meta["version"],
+            "interfaces": meta["interfaces"],
+            "license": meta["license"],
+        }
 
     # discover local plugins in a ``plugins`` package
     try:
