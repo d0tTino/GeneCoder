@@ -38,7 +38,12 @@ def test_entry_point_lazy_loading_offline(monkeypatch: pytest.MonkeyPatch) -> No
         register_codec("lazy", LazyCodec)
 
     module.register = register  # type: ignore[attr-defined]
-    module.PLUGIN_METADATA = {"name": "lazy", "version": "1.0", "interfaces": ["codec"]}
+    module.PLUGIN_METADATA = {
+        "name": "lazy",
+        "version": "1.0",
+        "interfaces": ["codec"],
+        "license": "MIT",
+    }
 
     class EP:
         name = "lazy"

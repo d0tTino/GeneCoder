@@ -16,6 +16,7 @@ PLUGIN_METADATA = {
     "name": "starter-template",
     "version": "0.1.0",
     "interfaces": ["codec"],
+    "license": "MIT",
 }
 
 

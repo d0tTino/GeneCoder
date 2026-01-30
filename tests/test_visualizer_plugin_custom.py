@@ -36,6 +36,7 @@ PLUGIN_METADATA = {
     "name": "temp-genecoder-visualizer",
     "version": "0.1.0",
     "interfaces": ["visualizer"],
+    "license": "MIT",
 }
 
 def register(register_codec):
@@ -72,4 +73,3 @@ include = ["temp_viz", "temp_viz_meta"]
         assert "temp-genecoder-visualizer" in result.stdout
     finally:
         subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "temp-genecoder-visualizer"])
-

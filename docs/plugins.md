@@ -79,10 +79,11 @@ PLUGIN_METADATA = {
     "name": "my_codec",           # unique plugin name
     "version": "0.1.0",           # semantic version string
     "interfaces": ["codec"],       # one or more of: codec, FEC, simulator, visualizer
+    "license": "MIT",             # SPDX identifier from the approved allowlist
 }
 ```
 
-Metadata is optional but recommended so GeneCoder can report compatibility information and detect duplicates when building a plugin catalog.
+Metadata is optional but recommended so GeneCoder can report compatibility information and detect duplicates when building a plugin catalog. When you provide metadata, `license` is required and must be one of: `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `MIT`, `MPL-2.0`.
 
 ## Loading local plugins for development
 

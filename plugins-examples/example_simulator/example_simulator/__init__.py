@@ -16,6 +16,8 @@ from genecoder.simulators.batch_utils import (
 class PassthroughChannel(Simulator):  # type: ignore[misc]
     """Simple simulator demonstrating the :class:`SequenceBatch` API."""
 
+    supports_batches = True
+
     def simulate(self, sequence: str | SequenceBatch) -> SequenceBatch:
         batch = self._ensure_batch(sequence)
         mutated = clone_batch(batch)
