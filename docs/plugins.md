@@ -83,7 +83,7 @@ PLUGIN_METADATA = {
 }
 ```
 
-Metadata is optional but recommended so GeneCoder can report compatibility information and detect duplicates when building a plugin catalog. When you provide metadata (for entry-point plugins or local `plugins/` modules), `license` is required and must be one of: `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `MIT`, `MPL-2.0`.
+Metadata is optional but recommended so GeneCoder can report compatibility information and detect duplicates when building a plugin catalog. When you provide metadata (for entry-point plugins or local `plugins/` modules), `license` is required and must be one of: `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `MIT`.
 
 ## Loading local plugins for development
 
@@ -129,7 +129,7 @@ Loading external plugins executes arbitrary Python code. GeneCoder provides seve
 
 - **Network opt-in:** package downloads from registry URLs are blocked unless `GENECODER_ALLOW_NETWORK=1` is set. Setting `GENECODER_OFFLINE=1` forces offline mode even if network access is allowed.
 - **Signature and checksum verification:** registry entries can include a Base64 signature (`signature`) and checksum (`checksum`). Signatures are verified using the public key specified in `GENECODER_PLUGIN_PUBLIC_KEY`. Failing verification aborts installation.
-- **License allowlist:** registry entries must declare a `license` field using an SPDX identifier, and it must be one of: `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `MIT`, `MPL-2.0`.
+- **License allowlist:** registry entries must declare a `license` field using an SPDX identifier, and it must be one of: `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `MIT`.
 - **Safe URLs and packages:** plugin registry entries are validated to ensure package names and URLs match safe patterns.
 - **Duplicate protection:** the plugin catalog rejects duplicate names to avoid silently overriding unrelated plugins.
 

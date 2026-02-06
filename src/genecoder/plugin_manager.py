@@ -337,9 +337,7 @@ _ALLOWED_LICENSES = {
     "Apache-2.0",
     "BSD-2-Clause",
     "BSD-3-Clause",
-    "ISC",
     "MIT",
-    "MPL-2.0",
 }
 
 # re-export for tests
