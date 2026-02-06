@@ -1,9 +1,19 @@
 {
-  "gc_distribution": [0.1, 0.2, 0.3, 0.4],
+  "gc_distribution": [
+    0.1,
+    0.2,
+    0.3,
+    0.4
+  ],
   "gc_content": 0.25,
   "gc_variance": 0.0125,
   "max_homopolymer": 4,
-  "homopolymer_runs": [1, 2, 1, 0],
+  "homopolymer_runs": [
+    1,
+    2,
+    1,
+    0
+  ],
   "ecc_success_rates": {
     "rs": 0.98,
     "bch": 0.95
@@ -13,20 +23,63 @@
   "insertions": 0,
   "deletions": 0,
   "coverage": 30,
-  "coverage_distribution": [1, 3, 2],
+  "coverage_distribution": [
+    1,
+    3,
+    2
+  ],
   "constraint_violations": {
     "count": 3,
     "violations": [
-      {"sequence_id": "seq-1", "type": "gc_high", "length": 100},
-      {"sequence_id": "seq-1", "type": "homopolymer", "length": 100},
-      {"sequence_id": "seq-2", "type": "gc_low", "length": 80}
+      {
+        "sequence_id": "seq-1",
+        "type": "gc_high",
+        "length": 100
+      },
+      {
+        "sequence_id": "seq-1",
+        "type": "homopolymer",
+        "length": 100
+      },
+      {
+        "sequence_id": "seq-2",
+        "type": "gc_low",
+        "length": 80
+      }
     ],
-    "type_counts": {"gc_high": 1, "homopolymer": 1, "gc_low": 1}
+    "type_counts": {
+      "gc_high": 1,
+      "homopolymer": 1,
+      "gc_low": 1
+    }
   },
   "oligo_metrics": {
-    "gc_percentages": [0.45, 0.52, 0.61],
-    "max_homopolymers": [4, 5, 9],
-    "dropout_flags": [false, false, true],
-    "ecc_success": {"rs": [0.98, 0.97, 0.0]}
-  }
+    "gc_percentages": [
+      0.45,
+      0.52,
+      0.61
+    ],
+    "max_homopolymers": [
+      4,
+      5,
+      9
+    ],
+    "dropout_flags": [
+      false,
+      false,
+      true
+    ],
+    "ecc_success": {
+      "rs": [
+        0.98,
+        0.97,
+        0.0
+      ]
+    }
+  },
+  "error_bases": 400,
+  "substitution_rate": 0.005,
+  "insertion_rate": 0.0,
+  "deletion_rate": 0.0,
+  "error_rate": 0.005
 }

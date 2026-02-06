@@ -126,6 +126,27 @@ def test_dashboard_summary_tables_rendered(
         isinstance(table, list)
         and any(
             isinstance(row, dict)
+            and row.get("Metric") == "Substitutions"
+            and row.get("Rate") == pytest.approx(0.005)
+            for row in table
+        )
+        for table in tables
+    )
+    assert any(
+        isinstance(table, list)
+        and any(
+            isinstance(row, dict)
+            and row.get("Metric") == "Substitutions"
+            and row.get("Count") == pytest.approx(2.0)
+            and row.get("Rate") == pytest.approx(0.005)
+            for row in table
+        )
+        for table in tables
+    )
+    assert any(
+        isinstance(table, list)
+        and any(
+            isinstance(row, dict)
             and row.get("Window") == 1
             and row.get("GC%") == pytest.approx(10.0)
             for row in table
@@ -176,6 +197,17 @@ def test_dashboard_homopolymer_chart_rendered(
             isinstance(row, dict)
             and row.get("Metric") == "Coverage"
             and row.get("Value") == pytest.approx(30.0)
+            for row in table
+        )
+        for table in tables
+    )
+    assert any(
+        isinstance(table, list)
+        and any(
+            isinstance(row, dict)
+            and row.get("Metric") == "Substitutions"
+            and row.get("Count") == pytest.approx(2.0)
+            and row.get("Rate") == pytest.approx(0.005)
             for row in table
         )
         for table in tables

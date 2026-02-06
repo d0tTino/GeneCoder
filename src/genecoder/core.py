@@ -605,6 +605,7 @@ def metrics(
             if ratios:
                 ecc_map[str(name)] = ratios
 
+    opportunities = max(0, sum(len(seq) for seq in sequences))
     result: Dict[str, Any] = {
         "gc_distribution": gc_dist,
         "gc_content": gc_content,
@@ -615,6 +616,11 @@ def metrics(
         "decode_success_rate": success,
         "coverage": coverage,
         "constraint_violations": constraint_violations,
+        "error_bases": opportunities,
+        "substitution_rate": 0.0,
+        "insertion_rate": 0.0,
+        "deletion_rate": 0.0,
+        "error_rate": 0.0,
         "oligo_metrics": {
             "gc_percentages": per_oligo_gc,
             "max_homopolymers": per_oligo_hp,
@@ -625,7 +631,22 @@ def metrics(
         },
     }
     if subs is not None and ins is not None and dels is not None:
-        result.update({"substitutions": subs, "insertions": ins, "deletions": dels})
+        denom = max(1, opportunities)
+        substitution_rate = float(subs) / denom
+        insertion_rate = float(ins) / denom
+        deletion_rate = float(dels) / denom
+        result.update(
+            {
+                "substitutions": subs,
+                "insertions": ins,
+                "deletions": dels,
+                "error_bases": opportunities,
+                "substitution_rate": substitution_rate,
+                "insertion_rate": insertion_rate,
+                "deletion_rate": deletion_rate,
+                "error_rate": substitution_rate + insertion_rate + deletion_rate,
+            }
+        )
     return result
 
 

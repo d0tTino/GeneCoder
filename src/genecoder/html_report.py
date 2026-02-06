@@ -129,17 +129,23 @@ def generate_html_report(manifest_path: str) -> str:
             f"<p><strong>Max Homopolymer Length:</strong> {int(max_hp)}</p>"
         )
 
-    error_metrics: list[tuple[str, str]] = [
-        ("substitutions", "Substitutions"),
-        ("insertions", "Insertions"),
-        ("deletions", "Deletions"),
+    error_metrics: list[tuple[str, str, str]] = [
+        ("substitutions", "substitution_rate", "Substitutions"),
+        ("insertions", "insertion_rate", "Insertions"),
+        ("deletions", "deletion_rate", "Deletions"),
     ]
     error_lines: list[str] = []
-    for key, label in error_metrics:
-        value = metrics.get(key)
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
+    for count_key, rate_key, label in error_metrics:
+        count_value = metrics.get(count_key)
+        rate_value = metrics.get(rate_key)
+        line_parts: list[str] = []
+        if isinstance(count_value, (int, float)) and not isinstance(count_value, bool):
+            line_parts.append(f"count {_format_numeric(count_value)}")
+        if isinstance(rate_value, (int, float)) and not isinstance(rate_value, bool):
+            line_parts.append(f"rate {float(rate_value):.4%}")
+        if line_parts:
             error_lines.append(
-                f"<li><strong>{label}:</strong> {_format_numeric(value)}</li>"
+                f"<li><strong>{label}:</strong> {'; '.join(line_parts)}</li>"
             )
 
     coverage = metrics.get("coverage")

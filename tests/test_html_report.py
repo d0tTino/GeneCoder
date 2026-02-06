@@ -17,6 +17,9 @@ def _make_manifest(path: Path) -> Path:
             "substitutions": 7,
             "insertions": 2,
             "deletions": 3,
+            "substitution_rate": 0.07,
+            "insertion_rate": 0.02,
+            "deletion_rate": 0.03,
             "coverage": 42,
         },
     }
@@ -32,9 +35,9 @@ def test_generate_html_report(tmp_path: Path) -> None:
     assert "Max Homopolymer Length" in html
     assert "rs" in html
     assert "<h2>Error Metrics</h2>" in html
-    assert "Substitutions:</strong> 7" in html
-    assert "Insertions:</strong> 2" in html
-    assert "Deletions:</strong> 3" in html
+    assert "Substitutions:</strong> count 7; rate 7.0000%" in html
+    assert "Insertions:</strong> count 2; rate 2.0000%" in html
+    assert "Deletions:</strong> count 3; rate 3.0000%" in html
     assert "Coverage:</strong> 42" in html
 
 
@@ -46,7 +49,7 @@ def test_cli_html_report_stdout(tmp_path: Path) -> None:
     assert "50.00%" in result.stdout
     assert "GC Variance" in result.stdout
     assert "<h2>Error Metrics</h2>" in result.stdout
-    assert "Substitutions:</strong> 7" in result.stdout
-    assert "Insertions:</strong> 2" in result.stdout
-    assert "Deletions:</strong> 3" in result.stdout
+    assert "Substitutions:</strong> count 7; rate 7.0000%" in result.stdout
+    assert "Insertions:</strong> count 2; rate 2.0000%" in result.stdout
+    assert "Deletions:</strong> count 3; rate 3.0000%" in result.stdout
     assert "Coverage:</strong> 42" in result.stdout

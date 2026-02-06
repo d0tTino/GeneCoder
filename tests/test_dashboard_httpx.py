@@ -32,11 +32,14 @@ def test_dashboard_metrics() -> None:
         )
     assert resp.status_code == 200
     data = resp.json()
-    assert set(data) >= {"gc_content", "gc_variance", "max_homopolymer", "error_rate", "plot"}
+    assert set(data) >= {"gc_content", "gc_variance", "max_homopolymer", "error_rate", "plot", "substitution_rate", "insertion_rate", "deletion_rate"}
     assert isinstance(data["gc_content"], float)
     assert isinstance(data["gc_variance"], float)
     assert isinstance(data["max_homopolymer"], int)
     assert isinstance(data["error_rate"], float)
+    assert isinstance(data["substitution_rate"], float)
+    assert isinstance(data["insertion_rate"], float)
+    assert isinstance(data["deletion_rate"], float)
     assert isinstance(data["plot"], str)
 
 
