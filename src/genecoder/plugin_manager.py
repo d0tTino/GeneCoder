@@ -270,6 +270,7 @@ def _record_entry_point_metadata(entry_name: str, kind: str, entry_point: object
         module_name = value.split(":", 1)[0]
     if module_name:
         meta.setdefault("module", module_name)
+    meta.setdefault("entry_point", entry_point)
 
 
 def _update_entry_point_metadata(entry_name: str, module: ModuleType) -> None:
@@ -798,25 +799,29 @@ def _validate_plugin_metadata(meta: object) -> Dict[str, Any]:
     """Validate plugin metadata structure."""
 
     if not isinstance(meta, dict):
-        raise TypeError("metadata must be a dict")
+        raise TypeError("PLUGIN_METADATA must be a dict")
     name = meta.get("name")
     version = meta.get("version")
     interfaces = meta.get("interfaces")
     license_value = meta.get("license")
     if not isinstance(name, str) or not name:
-        raise ValueError("missing or invalid name")
+        raise ValueError("PLUGIN_METADATA.name is required and must be a non-empty string")
     if not isinstance(version, str) or not version:
-        raise ValueError("missing or invalid version")
+        raise ValueError("PLUGIN_METADATA.version is required and must be a non-empty string")
     if not isinstance(interfaces, (list, tuple)) or not interfaces:
-        raise ValueError("missing interfaces")
+        raise ValueError("PLUGIN_METADATA.interfaces is required and must be a non-empty list")
     if any(i not in _VALID_INTERFACES for i in interfaces):
-        raise ValueError("unknown interface")
+        raise ValueError("PLUGIN_METADATA.interfaces contains an unknown interface")
     if not isinstance(license_value, str) or not license_value.strip():
-        raise ValueError("missing or invalid license")
+        raise ValueError(
+            "PLUGIN_METADATA.license is required and must be a non-empty SPDX identifier"
+        )
     normalized = license_value.strip()
     if normalized not in _ALLOWED_LICENSES:
         allowed = ", ".join(sorted(_ALLOWED_LICENSES))
-        raise ValueError(f"disallowed license {normalized!r}. Allowed licenses: {allowed}")
+        raise ValueError(
+            f"PLUGIN_METADATA.license {normalized!r} is not allowed. Allowed licenses: {allowed}"
+        )
     return {
         "name": name,
         "version": version,
@@ -860,9 +865,17 @@ def _collect_installed_plugins() -> tuple[Dict[str, Dict[str, Any]], list[str]]:
         if cached.get("metadata_name") and cached.get("metadata_name") != cached.get("entry_name"):
             continue
         module_name = cached.get("module")
-        if not module_name:
+        entry_point = cached.get("entry_point")
+        if not module_name and entry_point is None:
             continue
-        module = sys.modules.get(str(module_name))
+        module = sys.modules.get(str(module_name)) if module_name else None
+        if module is None and entry_point is not None:
+            try:
+                module = cast(ModuleType, entry_point.load())
+            except Exception as exc:
+                failures.append(f"entry_point:{entry_name}")
+                logger.warning("Failed to import entry point metadata for %s: %s", entry_name, exc)
+                continue
         if module is not None:
             _update_entry_point_metadata(entry_name, module)
 

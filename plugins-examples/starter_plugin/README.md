@@ -7,7 +7,8 @@ starting point for your own codec or simulator implementations.
 ## How to adapt the template
 
 1. Update ``PLUGIN_METADATA`` and the class name in
-   ``starter_plugin/__init__.py`` to reflect your plugin's identity.
+   ``starter_plugin/__init__.py`` to reflect your plugin's identity
+   (including setting an approved SPDX ``license`` such as ``MIT``).
 2. Replace the example codec logic with your own encode/decode behavior or swap
    the interface to a simulator by following the inline comments in the module.
 3. Adjust the entry point name in ``pyproject.toml`` if you change the public

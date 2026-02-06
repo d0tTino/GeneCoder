@@ -83,7 +83,7 @@ PLUGIN_METADATA = {
 }
 ```
 
-Metadata is optional but recommended so GeneCoder can report compatibility information and detect duplicates when building a plugin catalog. When you provide metadata, `license` is required and must be one of: `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `MIT`, `MPL-2.0`.
+Metadata is optional but recommended so GeneCoder can report compatibility information and detect duplicates when building a plugin catalog. When you provide metadata (for entry-point plugins or local `plugins/` modules), `license` is required and must be one of: `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `MIT`, `MPL-2.0`.
 
 ## Loading local plugins for development
 
