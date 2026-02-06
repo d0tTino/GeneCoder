@@ -31,3 +31,46 @@ Current limitations are primarily around validation depth and benchmarking rigor
 - comparative validation datasets are still limited,
 - benchmark reproducibility across environments can be improved,
 - and advanced calibration workflows for profile tuning are still maturing.
+
+## Recommended Features and Improvements (Near-Term)
+
+### Completed/Available
+
+The following items are already shipped and documented, so they are tracked as available capabilities rather than near-term feature gaps:
+
+- **Reed–Solomon and Fountain presets/workflows** in bundled configs and checklists.
+- **Profile selection support** for built-in Illumina/Nanopore simulator pathways.
+- **Basic multi-stage pipeline chaining** (encode → simulate and/or decay → decode) in preset bundle flows.
+
+### Near-Term Feature Work (Net-New Gaps)
+
+#### 1) Simulator calibration hardening
+
+Align profile fidelity work with `docs/channel_profiles.md` by adding a formal calibration track for existing profiles against reference datasets (public benchmarks or wet-lab-aligned snapshots).
+
+**Acceptance criteria**
+
+- Per-profile calibration reports are versioned and include baseline-versus-calibrated error summaries for substitution/indel/dropout metrics.
+- At least one documented calibration recipe exists for Illumina and one for Nanopore profiles in `docs/channel_profiles.md`.
+- Calibrated profiles demonstrate bounded error-rate deltas versus reference targets (for example, absolute deviation ≤ 10% on primary channel metrics across the validation corpus).
+
+#### 2) Reproducibility and performance hardening
+
+Close experiment-quality gaps by formalizing deterministic run controls and benchmark governance defined in `docs/reproducibility.md` and `docs/performance.md`.
+
+**Acceptance criteria**
+
+- Reproducibility checks confirm repeated seeded runs produce stable manifests/metrics within documented tolerance (or exact match where deterministic paths are expected).
+- Performance baselines are published for key workflows, with CI or scheduled checks flagging regressions beyond agreed thresholds (for example, throughput slowdown > 10% or memory growth > 15%).
+- `docs/reproducibility.md` and `docs/performance.md` each include a complete “how to run + how to interpret results” section for the tracked benchmarks.
+
+#### 3) Plugin and security robustness
+
+Harden extension safety and operator trust by tightening lifecycle guarantees already described in `docs/plugins.md` and `docs/security.md`.
+
+**Acceptance criteria**
+
+- Plugin validation paths cover signature verification/failure handling and provenance metadata checks for local and registry-driven installs.
+- Security guidance includes explicit threat-model assumptions and operational hardening defaults for plugin execution contexts.
+- Documentation completeness criteria are met: `docs/plugins.md` and `docs/security.md` contain end-to-end examples for secure plugin install, verification, and rollback/disable procedures.
+
