@@ -1,25 +1,63 @@
 # Development Roadmap
 
-1. **Foundation (Complete)** – command line interface, multiple encoders, error handling and a basic GUI with asynchronous operations.
+Roadmap execution now gates phase transitions on measurable KPI thresholds,
+instead of feature checklists alone. Features remain important, but they are now
+considered complete only when usage, quality, and reproducibility KPIs are at or
+above their phase targets.
+
+## KPI table (quarterly targets and existing data sources)
+
+| Quarter | Phase | KPI | Target threshold | Data source already in repo | Evidence artifact |
+| --- | --- | --- | --- | --- | --- |
+| 2026-Q1 | Foundation sustainment (Phase 1) | Weekly usage (`oligos_per_week`) | At least 1,000 simulated oligos/week for 4 consecutive ISO weeks | `docs/metrics.md` metric definition + `genecli stats`/`/metrics` output | `~/.genecoder/metrics.json` |
+| 2026-Q2 | Robust Encoding Pipeline (Phase 2) | Pipeline reproducibility pass rate | 100% pass for deterministic seed/profile checks in CI for two consecutive weeks | `docs/reproducibility.md`, `tests/test_simulator_seed_reproducibility.py`, `tests/test_illumina_coverage_quality.py`, `tests/test_nanopore_context_profile.py` | CI pytest logs for reproducibility suites |
+| 2026-Q2 | Robust Encoding Pipeline (Phase 2) | Runtime throughput floor | `benchmarks/throughput.py` median encode throughput stays at or above 2.0 MB/s (Base-4) on the project benchmark runner | `docs/performance.md`, `benchmarks/throughput.py` | benchmark stdout artifact from `PYTHONPATH=src python benchmarks/throughput.py` |
+| 2026-Q3 | Simulation & Analysis (Phase 3) | Benchmark quality under noise | `benchmarks/error_rate.py` BER at or below 0.01 on baseline profile with documented seed | `docs/performance.md`, `benchmarks/error_rate.py` | benchmark stdout artifact from `PYTHONPATH=src python benchmarks/error_rate.py` |
+| 2026-Q3 | Simulation & Analysis (Phase 3) | Test coverage breadth (suite categories) | Stable green coverage across inferred categories: CLI/API (`tests/test_cli*.py`, `tests/test_web_api*.py`), pipeline/simulation (`tests/test_pipeline*.py`, `tests/test_simulator*.py`), plugins/security (`tests/test_plugin*.py`, `tests/test_security*.py`) | `tests/` suite taxonomy by filename prefixes | CI pytest summary grouped by selected markers/path globs |
+| 2026-Q4 | Ecosystem & Automation (Phase 4) | Plugin policy compliance quality | 100% pass on plugin spec/security checks before registry publication | `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py`, `docs/plugins.md` | CI pytest logs + registry validation output (`configs/registry.yaml` checks) |
+
+## Phase transition criteria
+
+1. **Foundation (Complete, KPI-sustained)**
+   - **Entry criteria:** Baseline CLI/pipeline functionality and metrics capture
+     are available (`genecli stats`, `/metrics`).
+   - **Exit criteria:** Foundation usage KPI meets the `oligos_per_week`
+     threshold for 4 consecutive ISO weeks.
+   - **Evidence artifact:** `~/.genecoder/metrics.json` snapshots and dashboard
+     extracts from `/metrics`.
+
 2. **Phase 2: Robust Encoding Pipeline**
-   - Introduce additional error correction codes such as Reed–Solomon and LDPC.
-   - Implement streaming support for handling large files efficiently.
-   - Refine GC-content balancing algorithms for more stable synthesis results.
+   - **Entry criteria:** Foundation exit criteria are met.
+   - **Exit criteria:**
+     - Reproducibility KPI: deterministic seed/profile regression checks hold at
+       100% pass for two consecutive weeks.
+     - Performance KPI: Base-4 encode throughput meets or exceeds 2.0 MB/s
+       median on the benchmark runner.
+   - **Evidence artifact:** reproducibility pytest logs + benchmark output from
+     `benchmarks/throughput.py`.
+
 3. **Phase 3: Simulation & Analysis**
-   - Model sequencing errors in greater detail to mimic real-world conditions.
-   - Provide named sequencing profiles (e.g., `miseq`, `hiseq`, `minion`,
-     `promethion`) selectable via CLI options.
-   - Integrate with common bioinformatics tools for downstream analysis.
-   - Provide automated reports summarizing encoding accuracy and efficiency.
+   - **Entry criteria:** Phase 2 exit criteria are met.
+   - **Exit criteria:**
+     - Benchmark BER KPI reaches `<= 0.01` on baseline noisy decode runs.
+     - Test coverage category KPI remains green across CLI/API,
+       pipeline/simulation, and plugin/security suites.
+   - **Evidence artifact:** `benchmarks/error_rate.py` outputs and CI pytest
+     summaries for the category globs under `tests/`.
+
 4. **Phase 4: Ecosystem & Automation**
-   - Publish a plugin repository enabling community codecs and FEC modules.
-   - Require digital signatures for plugins submitted to the new marketplace.
-   - Offer workflow templates powered by n8n for routine processing tasks.
-   - Package the toolkit for easy container deployment in research pipelines.
-5. **Long-Term Vision**
+   - **Entry criteria:** Phase 3 exit criteria are met.
+   - **Exit criteria:** plugin publication and automation workflows satisfy
+     100% policy/security KPI checks before release cut.
+   - **Evidence artifact:** plugin/security pytest logs and registry validation
+     records tied to `configs/registry.yaml`.
+
+5. **Long-Term Vision (rolling KPI governance)**
    - Interactive dashboards to visualize storage simulations over time.
    - Cloud-friendly architecture for scaling large simulation batches.
    - Continued collaboration with the research community to expand features.
+   - All long-term initiatives advance only when quarterly KPI baselines remain
+     healthy (usage, reproducibility, performance, and quality).
 
 ### Long-term interoperability strategy
 
