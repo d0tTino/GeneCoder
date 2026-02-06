@@ -28,6 +28,7 @@ from genecoder.plotting import (
     generate_sequence_analysis_plot,
 )
 from genecoder.error_simulation import introduce_errors
+from genecoder.simulators.batch_utils import mutation_counts
 from genecoder import constraint_fixer
 from genecoder.app_helpers import EncodeResult, DecodeResult
 from genecoder.report import (
@@ -346,6 +347,7 @@ async def dashboard_metrics(
             tuple[bytes, list[int]], decode_base4_direct(corrupted)
         )
         ber = bit_error_rate(orig_bytes, dec_bytes)
+        substitutions, insertions, deletions = mutation_counts(seq, corrupted)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     oligo_metrics = {
@@ -354,11 +356,22 @@ async def dashboard_metrics(
         "dropout_flags": [False],
         "ecc_success": {"decode": [max(0.0, min(1.0, 1.0 - ber))]},
     }
+    total_bases = max(1, len(seq))
+    substitution_rate = substitutions / total_bases
+    insertion_rate = insertions / total_bases
+    deletion_rate = deletions / total_bases
     return {
         "gc_content": gc,
         "gc_variance": gc_var,
         "max_homopolymer": max_hp,
         "error_rate": ber,
+        "substitutions": substitutions,
+        "insertions": insertions,
+        "deletions": deletions,
+        "error_bases": len(seq),
+        "substitution_rate": substitution_rate,
+        "insertion_rate": insertion_rate,
+        "deletion_rate": deletion_rate,
         "plot": plot_b64,
         "oligo_metrics": oligo_metrics,
     }

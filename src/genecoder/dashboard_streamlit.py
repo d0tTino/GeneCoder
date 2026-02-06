@@ -37,15 +37,18 @@ _DEF_METRICS: dict[str, Any] = {
     "substitutions": None,
     "insertions": None,
     "deletions": None,
+    "substitution_rate": None,
+    "insertion_rate": None,
+    "deletion_rate": None,
     "coverage": None,
     "coverage_distribution": [],
     "oligo_metrics": {},
 }
 
-_ERROR_METRICS: tuple[tuple[str, str], ...] = (
-    ("substitutions", "Substitutions"),
-    ("insertions", "Insertions"),
-    ("deletions", "Deletions"),
+_ERROR_METRICS: tuple[tuple[str, str, str], ...] = (
+    ("substitutions", "substitution_rate", "Substitutions"),
+    ("insertions", "insertion_rate", "Insertions"),
+    ("deletions", "deletion_rate", "Deletions"),
 )
 _DEFAULT_GC_MIN = 0.4
 _DEFAULT_GC_MAX = 0.6
@@ -278,10 +281,13 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         if longest is not None:
             hp_rows.append({"Run": label, "Value": longest})
 
-        for metric_key, metric_label in _ERROR_METRICS:
-            value = _to_float(data.get(metric_key))
-            if value is not None:
-                error_rows.append({"Run": label, "Metric": metric_label, "Value": value})
+        for count_key, rate_key, metric_label in _ERROR_METRICS:
+            count_value = _to_float(data.get(count_key))
+            rate_value = _to_float(data.get(rate_key))
+            if count_value is not None:
+                error_rows.append({"Run": label, "Metric": f"{metric_label} (count)", "Value": count_value})
+            if rate_value is not None:
+                error_rows.append({"Run": label, "Metric": f"{metric_label} (rate)", "Value": rate_value})
 
         coverage = _coverage_value(data)
         if coverage is not None:
@@ -446,6 +452,24 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                 )
         else:
             st.write("No ECC data.")
+
+        st.subheader("Error Metrics")
+        error_table_rows: list[dict[str, float | str]] = []
+        for count_key, rate_key, metric_label in _ERROR_METRICS:
+            count_value = _to_float(data.get(count_key))
+            rate_value = _to_float(data.get(rate_key))
+            if count_value is not None:
+                error_table_rows.append({"Metric": metric_label, "Count": count_value})
+            if rate_value is not None:
+                row = next((entry for entry in error_table_rows if entry.get("Metric") == metric_label), None)
+                if row is None:
+                    row = {"Metric": metric_label}
+                    error_table_rows.append(row)
+                row["Rate"] = rate_value
+        if error_table_rows:
+            st.table(error_table_rows)
+        else:
+            st.write("No error metrics.")
 
         st.subheader("Coverage")
         coverage_value = _to_float(data.get("coverage"))

@@ -127,6 +127,11 @@ def test_metrics_helper() -> None:
     assert "gc_content" in m
     assert m["oligo_metrics"]["dropout_flags"] == [False]
     assert m["oligo_metrics"]["coverage"] == [None]
+    assert m["error_bases"] == len(dna.primary_sequence())
+    assert m["substitution_rate"] == 0.0
+    assert m["insertion_rate"] == 0.0
+    assert m["deletion_rate"] == 0.0
+    assert m["error_rate"] == 0.0
 
 
 def test_metrics_constraint_violations_per_oligo() -> None:
