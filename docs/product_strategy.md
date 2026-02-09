@@ -6,13 +6,24 @@ GeneCoder is envisioned as a comprehensive DNA data storage simulation platform,
 
 ### Current Capabilities (MVP)
 
-GeneCoder’s latest prototype delivers a basic but functional feature set focused on encoding and decoding data to/from DNA sequences. Via a command-line interface (and an optional GUI), users can convert binary/text files into simulated DNA sequences and back, using several methods and simple error controls.
+GeneCoder’s shipped MVP now supports reproducible encode → simulate → decode workflows through CLI bundle presets and configurable YAML profiles. The current baseline includes both Illumina and Nanopore simulation support, storage decay staging, and deterministic seeded runs that feed manifest/report artifacts for analysis.
 
-Implemented encoding schemes include direct base-4 mapping and Huffman coding, as well as a GC-balanced encoding that ensures sequences meet simple biophysical constraints (target ~50% GC content and limited homopolymer runs). Basic error correction options are available (e.g., a triple nucleotide repeat scheme with majority-vote decoding, and a Hamming(7,4) code for binary data) to simulate rudimentary error resilience.
+Implemented codec and FEC modules now include Base-4 direct, Huffman-4, and GC-balanced encoders plus Triple-Repeat, Hamming(7,4), Reed–Solomon, and Fountain code paths in shipped presets and CLI workflows. This matches the current roadmap execution focus on robust pipeline operation rather than only proof-of-concept transforms.
 
-Outputs are provided in standard FASTA format with metadata in headers, and the tool reports metrics like compression ratio, GC content, and homopolymer lengths for each encoding. A lightweight GUI (built with Flet) allows interactive use of these features and visualizes results (e.g., nucleotide distribution, GC content across the sequence, homopolymer locations) for learning and analysis.
+Operational outputs include FASTA and manifest artifacts, metrics exports, and dashboard-compatible run summaries. The CLI supports both single runs and sweep workflows, while the current UI/reporting stack enables KPI tracking (decode success, runtime, profile behavior) across preset pipelines.
 
-This MVP has validated the core concept and generated early interest, but key capabilities are still missing: notably, detailed simulation of DNA synthesis/sequencing errors or biochemical processes is not yet implemented, and the current focus is more educational than predictive. These gaps point to the next development priorities to fulfill GeneCoder’s full vision.
+### Operational baseline (completed)
+
+- Illumina and Nanopore simulator profiles are available in current bundle presets and tested reproducibility flows.
+- Reed–Solomon and Fountain-based FEC paths are already operational in documented MVP commands.
+- Constraint-aware synthesis checks (GC range, homopolymer caps, sequence length limits) are integrated into shipped presets.
+- Metrics/manifest generation and dashboard launch from bundle commands are part of the active MVP toolchain.
+
+### Remaining MVP-level gaps
+
+The primary shortfalls are no longer “whether simulation exists,” but the quality and scale maturity of what exists: calibration fidelity against reference datasets, benchmark standardization, plugin ecosystem depth, and hardened deployment workflows.
+
+> Last validated against codebase: 2026-02-09 (GeneCoder v0.1.0).
 
 ## User Needs and Market Demand
 
@@ -55,29 +66,25 @@ No single tool currently combines realistic channel simulation, flexible coding 
 
 ## Recommended Features and Improvements (Near-Term)
 
-1. **Realistic Error Channel Simulation**
-   - Add configurable synthesis/sequencing error injection.
-   - Start with one robust profile (e.g., Illumina), while designing extensibility for nanopore and future models.
+1. **Calibration and validation quality upgrades**
+   - Improve per-profile calibration against reference read distributions and error-rate envelopes.
+   - Expand deterministic validation suites to better capture chemistry/context drift and decode robustness.
 
-2. **Expanded Codec and ECC Library**
-   - Prioritize Reed–Solomon and Fountain/LT support.
-   - Add stronger ECC options over time (e.g., convolutional/LDPC), and broaden constrained encoders.
+2. **Benchmark dataset and KPI rigor**
+   - Standardize benchmark datasets/profiles for reproducibility and cross-run comparability.
+   - Tighten KPI evidence loops across throughput, BER, and decode-success thresholds used in roadmap governance.
 
-3. **Advanced Biophysical Constraints and Sequence Optimization**
-   - Support customizable rule sets (GC ranges, homopolymer limits, motif restrictions).
-   - Add validation and optional automated correction guidance.
+3. **Plugin ecosystem maturity**
+   - Increase third-party plugin quality/coverage for codec, FEC, simulator, and visualizer entry points.
+   - Strengthen contributor ergonomics (examples, packaging guidance, CI policy feedback) to improve sustainable cadence.
 
-4. **Data Visualization and Analysis Tools**
-   - Add richer error-distribution and comparative performance visualizations.
-   - Provide simulation dashboards and structured export (CSV/JSON).
+4. **Deployment and operations hardening**
+   - Harden local deployment defaults, environment reproducibility, and release validation checklists.
+   - Mature automation for secure plugin/registry handling and production-grade execution paths.
 
-5. **API and Scripting Support**
-   - Strengthen Python API for parameter sweeps and workflow integration.
-   - Improve logging/configuration ergonomics and developer documentation.
-
-6. **Modularity for Future Integration**
-   - Keep encoding/ECC/error models pluggable.
-   - Prepare clean integration seams for external simulators and AI decoders.
+5. **Comparative analysis UX depth**
+   - Expand dashboard/API comparison workflows for multi-run analysis without manual data shaping.
+   - Improve manifest/report consistency so KPI insights are easier to consume in release and research reviews.
 
 ## Product Strategy for Long-Term Growth
 
@@ -119,21 +126,21 @@ To grow adoption and velocity:
 
 ### Phase 1 — Core MVP Completion
 
-- Complete robust channel simulation for at least one key workflow.
-- Add foundational high-impact codecs/ECC.
-- Ensure CLI/batch workflows are reliable for encode-simulate-decode loops.
+- Maintain reproducible baseline operation for shipped Illumina/Nanopore presets.
+- Keep existing codec/FEC workflows stable (including Reed–Solomon and Fountain presets).
+- Sustain reliable CLI/batch encode-simulate-decode workflows with manifest/KPI capture.
 
 ### Phase 2 — Feature Expansion and Usability
 
-- Add additional error models and parameter controls.
-- Expand coding options and constraint tooling.
-- Improve visualization/reporting and stabilize API/documentation.
+- Expand calibrated profile coverage and improve profile-specific validation quality.
+- Strengthen benchmark datasets, comparative analysis tooling, and KPI dashboards.
+- Improve API/documentation ergonomics for reproducible sweeps and experiment sharing.
 
 ### Phase 3 — Advanced Capabilities and Ecosystem Growth
 
-- Integrate optional AI/ML-assisted components.
-- Add support for emerging storage paradigms.
-- Expand collaboration tooling and community-driven plugin ecosystem.
+- Grow policy-compliant plugin ecosystem velocity (codecs/FEC/simulators/visualizers).
+- Integrate optional AI/ML-assisted components where they improve benchmarked outcomes.
+- Advance deployment hardening for larger-scale and collaborative execution models.
 
 ## Key Differentiators and Success Factors
 
