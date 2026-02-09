@@ -217,3 +217,40 @@ def test_custom_constraint_limits_drive_flagged_oligos(
     assert flagged_tables, "flagged oligo table not written"
     flagged = flagged_tables[-1]
     assert [row.get("Index") for row in flagged] == [2]
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (True, True),
+        (False, False),
+        (1, True),
+        (0, False),
+        ("1", True),
+        ("0", False),
+        ("true", True),
+        ("false", False),
+        ("yes", True),
+        ("no", False),
+        ("bad-value", False),
+    ],
+)
+def test_parse_bool(value: object, expected: bool) -> None:
+    from genecoder import dashboard
+
+    assert dashboard._parse_bool(value) is expected
+
+
+def test_extract_oligo_records_handles_malformed_dropout_flags() -> None:
+    from genecoder import dashboard
+
+    records = dashboard._extract_oligo_records(
+        {
+            "oligo_metrics": {
+                "gc_percentages": [0.4, 0.5, 0.6],
+                "dropout_flags": ["true", "invalid", "off", None, object()],
+            }
+        }
+    )
+
+    assert [record.get("Dropout") for record in records] == [True, False, False, False, False]
