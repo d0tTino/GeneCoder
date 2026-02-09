@@ -166,6 +166,73 @@ def test_pipeline_legacy_fountain_nanopore_dropouts(
     assert channel_info.get("decode_success_rate") == metrics.get("decode_success_rate")
 
 
+@pytest.mark.parametrize("filter_mutated,expects_positive_mutation", [(False, True), (True, False)])
+def test_pipeline_legacy_fountain_filter_mutated_controls_decode_input(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    legacy_codec: tuple[str, _BatchCodec],
+    filter_mutated: bool,
+    expects_positive_mutation: bool,
+) -> None:
+    codec_name, _codec = legacy_codec
+
+    class _MutatedNanopore(NanoporeChannel):
+        def __init__(self) -> None:
+            super().__init__(profile="rapid")
+            self.error_rate = 0.0
+            self.substitution_rate = 0.0
+            self.insertion_rate = 0.0
+            self.deletion_rate = 0.0
+
+        def simulate(self, sequence: SequenceBatch | str) -> SequenceBatch | str:  # type: ignore[override]
+            result = super().simulate(sequence)
+            if isinstance(result, SequenceBatch) and result.oligos:
+                result.oligos[0].metadata[RESULT_MUTATION_TOTALS_KEY] = {
+                    "substitutions": 1,
+                    "insertions": 0,
+                    "deletions": 0,
+                }
+                result.oligos[0].metadata[RESULT_DROPOUT_FLAG_KEY] = False
+            return result
+
+    monkeypatch.setitem(SIMULATOR_REGISTRY, "nanopore", _MutatedNanopore())
+
+    payload = SAMPLE_DATA.read_bytes()
+    inp = tmp_path / f"sample-{filter_mutated}.bin"
+    outp = tmp_path / f"fountain-mutated-{filter_mutated}.bin"
+    inp.write_bytes(payload)
+
+    decode_calls: list[SequenceBatch | str] = []
+
+    def _recording_decode(*args, **kwargs):  # type: ignore[no-untyped-def]
+        decode_calls.append(args[2])
+        return b"decoded"
+
+    monkeypatch.setattr(pipeline_mod.core, "decode", _recording_decode)
+
+    decoded, _metrics, _fec_info = run_pipeline(
+        codec_name,
+        "fountain",
+        "nanopore",
+        str(inp),
+        str(outp),
+        filter_mutated=filter_mutated,
+    )
+
+    assert decoded == b"decoded"
+    assert len(decode_calls) == 1
+    assert isinstance(decode_calls[0], SequenceBatch)
+    decode_batch = decode_calls[0]
+    positive_mutation_count = 0
+    for oligo in decode_batch.oligos:
+        mutation_data = oligo.metadata.get(RESULT_MUTATION_TOTALS_KEY)
+        if not isinstance(mutation_data, dict):
+            continue
+        if int(mutation_data.get("substitutions", 0)) > 0:
+            positive_mutation_count += 1
+
+    assert (positive_mutation_count > 0) is expects_positive_mutation
+
 def test_pipeline_legacy_fountain_keeps_mutated_oligos_by_default(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, legacy_codec: tuple[str, _BatchCodec]
 ) -> None:

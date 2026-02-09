@@ -246,6 +246,7 @@ def run_pipeline(
             fec_backend,
             decode_input,
             fec_info,
+            filter_mutated=filter_mutated,
             survivor_batch=survivor_batch,
         )
     except Exception:
