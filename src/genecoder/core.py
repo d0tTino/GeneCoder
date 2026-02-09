@@ -369,17 +369,24 @@ def decode(
                 continue
             filtered.append(oligo)
         if len(filtered) != len(dna.oligos):
-            if filtered:
-                batch = SequenceBatch(
-                    batch_id=dna.batch_id,
-                    metadata=dict(dna.metadata),
-                    seed=dna.seed,
-                    oligos=list(filtered),
+            if not filtered:
+                raise ValueError(
+                    "No survivor oligos available after filtering; "
+                    "adjust channel conditions or disable --filter-mutated."
                 )
-            else:
-                batch = dna
+            batch = SequenceBatch(
+                batch_id=dna.batch_id,
+                metadata=dict(dna.metadata),
+                seed=dna.seed,
+                oligos=list(filtered),
+            )
     if survivor_batch is None and isinstance(dna, SequenceBatch):
-        survivor_batch = dna
+        survivor_batch = batch
+    if isinstance(batch, SequenceBatch) and not batch.oligos:
+        raise ValueError(
+            "No survivor oligos available after filtering; "
+            "adjust channel conditions or disable --filter-mutated."
+        )
     decode_fn = CODEC_REGISTRY[codec]["decode"]
     primary_sequence = batch.primary_sequence()
     if _codec_accepts_sequence_batch(decode_fn):
