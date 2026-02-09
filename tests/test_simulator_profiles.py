@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import yaml
+import pytest
 
 from genecoder.simulators.illumina import IlluminaChannel, ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NanoporeChannel, NANOPORE_PROFILES
@@ -77,3 +78,27 @@ def test_profile_fallback() -> None:
     unknown_nanopore = NanoporeChannel(profile="unknown")
     assert unknown_nanopore.error_rate == default_nanopore.error_rate
 
+
+
+def test_illumina_profile_rejects_unsupported_keys(tmp_path: Path) -> None:
+    params = {
+        "substitution_rate": 0.01,
+        "insertion_rate": 0.002,
+        "deletion_rate": 0.003,
+        "coverage_depth": 2,
+        "read_length": 100,
+    }
+    prof = tmp_path / "illumina.yaml"
+    prof.write_text(yaml.safe_dump(params))
+
+    with pytest.raises(ValueError, match=r"unsupported key\(s\): coverage_depth"):
+        IlluminaChannel(profile=str(prof))
+
+
+def test_canonical_illumina_config_matches_required_schema() -> None:
+    ch = IlluminaChannel(profile="configs/illumina.yaml")
+    assert ch.substitution_rate == 0.001
+    assert ch.insertion_rate == 0.0001
+    assert ch.deletion_rate == 0.0001
+    assert ch.coverage == 1
+    assert ch.read_length == 150

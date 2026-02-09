@@ -90,10 +90,21 @@ _REQUIRED_KEYS = {
 
 
 def _validate_profile(data: Mapping[str, Any]) -> IlluminaProfile:
+    unexpected = set(data.keys()) - _REQUIRED_KEYS
+    if unexpected:
+        keys = ", ".join(sorted(unexpected))
+        hint = (
+            " Use 'coverage' instead of 'coverage_depth'."
+            if "coverage_depth" in unexpected
+            else ""
+        )
+        raise ValueError(f"Illumina profile has unsupported key(s): {keys}.{hint}")
+
     missing = _REQUIRED_KEYS - data.keys()
     if missing:
         keys = ", ".join(sorted(missing))
         raise ValueError(f"Illumina profile missing required key(s): {keys}")
+
     return IlluminaProfile(
         substitution_rate=float(data["substitution_rate"]),
         insertion_rate=float(data["insertion_rate"]),
