@@ -110,6 +110,29 @@ def _iterable(val: Iterable[str] | str | None) -> list[str]:
     return list(val)
 
 
+def _parse_bool(value: object) -> bool:
+    """Parse a broad set of boolean-like values.
+
+    Recognizes booleans, numeric values, and common string representations.
+    Unrecognized values return ``False``.
+    """
+
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        try:
+            return float(value) != 0.0
+        except (TypeError, ValueError):  # pragma: no cover - defensive
+            return False
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return False
+
+
 def _gc_percentages(dist: object) -> list[float]:
     """Return GC distribution values expressed as percentages."""
 
@@ -189,10 +212,7 @@ def _extract_oligo_records(data: dict[str, Any]) -> list[dict[str, Any]]:
     hp_vals = [
         float(v) for v in oligo.get("max_homopolymers", []) if isinstance(v, (int, float))
     ]
-    dropout_flags = [
-        bool(v) if isinstance(v, bool) else bool(int(v))
-        for v in oligo.get("dropout_flags", [])
-    ]
+    dropout_flags = [_parse_bool(v) for v in oligo.get("dropout_flags", [])]
     ecc = oligo.get("ecc_success")
     ecc_map: dict[str, list[float]] = {}
     if isinstance(ecc, dict):
