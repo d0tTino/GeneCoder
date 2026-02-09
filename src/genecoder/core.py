@@ -316,9 +316,16 @@ def decode(
     dna: SequenceBatch | str,
     fec_info: Mapping[str, Any] | None,
     *,
+    filter_mutated: bool = True,
     survivor_batch: SequenceBatch | None = None,
 ) -> bytes:
-    """Return decoded bytes from ``dna`` applying optional FEC."""
+    """Return decoded bytes from ``dna`` applying optional FEC.
+
+    Args:
+        filter_mutated: When ``True`` (default), oligos carrying positive
+            mutation totals are removed before decoding alongside dropout and
+            zero-coverage oligos. Set to ``False`` to retain mutated oligos.
+    """
 
     if codec not in CODEC_REGISTRY:
         raise ValueError(f"Unknown codec: {codec}")
@@ -356,7 +363,9 @@ def decode(
                                 break
                         except (TypeError, ValueError):
                             continue
-            if dropout_flag or (coverage_int is not None and coverage_int <= 0) or mutation_flag:
+            if dropout_flag or (coverage_int is not None and coverage_int <= 0) or (
+                filter_mutated and mutation_flag
+            ):
                 continue
             filtered.append(oligo)
         if len(filtered) != len(dna.oligos):
