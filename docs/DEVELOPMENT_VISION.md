@@ -9,3 +9,5 @@ GeneCoder aims to provide an end-to-end simulation and research platform for DNA
 
 The full original document is preserved in `archived/DEVELOPMENT_VISION.md`.
 You can also download the PDF version from the [project's releases page](https://github.com/d0tTino/GeneCoder/releases).
+
+Execution planning, milestones, and KPI-linked delivery checkpoints are tracked in [roadmap_execution.md](roadmap_execution.md).
