@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,7 @@ from genecoder.plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.channel_sim import Channel
 from genecoder.simulators.nanopore import NanoporeChannel
-from genecoder.simulators.batch_utils import RESULT_DROPOUT_FLAG_KEY, RESULT_MUTATION_TOTALS_KEY
+from genecoder.simulators.batch_utils import RESULT_COVERAGE_KEY, RESULT_DROPOUT_FLAG_KEY, RESULT_MUTATION_TOTALS_KEY
 from genecoder.reed_solomon_codec import _HAS_REEDSOLO
 
 SAMPLE_DATA = Path("tests/data/sample.txt")
@@ -291,3 +292,76 @@ def test_pipeline_legacy_fountain_keeps_mutated_oligos_by_default(
     )
     assert fec_info is not None
     assert metrics["gc_content"] >= 0.0
+
+
+@pytest.mark.parametrize(
+    "case_name,filter_mutated",
+    [
+        ("all_dropped", False),
+        ("zero_coverage", False),
+        ("mutated_filtered_empty", True),
+    ],
+)
+def test_pipeline_legacy_fountain_fail_closed_when_no_survivors(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    legacy_codec: tuple[str, _BatchCodec],
+    case_name: str,
+    filter_mutated: bool,
+) -> None:
+    codec_name, _codec = legacy_codec
+
+    payload = SAMPLE_DATA.read_bytes()
+    inp = tmp_path / f"sample-{case_name}.bin"
+    outp = tmp_path / f"fountain-{case_name}.bin"
+    inp.write_bytes(payload)
+
+    def _simulate(_channel: str | None, batch: SequenceBatch):
+        oligos = []
+        for oligo in batch.oligos:
+            metadata = dict(oligo.metadata)
+            metadata[RESULT_DROPOUT_FLAG_KEY] = False
+            metadata[RESULT_COVERAGE_KEY] = "5"
+            metadata[RESULT_MUTATION_TOTALS_KEY] = {
+                "substitutions": 0,
+                "insertions": 0,
+                "deletions": 0,
+            }
+            if case_name == "all_dropped":
+                metadata[RESULT_DROPOUT_FLAG_KEY] = True
+                metadata[RESULT_COVERAGE_KEY] = "0"
+            elif case_name == "zero_coverage":
+                metadata[RESULT_COVERAGE_KEY] = "0"
+            elif case_name == "mutated_filtered_empty":
+                metadata[RESULT_MUTATION_TOTALS_KEY] = {
+                    "substitutions": 1,
+                    "insertions": 0,
+                    "deletions": 0,
+                }
+            oligos.append(replace(oligo, metadata=metadata))
+        return (
+            SequenceBatch(
+                batch_id=batch.batch_id,
+                metadata=dict(batch.metadata),
+                seed=batch.seed,
+                oligos=oligos,
+            ),
+            0,
+            0,
+            0,
+            0,
+        )
+
+    monkeypatch.setattr(pipeline_mod.core, "simulate", _simulate)
+
+    with pytest.raises(ValueError, match="No survivor oligos available after filtering") as exc_info:
+        run_pipeline(
+            codec_name,
+            "fountain",
+            "nanopore",
+            str(inp),
+            str(outp),
+            filter_mutated=filter_mutated,
+        )
+
+    assert "disable --filter-mutated" in str(exc_info.value)
