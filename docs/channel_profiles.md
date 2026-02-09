@@ -24,6 +24,29 @@ genecli channel --simulator illumina --illumina-profile novaseq \
     --illumina-depth 5 --input-file encoded.fasta --output-file novaseq_depth5.fasta
 ```
 
+
+### Illumina config file schema migration
+
+Use `configs/illumina.yaml` as the canonical on-disk Illumina profile format.
+The file now accepts a **single profile mapping** with exactly these keys:
+
+- `substitution_rate`
+- `insertion_rate`
+- `deletion_rate`
+- `read_length`
+- `coverage`
+
+Older multi-profile YAML layouts (for example top-level `miseq`, `hiseq`, `novaseq`)
+and deprecated keys such as `coverage_depth` are no longer accepted by
+`IlluminaChannel(profile=...)`.
+
+Quick migration:
+
+1. Pick one named preset to materialize into a file.
+2. Write it to `configs/illumina.yaml` using the required keys above.
+3. Replace `coverage_depth` with `coverage`.
+4. Point CLI/config references to `configs/illumina.yaml`.
+
 ## Nanopore profiles
 
 The Nanopore channel falls back to `_FALLBACK_PROFILE_DATA` when YAML overrides are absent. Rates are higher and tuned for long-read indel patterns, with a default coverage of 30× for consensus calling.
