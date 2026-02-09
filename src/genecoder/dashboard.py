@@ -13,6 +13,8 @@ import math
 from collections import Counter
 from pathlib import Path
 from typing import IO, Any, Iterable, Callable, cast
+
+from .bool_parsing import parse_bool_like
 from types import ModuleType
 
 try:  # pragma: no cover - optional dependency for tests
@@ -117,20 +119,7 @@ def _parse_bool(value: object) -> bool:
     Unrecognized values return ``False``.
     """
 
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        try:
-            return float(value) != 0.0
-        except (TypeError, ValueError):  # pragma: no cover - defensive
-            return False
-    if isinstance(value, str):
-        normalized = value.strip().lower()
-        if normalized in {"1", "true", "yes", "on"}:
-            return True
-        if normalized in {"0", "false", "no", "off"}:
-            return False
-    return False
+    return bool(parse_bool_like(value))
 
 
 def _gc_percentages(dist: object) -> list[float]:

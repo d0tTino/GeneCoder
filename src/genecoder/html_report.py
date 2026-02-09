@@ -6,6 +6,8 @@ from html import escape
 import json
 from typing import Any
 
+from .bool_parsing import parse_bool_like
+
 __all__ = ["generate_html_report"]
 
 
@@ -54,7 +56,8 @@ def _render_oligo_section(metrics: dict[str, Any], html_lines: list[str]) -> Non
         return
     gc_vals = [float(v) for v in oligo.get("gc_percentages", []) if isinstance(v, (int, float))]
     hp_vals = [float(v) for v in oligo.get("max_homopolymers", []) if isinstance(v, (int, float))]
-    dropout_flags = [flag for flag in oligo.get("dropout_flags", []) if isinstance(flag, bool)]
+    parsed_dropout_flags = [parse_bool_like(flag) for flag in oligo.get("dropout_flags", [])]
+    dropout_flags = [flag for flag in parsed_dropout_flags if flag is not None]
     ecc = oligo.get("ecc_success")
 
     if not (gc_vals or hp_vals or dropout_flags or ecc):

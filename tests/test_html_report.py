@@ -53,3 +53,19 @@ def test_cli_html_report_stdout(tmp_path: Path) -> None:
     assert "Insertions:</strong> count 2; rate 2.0000%" in result.stdout
     assert "Deletions:</strong> count 3; rate 3.0000%" in result.stdout
     assert "Coverage:</strong> 42" in result.stdout
+
+
+def test_generate_html_report_normalizes_dropout_flags(tmp_path: Path) -> None:
+    manifest = tmp_path / "m_dropout.json"
+    data = {
+        "metrics": {
+            "oligo_metrics": {
+                "dropout_flags": [True, "1", 0, "false", 2, "invalid", None]
+            }
+        }
+    }
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+
+    html = generate_html_report(str(manifest))
+
+    assert "Dropouts:</strong> 3 of 5 oligos (60.00%)" in html
