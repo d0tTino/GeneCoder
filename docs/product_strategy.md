@@ -80,25 +80,40 @@ No single tool currently combines realistic channel simulation, flexible coding 
 
 ## Recommended Features and Improvements (Near-Term)
 
-1. **Calibration and validation quality upgrades**
-   - Improve per-profile calibration against reference read distributions and error-rate envelopes.
-   - Expand deterministic validation suites to better capture chemistry/context drift and decode robustness.
+### Completed/Available
 
-2. **Benchmark dataset and KPI rigor**
-   - Standardize benchmark datasets/profiles for reproducibility and cross-run comparability.
-   - Tighten KPI evidence loops across throughput, BER, and decode-success thresholds used in roadmap governance.
+The following capabilities are now operational and should be tracked as available baseline, not near-term gaps:
 
-3. **Plugin ecosystem maturity**
-   - Increase third-party plugin quality/coverage for codec, FEC, simulator, and visualizer entry points.
-   - Strengthen contributor ergonomics (examples, packaging guidance, CI policy feedback) to improve sustainable cadence.
+- Integrated Illumina and Nanopore encode → simulate → decode preset workflows are already shipped and documented.
+- Reed–Solomon and Fountain FEC paths are active in bundled presets, with constraints-aware synthesis checks in baseline flows.
+- Metrics/manifest export plus dashboard-compatible KPI reporting are part of the current CLI and bundle command surface.
 
-4. **Deployment and operations hardening**
-   - Harden local deployment defaults, environment reproducibility, and release validation checklists.
-   - Mature automation for secure plugin/registry handling and production-grade execution paths.
+### Near-Term Work (Unresolved)
 
-5. **Comparative analysis UX depth**
-   - Expand dashboard/API comparison workflows for multi-run analysis without manual data shaping.
-   - Improve manifest/report consistency so KPI insights are easier to consume in release and research reviews.
+1. **Calibration hardening (profile fidelity maturity)**
+   - Publish versioned calibration evidence for core Illumina and Nanopore profiles, with baseline-vs-calibrated substitution/indel/dropout deltas.
+   - Define acceptance envelopes tied to reference datasets so profile updates can be promoted only when error-rate deviation stays within documented limits.
+   - Align promotion criteria with Phase 2 reproducibility requirements so seeded profile checks remain 100% stable across the calibration corpus.
+
+2. **Benchmark rigor (KPI-governed evidence loops)**
+   - Lock benchmark dataset/profile sets used for throughput and BER governance so quarterly comparisons are reproducible run-to-run.
+   - Strengthen evidence capture for KPI transitions in `docs/development_roadmap.md`: Phase 2 throughput floor, Phase 3 BER threshold, and category-level CI stability.
+   - Require benchmark reports to include command, seed, profile version, and manifest linkage so phase-exit reviews are auditable.
+
+3. **Plugin lifecycle quality (ecosystem reliability)**
+   - Improve plugin lifecycle guarantees across install, upgrade, rollback, and disable paths with explicit policy/security validation coverage.
+   - Raise quality bars for external plugin submissions by tightening spec-conformance checks, metadata completeness, and example-backed compatibility validation.
+   - Enforce release-gate alignment with Phase 4 criteria so registry publication remains blocked unless plugin policy/security checks pass 100%.
+
+4. **Operations hardening (release and runtime resilience)**
+   - Harden environment reproducibility and release checklists so deterministic workflows and benchmark jobs are stable across supported execution contexts.
+   - Expand operational guardrails for secure defaults, artifact integrity verification, and failure triage in long-running simulation workloads.
+   - Tie deployment readiness to KPI health by requiring no unresolved regressions in reproducibility/performance gates before release cut.
+
+5. **Comparative analysis UX (decision-ready insights)**
+   - Expand dashboard/API multi-run comparison paths so users can analyze profile variants and codec/FEC trade-offs without manual data reshaping.
+   - Standardize manifest/report schema consistency for comparative views, including clear provenance of seeds, profiles, and benchmark configurations.
+   - Prioritize UX outputs that directly support roadmap phase reviews (throughput, BER, decode success, and category health) in a single comparison workflow.
 
 ## Product Strategy for Long-Term Growth
 
