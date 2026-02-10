@@ -111,6 +111,6 @@ The roadmap supports three primary integration archetypes:
 - Provide at least one runnable example under `plugins-examples/` (or equivalent
   structure) so maintainers can validate the entry point contract quickly.
 6. **Documentation Updates**
-   - Inline comments in `encoders.py` and `flet_app.py` now point to sections of the Development Vision PDF (Sections III and IV) for added context.
+   - Inline comments in `encoders.py` and `flet_app.py` now point to `docs/vision.md` ("Vision and Current State") for added context.
 
 Refer to the [manifest format](manifest.md) for the current encoding metadata structure and the [plugin guide](plugins.md) for extension points that inform future roadmap items.

@@ -5,7 +5,7 @@ Each 2-bit segment of a byte corresponds to one nucleotide. The processing
 occurs from the Most Significant Bit (MSB) to the Least Significant Bit (LSB)
 of each byte.
 """
-# See the Development Vision PDF, Section III for background on the encoder architecture.
+# See `docs/vision.md` ("Vision and Current State") for encoder design context.
 from typing import Tuple, List, Iterable, Iterator  # For type hints
 from genecoder.error_detection import (
     add_parity_to_sequence,
