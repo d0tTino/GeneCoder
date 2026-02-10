@@ -76,7 +76,9 @@ The DNA storage tooling ecosystem is active but fragmented, with each tool focus
 
 ### Strategic implication
 
-No single tool currently combines realistic channel simulation, flexible coding plugin architecture, constraint handling, and approachable analysis in one open platform. GeneCoder’s opportunity is to unify these capabilities.
+GeneCoder already ships **available-now interoperability** for optional external nanopore simulators through concrete adapters in `src/genecoder/d2sim_adapter.py`, `src/genecoder/desp_adapter.py`, and `src/genecoder/dnarsim_adapter.py`, plus registry/entry-point hooks in `src/genecoder/plugin_manager.py`. This means users can run external simulator binaries behind stable GeneCoder interfaces today (with built-in fallbacks when tools are unavailable), rather than waiting for bespoke rewrites.
+
+The **exploratory/future-deep integration** work is different: production hardening, stricter policy/security governance for third-party distribution, and broader benchmark validation across datasets and environments as tracked in `docs/plugins.md` and the interoperability strategy subsection of `docs/development_roadmap.md`. Those initiatives determine how far current interoperability can scale from “works in research workflows now” to “release-gated, ecosystem-wide reliability.”
 
 ## Recommended Features and Improvements (Near-Term)
 
