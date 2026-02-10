@@ -16,48 +16,80 @@ above their phase targets.
 | 2026-Q3 | Simulation & Analysis (Phase 3) | Test coverage breadth (suite categories) | Stable green coverage across inferred categories: CLI/API (`tests/test_cli*.py`, `tests/test_web_api*.py`), pipeline/simulation (`tests/test_pipeline*.py`, `tests/test_simulator*.py`), plugins/security (`tests/test_plugin*.py`, `tests/test_security*.py`) | `tests/` suite taxonomy by filename prefixes | CI pytest summary grouped by selected markers/path globs |
 | 2026-Q4 | Ecosystem & Automation (Phase 4) | Plugin policy compliance quality | 100% pass on plugin spec/security checks before registry publication | `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py`, `docs/plugins.md` | CI pytest logs + registry validation output (`configs/registry.yaml` checks) |
 
-## Phase transition criteria
+## KPI-driven phase transition model
 
-1. **Foundation (Complete, KPI-sustained)**
-   - **Entry criteria:** Baseline CLI/pipeline functionality and metrics capture
-     are available (`genecli stats`, `/metrics`).
-   - **Exit criteria:** Foundation usage KPI meets the `oligos_per_week`
-     threshold for 4 consecutive ISO weeks.
-   - **Evidence artifact:** `~/.genecoder/metrics.json` snapshots and dashboard
-     extracts from `/metrics`.
+Roadmap phases advance only when KPI thresholds, validation checks, and evidence
+artifacts all satisfy the quarter/phase definitions in the table above.
 
-2. **Phase 2: Robust Encoding Pipeline**
-   - **Entry criteria:** Foundation exit criteria are met.
-   - **Exit criteria:**
-     - Reproducibility KPI: deterministic seed/profile regression checks hold at
-       100% pass for two consecutive weeks.
-     - Performance KPI: Base-4 encode throughput meets or exceeds 2.0 MB/s
-       median on the benchmark runner.
-   - **Evidence artifact:** reproducibility pytest logs + benchmark output from
-     `benchmarks/throughput.py`.
+For operational details behind each KPI, use:
 
-3. **Phase 3: Simulation & Analysis**
-   - **Entry criteria:** Phase 2 exit criteria are met.
-   - **Exit criteria:**
-     - Benchmark BER KPI reaches `<= 0.01` on baseline noisy decode runs.
-     - Test coverage category KPI remains green across CLI/API,
-       pipeline/simulation, and plugin/security suites.
-   - **Evidence artifact:** `benchmarks/error_rate.py` outputs and CI pytest
-     summaries for the category globs under `tests/`.
+- [`docs/metrics.md`](metrics.md) for usage counters, `oligos_per_week`, and
+  `genecli stats`/`/metrics` evidence handling.
+- [`docs/reproducibility.md`](reproducibility.md) for deterministic seed/profile
+  controls and reproducibility test suites.
+- [`docs/performance.md`](performance.md) for throughput and BER benchmark
+  scripts (`benchmarks/throughput.py`, `benchmarks/error_rate.py`).
 
-4. **Phase 4: Ecosystem & Automation**
-   - **Entry criteria:** Phase 3 exit criteria are met.
-   - **Exit criteria:** plugin publication and automation workflows satisfy
-     100% policy/security KPI checks before release cut.
-   - **Evidence artifact:** plugin/security pytest logs and registry validation
-     records tied to `configs/registry.yaml`.
+### Phase 1 → Phase 2 (Foundation sustainment to Robust Encoding Pipeline)
 
-5. **Long-Term Vision (rolling KPI governance)**
-   - Interactive dashboards to visualize storage simulations over time.
-   - Cloud-friendly architecture for scaling large simulation batches.
-   - Continued collaboration with the research community to expand features.
-   - All long-term initiatives advance only when quarterly KPI baselines remain
-     healthy (usage, reproducibility, performance, and quality).
+- **Entry criteria**
+  - Baseline CLI and pipeline paths are shipping with metrics capture enabled.
+  - Usage telemetry is persisted in `~/.genecoder/metrics.json` (or configured
+    equivalent) and exposed via `genecli stats` and `/metrics`.
+- **Exit criteria (must all pass)**
+  - `oligos_per_week` remains at or above 1,000 simulated oligos/week for 4
+    consecutive ISO weeks.
+- **Required evidence artifacts**
+  - Metrics snapshots (`~/.genecoder/metrics.json`) showing weekly aggregates.
+  - `/metrics` and/or `genecli stats` extracts captured with release evidence.
+
+### Phase 2 → Phase 3 (Robust Encoding Pipeline to Simulation & Analysis)
+
+- **Entry criteria**
+  - Phase 1 usage KPI is sustained and evidence is archived.
+- **Exit criteria (must all pass)**
+  - Reproducibility suites maintain 100% pass for deterministic seed/profile
+    checks across two consecutive weeks in CI.
+  - Base-4 encode throughput median is at or above 2.0 MB/s on the benchmark
+    runner.
+- **Required evidence artifacts**
+  - CI logs for deterministic reproducibility suites (seed/profile checks).
+  - Benchmark artifact from
+    `PYTHONPATH=src python benchmarks/throughput.py`.
+
+### Phase 3 → Phase 4 (Simulation & Analysis to Ecosystem & Automation)
+
+- **Entry criteria**
+  - Phase 2 reproducibility and throughput KPIs are both green.
+- **Exit criteria (must all pass)**
+  - Baseline BER from `benchmarks/error_rate.py` is at or below 0.01 using the
+    documented seed/profile setup.
+  - CI remains green across test-suite categories: CLI/API,
+    pipeline/simulation, and plugins/security.
+- **Required evidence artifacts**
+  - Benchmark artifact from
+    `PYTHONPATH=src python benchmarks/error_rate.py`.
+  - CI summaries for category-level suite health across the defined pytest
+    globs.
+
+### Phase 4 release gate (Ecosystem & Automation)
+
+- **Entry criteria**
+  - Phase 3 BER and suite-health KPIs are both met.
+- **Exit criteria (must all pass)**
+  - Plugin policy/spec/security checks remain at 100% pass before any registry
+    publication or release cut.
+- **Required evidence artifacts**
+  - CI logs for `tests/test_plugin_spec_validation.py` and
+    `tests/test_plugin_security.py`.
+  - Registry validation outputs tied to `configs/registry.yaml`.
+
+### Continuous governance beyond Phase 4
+
+Long-term workstreams (dashboards, cloud scaling, research integrations, and
+new feature delivery) are governed by the same KPI model: no initiative
+graduates from planning to rollout unless the active quarter's entry/exit KPI
+criteria and evidence artifacts are complete.
 
 ### Long-term interoperability strategy
 
@@ -110,7 +142,4 @@ The roadmap supports three primary integration archetypes:
   before publication.
 - Provide at least one runnable example under `plugins-examples/` (or equivalent
   structure) so maintainers can validate the entry point contract quickly.
-6. **Documentation Updates**
-   - Inline comments in `encoders.py` and `flet_app.py` now point to `docs/vision.md` ("Vision and Current State") for added context.
-
 Refer to the [manifest format](manifest.md) for the current encoding metadata structure and the [plugin guide](plugins.md) for extension points that inform future roadmap items.
