@@ -19,6 +19,7 @@ nav:
       - Reproducibility Guide: reproducibility.md
   - Project Overview:
       - Vision & Core Concept: vision.md
+      - Product Strategy: product_strategy.md
       - Implemented Features: features.md
       - Technology Stack: technology_stack.md
   - Migration Guide: migration.md
