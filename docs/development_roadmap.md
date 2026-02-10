@@ -94,8 +94,31 @@ criteria and evidence artifacts are complete.
 ### Long-term interoperability strategy
 
 To make ecosystem growth concrete, external tools should integrate through the
-existing plugin entry points and registry workflows rather than bespoke
-adapters. The implementation anchors are:
+existing plugin entry points and registry workflows rather than bespoke,
+one-off pathways.
+
+#### Available now (implemented interoperability hooks)
+
+- Adapter-backed optional integrations for D2Sim, DeSP, and DNArSim already
+  exist in `src/genecoder/d2sim_adapter.py`,
+  `src/genecoder/desp_adapter.py`, and `src/genecoder/dnarsim_adapter.py`.
+- Shared plugin/registry hooks are already operational in
+  `src/genecoder/plugin_manager.py`, including simulator registration and
+  entry-point loading paths used by built-in and external plugins.
+- The current plugin workflow for authoring/registering extensions is already
+  documented in [`docs/plugins.md`](plugins.md).
+
+#### Future deep integrations (exploratory and phase-gated)
+
+- Production hardening for external adapters/plugins (reliability, rollout,
+  and failure-handling maturity) beyond current fallback-capable operation.
+- Broader benchmark validation across standardized datasets/runners before
+  external integrations are treated as release-gate evidence.
+- Tightened policy/security governance for registry publication and supply-chain
+  controls as part of Phase 4 automation criteria.
+
+The implementation anchors for moving from available hooks to release-grade
+interoperability are:
 
 - [`docs/plugins.md`](plugins.md) for entry point groups, `register_*` hooks,
   and runtime loading rules.

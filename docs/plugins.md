@@ -13,6 +13,22 @@ GeneCoder exposes four plugin interfaces defined in [`genecoder.api`](../src/gen
 
 Registries for each interface live in [`genecoder.plugin_manager`](../src/genecoder/plugin_manager.py) and are populated by built-in plugins, Python entry points, and optional local modules. Later registrations override earlier ones, letting users replace bundled defaults with custom implementations.
 
+## Interoperability status: available now vs exploratory
+
+### Available now
+
+- Optional external simulator adapters are already implemented for D2Sim, DeSP, and DNArSim in [`src/genecoder/d2sim_adapter.py`](../src/genecoder/d2sim_adapter.py), [`src/genecoder/desp_adapter.py`](../src/genecoder/desp_adapter.py), and [`src/genecoder/dnarsim_adapter.py`](../src/genecoder/dnarsim_adapter.py).
+- These adapters register simulator hooks into the shared plugin/registry layer in [`src/genecoder/plugin_manager.py`](../src/genecoder/plugin_manager.py), so integration is exposed through the same simulator interface used by built-in channels.
+- Current adapters include fallback behavior when external binaries are missing, enabling practical workflow interoperability without hard runtime coupling.
+
+### Future deep integrations (exploratory)
+
+- Production hardening for third-party simulator integrations (operational reliability, packaging discipline, and stricter release gates).
+- Broader benchmark validation across datasets/profiles/runners before treating external integrations as phase-exit evidence for roadmap promotion.
+- Expanded policy/security enforcement for distributed plugin artifacts beyond local or ad hoc experimentation.
+
+See also [`docs/development_roadmap.md` (Long-term interoperability strategy)](development_roadmap.md#long-term-interoperability-strategy) for the phase-governed expectations that move integrations from available hooks to release-grade ecosystem support.
+
 ## Writing a plugin module
 
 A plugin module must expose registration helpers that accept the corresponding registry function. Each registry helper receives the appropriate registrar (for example, `register_codec`) and should call it with a unique name and an object that implements the required interface.
