@@ -1,14 +1,22 @@
 # GeneCoder Product Strategy and Roadmap
 
+> Last validated against codebase: 2026-02-10.
+> Maintenance rule: whenever strategy documents are edited, this validation date must be re-checked and updated.
+
 ## Vision and Current State
 
 GeneCoder is envisioned as a comprehensive DNA data storage simulation platform, addressing the need for an integrated “virtual laboratory” in this emerging field. The goal is to simulate the entire DNA storage pipeline—from digital data encoding into DNA sequences, through molecular processes (synthesis, storage degradation, sequencing errors), and back to decoding—within one unified toolkit. Such a platform promises to accelerate research by enabling system-level insights and rapid in silico experimentation, something fragmented single-purpose tools cannot easily provide. This vision positions GeneCoder as a central hub for DNA storage innovation, fostering collaboration and standardizing how new techniques are evaluated.
 
 ### Current Capabilities (MVP)
 
-GeneCoder’s shipped MVP now supports reproducible encode → simulate → decode workflows through CLI bundle presets and configurable YAML profiles. The current baseline includes shipped Illumina channel simulators (`src/genecoder/simulators/illumina/`), Nanopore simulation with profile-driven behavior (`src/genecoder/simulators/nanopore.py`, `src/genecoder/simulators/nanopore_profiles.py`), storage decay staging, and deterministic seeded runs that feed manifest/report artifacts for analysis.
+GeneCoder’s shipped MVP supports reproducible encode → simulate → decode workflows through CLI bundle presets and configurable YAML profiles. The current baseline includes:
 
-Implemented codec and FEC modules now include Base-4 direct, Huffman-4, and GC-balanced encoders plus Triple-Repeat, Hamming(7,4), Reed–Solomon, and Fountain code paths in shipped presets and CLI workflows. This matches the current roadmap execution focus on robust pipeline operation rather than only proof-of-concept transforms.
+- Illumina simulation with profile-resolved substitution/insertion/deletion rates, quality profile handling, context-aware mutation controls, and coverage/consensus behavior (`src/genecoder/simulators/illumina/`).
+- Nanopore simulation with merged fallback+YAML profile loading, context-specific indel profiles, and optional d2sim/DeSP/DNArSim-backed execution paths (`src/genecoder/simulators/nanopore.py`).
+- Storage decay staging that models strand-level deletion and per-base substitution damage (`src/genecoder/simulators/decay.py`).
+- Preset pipelines that exercise production paths: GC-balanced + Reed–Solomon Illumina flows and GC-balanced + Fountain Nanopore flows (`configs/gold.yaml`, `configs/rs_illumina_pipeline.yaml`, `configs/fountain_nanopore_pipeline.yaml`).
+
+Implemented codec and FEC modules include Base-4 direct, Huffman-4, and GC-balanced encoders plus Triple-Repeat, Hamming(7,4), Reed–Solomon, and Fountain code paths in shipped presets and CLI workflows. The platform baseline has moved beyond “basic ECC only” and now emphasizes stable, configurable multi-codec pipeline operation.
 
 Operational outputs include FASTA and manifest artifacts, metrics exports, and dashboard-compatible run summaries. The CLI supports both single runs and sweep workflows, and `src/genecoder/cli/channel.py` exposes channel/profile command surfaces for simulation setup and execution. The current UI/reporting stack enables KPI tracking (decode success, runtime, profile behavior) across preset pipelines.
 
@@ -21,9 +29,12 @@ Operational outputs include FASTA and manifest artifacts, metrics exports, and d
 
 ### Remaining MVP-level gaps
 
-The primary shortfalls are no longer “whether simulation exists,” but the quality and scale maturity of what exists: calibration fidelity against reference datasets, benchmark standardization, plugin ecosystem depth, and hardened deployment workflows.
+The primary shortfalls are no longer “whether simulation exists” or “whether deep error pathways exist,” but the maturity of calibration and operations around those capabilities:
 
-> Last validated against codebase: 2026-02-09 (GeneCoder v0.1.0).
+- **Calibration fidelity:** tighter fit to platform-specific read/error distributions and drift patterns.
+- **Benchmark rigor:** stronger standardized datasets, acceptance thresholds, and reproducibility governance.
+- **Plugin maturity:** better lifecycle support for third-party codec/FEC/simulator/visualizer plugins.
+- **Deployment hardening:** stronger release automation, secure defaults, and production-oriented execution reliability.
 
 ## User Needs and Market Demand
 
