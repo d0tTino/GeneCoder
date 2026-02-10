@@ -31,3 +31,11 @@ For more details, explore the sections below.
 * [Plugin System](plugins.md) – Step-by-step guide to writing codecs, FEC modules and simulators.
 * [Plugin Packaging Tutorial](../notebooks/lessons/6_plugin_packaging.ipynb) – Interactive walkthrough of entry points.
 * [Example Plugins](../plugins-examples) – Installable packages demonstrating each entry point group.
+
+## Canonical strategy documents
+
+To avoid duplicate or drifting references, treat these as the canonical planning docs:
+
+* [Vision & Core Concept](vision.md) – primary product vision and near-term priorities.
+* [Product Strategy](product_strategy.md) – strategic positioning and direction.
+* [Roadmap Execution](roadmap_execution.md) – milestones, delivery sequence, and KPI-linked execution.
