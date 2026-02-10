@@ -18,5 +18,6 @@ encoder used. Additional keys mirror the options supplied on the CLI or GUI.
 If required keys are missing an error will be raised when creating the manifest.
 
 See the [development roadmap](development_roadmap.md) for planned enhancements
-to the manifest format and the [plugin guide](plugins.md) for ways plugins can
-extend encoding parameters reflected in the manifest.
+to the manifest format and for the canonical phase framework (numbering, names,
+and KPI gates), and the [plugin guide](plugins.md) for ways plugins can extend
+encoding parameters reflected in the manifest.

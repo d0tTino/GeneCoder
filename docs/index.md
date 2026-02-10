@@ -39,3 +39,4 @@ To avoid duplicate or drifting references, treat these as the canonical planning
 * [Vision & Core Concept](vision.md) – primary product vision and near-term priorities.
 * [Product Strategy](product_strategy.md) – strategic positioning and direction.
 * [Roadmap Execution](roadmap_execution.md) – milestones, delivery sequence, and KPI-linked execution.
+* [Development Roadmap](development_roadmap.md) – source of truth for phase numbering, phase names, and KPI gate criteria.

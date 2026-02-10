@@ -5,6 +5,10 @@
 
 ## Vision and Current State
 
+> **Source of truth for phase gates:** [`docs/development_roadmap.md`](development_roadmap.md)
+> governs canonical phase numbering/names and all KPI gate criteria; this
+> strategy document maps objectives to that framework.
+
 GeneCoder is envisioned as a comprehensive DNA data storage simulation platform, addressing the need for an integrated “virtual laboratory” in this emerging field. The goal is to simulate the entire DNA storage pipeline—from digital data encoding into DNA sequences, through molecular processes (synthesis, storage degradation, sequencing errors), and back to decoding—within one unified toolkit. Such a platform promises to accelerate research by enabling system-level insights and rapid in silico experimentation, something fragmented single-purpose tools cannot easily provide. This vision positions GeneCoder as a central hub for DNA storage innovation, fostering collaboration and standardizing how new techniques are evaluated.
 
 ### Current Capabilities (MVP)
@@ -95,17 +99,17 @@ The following capabilities are now operational and should be tracked as availabl
 1. **Calibration hardening (profile fidelity maturity)**
    - Publish versioned calibration evidence for core Illumina and Nanopore profiles, with baseline-vs-calibrated substitution/indel/dropout deltas.
    - Define acceptance envelopes tied to reference datasets so profile updates can be promoted only when error-rate deviation stays within documented limits.
-   - Align promotion criteria with Phase 2 reproducibility requirements so seeded profile checks remain 100% stable across the calibration corpus.
+   - Align promotion criteria with Phase 2 (**Robust Encoding Pipeline**) reproducibility requirements so seeded profile checks remain 100% stable across the calibration corpus.
 
 2. **Benchmark rigor (KPI-governed evidence loops)**
    - Lock benchmark dataset/profile sets used for throughput and BER governance so quarterly comparisons are reproducible run-to-run.
-   - Strengthen evidence capture for KPI transitions in `docs/development_roadmap.md`: Phase 2 throughput floor, Phase 3 BER threshold, and category-level CI stability.
+   - Strengthen evidence capture for KPI transitions in `docs/development_roadmap.md`: Phase 2 (**Robust Encoding Pipeline**) throughput floor, Phase 3 (**Simulation & Analysis**) BER threshold, and category-level CI stability.
    - Require benchmark reports to include command, seed, profile version, and manifest linkage so phase-exit reviews are auditable.
 
 3. **Plugin lifecycle quality (ecosystem reliability)**
    - Improve plugin lifecycle guarantees across install, upgrade, rollback, and disable paths with explicit policy/security validation coverage.
    - Raise quality bars for external plugin submissions by tightening spec-conformance checks, metadata completeness, and example-backed compatibility validation.
-   - Enforce release-gate alignment with Phase 4 criteria so registry publication remains blocked unless plugin policy/security checks pass 100%.
+   - Enforce release-gate alignment with Phase 4 (**Ecosystem & Automation**) criteria so registry publication remains blocked unless plugin policy/security checks pass 100%.
 
 4. **Operations hardening (release and runtime resilience)**
    - Harden environment reproducibility and release checklists so deterministic workflows and benchmark jobs are stable across supported execution contexts.
@@ -155,23 +159,29 @@ To grow adoption and velocity:
 
 ## Phased Roadmap
 
-### Phase 1 — Core MVP Completion
+### Phase 1 — Foundation sustainment
 
 - Maintain reproducible baseline operation for shipped Illumina/Nanopore presets.
 - Keep existing codec/FEC workflows stable (including Reed–Solomon and Fountain presets).
 - Sustain reliable CLI/batch encode-simulate-decode workflows with manifest/KPI capture.
 
-### Phase 2 — Feature Expansion and Usability
+### Phase 2 — Robust Encoding Pipeline
 
 - Expand calibrated profile coverage and improve profile-specific validation quality.
 - Strengthen benchmark datasets, comparative analysis tooling, and KPI dashboards.
 - Improve API/documentation ergonomics for reproducible sweeps and experiment sharing.
 
-### Phase 3 — Advanced Capabilities and Ecosystem Growth
+### Phase 3 — Simulation & Analysis
 
 - Grow policy-compliant plugin ecosystem velocity (codecs/FEC/simulators/visualizers).
 - Integrate optional AI/ML-assisted components where they improve benchmarked outcomes.
 - Advance deployment hardening for larger-scale and collaborative execution models.
+
+### Phase 4 — Ecosystem & Automation
+
+- Enforce policy/spec/security automation as hard release gates for plugin registry publication.
+- Mature ecosystem operations with compliance-first contribution workflows and reproducible evidence trails.
+- Scale governance and tooling so quarterly KPI reviews can gate release readiness without manual reconciliation.
 
 ## Key Differentiators and Success Factors
 
