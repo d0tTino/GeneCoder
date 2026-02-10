@@ -51,8 +51,9 @@ default profiles before broad expansion.
 
 ### Milestone 1.2: CLI and manifest UX hardening
 
-- **Repository modules:** `src/genecoder/cli`, `src/genecoder/reporting`,
-  `src/genecoder/manifest`
+- **Repository modules:** `src/genecoder/cli/pipeline.py`,
+  `src/genecoder/cli/bundle.py`, `src/genecoder/cli/report.py`,
+  `src/genecoder/report.py`, `src/genecoder/manifest.py`
 - **Scope:** Improve CLI error clarity, manifest generation consistency, and
   quick artifact inspection workflows for first-time users.
 - **Owner role:** CLI and DX maintainer
@@ -79,7 +80,9 @@ MVP reliability and performance budgets.
 ### Milestone 2.1: Simulator/profile breadth with performance guardrails
 
 - **Repository modules:** `src/genecoder/simulators`,
-  `src/genecoder/channel_profiles`, `src/genecoder/pipeline`
+  `src/genecoder/simulators/illumina/profiles.py`,
+  `src/genecoder/simulators/nanopore_profiles.py`,
+  `src/genecoder/pipeline.py`
 - **Scope:** Expand Illumina/Nanopore profile coverage and expose richer channel
   options without regressing runtime behavior.
 - **Owner role:** Simulation systems maintainer
@@ -99,7 +102,8 @@ MVP reliability and performance budgets.
 
 ### Milestone 2.2: Dashboard and API expansion for comparative analysis
 
-- **Repository modules:** `src/genecoder/dashboard*`, `src/genecoder/web`,
+- **Repository modules:** `src/genecoder/dashboard.py`,
+  `src/genecoder/dashboard_streamlit.py`, `src/genecoder/api.py`,
   `src/genecoder/cli`
 - **Scope:** Support side-by-side run comparison, richer KPI surfacing, and
   smoother dashboard launch paths from bundle workflows.
@@ -145,8 +149,9 @@ quality governance for a research-grade ecosystem.
 
 ### Milestone 3.2: Cloud/distributed execution and reproducible research bundles
 
-- **Repository modules:** `src/genecoder/cloud`, `src/genecoder/worker`,
-  `src/genecoder/pipeline`, `src/genecoder/dashboard*`
+- **Repository modules:** `src/genecoder/cloud`,
+  `src/genecoder/cloud/worker.py`, `src/genecoder/pipeline.py`,
+  `src/genecoder/dashboard.py`, `src/genecoder/dashboard_streamlit.py`
 - **Scope:** Enable scalable batch execution with reproducible manifests and KPI
   telemetry suitable for collaborative research programs.
 - **Owner role:** Platform reliability maintainer
@@ -171,3 +176,5 @@ quality governance for a research-grade ecosystem.
 - Keep acceptance criteria tied to repository artifacts (tests, benchmarks,
   example configs) so progress is auditable.
 - Update this document whenever module boundaries or extension contracts change.
+- Doc-maintenance check for every roadmap PR: verify each listed
+  `Repository modules` path exists in the current tree.
