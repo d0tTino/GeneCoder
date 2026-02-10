@@ -12,13 +12,53 @@ Use this alongside:
 
 Record these fields in milestone notes, release checklists, or issue templates:
 
-| KPI field | Definition | Suggested source |
-| --- | --- | --- |
-| `decode_success_profile_x` | Decode success rate under a named profile (for example `gold_miseq_v3` or `fountain_nanopore_r10`) across fixed-seed runs. | `tests/test_pipeline*.py`, pipeline manifests, benchmark outputs |
-| `runtime_seconds_per_mb` | Median runtime per MB for encode/decode workloads under representative presets. | `benchmarks/throughput.py`, CI benchmark artifacts |
-| `plugin_contrib_cadence_monthly` | Number of accepted plugin updates/additions per month that pass spec/security checks. | Plugin registry PRs, `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py` |
-| `reproducibility_pass_rate` | Percent of deterministic seed/profile checks passing in CI. | Reproducibility-focused tests and CI history |
-| `dashboard_activation_rate` | Fraction of runs that emit dashboard/manifest artifacts and can be rendered without manual fixes. | CLI bundle outputs, dashboard smoke tests |
+| KPI field | Definition | Initial threshold (MVP baseline) | Suggested source |
+| --- | --- | --- | --- |
+| `decode_success_profile_x` | Decode success rate under a named profile (for example `gold_miseq_v3` or `fountain_nanopore_r10`) across fixed-seed runs. | **Minimum:** `>= 0.95` for each MVP preset in CI. | `tests/test_pipeline*.py`, pipeline manifests, benchmark outputs |
+| `runtime_seconds_per_mb` | Median runtime per MB for encode/decode workloads under representative presets. | **Maximum:** `<= 45` seconds per MB for MVP benchmark workload. | `benchmarks/throughput.py`, CI benchmark artifacts |
+| `plugin_contrib_cadence_monthly` | Number of accepted plugin updates/additions per month that pass spec/security checks. | **Minimum:** `>= 2` accepted, compliant plugin contributions per month once plugin registry workflow is active. | Plugin registry PRs, `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py` |
+| `reproducibility_pass_rate` | Percent of deterministic seed/profile checks passing in CI. | **Minimum:** `>= 0.99` pass rate over rolling 30-day CI window. | Reproducibility-focused tests and CI history |
+| `dashboard_activation_rate` | Fraction of runs that emit dashboard/manifest artifacts and can be rendered without manual fixes. | **Minimum:** `>= 0.95` successful renderable artifact bundles in MVP sample runs. | CLI bundle outputs, dashboard smoke tests |
+
+Threshold values above are the initial governance defaults and are expected to
+be tightened as test coverage, profile breadth, and benchmark stability improve.
+
+## MVP gate (release-blocking)
+
+The following gate is a required pass/fail checklist for promoting MVP releases.
+Any failure is release-blocking until a documented exception is approved by the
+roadmap governance owners.
+
+| Gate KPI | Artifact(s) | Pass criterion | Fail condition |
+| --- | --- | --- | --- |
+| Decode success by preset | `tests/test_pipeline*.py` | All MVP preset pipeline tests pass and computed decode success is `>= 0.95` per preset in the CI report summary. | Any MVP preset test failure or decode success `< 0.95` for a covered preset. |
+| Reproducibility stability | `tests/test_simulator_seed_reproducibility.py` | CI job passes and rolling reproducibility pass rate is `>= 0.99`. | Test failure, flaky rerun not resolved, or rolling rate `< 0.99`. |
+| Throughput/runtime budget | `benchmarks/throughput.py` | Median runtime is `<= 45 s/MB` for the benchmarked MVP workload and profile matrix. | Runtime median exceeds `45 s/MB` without an approved waiver. |
+
+## KPI governance ownership and revision policy
+
+- **Threshold owner:** Roadmap governance group led by the Core Pipeline
+  Maintainer and Platform Reliability Maintainer.
+- **Update workflow:** Threshold changes must be proposed in a roadmap PR with
+  before/after metric evidence from CI artifacts and benchmark history.
+- **Revision cadence:** Routine threshold review occurs **quarterly** (or at
+  major release boundaries, whichever is sooner).
+- **Emergency revision path:** Temporary relaxations require explicit expiry
+  dates and a linked remediation issue; they are automatically re-evaluated at
+  the next quarterly review.
+
+## CI/report artifact evaluation workflow
+
+Use CI outputs and generated reports as the authoritative KPI scorecard:
+
+1. `tests/test_pipeline*.py` results are parsed into preset-level decode success
+   summaries and compared against `decode_success_profile_x` thresholds.
+2. `tests/test_simulator_seed_reproducibility.py` results feed the rolling
+   reproducibility dashboard for `reproducibility_pass_rate`.
+3. `benchmarks/throughput.py` publishes runtime-per-MB trend data and current
+   run medians for `runtime_seconds_per_mb` gate checks.
+4. Release readiness requires that CI artifacts for all three sources are
+   attached to the release checklist and that no gate KPI is in fail state.
 
 ---
 
