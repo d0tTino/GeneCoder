@@ -6,11 +6,11 @@ GeneCoder is envisioned as a comprehensive DNA data storage simulation platform,
 
 ### Current Capabilities (MVP)
 
-GeneCoder’s shipped MVP now supports reproducible encode → simulate → decode workflows through CLI bundle presets and configurable YAML profiles. The current baseline includes both Illumina and Nanopore simulation support, storage decay staging, and deterministic seeded runs that feed manifest/report artifacts for analysis.
+GeneCoder’s shipped MVP now supports reproducible encode → simulate → decode workflows through CLI bundle presets and configurable YAML profiles. The current baseline includes shipped Illumina channel simulators (`src/genecoder/simulators/illumina/`), Nanopore simulation with profile-driven behavior (`src/genecoder/simulators/nanopore.py`, `src/genecoder/simulators/nanopore_profiles.py`), storage decay staging, and deterministic seeded runs that feed manifest/report artifacts for analysis.
 
 Implemented codec and FEC modules now include Base-4 direct, Huffman-4, and GC-balanced encoders plus Triple-Repeat, Hamming(7,4), Reed–Solomon, and Fountain code paths in shipped presets and CLI workflows. This matches the current roadmap execution focus on robust pipeline operation rather than only proof-of-concept transforms.
 
-Operational outputs include FASTA and manifest artifacts, metrics exports, and dashboard-compatible run summaries. The CLI supports both single runs and sweep workflows, while the current UI/reporting stack enables KPI tracking (decode success, runtime, profile behavior) across preset pipelines.
+Operational outputs include FASTA and manifest artifacts, metrics exports, and dashboard-compatible run summaries. The CLI supports both single runs and sweep workflows, and `src/genecoder/cli/channel.py` exposes channel/profile command surfaces for simulation setup and execution. The current UI/reporting stack enables KPI tracking (decode success, runtime, profile behavior) across preset pipelines.
 
 ### Operational baseline (completed)
 
@@ -54,7 +54,7 @@ The DNA storage tooling ecosystem is active but fragmented, with each tool focus
 
 | Tool | Primary Focus & Strengths | Limitations / Gaps |
 | --- | --- | --- |
-| **GeneCoder (MVP)** | End-to-end encode/decode simulation with basic constraints and error correction; user-friendly CLI/GUI. | No deep synthesis/sequencing error modeling yet; advanced ECC and scale support still maturing. |
+| **GeneCoder (MVP)** | End-to-end encode/decode simulation with shipped Illumina + Nanopore channel models, constraints, and error correction; user-friendly CLI/GUI. | Calibration depth, profile realism breadth, and large-scale validation/operations maturity are still improving. |
 | **D2Sim** | Realistic nanopore error profiles and redundancy analyses. | Sequencing-channel only; no full encode-store-decode workflow. |
 | **DNAformer** | AI-based reconstruction and high-speed noisy-read decoding. | Specialized/training-heavy; limited as a general simulator. |
 | **FrameD** | HPC-scale full-pipeline fault-injection simulation. | Heavy setup, steep learning curve, not optimized for interactive use. |
@@ -154,7 +154,7 @@ To grow adoption and velocity:
 
 To establish leadership in DNA storage simulation, GeneCoder should:
 
-1. Prioritize realistic end-to-end simulation capabilities.
+1. Prioritize realism, calibration, and validation improvements for existing end-to-end simulation capabilities.
 2. Differentiate through integrated workflows over niche point solutions.
 3. Invest in usability, modular architecture, and reproducible benchmarking.
 4. Build an active open-source contributor ecosystem.
