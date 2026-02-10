@@ -8,6 +8,8 @@ Use this alongside:
 - [Development vision](DEVELOPMENT_VISION.md)
 - [Development roadmap KPI governance](development_roadmap.md)
 
+> **Phase framework note:** Use phase numbering/names from `docs/development_roadmap.md` as canonical when interpreting milestones in this execution plan.
+
 ## KPI tracking fields (apply to every milestone)
 
 Record these fields in milestone notes, release checklists, or issue templates:

@@ -18,6 +18,10 @@ above their phase targets.
 
 ## KPI-driven phase transition model
 
+> **Source of truth for phase gates:** This document is the canonical
+> definition of phase numbering, phase names, KPI thresholds, and gate evidence.
+> Any other roadmap/strategy document must align to this framework.
+
 Roadmap phases advance only when KPI thresholds, validation checks, and evidence
 artifacts all satisfy the quarter/phase definitions in the table above.
 
