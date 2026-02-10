@@ -12,9 +12,9 @@ GeneCoder already ships an end-to-end simulation path for common DNA storage exp
 
 At the same time, the project still has fidelity work to do. The main gaps are not simulator availability, but:
 
-- stronger calibration against wet-lab or public benchmark datasets,
-- tighter reproducibility controls for cross-run benchmarking,
-- and clearer parity validation versus external simulators under matched conditions.
+- stronger profile calibration fidelity against wet-lab or public benchmark datasets,
+- tighter reproducibility governance for cross-run benchmarking,
+- and deeper parity validation versus external simulators under matched conditions.
 
 ### ECC and codec support status
 
@@ -28,9 +28,9 @@ GeneCoder currently documents and ships support for:
 
 Current limitations are primarily around validation depth and benchmarking rigor rather than missing baseline features:
 
-- comparative validation datasets are still limited,
-- benchmark reproducibility across environments can be improved,
-- and advanced calibration workflows for profile tuning are still maturing.
+- comparative validation datasets and benchmark depth are still limited,
+- reproducibility governance across environments can be improved,
+- and advanced profile-calibration workflows (including versioned calibration evidence) are still maturing.
 
 ## Recommended Features and Improvements (Near-Term)
 
@@ -73,4 +73,3 @@ Harden extension safety and operator trust by tightening lifecycle guarantees al
 - Plugin validation paths cover signature verification/failure handling and provenance metadata checks for local and registry-driven installs.
 - Security guidance includes explicit threat-model assumptions and operational hardening defaults for plugin execution contexts.
 - Documentation completeness criteria are met: `docs/plugins.md` and `docs/security.md` contain end-to-end examples for secure plugin install, verification, and rollback/disable procedures.
-

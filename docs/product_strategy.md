@@ -16,6 +16,8 @@ GeneCoder’s shipped MVP supports reproducible encode → simulate → decode w
 - Storage decay staging that models strand-level deletion and per-base substitution damage (`src/genecoder/simulators/decay.py`).
 - Preset pipelines that exercise production paths: GC-balanced + Reed–Solomon Illumina flows and GC-balanced + Fountain Nanopore flows (`configs/gold.yaml`, `configs/rs_illumina_pipeline.yaml`, `configs/fountain_nanopore_pipeline.yaml`).
 
+`docs/mvp_checklist.md` confirms that the same preset set also covers storage-decay chaining, CLI sweep execution, and dashboard-compatible output across Illumina and Nanopore runs.
+
 Implemented codec and FEC modules include Base-4 direct, Huffman-4, and GC-balanced encoders plus Triple-Repeat, Hamming(7,4), Reed–Solomon, and Fountain code paths in shipped presets and CLI workflows. The platform baseline has moved beyond “basic ECC only” and now emphasizes stable, configurable multi-codec pipeline operation.
 
 Operational outputs include FASTA and manifest artifacts, metrics exports, and dashboard-compatible run summaries. The CLI supports both single runs and sweep workflows, and `src/genecoder/cli/channel.py` exposes channel/profile command surfaces for simulation setup and execution. The current UI/reporting stack enables KPI tracking (decode success, runtime, profile behavior) across preset pipelines.
@@ -29,10 +31,11 @@ Operational outputs include FASTA and manifest artifacts, metrics exports, and d
 
 ### Remaining MVP-level gaps
 
-The primary shortfalls are no longer “whether simulation exists” or “whether deep error pathways exist,” but the maturity of calibration and operations around those capabilities:
+The primary shortfalls are no longer “whether Illumina/Nanopore/decay simulation exists,” but the maturity of calibration and operations around already shipped capabilities:
 
-- **Calibration fidelity:** tighter fit to platform-specific read/error distributions and drift patterns.
-- **Benchmark rigor:** stronger standardized datasets, acceptance thresholds, and reproducibility governance.
+- **Profile calibration fidelity:** tighter fit to platform-specific read/error distributions, context effects, and drift patterns across Illumina and Nanopore presets.
+- **Validation and benchmark depth:** stronger standardized datasets, acceptance thresholds, and cross-tool parity checks under matched conditions.
+- **Reproducibility governance:** clearer deterministic-run controls, manifest comparability rules, and versioned benchmark baselines for release decisions.
 - **Plugin maturity:** better lifecycle support for third-party codec/FEC/simulator/visualizer plugins.
 - **Deployment hardening:** stronger release automation, secure defaults, and production-oriented execution reliability.
 
