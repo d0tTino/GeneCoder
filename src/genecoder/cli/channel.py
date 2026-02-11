@@ -13,7 +13,8 @@ from typing import Sequence, Dict, Any, Mapping
 
 
 from genecoder.formats import SequenceBatch
-from genecoder.simulators import SIMULATOR_REGISTRY, ChannelPipeline
+from genecoder.simulators import SIMULATOR_REGISTRY
+from genecoder.channel_engine import ChannelPipeline
 from genecoder.channel_config import ChannelConfig
 from genecoder.channels.base import BaseChannel
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
@@ -36,6 +37,7 @@ from genecoder.simulators.batch_utils import (
     clone_batch,
     finalize_batch_statistics,
     load_coverage_distribution,
+    mutation_counts,
 )
 from .options import ChannelOptions, build_channel_options, _parse_distribution
 from .shared import add_single_io_args
@@ -231,8 +233,9 @@ def _apply_simulators(
     ],
     *,
     config: ChannelConfig,
+    seed: int | None = None,
 ) -> tuple[SequenceBatch, list[dict[str, Any]]]:
-    channels: list[BaseChannel] = []
+    named_channels: list[tuple[str, BaseChannel]] = []
     stages: list[dict[str, Any]] = []
     for item in simulators:
         if isinstance(item, BaseChannel):
@@ -278,12 +281,26 @@ def _apply_simulators(
                 logger.error("Invalid parameters for %s: %s", name, exc)
                 raise SystemExit(1)
             stages.append(stage_info)
-        channels.append(channel)
+        named_channels.append((name, channel))
         logger.info("Applied %s simulator", name)
-    pipeline = ChannelPipeline(channels)
-    result = pipeline.simulate(batch, config=config)
-    final = result if isinstance(result, SequenceBatch) else _batch_from_string(result)
-    return final, stages
+
+    profile_map: dict[str, str] = {}
+    if config.illumina_profile:
+        profile_map["sequencing"] = config.illumina_profile
+    elif config.nanopore_profile:
+        profile_map["sequencing"] = config.nanopore_profile
+
+    pipeline = ChannelPipeline.from_simulators(named_channels)
+    final, provenance = pipeline.run(batch, profile=profile_map, seed=seed, config=config)
+    final.metadata["sim_stage_provenance"] = json.dumps(provenance)
+
+    merged_stages: list[dict[str, Any]] = []
+    for idx, stage in enumerate(stages):
+        merged = dict(stage)
+        if idx < len(provenance):
+            merged.update(provenance[idx])
+        merged_stages.append(merged)
+    return final, merged_stages
 
 
 def _batch_from_string(sequence: str) -> SequenceBatch:
@@ -429,35 +446,8 @@ def _simulate_probabilities(
 
 def _count_errors(original: str, mutated: str) -> tuple[int, int, int]:
     """Return substitution, insertion and deletion counts."""
-    subs = ins = dels = 0
-    i = j = 0
-    orig_len = len(original)
-    mut_len = len(mutated)
-    if orig_len == mut_len:
-        subs = sum(1 for a, b in zip(original, mutated) if a != b)
-        return subs, 0, 0
-    while i < orig_len and j < mut_len:
-        if original[i] == mutated[j]:
-            i += 1
-            j += 1
-            continue
-        if j + 1 < mut_len and original[i] == mutated[j + 1]:
-            ins += 1
-            j += 1
-            continue
-        if i + 1 < orig_len and original[i + 1] == mutated[j]:
-            dels += 1
-            i += 1
-            continue
-        subs += 1
-        i += 1
-        j += 1
 
-    if i < orig_len:
-        dels += orig_len - i
-    if j < mut_len:
-        ins += mut_len - j
-    return subs, ins, dels
+    return mutation_counts(original, mutated)
 
 
 def process_channel(
@@ -511,7 +501,7 @@ def process_channel(
     stage_metadata: list[dict[str, Any]] = []
     if simulators:
         processed_batch, stage_metadata = _apply_simulators(
-            batch, simulators, config=cfg
+            batch, simulators, config=cfg, seed=seed
         )
     else:
         processed_batch = _simulate_probabilities(

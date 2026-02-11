@@ -112,6 +112,12 @@ def simulate_errors(
     str
         The mutated DNA sequence.
     """
+    warnings.warn(
+        "genecoder.error_simulation is deprecated; use genecoder.channel_engine stages instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     if not 0.0 <= substitution_prob <= 1.0:
         raise ValueError("substitution_prob must be between 0 and 1")
     if not 0.0 <= insertion_prob <= 1.0:
@@ -185,6 +191,11 @@ class Channel(Simulator):
         error_rate: float | None = None,
         profile: str | None = None,
     ) -> None:
+        warnings.warn(
+            "Channel from genecoder.error_simulation is deprecated; use channel_engine stages via the channel pipeline",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._delegate: Simulator | None = None
         sub_prob = substitution_prob
         ins_prob = insertion_prob
