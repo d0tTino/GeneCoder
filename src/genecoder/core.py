@@ -2,21 +2,25 @@ from __future__ import annotations
 
 """Simple encode/ECC/channel/decode pipeline utilities."""
 
-import inspect
 import json
 import os
 from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Sequence, Tuple
-from typing import get_args, get_origin
 
 from .gc_constrained_encoder import calculate_gc_content
 from .utils import get_max_homopolymer_length
 
-from .plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
+from .plugin_manager import init_plugins
 from .random_utils import reset_rng
 from .simulators import SIMULATOR_REGISTRY
 from .channel_engine import ChannelPipeline
+from .coding.stack import (
+    CodingContext,
+    compile_legacy_stack,
+    compile_stack_from_config,
+    normalize_stack_metrics,
+)
 from .formats import SequenceBatch, SequenceOligo
 from .simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
@@ -27,50 +31,7 @@ from .simulators.batch_utils import (
 if TYPE_CHECKING:
     from .synthesis import SynthesisConstraints
 
-__all__ = ["encode", "simulate", "decode", "metrics", "run_pipeline"]
-
-
-def _annotation_supports_sequence_batch(annotation: object) -> bool:
-    """Return ``True`` if ``annotation`` references :class:`SequenceBatch`."""
-
-    if annotation is inspect._empty:
-        return False
-    if isinstance(annotation, str):
-        return "SequenceBatch" in annotation
-    origin = get_origin(annotation)
-    if origin is not None:
-        return any(_annotation_supports_sequence_batch(arg) for arg in get_args(annotation))
-    try:
-        return bool(annotation is SequenceBatch or issubclass(annotation, SequenceBatch))
-    except TypeError:
-        return False
-
-
-def _has_batch_flag(candidate: object) -> bool:
-    """Return ``True`` if ``candidate`` advertises batch support."""
-
-    return bool(
-        getattr(candidate, "__genecoder_accepts_batch__", False)
-        or getattr(candidate, "accepts_sequence_batch", False)
-        or getattr(candidate, "supports_sequence_batch", False)
-    )
-
-
-def _codec_accepts_sequence_batch(decode_fn: object) -> bool:
-    """Return ``True`` when ``decode_fn`` opts into ``SequenceBatch`` inputs."""
-
-    for candidate in (decode_fn, getattr(decode_fn, "__self__", None), getattr(decode_fn, "__func__", None)):
-        if candidate is not None and _has_batch_flag(candidate):
-            return True
-    try:
-        signature = inspect.signature(decode_fn)
-    except (TypeError, ValueError):
-        return False
-    params = list(signature.parameters.values())
-    if not params:
-        return False
-    first_param = params[0]
-    return _annotation_supports_sequence_batch(first_param.annotation)
+__all__ = ["encode", "simulate", "decode", "metrics", "run_pipeline", "compile_coding_stack"]
 
 
 
@@ -208,16 +169,37 @@ def encode(
 ) -> Tuple[SequenceBatch, Mapping[str, Any] | None]:
     """Return encoded :class:`SequenceBatch` for ``data`` and optional FEC info."""
 
-    if codec not in CODEC_REGISTRY:
-        raise ValueError(f"Unknown codec: {codec}")
-    if fec and fec not in FEC_REGISTRY:
-        raise ValueError(f"Unknown FEC: {fec}")
+    stack = compile_legacy_stack(codec, fec)
+    context = CodingContext(block_id="encode-0")
+    current: bytes | str | SequenceBatch = data
+    layer_info: dict[str, Mapping[str, Any]] = {}
+    layer_metrics: list[dict[str, Any]] = []
+    for layer in stack:
+        before_size = (
+            len(current)
+            if isinstance(current, (bytes, bytearray, str))
+            else len(current.primary_sequence())
+        )
+        layer_out = layer.encode_block(current, context)
+        current = layer_out.payload
+        info_value = layer_out.metadata.get("fec_info")
+        if isinstance(info_value, Mapping):
+            layer_info[layer.name] = dict(info_value)
+        after_size = (
+            len(current)
+            if isinstance(current, (bytes, bytearray, str))
+            else len(current.primary_sequence())
+        )
+        layer_metrics.append(
+            {
+                "name": layer.name,
+                "type": "codec" if layer.name == codec else "fec",
+                "redundancy": float(after_size) / max(1, float(before_size)),
+                "corrections": 0,
+            }
+        )
 
-    fec_info: Mapping[str, Any] | None = None
-    if fec:
-        data, fec_info = FEC_REGISTRY[fec]["encode"](data)
-
-    encoded = CODEC_REGISTRY[codec]["encode"](data)
+    encoded = current
     if isinstance(encoded, SequenceBatch):
         batch = encoded
     elif isinstance(encoded, str):
@@ -227,8 +209,14 @@ def encode(
             "Codec implementations must return a string or SequenceBatch"
         )
 
-    if fec_info is not None:
-        info_dict = dict(fec_info)
+    fec_info: Mapping[str, Any] | None = None
+    if layer_info:
+        info_dict: dict[str, Any] = {
+            "layer_info": layer_info,
+            "coding_stack": normalize_stack_metrics(layer_metrics, batch.primary_sequence()),
+        }
+        if fec and fec in layer_info:
+            info_dict.update(dict(layer_info[fec]))
         info_dict.setdefault("batch_id", batch.batch_id)
         info_dict.setdefault("batch_metadata", dict(batch.metadata))
         fec_info = info_dict
@@ -334,8 +322,7 @@ def decode(
             zero-coverage oligos. Set to ``False`` to retain mutated oligos.
     """
 
-    if codec not in CODEC_REGISTRY:
-        raise ValueError(f"Unknown codec: {codec}")
+    stack = compile_legacy_stack(codec, fec)
 
     batch = dna if isinstance(dna, SequenceBatch) else _wrap_single_sequence(str(dna))
     if isinstance(dna, SequenceBatch):
@@ -394,31 +381,52 @@ def decode(
             "No survivor oligos available after filtering; "
             "adjust channel conditions or disable --filter-mutated."
         )
-    decode_fn = CODEC_REGISTRY[codec]["decode"]
-    primary_sequence = batch.primary_sequence()
-    if _codec_accepts_sequence_batch(decode_fn):
-        decoded_any = decode_fn(
-            batch,
-            batch_metadata=dict(batch.metadata),
-            oligo_metadata=[dict(ol.metadata) for ol in batch.oligos],
+    context_meta: dict[str, Any] = {"batch_id": batch.batch_id, **batch.metadata}
+    if fec_info:
+        context_meta.update(dict(fec_info))
+    if survivor_batch is not None:
+        context_meta["survivor_batch"] = survivor_batch
+    context = CodingContext(block_id="decode-0", metadata=context_meta)
+
+    current: bytes | str | SequenceBatch = batch
+    decode_metrics: list[dict[str, Any]] = []
+    codec_decoded = False
+    for layer in reversed(stack):
+        before_size = (
+            len(current)
+            if isinstance(current, (bytes, bytearray, str))
+            else len(current.primary_sequence())
         )
-    else:
-        decoded_any = decode_fn(primary_sequence)
-    assert isinstance(decoded_any, (bytes, bytearray))
-    decoded = bytes(decoded_any)
+        if not codec_decoded and layer.name == codec:
+            layer_input: bytes | str | SequenceBatch = current
+            if isinstance(layer_input, bytes):
+                layer_input = layer_input.decode("utf-8")
+            layer_out = layer.decode_block(layer_input, context)
+            codec_decoded = True
+        else:
+            if isinstance(current, str):
+                current = current.encode("utf-8")
+            layer_out = layer.decode_block(current, context)
+        current = layer_out.payload
+        after_size = (
+            len(current)
+            if isinstance(current, (bytes, bytearray, str))
+            else len(current.primary_sequence())
+        )
+        decode_metrics.append(
+            {
+                "name": layer.name,
+                "type": "codec" if layer.name == codec else "fec",
+                "redundancy": float(before_size) / max(1, float(after_size)),
+                "corrections": int(layer_out.metadata.get("corrections", 0) or 0),
+            }
+        )
 
-    if fec:
-        if fec not in FEC_REGISTRY:
-            raise ValueError(f"Unknown FEC: {fec}")
-        assert fec_info is not None
-        combined_info: dict[str, Any] = {"batch_id": batch.batch_id, **batch.metadata}
-        combined_info.update(fec_info)
-        fec_kwargs: dict[str, Any] = {}
-        if survivor_batch is not None:
-            fec_kwargs["survivor_batch"] = survivor_batch
-        decoded, _ = FEC_REGISTRY[fec]["decode"](decoded, combined_info, **fec_kwargs)
-
-    return decoded
+    if not isinstance(current, (bytes, bytearray)):
+        raise TypeError("Decoded payload must be bytes")
+    if isinstance(fec_info, dict):
+        fec_info["coding_stack"] = normalize_stack_metrics(decode_metrics)
+    return bytes(current)
 
 
 def metrics(
@@ -435,6 +443,7 @@ def metrics(
     oligos: Sequence[str] | None = None,
     dropout_flags: Sequence[bool] | None = None,
     ecc_outcomes: Mapping[str, Sequence[bool | float]] | None = None,
+    stack_metrics: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """Return quality metrics for ``dna`` and decode results."""
 
@@ -653,6 +662,11 @@ def metrics(
             "ecc_success": ecc_map or ({fec: [success]} if fec else {}),
         },
     }
+    normalized_stack = normalize_stack_metrics([], base_sequence)
+    if stack_metrics and isinstance(stack_metrics, Mapping):
+        normalized_stack = {**normalized_stack, **dict(stack_metrics)}
+    result["coding_stack"] = normalized_stack
+
     if subs is not None and ins is not None and dels is not None:
         denom = max(1, opportunities)
         substitution_rate = float(subs) / denom
@@ -672,6 +686,13 @@ def metrics(
         )
     return result
 
+
+
+def compile_coding_stack(config: Mapping[str, Any]) -> list[object]:
+    """Validate and compile a declarative coding stack from config."""
+
+    init_plugins()
+    return list(compile_stack_from_config(config))
 
 def run_pipeline(
     codec: str,
@@ -711,5 +732,6 @@ def run_pipeline(
         ins,
         dels,
         coverage,
+        stack_metrics=(dict(fec_info).get("coding_stack") if isinstance(fec_info, Mapping) else None),
     )
     return decoded, metrics_dict

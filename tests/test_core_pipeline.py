@@ -6,7 +6,14 @@ import pytest
 
 from typing import Mapping, Sequence
 
-from genecoder.core import encode, simulate, decode, metrics as gather_metrics, run_pipeline
+from genecoder.core import (
+    compile_coding_stack,
+    decode,
+    encode,
+    metrics as gather_metrics,
+    run_pipeline,
+    simulate,
+)
 from genecoder.formats import SequenceBatch
 from genecoder.api import Codec
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
@@ -161,3 +168,20 @@ def test_metrics_constraint_violations_per_oligo() -> None:
     first_violation = failing_violations["violations"][0]
     assert "gc_low" in (first_violation.get("types") or [first_violation.get("type")])
     assert first_violation.get("sequence_id")
+
+
+def test_compile_coding_stack_from_config() -> None:
+    init_plugins()
+    CODEC_REGISTRY["base4"] = {"encode": _Base4Codec().encode, "decode": _Base4Codec().decode}
+    stack = compile_coding_stack({"coding": {"layers": [{"type": "codec", "name": "base4"}]}})
+    assert len(stack) == 1
+
+
+def test_metrics_include_coding_stack() -> None:
+    init_plugins()
+    CODEC_REGISTRY["base4"] = {"encode": _Base4Codec().encode, "decode": _Base4Codec().decode}
+    data = b"stacked"
+    dna, _ = encode("base4", None, data)
+    report = gather_metrics(dna, data, data, None)
+    assert "coding_stack" in report
+    assert "total_redundancy" in report["coding_stack"]

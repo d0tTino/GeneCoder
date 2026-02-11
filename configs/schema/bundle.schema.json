@@ -2,12 +2,20 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GeneCoder bundle configuration",
   "type": "object",
-  "required": ["encode"],
+  "required": [
+    "encode"
+  ],
   "additionalProperties": false,
   "properties": {
-    "encode": {"$ref": "#/$defs/encode"},
-    "simulate": {"$ref": "#/$defs/simulate"},
-    "decode": {"$ref": "#/$defs/decode"}
+    "encode": {
+      "$ref": "#/$defs/encode"
+    },
+    "simulate": {
+      "$ref": "#/$defs/simulate"
+    },
+    "decode": {
+      "$ref": "#/$defs/decode"
+    }
   },
   "$defs": {
     "nonEmptyString": {
@@ -16,22 +24,38 @@
     },
     "stringList": {
       "type": "array",
-      "items": {"$ref": "#/$defs/nonEmptyString"},
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      },
       "minItems": 1
     },
     "stringOrNumber": {
-      "type": ["string", "number"]
+      "type": [
+        "string",
+        "number"
+      ]
     },
     "primitiveValue": {
-      "type": ["string", "number", "boolean", "null"]
+      "type": [
+        "string",
+        "number",
+        "boolean",
+        "null"
+      ]
     },
     "encode": {
       "type": "object",
-      "required": ["input_files", "method"],
+      "required": [
+        "input_files"
+      ],
       "additionalProperties": false,
       "properties": {
-        "input_files": {"$ref": "#/$defs/stringList"},
-        "method": {"$ref": "#/$defs/nonEmptyString"},
+        "input_files": {
+          "$ref": "#/$defs/stringList"
+        },
+        "method": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "fec": {
           "type": "string",
           "enum": [
@@ -44,50 +68,179 @@
             "raptorq"
           ]
         },
-        "gc_min": {"type": "number", "minimum": 0, "maximum": 1},
-        "gc_max": {"type": "number", "minimum": 0, "maximum": 1},
-        "max_homopolymer": {"type": "integer", "minimum": 1}
-      }
+        "gc_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "gc_max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max_homopolymer": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "type",
+              "name"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "codec",
+                  "fec"
+                ]
+              },
+              "name": {
+                "$ref": "#/$defs/nonEmptyString"
+              },
+              "options": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/primitiveValue"
+                }
+              }
+            }
+          },
+          "minItems": 1
+        }
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "method"
+              ]
+            },
+            {
+              "required": [
+                "layers"
+              ]
+            }
+          ]
+        }
+      ]
     },
     "decode": {
       "type": "object",
-      "required": ["method"],
+      "required": [
+        "method"
+      ],
       "additionalProperties": false,
       "properties": {
-        "method": {"$ref": "#/$defs/nonEmptyString"}
+        "method": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
       }
     },
     "pipeline": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "parallel": {"type": ["boolean", "null"]},
-        "workers": {"type": ["integer", "null"]},
-        "use_process_pool": {"type": ["boolean", "null"]},
-        "use_mpi": {"type": ["boolean", "null"]},
-        "illumina_profile": {"type": ["string", "null"]},
-        "nanopore_profile": {"type": ["string", "null"]},
-        "dropout_rate": {"type": ["number", "null"]},
-        "coverage_distribution": {
-          "oneOf": [
-            {"type": "object"},
-            {"type": "array"},
-            {"type": "null"}
+        "parallel": {
+          "type": [
+            "boolean",
+            "null"
           ]
         },
-        "synthesis_loss": {"type": ["number", "null"]},
-        "name": {"type": ["string", "null"]}
+        "workers": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "use_process_pool": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "use_mpi": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "illumina_profile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nanopore_profile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dropout_rate": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "coverage_distribution": {
+          "oneOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "synthesis_loss": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "synthesisConstraints": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "min_length": {"type": "integer", "minimum": 1},
-        "max_length": {"type": "integer", "minimum": 1},
-        "max_homopolymer": {"type": "integer", "minimum": 1},
-        "gc_min": {"type": "number", "minimum": 0, "maximum": 1},
-        "gc_max": {"type": "number", "minimum": 0, "maximum": 1}
+        "min_length": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_homopolymer": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "gc_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "gc_max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
       }
     },
     "simulatorName": {
@@ -114,25 +267,44 @@
     },
     "simulator": {
       "anyOf": [
-        {"$ref": "#/$defs/simulatorName"},
+        {
+          "$ref": "#/$defs/simulatorName"
+        },
         {
           "type": "object",
-          "required": ["name"],
+          "required": [
+            "name"
+          ],
           "properties": {
-            "name": {"$ref": "#/$defs/simulatorName"},
-            "stage": {"$ref": "#/$defs/nonEmptyString"},
+            "name": {
+              "$ref": "#/$defs/simulatorName"
+            },
+            "stage": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
             "options": {
               "oneOf": [
                 {
                   "type": "array",
-                  "items": {"$ref": "#/$defs/primitiveValue"}
+                  "items": {
+                    "$ref": "#/$defs/primitiveValue"
+                  }
                 },
-                {"type": "string"}
+                {
+                  "type": "string"
+                }
               ]
             }
           },
           "additionalProperties": {
-            "type": ["string", "number", "boolean", "array", "object", "null"]
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "array",
+              "object",
+              "null"
+            ]
           }
         }
       ]
@@ -143,25 +315,95 @@
       "properties": {
         "simulators": {
           "type": "array",
-          "items": {"$ref": "#/$defs/simulator"},
+          "items": {
+            "$ref": "#/$defs/simulator"
+          },
           "minItems": 1
         },
-        "pipeline": {"$ref": "#/$defs/pipeline"},
-        "synthesis": {"$ref": "#/$defs/synthesisConstraints"},
-        "constraints": {"$ref": "#/$defs/synthesisConstraints"},
-        "config": {"type": "string"},
-        "decay_rate": {"type": ["number", "null"]},
-        "batch_workers": {"type": ["integer", "null"]},
-        "sub_prob": {"type": ["number", "null"]},
-        "ins_prob": {"type": ["number", "null"]},
-        "del_prob": {"type": ["number", "null"]},
-        "seed": {"type": ["integer", "null"]},
-        "min_length": {"type": ["integer", "null"]},
-        "max_length": {"type": ["integer", "null"]},
-        "max_homopolymer": {"type": ["integer", "null"]},
-        "parallel": {"type": ["boolean", "null"]},
-        "threads": {"type": ["integer", "null"]},
-        "processes": {"type": ["integer", "null"]}
+        "pipeline": {
+          "$ref": "#/$defs/pipeline"
+        },
+        "synthesis": {
+          "$ref": "#/$defs/synthesisConstraints"
+        },
+        "constraints": {
+          "$ref": "#/$defs/synthesisConstraints"
+        },
+        "config": {
+          "type": "string"
+        },
+        "decay_rate": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "batch_workers": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "sub_prob": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "ins_prob": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "del_prob": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "seed": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "min_length": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "max_length": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "max_homopolymer": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "parallel": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "threads": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "processes": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
       }
     }
   }

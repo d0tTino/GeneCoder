@@ -4,7 +4,11 @@ encode:
   input_files:
     - examples/pipeline_demo_input.txt
   method: gc_balanced
-  fec: reed_solomon
+  layers:
+    - type: fec
+      name: reed_solomon
+    - type: codec
+      name: gc_balanced
 simulate:
   simulators:
     - illumina

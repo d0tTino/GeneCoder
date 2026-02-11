@@ -74,6 +74,22 @@ class ChannelArgs:
 
 logger = logging.getLogger(__name__)
 
+def _effective_fec(enc_cfg: Mapping[str, object] | None) -> str | None:
+    if not isinstance(enc_cfg, Mapping):
+        return None
+    fec_value = enc_cfg.get("fec")
+    if isinstance(fec_value, str) and fec_value:
+        return fec_value
+    layers = enc_cfg.get("layers")
+    if isinstance(layers, Sequence):
+        for layer in layers:
+            if not isinstance(layer, Mapping):
+                continue
+            layer_type = str(layer.get("type", "")).strip().lower()
+            layer_name = layer.get("name")
+            if layer_type == "fec" and isinstance(layer_name, str) and layer_name:
+                return layer_name
+    return None
 
 def _parse_int(value: object) -> int | None:
     try:
@@ -584,7 +600,7 @@ def _write_decoded_metrics(
 
     original_bytes = original_path.read_bytes()
     decoded_bytes = decoded_path.read_bytes()
-    fec = enc_cfg.get("fec") if isinstance(enc_cfg, Mapping) else None
+    fec = _effective_fec(enc_cfg) if isinstance(enc_cfg, Mapping) else None
     oligos = sequences if sequences else [""]
 
     metrics_data = gather_metrics(
@@ -690,8 +706,8 @@ def _write_decoded_metrics(
     metrics_path.write_text(json.dumps(metrics_payload, indent=2), encoding="utf-8")
 
     manifest_params: dict[str, Any] = {"method": enc_cfg.get("method")}
-    if enc_cfg.get("fec"):
-        manifest_params["fec"] = enc_cfg.get("fec")
+    if _effective_fec(enc_cfg):
+        manifest_params["fec"] = _effective_fec(enc_cfg)
     if channel_metrics:
         manifest_params["channel"] = channel_metrics.get("name")
 
@@ -836,10 +852,30 @@ def _run_single_bundle(
     if not isinstance(enc_cfg_raw, dict):
         raise TypeError("encode section must be a mapping")
     enc_cfg = dict(enc_cfg_raw)
+    layers_value = enc_cfg.get("layers")
+    if isinstance(layers_value, Sequence):
+        codec_layer = None
+        fec_layer = None
+        for layer in layers_value:
+            if not isinstance(layer, Mapping):
+                continue
+            layer_type = str(layer.get("type", "")).strip().lower()
+            layer_name = layer.get("name")
+            if not isinstance(layer_name, str) or not layer_name:
+                continue
+            if layer_type == "codec" and codec_layer is None:
+                codec_layer = layer_name
+            elif layer_type == "fec" and fec_layer is None:
+                fec_layer = layer_name
+        if codec_layer and not enc_cfg.get("method"):
+            enc_cfg["method"] = codec_layer
+        if fec_layer:
+            enc_cfg["fec"] = fec_layer
+    enc_cfg.pop("layers", None)
     fec_downgraded = False
     ecc_status = None
     ecc_warning = None
-    if enc_cfg.get("fec") == "reed_solomon" and importlib.util.find_spec("reedsolo") is None:
+    if _effective_fec(enc_cfg) == "reed_solomon" and importlib.util.find_spec("reedsolo") is None:
         if not allow_missing_fec:
             raise RuntimeError(
                 "Reed-Solomon FEC requires the 'reedsolo' package. Install reedsolo "
@@ -873,7 +909,7 @@ def _run_single_bundle(
             description=description,
             config_name=config_name,
             channel_profile=_extract_channel_profile(sim_cfg_raw),
-            ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            ecc_type=str(_effective_fec(enc_cfg)) if _effective_fec(enc_cfg) else None,
             ecc_status=ecc_status,
             ecc_warning=ecc_warning,
             metrics_target=metrics_override or metrics.path,
@@ -888,7 +924,7 @@ def _run_single_bundle(
                 batch_metadata=None,
                 config_name=config_name,
                 channel_profile=_extract_channel_profile(sim_cfg_raw),
-                ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+                ecc_type=str(_effective_fec(enc_cfg)) if _effective_fec(enc_cfg) else None,
                 ecc_status=ecc_status,
                 ecc_warning=ecc_warning,
                 metrics_target=metrics_override or metrics.path,
@@ -900,7 +936,7 @@ def _run_single_bundle(
             run_dir=run_dir,
             config_name=config_name,
             channel_profile=_extract_channel_profile(sim_cfg_raw),
-            ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            ecc_type=str(_effective_fec(enc_cfg)) if _effective_fec(enc_cfg) else None,
             summary_path=summary_path,
         )
 
@@ -949,7 +985,7 @@ def _run_single_bundle(
             description=description,
             config_name=config_name,
             channel_profile=_extract_channel_profile(sim_cfg_raw),
-            ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            ecc_type=str(_effective_fec(enc_cfg)) if _effective_fec(enc_cfg) else None,
             ecc_status=ecc_status,
             ecc_warning=ecc_warning,
             metrics_target=metrics_override or metrics.path,
@@ -960,7 +996,7 @@ def _run_single_bundle(
             run_dir=run_dir,
             config_name=config_name,
             channel_profile=_extract_channel_profile(sim_cfg_raw),
-            ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            ecc_type=str(_effective_fec(enc_cfg)) if _effective_fec(enc_cfg) else None,
             summary_path=summary_path,
         )
 
@@ -1133,7 +1169,7 @@ def _run_single_bundle(
         description=description,
         config_name=config_name,
         channel_profile=_extract_channel_profile(sim_cfg),
-        ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+        ecc_type=str(_effective_fec(enc_cfg)) if _effective_fec(enc_cfg) else None,
         ecc_status=ecc_status,
         ecc_warning=ecc_warning,
         metrics_target=metrics_override or metrics.path,
@@ -1148,7 +1184,7 @@ def _run_single_bundle(
             batch_summary,
             config_name=config_name,
             channel_profile=_extract_channel_profile(sim_cfg),
-            ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+            ecc_type=str(_effective_fec(enc_cfg)) if _effective_fec(enc_cfg) else None,
             ecc_status=ecc_status,
             ecc_warning=ecc_warning,
             metrics_target=metrics_override or metrics.path,
@@ -1165,7 +1201,7 @@ def _run_single_bundle(
         run_dir=run_dir,
         config_name=config_name,
         channel_profile=_extract_channel_profile(sim_cfg),
-        ecc_type=str(enc_cfg.get("fec")) if enc_cfg.get("fec") else None,
+        ecc_type=str(_effective_fec(enc_cfg)) if _effective_fec(enc_cfg) else None,
         summary_path=summary_path,
     )
 
