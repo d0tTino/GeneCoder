@@ -1,6 +1,7 @@
-import json
 from pathlib import Path
 from typing import Any, Iterable
+
+from .results.schema import canonical_to_legacy_metrics, load_run_schema
 
 
 def _extract_violation_count(value: object) -> int:
@@ -35,11 +36,12 @@ def parse_manifests(root: Path) -> Iterable[dict[str, Any]]:
     """
     for path in root.rglob("*.manifest.json"):
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            run_schema = load_run_schema(path)
+            data = canonical_to_legacy_metrics(run_schema)
         except Exception:
             continue
         if isinstance(data, dict):
-            yield data
+            yield {"metrics": data}
 
 
 def aggregate_metrics(root: Path) -> dict[str, Any]:

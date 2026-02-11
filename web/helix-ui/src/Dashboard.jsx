@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import HeatmapLoader from './HeatmapLoader.jsx';
+import { toLegacyMetrics, toRunSchema } from './runSchema.js';
 
 export default function Dashboard() {
   const [sequence, setSequence] = useState('ACGT');
@@ -20,7 +21,7 @@ export default function Dashboard() {
       body: JSON.stringify({ dna_sequence: sequence }),
     });
     const json = await resp.json();
-    setData(json);
+    setData(toRunSchema(json));
   };
 
   const decodeDeepdna = async () => {
@@ -52,19 +53,20 @@ export default function Dashboard() {
       <button onClick={decodeDeepdna}>DeepDNA Decode</button>
       {data && (
         <div>
-          <p>GC Mean: {(data.gc_content * 100).toFixed(2)}%</p>
-          <p>GC Variance: {data.gc_variance.toFixed(4)}</p>
-          <p>Max Homopolymer: {data.max_homopolymer}</p>
-          <p>Error Rate: {(data.error_rate * 100).toFixed(2)}%</p>
-          <img src={`data:image/png;base64,${data.plot}`} style={{ maxWidth: '100%' }} />
-          {data.oligo_metrics && data.oligo_metrics.gc_percentages?.length > 0 && (
+          {(() => { const metrics = toLegacyMetrics(data); return (<>
+          <p>GC Mean: {typeof metrics.gc_content === 'number' ? (metrics.gc_content * 100).toFixed(2) : 'n/a'}%</p>
+          <p>GC Variance: {typeof metrics.gc_variance === 'number' ? metrics.gc_variance.toFixed(4) : 'n/a'}</p>
+          <p>Max Homopolymer: {metrics.max_homopolymer ?? 'n/a'}</p>
+          <p>Error Rate: {typeof metrics.error_rate === 'number' ? (metrics.error_rate * 100).toFixed(2) : 'n/a'}%</p>
+          {metrics.plot && <img src={`data:image/png;base64,${metrics.plot}`} style={{ maxWidth: '100%' }} />}
+          {metrics.oligo_metrics && metrics.oligo_metrics.gc_percentages?.length > 0 && (
             <div>
               <h3>Per-oligo metrics</h3>
               <ul>
-                {data.oligo_metrics.gc_percentages.map((gcVal, idx) => {
-                  const hp = data.oligo_metrics.max_homopolymers?.[idx];
-                  const drop = data.oligo_metrics.dropout_flags?.[idx];
-                  const ecc = data.oligo_metrics.ecc_success || {};
+                {metrics.oligo_metrics.gc_percentages.map((gcVal, idx) => {
+                  const hp = metrics.oligo_metrics.max_homopolymers?.[idx];
+                  const drop = metrics.oligo_metrics.dropout_flags?.[idx];
+                  const ecc = metrics.oligo_metrics.ecc_success || {};
                   const eccSummary = Object.entries(ecc)
                     .map(([name, values]) => {
                       const v = Array.isArray(values) ? values[idx] : undefined;
@@ -89,6 +91,7 @@ export default function Dashboard() {
               </ul>
             </div>
           )}
+          </>); })()}
           <HeatmapLoader sequence={sequence} />
           {deepdna && (
             <div>
