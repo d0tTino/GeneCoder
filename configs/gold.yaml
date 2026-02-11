@@ -4,7 +4,11 @@ encode:
   input_files:
     - tests/data/vertical_slice.txt
   method: gc_balanced
-  fec: reed_solomon
+  layers:
+    - type: fec
+      name: reed_solomon
+    - type: codec
+      name: gc_balanced
 simulate:
   simulators:
     - name: insilicoseq

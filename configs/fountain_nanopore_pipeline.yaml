@@ -4,7 +4,11 @@ encode:
   input_files:
     - examples/pipeline_demo_input.txt
   method: gc_balanced
-  fec: fountain
+  layers:
+    - type: fec
+      name: fountain
+    - type: codec
+      name: gc_balanced
   gc_min: 0.25
   gc_max: 0.75
   max_homopolymer: 18
