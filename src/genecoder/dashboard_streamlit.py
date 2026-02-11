@@ -9,11 +9,12 @@ across multiple datasets.
 """
 
 from pathlib import Path
-import json
 import sys
 import math
 from typing import Any, Iterable, IO, cast
 from types import ModuleType
+
+from .results.schema import canonical_to_legacy_metrics, load_run_schema
 
 try:  # pragma: no cover - optional dependency
     import streamlit as _st
@@ -64,16 +65,8 @@ def _iterable(val: Iterable[str] | str | None) -> list[str]:
 
 def _load_metrics(src: str | Path | IO[str]) -> dict[str, Any]:
     try:
-        if hasattr(src, "read"):
-            data = json.load(src)
-        else:
-            with open(src, "r", encoding="utf-8") as fh:
-                data = json.load(fh)
-        if isinstance(data, dict):
-            metrics = data.get("metrics")
-            if isinstance(metrics, dict):
-                return metrics
-            return data
+        run_schema = load_run_schema(src)
+        return canonical_to_legacy_metrics(run_schema)
     except Exception:  # pragma: no cover - surfaced in UI
         pass
     return {}

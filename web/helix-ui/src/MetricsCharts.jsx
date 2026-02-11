@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { toRunSchema } from './runSchema.js';
 
 export default function MetricsCharts() {
   const [data, setData] = useState(null);
@@ -7,7 +8,7 @@ export default function MetricsCharts() {
   useEffect(() => {
     fetch('/bundle-metrics')
       .then((r) => r.json())
-      .then(setData);
+      .then((json) => setData(toRunSchema(json, "bundle")));
   }, []);
 
   useEffect(() => {
@@ -18,7 +19,8 @@ export default function MetricsCharts() {
     canvasRef.current.width = width;
     canvasRef.current.height = height;
     ctx.clearRect(0, 0, width, height);
-    const vals = [data.total_original_size, data.total_dna_length];
+    const metrics = data.outcome?.metrics || {};
+    const vals = [metrics.total_original_size || 0, metrics.total_dna_length || 0];
     const labels = ['Bytes', 'Bases'];
     const maxVal = Math.max(...vals, 1);
     const barWidth = width / vals.length;
@@ -40,8 +42,8 @@ export default function MetricsCharts() {
     <div style={{ padding: 20 }}>
       <h2>Bundle Metrics</h2>
       <canvas ref={canvasRef} />
-      <p>Files: {data.files}</p>
-      <p>Avg bits/nt: {data.avg_bits_per_nt.toFixed(2)}</p>
+      <p>Files: {data.outcome?.metrics?.files ?? 0}</p>
+      <p>Avg bits/nt: {Number(data.outcome?.metrics?.avg_bits_per_nt ?? 0).toFixed(2)}</p>
     </div>
   );
 }
