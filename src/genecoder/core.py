@@ -16,6 +16,7 @@ from .utils import get_max_homopolymer_length
 from .plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
 from .random_utils import reset_rng
 from .simulators import SIMULATOR_REGISTRY
+from .channel_engine import ChannelPipeline
 from .formats import SequenceBatch, SequenceOligo
 from .simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
@@ -279,11 +280,17 @@ def simulate(
         if os.getenv("GENECODER_SIM_SEED") is not None:
             reset_rng()
         sim = SIMULATOR_REGISTRY[channel]
-        result = sim.simulate(original_batch)
-        mutated_batch = (
-            result
-            if isinstance(result, SequenceBatch)
-            else _wrap_single_sequence(str(result), batch_id=original_batch.batch_id)
+        pipeline = ChannelPipeline.from_simulators([(channel, sim)])
+        seed_value: int | None = None
+        seed_env = os.getenv("GENECODER_SIM_SEED")
+        if seed_env is not None:
+            try:
+                seed_value = int(seed_env)
+            except ValueError:
+                seed_value = None
+        mutated_batch, _ = pipeline.run(
+            original_batch,
+            seed=seed_value,
         )
 
         original_sequence = original_batch.primary_sequence()

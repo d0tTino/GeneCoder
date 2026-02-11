@@ -5,6 +5,7 @@ This module is deprecated; use :mod:`genecoder.error_simulation` instead.
 from __future__ import annotations
 
 import random
+import warnings
 
 from .error_simulation import (
     apply_substitutions,
@@ -49,6 +50,11 @@ def simulate_errors(
         Optional random number generator for deterministic behaviour.
     """
 
+    warnings.warn(
+        "genecoder.channel_sim is deprecated; import genecoder.channel_engine or genecoder.error_simulation instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return _simulate_errors(
         sequence,
         substitution_prob=substitution_prob,
