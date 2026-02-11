@@ -10,7 +10,7 @@ from pathlib import Path
 from ..random_utils import make_rng
 from ..d2sim_adapter import simulate_d2sim
 from ..desp_adapter import simulate_desp
-from ..api import Simulator
+from ..plugin_api import Simulator
 from ..formats import SequenceBatch
 from . import register_simulator as _register_simulator
 from .base import BaseChannel

@@ -8,7 +8,7 @@ import random
 import shutil
 from typing import Any, Callable, Mapping
 
-from .api import Simulator
+from .plugin_api import Simulator
 from .formats import SequenceBatch, from_fasta
 from .random_utils import make_rng
 from .simulator_utils import (

@@ -35,7 +35,7 @@ import pkgutil
 
 from .simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
 from . import plugin_security
-from .api import Codec, FEC, Simulator, Visualizer
+from .plugin_api import Codec, FEC, Simulator, Visualizer
 import base64
 import json
 

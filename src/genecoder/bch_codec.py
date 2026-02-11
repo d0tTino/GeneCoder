@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, TYPE_CHECKING
 
-from .api import FEC
+from .plugin_api import FEC
 
 _HAS_BCHLIB = False
 

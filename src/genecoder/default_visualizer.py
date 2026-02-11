@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Mapping, Callable
 import base64
 
-from .api import Visualizer
+from .plugin_api import Visualizer
 from .plugin_manager import register_visualizer as _register_visualizer
 from .plotting import (
     calculate_windowed_gc_content,

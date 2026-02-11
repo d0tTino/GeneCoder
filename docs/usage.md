@@ -854,3 +854,92 @@ python -m jsonschema -i configs/pipeline_demo.yaml configs/schema/bundle.schema.
 
 Successful validation means `genecli bundle run` will accept the config without
 extra flag parsing errors.
+
+## Python SDK tutorial (notebook-ready)
+
+The new `genecoder.sdk` API supports both **config-first** (YAML file) and **object-first** (dataclass) workflows with normalized immutable results.
+
+### Reproducible single run in a notebook cell
+
+```python
+from pathlib import Path
+from genecoder.sdk import ExperimentSpec, run_experiment
+
+input_path = Path("input.bin")
+input_path.write_bytes(b"hello from notebook")
+
+result = run_experiment(
+    ExperimentSpec(
+        codec="base4_direct",
+        fec_backend=None,
+        channel="illumina",
+        input_path=str(input_path),
+        output_path="decoded.bin",
+    )
+)
+
+result.spec
+result.metrics
+result.decoded[:20]
+```
+
+### Config-first parity (same normalized result shape)
+
+```python
+import yaml
+from genecoder.sdk import run_experiment
+
+cfg = {
+    "codec": "base4_direct",
+    "fec_backend": None,
+    "channel": "illumina",
+    "input_path": "input.bin",
+    "output_path": "decoded-from-yaml.bin",
+}
+
+with open("experiment.yaml", "w", encoding="utf-8") as f:
+    yaml.safe_dump(cfg, f)
+
+from_yaml = run_experiment("experiment.yaml")
+from_yaml.metrics
+```
+
+### Parameter sweep and profile comparison
+
+```python
+import pandas as pd
+from genecoder.sdk import sweep
+
+runs = sweep(
+    [
+        {
+            "codec": "base4_direct",
+            "fec_backend": None,
+            "channel": "illumina",
+            "input_path": "input.bin",
+            "output_path": "decoded-illumina.bin",
+        },
+        {
+            "codec": "base4_direct",
+            "fec_backend": None,
+            "channel": "nanopore",
+            "input_path": "input.bin",
+            "output_path": "decoded-nanopore.bin",
+        },
+    ]
+)
+
+summary = pd.DataFrame(
+    [
+        {
+            "channel": run.spec.channel,
+            "bit_error_rate": run.metrics.get("bit_error_rate"),
+            "decode_success_rate": run.metrics.get("decode_success_rate"),
+        }
+        for run in runs.runs
+    ]
+)
+summary
+```
+
+Because each entry in `runs.runs` is immutable, cells can be re-executed safely and compared without mutating historical results.

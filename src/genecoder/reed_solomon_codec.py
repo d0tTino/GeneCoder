@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Tuple, TYPE_CHECKING, Mapping, Any
 
-from .api import FEC
+from .plugin_api import FEC
 
 
 _HAS_REEDSOLO: bool = False

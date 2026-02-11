@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Dict, Type
 import os
 
-from ..api import Simulator
+from ..plugin_api import Simulator
 from ..formats import SequenceBatch
 from ..random_utils import reset_rng
 from .batch_utils import apply_legacy_simulator

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 """Base classes for pluggable codecs and FEC backends."""
 
-from ..api import Codec, FEC
+from ..plugin_api import Codec, FEC
 
 
 class BaseCodec(Codec):
