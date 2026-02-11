@@ -5,7 +5,7 @@ from typing import Sequence, TYPE_CHECKING
 from dataclasses import dataclass
 from abc import abstractmethod
 
-from ..api import Simulator
+from ..plugin_api import Simulator
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..formats import SequenceBatch

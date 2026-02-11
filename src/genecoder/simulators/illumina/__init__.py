@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Callable
 
 from .. import register_simulator as _register_simulator
-from ...api import Simulator
+from ...plugin_api import Simulator
 from .channel import IlluminaChannel, IlluminaProfile, ILLUMINA_PROFILES
 from .cli import IlluminaD2SimChannel, IlluminaInSilicoSeqChannel, simulate_insilicoseq
 

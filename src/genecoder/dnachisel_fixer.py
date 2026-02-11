@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from .api import Codec
+from .plugin_api import Codec
 from .constraint_fixer import fix_sequence_with_report
 
 __all__ = ["fix_sequence_dnachisel", "register"]

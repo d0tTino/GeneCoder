@@ -4,7 +4,7 @@ from __future__ import annotations
 import random
 from typing import Callable
 
-from .api import Simulator
+from .plugin_api import Simulator
 from .random_utils import make_rng
 from .simulator_utils import _run_external, _simulate_adapter
 from .simulators import register_simulator as _register_simulator

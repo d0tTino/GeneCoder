@@ -4,7 +4,7 @@ from __future__ import annotations
 import random
 from typing import Callable
 
-from .api import Simulator
+from .plugin_api import Simulator
 from .simulators.illumina import (
     IlluminaInSilicoSeqChannel as _IlluminaInSilicoSeqChannel,
     simulate_insilicoseq as _simulate_insilicoseq,

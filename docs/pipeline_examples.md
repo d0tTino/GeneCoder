@@ -328,3 +328,75 @@ genecli html-report --manifest simulated_multi_oligo.fasta.manifest.json \
   for Fountain codes or provide valid profile names like `hiseq` or `r10`.
 - **No metrics output** – pass `--metrics-path` to the command and ensure the path is writable
   before running the pipeline.
+
+## Python SDK sweep tutorial (Jupyter)
+
+Use the high-level SDK when you want notebook-native, immutable result objects.
+
+```python
+from dataclasses import asdict
+from genecoder.sdk import ExperimentSpec, run_experiment, sweep
+
+single = run_experiment(
+    ExperimentSpec(
+        codec="reverse",
+        input_path="examples/pipeline_demo_input.txt",
+        output_path="decoded-single.txt",
+        channel=None,
+    )
+)
+
+single.metrics
+```
+
+Config-first parity from YAML:
+
+```python
+import yaml
+from genecoder.sdk import run_experiment
+
+yaml.safe_dump(
+    {
+        "codec": "reverse",
+        "input_path": "examples/pipeline_demo_input.txt",
+        "output_path": "decoded-yaml.txt",
+        "channel": None,
+    },
+    open("experiment.yaml", "w", encoding="utf-8"),
+)
+
+yaml_run = run_experiment("experiment.yaml")
+yaml_run.metrics
+```
+
+Profile comparison sweep:
+
+```python
+import pandas as pd
+from genecoder.sdk import sweep
+
+runs = sweep(
+    [
+        {
+            "codec": "reverse",
+            "input_path": "examples/pipeline_demo_input.txt",
+            "output_path": "decoded-none.txt",
+            "channel": None,
+        },
+        {
+            "codec": "reverse",
+            "input_path": "examples/pipeline_demo_input.txt",
+            "output_path": "decoded-illumina.txt",
+            "channel": "illumina",
+        },
+    ]
+)
+
+comparison = pd.DataFrame(
+    {
+        "channel": [run.spec.channel for run in runs.runs],
+        "decode_success_rate": [run.metrics.get("decode_success_rate") for run in runs.runs],
+    }
+)
+comparison
+```

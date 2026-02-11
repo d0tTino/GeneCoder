@@ -6,7 +6,7 @@ import warnings
 from typing import Callable
 
 from .random_utils import make_rng
-from .api import Simulator
+from .plugin_api import Simulator
 from .simulators import register_simulator as _register_simulator
 from .formats import SequenceBatch
 from .simulators.batch_utils import apply_legacy_simulator

@@ -15,7 +15,7 @@ except Exception:  # pragma: no cover - missing optional dependency
     _HAS_CHAMAELEO = False
 
 from .plugin_manager import register_codec as _register_codec
-from .api import Codec
+from .plugin_api import Codec
 
 __all__ = ["register"]
 

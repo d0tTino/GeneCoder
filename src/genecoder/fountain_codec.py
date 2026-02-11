@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple, cast
 
-from .api import FEC
+from .plugin_api import FEC
 
 import json
 import math

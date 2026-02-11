@@ -5,7 +5,7 @@ import logging
 import shutil
 import subprocess
 
-from ...api import Simulator
+from ...plugin_api import Simulator
 from ...d2sim_adapter import simulate_d2sim
 from ...simulator_utils import _parse_env_options, _run_external
 from ...random_utils import make_rng
