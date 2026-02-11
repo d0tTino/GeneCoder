@@ -524,16 +524,10 @@ def metrics(
     success = 1.0 if decoded == original_data else 0.0
     constraint_violations: Dict[str, Any]
     try:
-        from .synthesis import SynthesisConstraints, validate_sequence
+        from .synthesis import SynthesisConstraints
 
         constraint_limits = constraints if constraints is not None else SynthesisConstraints()
-        constraint_limits_info = {
-            "min_length": constraint_limits.min_length,
-            "max_length": constraint_limits.max_length,
-            "max_homopolymer": constraint_limits.max_homopolymer,
-            "gc_min": constraint_limits.gc_min,
-            "gc_max": constraint_limits.gc_max,
-        }
+        engine = constraint_limits.to_engine()
         violation_records: list[dict[str, Any]] = []
         type_counts: Counter[str] = Counter()
 
@@ -561,55 +555,48 @@ def metrics(
                 target_oligos.append((idx, sequence, info))
 
         for idx, sequence, info in target_oligos:
-            try:
-                is_valid = validate_sequence(sequence, constraint_limits)
-            except Exception:
+            report = engine.validate(sequence)
+            if report.count == 0:
                 continue
-            if is_valid:
-                continue
+            for violation in report.violations:
+                violation_type = violation.rule_id
+                if violation.rule_id == "gc_range":
+                    gc_value = float(violation.details.get("gc_content", 0.0))
+                    gc_min = float(violation.details.get("gc_min", 0.0))
+                    gc_max = float(violation.details.get("gc_max", 1.0))
+                    if gc_value < gc_min:
+                        violation_type = "gc_low"
+                    elif gc_value > gc_max:
+                        violation_type = "gc_high"
+                type_counts[violation_type] += 1
+                record: dict[str, Any] = {
+                    "sequence_id": info.get("sequence_id", f"oligo-{idx}"),
+                    "index": idx,
+                    "length": len(sequence),
+                    "type": violation_type,
+                    "constraint": violation.rule_id,
+                    "message": violation.message,
+                    "severity": violation.severity,
+                    "details": violation.details,
+                }
+                if violation.location is not None:
+                    record["location"] = {
+                        "start": violation.location.start,
+                        "end": violation.location.end,
+                    }
+                if info.get("oligo_id"):
+                    record["oligo_id"] = info["oligo_id"]
+                if info.get("oligo_index") is not None:
+                    record["oligo_index"] = info["oligo_index"]
+                violation_records.append(record)
 
-            reasons: list[str] = []
-            length = len(sequence)
-            if length < constraint_limits.min_length:
-                reasons.append("length_short")
-            elif length > constraint_limits.max_length:
-                reasons.append("length_long")
-
-            homopolymer = get_max_homopolymer_length(sequence)
-            if homopolymer > constraint_limits.max_homopolymer:
-                reasons.append("homopolymer")
-
-            gc_fraction = calculate_gc_content(sequence) if sequence else 0.0
-            if gc_fraction < constraint_limits.gc_min:
-                reasons.append("gc_low")
-            elif gc_fraction > constraint_limits.gc_max:
-                reasons.append("gc_high")
-
-            if not reasons:
-                reasons.append("unknown")
-
-            for name in reasons:
-                type_counts[name] += 1
-
-            record: dict[str, Any] = {
-                "sequence_id": info.get("sequence_id", f"oligo-{idx}"),
-                "index": idx,
-                "length": length,
-                "type": reasons[0],
-            }
-            if len(reasons) > 1:
-                record["types"] = reasons
-            if info.get("oligo_id"):
-                record["oligo_id"] = info["oligo_id"]
-            if info.get("oligo_index") is not None:
-                record["oligo_index"] = info["oligo_index"]
-            violation_records.append(record)
-
+        opportunities = max(1, sum(len(sequence) for _, sequence, _ in target_oligos))
         constraint_violations = {
             "count": len(violation_records),
+            "pressure": len(violation_records) / opportunities,
             "violations": violation_records,
             "type_counts": dict(type_counts),
-            "limits": constraint_limits_info,
+            "limits": engine.rules.limits(),
         }
     except Exception:  # pragma: no cover - optional dependency
         constraint_violations = {

@@ -2,7 +2,13 @@ import random
 
 import pytest
 
-from genecoder.constraint_fixer import adjust_gc_balance, limit_homopolymers, fix_sequence
+from genecoder.constraint_fixer import (
+    adjust_gc_balance,
+    encode,
+    fix_sequence,
+    fix_sequence_with_report,
+    limit_homopolymers,
+)
 from genecoder.gc_constrained_encoder import calculate_gc_content
 from genecoder.random_utils import reset_rng
 from genecoder.utils import get_max_homopolymer_length
@@ -125,3 +131,34 @@ def test_fix_sequence_invalid_parameters() -> None:
     with pytest.raises(ValueError):
         fix_sequence("AT", target_gc_min=0.4, target_gc_max=0.6, max_homopolymer=0)
 
+
+
+def test_encode_reports_repair_diff_metadata() -> None:
+    seq = "A" * 12
+    fixed, metrics = encode(
+        seq,
+        gc_min=0.4,
+        gc_max=0.6,
+        max_homopolymer=3,
+        rng=random.Random(0),
+    )
+    assert fixed != seq
+    repair = metrics.get("repair_report")
+    assert isinstance(repair, dict)
+    assert repair.get("strategy") == "stochastic"
+    changes = repair.get("changes")
+    assert isinstance(changes, list)
+    assert changes
+
+
+def test_fix_sequence_with_report_deterministic_strategy() -> None:
+    fixed, report = fix_sequence_with_report(
+        "AAAAAA",
+        target_gc_min=0.4,
+        target_gc_max=0.6,
+        max_homopolymer=2,
+        strategy="deterministic",
+    )
+    assert 0.4 <= calculate_gc_content(fixed) <= 0.6
+    assert get_max_homopolymer_length(fixed) <= 2
+    assert report["strategy"] == "deterministic"

@@ -1,27 +1,55 @@
-"""Utilities to modify DNA sequences to satisfy synthesis constraints.
-
-This module exposes small helpers for adjusting GC balance and disrupting
-excessive homopolymers.  The high-level :func:`fix` convenience function ties
-these helpers together and is designed for use directly from the main encoding
-pipeline or CLI, allowing sequences to be automatically corrected before they
-are passed along for synthesis.
-"""
+"""Utilities to repair DNA sequences to satisfy synthesis constraints."""
 
 from __future__ import annotations
 
 import random
+from dataclasses import dataclass
 
+from .constraints import (
+    ConstraintEngine,
+    ConstraintRuleSet,
+    DNAChiselSolverBackend,
+    DeterministicRepairStrategy,
+    ExternalSolverRepairStrategy,
+    GcRangeRule,
+    HomopolymerMaxRule,
+    StochasticRepairStrategy,
+)
 from .gc_constrained_encoder import calculate_gc_content
-from .utils import get_max_homopolymer_length
 from .random_utils import make_rng
+from .utils import get_max_homopolymer_length
 
 __all__ = [
     "adjust_gc_balance",
     "limit_homopolymers",
     "fix_sequence",
+    "fix_sequence_with_report",
     "fix",
     "encode",
 ]
+
+
+@dataclass
+class StrategyPlugin:
+    name: str
+
+    def build(self, *, rng: random.Random | None = None):
+        if self.name == "deterministic":
+            return DeterministicRepairStrategy()
+        if self.name == "stochastic":
+            return StochasticRepairStrategy(rng=rng)
+        if self.name == "external_solver":
+            return ExternalSolverRepairStrategy(solver_backend=DNAChiselSolverBackend())
+        raise ValueError(f"Unknown strategy '{self.name}'")
+
+
+def _rule_set(target_gc_min: float, target_gc_max: float, max_homopolymer: int) -> ConstraintRuleSet:
+    return ConstraintRuleSet(
+        rules=[
+            GcRangeRule(gc_min=target_gc_min, gc_max=target_gc_max),
+            HomopolymerMaxRule(max_homopolymer=max_homopolymer),
+        ]
+    )
 
 
 def adjust_gc_balance(
@@ -31,34 +59,15 @@ def adjust_gc_balance(
     *,
     rng: random.Random | None = None,
 ) -> str:
-    """Return ``sequence`` adjusted so its GC content falls within bounds."""
-    if target_gc_min > target_gc_max:
-        msg = "target_gc_min cannot exceed target_gc_max"
-        raise ValueError(msg)
-
-    if rng is None:
-        rng = make_rng()
-    seq = list(sequence.upper())
-    length = len(seq)
-    gc_count = sum(1 for b in seq if b in {"G", "C"})
-    gc = gc_count / length if length else 0.0
-    while gc < target_gc_min:
-        idxs = [i for i, b in enumerate(seq) if b in {"A", "T"}]
-        if not idxs:
-            break
-        i = rng.choice(idxs)
-        seq[i] = rng.choice(["G", "C"])
-        gc_count += 1
-        gc = gc_count / length
-    while gc > target_gc_max:
-        idxs = [i for i, b in enumerate(seq) if b in {"G", "C"}]
-        if not idxs:
-            break
-        i = rng.choice(idxs)
-        seq[i] = rng.choice(["A", "T"])
-        gc_count -= 1
-        gc = gc_count / length
-    return "".join(seq)
+    report = fix_sequence_with_report(
+        sequence,
+        target_gc_min=target_gc_min,
+        target_gc_max=target_gc_max,
+        max_homopolymer=max(1, len(sequence) + 1),
+        strategy="stochastic",
+        rng=rng,
+    )
+    return report[0]
 
 
 def limit_homopolymers(
@@ -67,33 +76,52 @@ def limit_homopolymers(
     *,
     rng: random.Random | None = None,
 ) -> str:
-    """Return ``sequence`` with runs longer than ``max_len`` disrupted."""
-    if max_len < 1:
-        msg = "max_len must be at least 1"
-        raise ValueError(msg)
+    report = fix_sequence_with_report(
+        sequence,
+        target_gc_min=0.0,
+        target_gc_max=1.0,
+        max_homopolymer=max_len,
+        strategy="stochastic",
+        rng=rng,
+    )
+    return report[0]
 
-    if rng is None:
-        rng = make_rng()
-    seq = list(sequence.upper())
-    i = 0
-    while i < len(seq):
-        run_char = seq[i]
-        run_end = i + 1
-        while run_end < len(seq) and seq[run_end] == run_char:
-            run_end += 1
-        run_len = run_end - i
-        if run_len > max_len:
-            insert_pos = i + max_len
-            replacement = {
-                "A": ["C", "G"],
-                "T": ["A", "C"],
-                "G": ["A", "T"],
-                "C": ["G", "T"],
-            }[run_char]
-            seq[insert_pos] = rng.choice(replacement)
-            run_end = insert_pos + 1
-        i = run_end
-    return "".join(seq)
+
+def fix_sequence_with_report(
+    sequence: str,
+    *,
+    target_gc_min: float,
+    target_gc_max: float,
+    max_homopolymer: int,
+    strategy: str = "stochastic",
+    rng: random.Random | None = None,
+) -> tuple[str, dict[str, object]]:
+    if target_gc_min > target_gc_max:
+        raise ValueError("target_gc_min cannot exceed target_gc_max")
+    if max_homopolymer < 1:
+        raise ValueError("max_homopolymer must be at least 1")
+
+    plugin = StrategyPlugin(strategy)
+    engine = ConstraintEngine(_rule_set(target_gc_min, target_gc_max, max_homopolymer))
+    repair_strategy = plugin.build(rng=rng or make_rng())
+    after_report, repair_result = engine.repair(sequence.upper(), repair_strategy)
+    payload = {
+        "strategy": repair_result.strategy,
+        "reason": repair_result.reason,
+        "changes": [
+            {
+                "start": change.start,
+                "end": change.end,
+                "before": change.before,
+                "after": change.after,
+                "reason": change.reason,
+            }
+            for change in repair_result.changes
+        ],
+        "metadata": repair_result.metadata,
+        "remaining_violations": [v.rule_id for v in after_report.violations],
+    }
+    return repair_result.sequence_after, payload
 
 
 def fix_sequence(
@@ -104,24 +132,15 @@ def fix_sequence(
     max_homopolymer: int,
     rng: random.Random | None = None,
 ) -> str:
-    """Return ``sequence`` adjusted for GC content and homopolymers."""
-    if target_gc_min > target_gc_max:
-        msg = "target_gc_min cannot exceed target_gc_max"
-        raise ValueError(msg)
-    if max_homopolymer < 1:
-        msg = "max_homopolymer must be at least 1"
-        raise ValueError(msg)
-
-    if rng is None:
-        rng = make_rng()
-
-    seq = adjust_gc_balance(sequence, target_gc_min, target_gc_max, rng=rng)
-    seq = limit_homopolymers(seq, max_homopolymer, rng=rng)
-    # Breaking up long homopolymers can skew the GC ratio slightly. Run a final
-    # pass of GC balancing to ensure the sequence ends within the requested
-    # bounds.
-    seq = adjust_gc_balance(seq, target_gc_min, target_gc_max, rng=rng)
-    return seq
+    fixed, _report = fix_sequence_with_report(
+        sequence,
+        target_gc_min=target_gc_min,
+        target_gc_max=target_gc_max,
+        max_homopolymer=max_homopolymer,
+        strategy="stochastic",
+        rng=rng,
+    )
+    return fixed
 
 
 def fix(
@@ -132,12 +151,6 @@ def fix(
     max_homopolymer: int,
     rng: random.Random | None = None,
 ) -> str:
-    """Return ``sequence`` fixed for GC content and homopolymer limits.
-
-    This convenience wrapper uses shorter parameter names to integrate
-    smoothly with the main encoding pipeline.
-    """
-
     return fix_sequence(
         sequence,
         target_gc_min=gc_min,
@@ -154,17 +167,19 @@ def encode(
     gc_max: float,
     max_homopolymer: int,
     rng: random.Random | None = None,
-) -> tuple[str, dict[str, float]]:
-    """Return a fixed sequence along with GC and homopolymer metrics."""
-    fixed = fix_sequence(
+    strategy: str = "stochastic",
+) -> tuple[str, dict[str, object]]:
+    fixed, repair_report = fix_sequence_with_report(
         sequence,
         target_gc_min=gc_min,
         target_gc_max=gc_max,
         max_homopolymer=max_homopolymer,
+        strategy=strategy,
         rng=rng,
     )
-    metrics = {
+    metrics: dict[str, object] = {
         "gc_content": calculate_gc_content(fixed),
         "max_homopolymer": get_max_homopolymer_length(fixed),
+        "repair_report": repair_report,
     }
     return fixed, metrics
