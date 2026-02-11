@@ -4,18 +4,28 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .utils import get_max_homopolymer_length
+from .constraints import (
+    ConstraintEngine,
+    ConstraintRuleSet,
+    GcRangeRule,
+    HomopolymerMaxRule,
+    LengthRule,
+    MotifAllowRule,
+    MotifDenyRule,
+)
 
 
 @dataclass
 class SynthesisConstraints:
-    """Simple synthesis constraints."""
+    """Synthesis constraints represented as a reusable rule set."""
 
     min_length: int = 25
     max_length: int = 300
     max_homopolymer: int = 3
     gc_min: float = 0.45
     gc_max: float = 0.55
+    deny_motifs: tuple[str, ...] = ()
+    allow_motifs: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.min_length <= 0:
@@ -31,20 +41,24 @@ class SynthesisConstraints:
         if self.gc_min > self.gc_max:
             raise ValueError("gc_min cannot be greater than gc_max")
 
+    def to_rule_set(self) -> ConstraintRuleSet:
+        rules = [
+            LengthRule(min_length=self.min_length, max_length=self.max_length),
+            HomopolymerMaxRule(max_homopolymer=self.max_homopolymer),
+            GcRangeRule(gc_min=self.gc_min, gc_max=self.gc_max),
+        ]
+        if self.deny_motifs:
+            rules.append(MotifDenyRule(motifs=tuple(self.deny_motifs)))
+        if self.allow_motifs:
+            rules.append(MotifAllowRule(motifs=tuple(self.allow_motifs)))
+        return ConstraintRuleSet(rules=rules)
+
+    def to_engine(self) -> ConstraintEngine:
+        return ConstraintEngine(self.to_rule_set())
+
 
 def validate_sequence(seq: str, constraints: SynthesisConstraints | None = None) -> bool:
-    """Return ``True`` if ``seq`` satisfies ``constraints``."""
-
     if constraints is None:
         constraints = SynthesisConstraints()
-
-    length = len(seq)
-    if length < constraints.min_length or length > constraints.max_length:
-        return False
-    if get_max_homopolymer_length(seq) > constraints.max_homopolymer:
-        return False
-    seq_upper = seq.upper()
-    gc_content = (seq_upper.count("G") + seq_upper.count("C")) / length if length else 0.0
-    if gc_content < constraints.gc_min or gc_content > constraints.gc_max:
-        return False
-    return True
+    report = constraints.to_engine().validate(seq)
+    return report.count == 0

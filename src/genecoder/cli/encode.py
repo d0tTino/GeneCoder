@@ -32,13 +32,14 @@ from genecoder.gc_constrained_encoder import (
 )
 from genecoder.gc_balancer import AdvancedGCBalancer
 from genecoder.hamming_codec import encode_data_with_hamming
-from genecoder.plugin_manager import CODEC_REGISTRY, FEC_REGISTRY
+from genecoder.plugin_manager import FEC_REGISTRY
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.formats import SequenceBatch
 from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
 from genecoder.constraint_fixer import encode as constraint_fix_encode
+from genecoder.synthesis import SynthesisConstraints
 from .common import run_tasks
 from typing import Callable, cast
 
@@ -389,29 +390,27 @@ def process_single_encode(
         auto_fix_metrics: dict[str, float] = {}
         if getattr(args, "auto_fix", True) and os.getenv("GENECODER_DISABLE_FIX") not in {"1", "true", "True"}:
             target_dna = raw_encoded_dna
-            if getattr(args, "fix_chisel", False) and "dnachisel_fixer" in CODEC_REGISTRY:
-                from genecoder.dnachisel_fixer import fix_sequence_dnachisel
-
-                target_dna = fix_sequence_dnachisel(
-                    target_dna,
-                    gc_min=args.gc_min,
-                    gc_max=args.gc_max,
-                    max_homopolymer=args.max_homopolymer,
-                )
-                fix_metrics = {
-                    "gc_content": calculate_gc_content(target_dna),
-                    "max_homopolymer": get_max_homopolymer_length(target_dna),
-                }
-            else:
+            strategy = "external_solver" if getattr(args, "fix_chisel", False) else "stochastic"
+            try:
                 target_dna, fix_metrics = constraint_fix_encode(
                     target_dna,
                     gc_min=args.gc_min,
                     gc_max=args.gc_max,
                     max_homopolymer=args.max_homopolymer,
+                    strategy=strategy,
+                )
+            except ImportError:
+                target_dna, fix_metrics = constraint_fix_encode(
+                    target_dna,
+                    gc_min=args.gc_min,
+                    gc_max=args.gc_max,
+                    max_homopolymer=args.max_homopolymer,
+                    strategy="stochastic",
                 )
             auto_fix_metrics = {
                 "fixed_gc": fix_metrics["gc_content"],
                 "fixed_max_homopolymer": fix_metrics["max_homopolymer"],
+                "constraint_repair_report": fix_metrics.get("repair_report", {}),
             }
 
             if args.fec == "triple_repeat":
@@ -500,6 +499,13 @@ def process_single_encode(
                     DEFAULT_MAX_HOMOPOLYMER,
                 )
 
+        constraint_engine = SynthesisConstraints(
+            min_length=1,
+            max_length=max(1, final_encoded_length_nucleotides),
+            max_homopolymer=args.max_homopolymer,
+            gc_min=args.gc_min,
+            gc_max=args.gc_max,
+        ).to_engine()
         metrics = {
             "original_size": original_size_bytes,
             "dna_length": final_encoded_length_nucleotides,
@@ -509,6 +515,7 @@ def process_single_encode(
             "final_max_homopolymer": final_hp,
             "gc_exceeds_default": gc_default_bad,
             "homopolymer_exceeds_default": hp_default_bad,
+            "constraint_report": constraint_engine.as_manifest_report(primary_sequence),
         }
         metrics.update(auto_fix_metrics)
 
@@ -839,4 +846,3 @@ def _handle_command(args: argparse.Namespace) -> None:
     if args.seed is not None:
         os.environ["GENECODER_SIM_SEED"] = str(args.seed)
     encode_files(args)
-
