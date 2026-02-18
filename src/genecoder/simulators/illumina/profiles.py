@@ -1,22 +1,19 @@
-"""Profile utilities for the Illumina simulator.
-
-This module defines :data:`ILLUMINA_PROFILES`, a set of named presets that
-represent common Illumina platforms and quality tiers.  Each profile combines
-substitution, insertion, and deletion rates with default read-length and
-coverage targets so callers can quickly swap between MiSeq-style high-fidelity
-reads and NovaSeq-scale high-throughput runs.
-"""
+"""Profile utilities for the Illumina simulator."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 import json
+import warnings
+
+from ...simulation_engine.profiles import VersionedProfile, resolve_profile as _resolve_versioned
 
 
 __all__ = [
     "IlluminaProfile",
     "ILLUMINA_PROFILES",
+    "ILLUMINA_PROFILE_PRESETS",
     "_parse_quality_profile",
     "_validate_profile",
     "_load_profile_file",
@@ -25,20 +22,15 @@ __all__ = [
 
 
 def _parse_quality_profile(value: str) -> Sequence[float]:
-    """Return a list of floats from ``value``.
-
-    ``value`` may be a comma-separated list or a path to JSON/YAML.
-    """
-
     path = Path(value)
     if path.is_file():
         text = path.read_text(encoding="utf-8")
         try:
             data = json.loads(text)
         except json.JSONDecodeError:
-            try:  # Optional at runtime
+            try:
                 import yaml
-            except Exception:  # pragma: no cover - optional dependency
+            except Exception:
                 from genecoder.plugin_manager import yaml as yaml_module
 
                 if yaml_module is None:
@@ -53,13 +45,6 @@ def _parse_quality_profile(value: str) -> Sequence[float]:
 
 @dataclass
 class IlluminaProfile:
-    """Parameters controlling Illumina simulation behaviour.
-
-    The bundled :data:`ILLUMINA_PROFILES` cover MiSeq V3, HiSeq and NovaSeq
-    quality tiers with adjusted coverage and read-length defaults to mirror each
-    platform's typical output.
-    """
-
     substitution_rate: float
     insertion_rate: float
     deletion_rate: float
@@ -80,31 +65,18 @@ class IlluminaProfile:
             raise ValueError("coverage must be positive")
 
 
-_REQUIRED_KEYS = {
-    "substitution_rate",
-    "insertion_rate",
-    "deletion_rate",
-    "read_length",
-    "coverage",
-}
+_REQUIRED_KEYS = {"substitution_rate", "insertion_rate", "deletion_rate", "read_length", "coverage"}
 
 
 def _validate_profile(data: Mapping[str, Any]) -> IlluminaProfile:
     unexpected = set(data.keys()) - _REQUIRED_KEYS
     if unexpected:
         keys = ", ".join(sorted(unexpected))
-        hint = (
-            " Use 'coverage' instead of 'coverage_depth'."
-            if "coverage_depth" in unexpected
-            else ""
-        )
+        hint = " Use 'coverage' instead of 'coverage_depth'." if "coverage_depth" in unexpected else ""
         raise ValueError(f"Illumina profile has unsupported key(s): {keys}.{hint}")
-
     missing = _REQUIRED_KEYS - data.keys()
     if missing:
-        keys = ", ".join(sorted(missing))
-        raise ValueError(f"Illumina profile missing required key(s): {keys}")
-
+        raise ValueError(f"Illumina profile missing required key(s): {', '.join(sorted(missing))}")
     return IlluminaProfile(
         substitution_rate=float(data["substitution_rate"]),
         insertion_rate=float(data["insertion_rate"]),
@@ -115,18 +87,13 @@ def _validate_profile(data: Mapping[str, Any]) -> IlluminaProfile:
 
 
 def _load_profile_file(path: str | Path) -> Mapping[str, Any]:
-    """Return profile parameters loaded from ``path``.
-
-    The file may be JSON or YAML and must map keys to values.
-    """
-
     text = Path(path).read_text(encoding="utf-8")
     try:
         data: Any = json.loads(text)
     except json.JSONDecodeError:
-        try:  # Optional at runtime
+        try:
             import yaml
-        except Exception:  # pragma: no cover - optional dependency
+        except Exception:
             from genecoder.plugin_manager import yaml as yaml_module
 
             if yaml_module is None:
@@ -138,78 +105,31 @@ def _load_profile_file(path: str | Path) -> Mapping[str, Any]:
     return data
 
 
-def _resolve_profile(
-    profile: str | None,
-) -> tuple[IlluminaProfile | None, Mapping[str, Any]]:
-    """Return resolved profile defaults and raw data for ``profile``."""
-
-    if profile is None:
-        return None, {}
-    path = Path(profile)
-    if path.is_file():
-        profile_data = _load_profile_file(path) or {}
-    else:
-        profile_data = ILLUMINA_PROFILES.get(profile.lower(), {})
-    profile_defaults = _validate_profile(profile_data) if profile_data else None
-    return profile_defaults, profile_data
-
-
-# Preset parameter profiles for :class:`IlluminaChannel`.
-ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {
-    "miseq": {
-        "substitution_rate": 0.001,
-        "insertion_rate": 0.0001,
-        "deletion_rate": 0.0001,
-        "read_length": 250,
-        "coverage": 1,
-    },
-    "hiseq": {
-        "substitution_rate": 0.0005,
-        "insertion_rate": 0.00005,
-        "deletion_rate": 0.00005,
-        "read_length": 150,
-        "coverage": 1,
-    },
-    "novaseq": {
-        "substitution_rate": 0.0003,
-        "insertion_rate": 0.00003,
-        "deletion_rate": 0.00003,
-        "read_length": 150,
-        "coverage": 1,
-    },
-    "nova": {
-        "substitution_rate": 0.0003,
-        "insertion_rate": 0.00003,
-        "deletion_rate": 0.00003,
-        "read_length": 150,
-        "coverage": 1,
-    },
-    "miseq_v3": {
-        "substitution_rate": 0.0009,
-        "insertion_rate": 0.00012,
-        "deletion_rate": 0.00012,
-        "read_length": 300,
-        "coverage": 1.5,
-    },
-    "hiseq_high_coverage": {
-        "substitution_rate": 0.00045,
-        "insertion_rate": 0.00005,
-        "deletion_rate": 0.00005,
-        "read_length": 150,
-        "coverage": 2.5,
-    },
-    "novaseq_s4": {
-        "substitution_rate": 0.00025,
-        "insertion_rate": 0.00002,
-        "deletion_rate": 0.00002,
-        "read_length": 150,
-        "coverage": 3.0,
-    },
-    "nextseq": {
-        "substitution_rate": 0.0006,
-        "insertion_rate": 0.00006,
-        "deletion_rate": 0.00006,
-        "read_length": 100,
-        "coverage": 1.2,
-    },
+_BASE_PRESETS: dict[str, dict[str, float | int]] = {
+    "miseq": {"substitution_rate": 0.001, "insertion_rate": 0.0001, "deletion_rate": 0.0001, "read_length": 250, "coverage": 1},
+    "hiseq": {"substitution_rate": 0.0005, "insertion_rate": 0.00005, "deletion_rate": 0.00005, "read_length": 150, "coverage": 1},
+    "novaseq": {"substitution_rate": 0.0003, "insertion_rate": 0.00003, "deletion_rate": 0.00003, "read_length": 150, "coverage": 1},
+    "nova": {"substitution_rate": 0.0003, "insertion_rate": 0.00003, "deletion_rate": 0.00003, "read_length": 150, "coverage": 1},
+    "miseq_v3": {"substitution_rate": 0.0009, "insertion_rate": 0.00012, "deletion_rate": 0.00012, "read_length": 300, "coverage": 1.5},
+    "hiseq_high_coverage": {"substitution_rate": 0.00045, "insertion_rate": 0.00005, "deletion_rate": 0.00005, "read_length": 150, "coverage": 2.5},
+    "novaseq_s4": {"substitution_rate": 0.00025, "insertion_rate": 0.00002, "deletion_rate": 0.00002, "read_length": 150, "coverage": 3.0},
+    "nextseq": {"substitution_rate": 0.0006, "insertion_rate": 0.00006, "deletion_rate": 0.00006, "read_length": 100, "coverage": 1.2},
 }
+
+ILLUMINA_PROFILE_PRESETS: dict[str, VersionedProfile] = {
+    name: VersionedProfile(schema_version=1, kind="illumina", name=name, parameters=params)
+    for name, params in _BASE_PRESETS.items()
+}
+# Deprecated raw dictionaries kept for compatibility.
+ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {k: dict(v) for k, v in _BASE_PRESETS.items()}
+
+
+def _resolve_profile(profile: str | Mapping[str, Any] | None) -> tuple[IlluminaProfile | None, Mapping[str, Any]]:
+    resolved = _resolve_versioned(profile, kind="illumina", presets=ILLUMINA_PROFILE_PRESETS)
+    if resolved is None:
+        return None, {}
+    if isinstance(profile, Mapping):
+        warnings.warn("Raw dict-based Illumina profile loading is deprecated.", DeprecationWarning, stacklevel=2)
+    raw = dict(resolved.parameters)
+    defaults = _validate_profile(raw)
+    return defaults, raw
