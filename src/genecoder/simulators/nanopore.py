@@ -6,6 +6,7 @@ from copy import deepcopy
 from types import ModuleType
 import random
 from pathlib import Path
+import warnings
 
 from ..random_utils import make_rng
 from ..d2sim_adapter import simulate_d2sim
@@ -28,6 +29,7 @@ from .nanopore_profiles import (
     validate_rate as _validate_rate,
 )
 from .batch_utils import load_coverage_distribution
+from ..simulation_engine.profiles import VersionedProfile, resolve_profile as _resolve_versioned_profile
 
 __all__ = [
     "NanoporeChannel",
@@ -229,6 +231,16 @@ except Exception:  # pragma: no cover - fallback when yaml missing
     }
     DNARSIM_RATE_TABLES = {}
 
+NANOPORE_PROFILE_PRESETS: dict[str, VersionedProfile] = {
+    key: VersionedProfile(
+        schema_version=1,
+        kind="nanopore",
+        name=key,
+        parameters=deepcopy(params),
+    )
+    for key, params in NANOPORE_PROFILES.items()
+}
+
 
 class NanoporeChannel(BaseChannel):
     """Channel that delegates to :mod:`d2sim` if installed."""
@@ -253,7 +265,12 @@ class NanoporeChannel(BaseChannel):
         profile_path: str | None = None,
     ) -> None:
         if profile is not None:
-            params = NANOPORE_PROFILES.get(profile.lower())
+            resolved = _resolve_versioned_profile(
+                profile,
+                kind="nanopore",
+                presets=NANOPORE_PROFILE_PRESETS,
+            )
+            params = dict(resolved.parameters) if resolved is not None else None
             if params is not None:
                 error_rate = float(cast(float | int, params.get("error_rate", error_rate)))
                 substitution_rate = float(
@@ -303,6 +320,14 @@ class NanoporeChannel(BaseChannel):
                 data = _load_yaml_data(fh.read(), yaml) or {}
             if not isinstance(data, dict):
                 raise ValueError("Profile file must map keys to values")
+            if "parameters" not in data:
+                warnings.warn(
+                    "Raw dict-based nanopore profile loading is deprecated; use schema_version/name/parameters.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            else:
+                data = dict(data.get("parameters", {}))
             error_rate = float(data.get("error_rate", error_rate))
             substitution_rate = float(data.get("substitution_rate", substitution_rate))
             insertion_rate = float(data.get("insertion_rate", insertion_rate))
