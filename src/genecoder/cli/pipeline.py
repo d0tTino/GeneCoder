@@ -13,7 +13,7 @@ from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES
 
 from genecoder.channel_config import ChannelConfig
-from genecoder.core import encode, decode, metrics as gather_metrics
+from genecoder.core import encode, decode, inspect_coding_plan, metrics as gather_metrics
 from genecoder.formats import SequenceBatch
 from genecoder.html_report import generate_html_report
 from genecoder.manifest import generate_manifest
@@ -602,6 +602,11 @@ def register_subcommand(
         action="store_true",
         help="Launch the dashboard for the metrics file after the run",
     )
+    parser.add_argument(
+        "--explain-coding-stack",
+        action="store_true",
+        help="Emit planner diagnostics describing selected/rejected coding stack layers.",
+    )
 
     parser.set_defaults(func=_handle_command)
 
@@ -662,6 +667,16 @@ def _handle_command(args: argparse.Namespace) -> None:
 
     if channel is None:
         channel = "none"
+
+    if args.explain_coding_stack:
+        explanation = inspect_coding_plan(
+            {
+                "codec": codec,
+                "fec": fec,
+                "coding": {"channel_errors": ["substitution", "insertion", "deletion"]},
+            }
+        )
+        logger.info("Coding planner: %s", json.dumps(explanation, indent=2, sort_keys=True))
 
     def _execute() -> Dict[str, Any]:
         return _run_with_params(

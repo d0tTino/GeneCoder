@@ -3,13 +3,19 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from typing import Any, Callable, cast
 
+from genecoder.coding.stack import (
+    CodecCapabilities,
+    FECCapabilities,
+    PluginLayerDescriptor,
+    ValidationMetadata,
+)
 from genecoder.plugin_api import Codec, FEC, Simulator, Visualizer
 from genecoder.simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
 
 from .policy import coerce_plugin
 
-CODEC_REGISTRY: dict[str, dict[str, Callable[..., Any]]] = {}
-FEC_REGISTRY: dict[str, dict[str, Callable[..., Any]]] = {}
+CODEC_REGISTRY: dict[str, PluginLayerDescriptor | dict[str, Callable[..., Any]]] = {}
+FEC_REGISTRY: dict[str, PluginLayerDescriptor | dict[str, Callable[..., Any]]] = {}
 VISUALIZER_REGISTRY: dict[str, Callable[..., Any]] = {}
 
 
@@ -176,12 +182,31 @@ def register_lazy_placeholder(kind: str, name: str) -> None:
 
 def register_codec(name: str, codec: Codec | type[Codec]) -> None:
     inst = cast(Any, coerce_plugin(codec, Codec, ("encode", "decode"), "codec"))
-    CODEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
+    CODEC_REGISTRY[name] = PluginLayerDescriptor(
+        name=name,
+        kind="codec",
+        encode_fn=inst.encode,
+        decode_fn=inst.decode,
+        capabilities=CodecCapabilities(),
+        validation=ValidationMetadata(
+            encode_input="bytes",
+            encode_output="sequence",
+            decode_input="sequence|batch",
+            decode_output="bytes",
+        ),
+    )
 
 
 def register_fec(name: str, fec: FEC | type[FEC]) -> None:
     inst = cast(Any, coerce_plugin(fec, FEC, ("encode", "decode"), "FEC"))
-    FEC_REGISTRY[name] = {"encode": inst.encode, "decode": inst.decode}
+    FEC_REGISTRY[name] = PluginLayerDescriptor(
+        name=name,
+        kind="fec",
+        encode_fn=inst.encode,
+        decode_fn=inst.decode,
+        capabilities=FECCapabilities(),
+        validation=ValidationMetadata(),
+    )
 
 
 def register_simulator(name: str, channel: Simulator | type[Simulator]) -> None:
