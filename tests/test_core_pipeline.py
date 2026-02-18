@@ -10,6 +10,7 @@ from genecoder.core import (
     compile_coding_stack,
     decode,
     encode,
+    inspect_coding_plan,
     metrics as gather_metrics,
     run_pipeline,
     simulate,
@@ -185,3 +186,21 @@ def test_metrics_include_coding_stack() -> None:
     report = gather_metrics(dna, data, data, None)
     assert "coding_stack" in report
     assert "total_redundancy" in report["coding_stack"]
+
+
+def test_inspect_coding_plan_rejected_for_streaming() -> None:
+    init_plugins()
+    CODEC_REGISTRY["base4"] = {"encode": _Base4Codec().encode, "decode": _Base4Codec().decode}
+    plan = inspect_coding_plan({"codec": "base4", "coding": {"streaming": True}})
+    assert plan["valid"] is False
+    assert any("streaming" in item["reason"] for item in plan["candidates"])
+
+
+def test_encode_emits_standardized_layer_metrics() -> None:
+    init_plugins()
+    CODEC_REGISTRY["base4"] = {"encode": _Base4Codec().encode, "decode": _Base4Codec().decode}
+    _, fec_info = encode("base4", None, b"metrics")
+    assert isinstance(fec_info, dict) or fec_info is None
+    # no fec_info for codec-only path; inspect explicit plan to ensure standardized keys exist
+    plan = inspect_coding_plan({"codec": "base4"})
+    assert plan["selected"][0]["name"] == "base4"

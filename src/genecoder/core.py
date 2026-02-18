@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Sequence, Tuple
@@ -17,9 +18,11 @@ from .simulators import SIMULATOR_REGISTRY
 from .channel_engine import ChannelPipeline
 from .coding.stack import (
     CodingContext,
+    build_layer_metric,
     compile_legacy_stack,
     compile_stack_from_config,
     normalize_stack_metrics,
+    plan_stack_from_config,
 )
 from .formats import SequenceBatch, SequenceOligo
 from .simulators.batch_utils import (
@@ -31,7 +34,7 @@ from .simulators.batch_utils import (
 if TYPE_CHECKING:
     from .synthesis import SynthesisConstraints
 
-__all__ = ["encode", "simulate", "decode", "metrics", "run_pipeline", "compile_coding_stack"]
+__all__ = ["encode", "simulate", "decode", "metrics", "run_pipeline", "compile_coding_stack", "inspect_coding_plan"]
 
 
 
@@ -180,6 +183,7 @@ def encode(
             if isinstance(current, (bytes, bytearray, str))
             else len(current.primary_sequence())
         )
+        started_at = time.perf_counter()
         layer_out = layer.encode_block(current, context)
         current = layer_out.payload
         info_value = layer_out.metadata.get("fec_info")
@@ -191,12 +195,14 @@ def encode(
             else len(current.primary_sequence())
         )
         layer_metrics.append(
-            {
-                "name": layer.name,
-                "type": "codec" if layer.name == codec else "fec",
-                "redundancy": float(after_size) / max(1, float(before_size)),
-                "corrections": 0,
-            }
+            build_layer_metric(
+                layer_name=layer.name,
+                layer_type="codec" if layer.name == codec else "fec",
+                stage="encode",
+                before_size=before_size,
+                after_size=after_size,
+                started_at=started_at,
+            )
         )
 
     encoded = current
@@ -209,11 +215,14 @@ def encode(
             "Codec implementations must return a string or SequenceBatch"
         )
 
+    normalized_stack = normalize_stack_metrics(layer_metrics, batch.primary_sequence())
+    batch.metadata.setdefault("coding_stack", normalized_stack)
+
     fec_info: Mapping[str, Any] | None = None
     if layer_info:
         info_dict: dict[str, Any] = {
             "layer_info": layer_info,
-            "coding_stack": normalize_stack_metrics(layer_metrics, batch.primary_sequence()),
+            "coding_stack": normalized_stack,
         }
         if fec and fec in layer_info:
             info_dict.update(dict(layer_info[fec]))
@@ -401,11 +410,13 @@ def decode(
             layer_input: bytes | str | SequenceBatch = current
             if isinstance(layer_input, bytes):
                 layer_input = layer_input.decode("utf-8")
+            started_at = time.perf_counter()
             layer_out = layer.decode_block(layer_input, context)
             codec_decoded = True
         else:
             if isinstance(current, str):
                 current = current.encode("utf-8")
+            started_at = time.perf_counter()
             layer_out = layer.decode_block(current, context)
         current = layer_out.payload
         after_size = (
@@ -414,12 +425,15 @@ def decode(
             else len(current.primary_sequence())
         )
         decode_metrics.append(
-            {
-                "name": layer.name,
-                "type": "codec" if layer.name == codec else "fec",
-                "redundancy": float(before_size) / max(1, float(after_size)),
-                "corrections": int(layer_out.metadata.get("corrections", 0) or 0),
-            }
+            build_layer_metric(
+                layer_name=layer.name,
+                layer_type="codec" if layer.name == codec else "fec",
+                stage="decode",
+                before_size=before_size,
+                after_size=after_size,
+                started_at=started_at,
+                corrections=int(layer_out.metadata.get("corrections", 0) or 0),
+            )
         )
 
     if not isinstance(current, (bytes, bytearray)):
@@ -673,6 +687,15 @@ def metrics(
         )
     return result
 
+
+
+
+def inspect_coding_plan(config: Mapping[str, Any]) -> dict[str, Any]:
+    """Return planner diagnostics for why stack candidates were selected/rejected."""
+
+    init_plugins()
+    plan = plan_stack_from_config(config)
+    return plan.summary()
 
 
 def compile_coding_stack(config: Mapping[str, Any]) -> list[object]:
