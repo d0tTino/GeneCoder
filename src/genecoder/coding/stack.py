@@ -5,6 +5,8 @@ import time
 import warnings
 from typing import Any, Callable, Literal, Mapping, Protocol, Sequence
 
+from genecoder.constraints.policy import ConstraintPolicy
+
 from genecoder.formats import SequenceBatch
 
 ChannelErrorType = Literal["substitution", "insertion", "deletion", "dropout", "erasure"]
@@ -23,6 +25,7 @@ class CodingContext:
 
     block_id: str = "block-0"
     metadata: dict[str, Any] = field(default_factory=dict)
+    constraint_policy: ConstraintPolicy | None = None
 
 
 @dataclass(slots=True)
@@ -301,7 +304,7 @@ def _check_compatibility(
     return candidates
 
 
-def plan_stack_from_config(config: Mapping[str, Any]) -> CodingPlan:
+def plan_stack_from_config(config: Mapping[str, Any], *, constraint_policy: ConstraintPolicy | None = None) -> CodingPlan:
     coding_section = config.get("coding") if isinstance(config.get("coding"), Mapping) else {}
     codec = config.get("codec")
     fec = config.get("fec")
@@ -346,8 +349,8 @@ def plan_stack_from_config(config: Mapping[str, Any]) -> CodingPlan:
     )
 
 
-def compile_legacy_stack(codec: str, fec: str | None) -> list[CodingLayer]:
-    plan = plan_stack_from_config({"codec": codec, "fec": fec})
+def compile_legacy_stack(codec: str, fec: str | None, *, constraint_policy: ConstraintPolicy | None = None) -> list[CodingLayer]:
+    plan = plan_stack_from_config({"codec": codec, "fec": fec}, constraint_policy=constraint_policy)
     if not plan.valid:
         reason = "; ".join(c.reason for c in plan.candidates if not c.accepted)
         raise ValueError(f"Unable to assemble coding stack: {reason}")
@@ -364,7 +367,7 @@ def compile_legacy_stack(codec: str, fec: str | None) -> list[CodingLayer]:
     return layers
 
 
-def compile_stack_from_config(config: Mapping[str, Any]) -> list[CodingLayer]:
+def compile_stack_from_config(config: Mapping[str, Any], *, constraint_policy: ConstraintPolicy | None = None) -> list[CodingLayer]:
     coding_section = config.get("coding")
     if isinstance(coding_section, Mapping) and isinstance(coding_section.get("layers"), Sequence):
         layer_specs = coding_section["layers"]
@@ -393,9 +396,9 @@ def compile_stack_from_config(config: Mapping[str, Any]) -> list[CodingLayer]:
         normalized["codec"] = codec_name
         if fec_name:
             normalized["fec"] = fec_name
-        plan = plan_stack_from_config(normalized)
+        plan = plan_stack_from_config(normalized, constraint_policy=constraint_policy)
     else:
-        plan = plan_stack_from_config(config)
+        plan = plan_stack_from_config(config, constraint_policy=constraint_policy)
 
     if not plan.valid:
         reason = "; ".join(c.reason for c in plan.candidates if not c.accepted)

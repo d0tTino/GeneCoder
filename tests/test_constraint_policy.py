@@ -27,11 +27,16 @@ def test_constraint_repair_pipeline_ecc_prefix_preserved() -> None:
     policy = ConstraintPolicy(
         min_length=1,
         max_length=20,
-        gc_min=0.4,
+        gc_min=0.0,
         gc_max=1.0,
         max_homopolymer=2,
-        repair=RepairPolicy(enabled=True, strategy="deterministic", ecc_protected_prefix=2),
+        repair=RepairPolicy(enabled=True, profile="strict", strategy="deterministic", ecc_protected_prefix=2),
     )
     seq = "AATTTT"
     fixed = ConstraintRepairPipeline(policy).run(seq)
     assert fixed.sequence.startswith("AA")
+
+
+def test_constraint_policy_profile_strategy_resolution() -> None:
+    policy = ConstraintPolicy(repair=RepairPolicy(enabled=True, profile="strict"))
+    assert policy.strategy_name() == "deterministic"

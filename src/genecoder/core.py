@@ -25,6 +25,7 @@ from .coding.stack import (
     plan_stack_from_config,
 )
 from .formats import SequenceBatch, SequenceOligo
+from .constraints import ConstraintPolicy, ConstraintRepairPipeline, load_constraint_policy
 from .simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
     RESULT_DROPOUT_FLAG_KEY,
@@ -167,13 +168,45 @@ def _wrap_single_sequence(
     return batch
 
 
+def _resolve_constraint_policy(raw: Mapping[str, Any] | None) -> ConstraintPolicy | None:
+    if not raw:
+        return None
+    policy_raw = raw.get("constraint_policy")
+    if policy_raw is None:
+        return None
+    if isinstance(policy_raw, ConstraintPolicy):
+        return policy_raw
+    if isinstance(policy_raw, Mapping):
+        return load_constraint_policy(policy_raw)
+    return None
+
+
+def _constraint_outcome_payload(result: object) -> dict[str, Any]:
+    from genecoder.constraints.repair_pipeline import RepairPipelineResult
+
+    if not isinstance(result, RepairPipelineResult):
+        return {}
+    return {
+        "stage": result.stage,
+        "violations": {
+            "before": result.report_before.count,
+            "after": result.report_after.count,
+            "pressure_before": result.report_before.pressure,
+            "pressure_after": result.report_after.pressure,
+        },
+        "repairs_applied": len(result.repair.changes) if result.repair is not None else 0,
+        "repair_strategy": result.repair.strategy if result.repair is not None else None,
+        "residual_risk": result.residual_risk,
+    }
+
+
 def encode(
-    codec: str, fec: str | None, data: bytes
+    codec: str, fec: str | None, data: bytes, *, constraint_policy: ConstraintPolicy | None = None
 ) -> Tuple[SequenceBatch, Mapping[str, Any] | None]:
     """Return encoded :class:`SequenceBatch` for ``data`` and optional FEC info."""
 
-    stack = compile_legacy_stack(codec, fec)
-    context = CodingContext(block_id="encode-0")
+    stack = compile_legacy_stack(codec, fec, constraint_policy=constraint_policy)
+    context = CodingContext(block_id="encode-0", constraint_policy=constraint_policy)
     current: bytes | str | SequenceBatch = data
     layer_info: dict[str, Mapping[str, Any]] = {}
     layer_metrics: list[dict[str, Any]] = []
@@ -215,8 +248,19 @@ def encode(
             "Codec implementations must return a string or SequenceBatch"
         )
 
+    constraint_outcomes: list[dict[str, Any]] = []
+    if constraint_policy is not None:
+        pipeline = ConstraintRepairPipeline(constraint_policy)
+        gate_result = pipeline.run(batch.primary_sequence(), stage="encode")
+        constraint_outcomes.append(_constraint_outcome_payload(gate_result))
+        if gate_result.sequence != batch.primary_sequence() and batch.oligos:
+            batch.oligos[0].sequence = gate_result.sequence
+
     normalized_stack = normalize_stack_metrics(layer_metrics, batch.primary_sequence())
     batch.metadata.setdefault("coding_stack", normalized_stack)
+    if constraint_policy is not None:
+        batch.metadata["constraint_policy"] = constraint_policy.to_dict()
+        batch.metadata["constraint_outcomes"] = constraint_outcomes
 
     fec_info: Mapping[str, Any] | None = None
     if layer_info:
@@ -226,6 +270,9 @@ def encode(
         }
         if fec and fec in layer_info:
             info_dict.update(dict(layer_info[fec]))
+        if constraint_policy is not None:
+            info_dict["constraint_policy"] = constraint_policy.to_dict()
+            info_dict["constraint_outcomes"] = list(constraint_outcomes)
         info_dict.setdefault("batch_id", batch.batch_id)
         info_dict.setdefault("batch_metadata", dict(batch.metadata))
         fec_info = info_dict
@@ -322,6 +369,7 @@ def decode(
     *,
     filter_mutated: bool = True,
     survivor_batch: SequenceBatch | None = None,
+    constraint_policy: ConstraintPolicy | None = None,
 ) -> bytes:
     """Return decoded bytes from ``dna`` applying optional FEC.
 
@@ -331,7 +379,8 @@ def decode(
             zero-coverage oligos. Set to ``False`` to retain mutated oligos.
     """
 
-    stack = compile_legacy_stack(codec, fec)
+    policy = constraint_policy or _resolve_constraint_policy(fec_info)
+    stack = compile_legacy_stack(codec, fec, constraint_policy=policy)
 
     batch = dna if isinstance(dna, SequenceBatch) else _wrap_single_sequence(str(dna))
     if isinstance(dna, SequenceBatch):
@@ -390,12 +439,19 @@ def decode(
             "No survivor oligos available after filtering; "
             "adjust channel conditions or disable --filter-mutated."
         )
+    constraint_outcomes: list[dict[str, Any]] = []
+    if policy is not None:
+        pipeline = ConstraintRepairPipeline(policy)
+        gate = pipeline.run(batch.primary_sequence(), stage="pre_decode")
+        constraint_outcomes.append(_constraint_outcome_payload(gate))
+        if gate.sequence != batch.primary_sequence() and batch.oligos:
+            batch.oligos[0].sequence = gate.sequence
     context_meta: dict[str, Any] = {"batch_id": batch.batch_id, **batch.metadata}
     if fec_info:
         context_meta.update(dict(fec_info))
     if survivor_batch is not None:
         context_meta["survivor_batch"] = survivor_batch
-    context = CodingContext(block_id="decode-0", metadata=context_meta)
+    context = CodingContext(block_id="decode-0", metadata=context_meta, constraint_policy=policy)
 
     current: bytes | str | SequenceBatch = batch
     decode_metrics: list[dict[str, Any]] = []
@@ -440,6 +496,8 @@ def decode(
         raise TypeError("Decoded payload must be bytes")
     if isinstance(fec_info, dict):
         fec_info["coding_stack"] = normalize_stack_metrics(decode_metrics)
+        if constraint_outcomes:
+            fec_info["constraint_outcomes"] = constraint_outcomes
     return bytes(current)
 
 
@@ -458,6 +516,7 @@ def metrics(
     dropout_flags: Sequence[bool] | None = None,
     ecc_outcomes: Mapping[str, Sequence[bool | float]] | None = None,
     stack_metrics: Mapping[str, Any] | None = None,
+    constraint_outcomes: Sequence[Mapping[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     """Return quality metrics for ``dna`` and decode results."""
 
@@ -649,6 +708,7 @@ def metrics(
         "decode_success_rate": success,
         "coverage": coverage,
         "constraint_violations": constraint_violations,
+        "constraint_outcomes": [dict(item) for item in (constraint_outcomes or ())],
         "error_bases": opportunities,
         "substitution_rate": 0.0,
         "insertion_rate": 0.0,
@@ -743,5 +803,6 @@ def run_pipeline(
         dels,
         coverage,
         stack_metrics=(dict(fec_info).get("coding_stack") if isinstance(fec_info, Mapping) else None),
+        constraint_outcomes=(dict(fec_info).get("constraint_outcomes") if isinstance(fec_info, Mapping) else None),
     )
     return decoded, metrics_dict

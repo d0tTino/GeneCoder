@@ -32,7 +32,7 @@ from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.formats import SequenceBatch
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
 from genecoder.utils import get_max_homopolymer_length
-from genecoder.constraint_fixer import encode as constraint_fix_encode
+from genecoder.constraints import ConstraintRepairPipeline, ConstraintPolicy, RepairPolicy
 from genecoder.synthesis import SynthesisConstraints
 from .common import run_tasks
 from typing import Callable
@@ -247,27 +247,37 @@ def process_single_encode(
         auto_fix_metrics: dict[str, float] = {}
         if getattr(args, "auto_fix", True) and os.getenv("GENECODER_DISABLE_FIX") not in {"1", "true", "True"}:
             target_dna = raw_encoded_dna
-            strategy = "external_solver" if getattr(args, "fix_chisel", False) else "stochastic"
-            try:
-                target_dna, fix_metrics = constraint_fix_encode(
-                    target_dna,
-                    gc_min=args.gc_min,
-                    gc_max=args.gc_max,
-                    max_homopolymer=args.max_homopolymer,
-                    strategy=strategy,
-                )
-            except ImportError:
-                target_dna, fix_metrics = constraint_fix_encode(
-                    target_dna,
-                    gc_min=args.gc_min,
-                    gc_max=args.gc_max,
-                    max_homopolymer=args.max_homopolymer,
-                    strategy="stochastic",
-                )
+            repair_profile = "solver" if getattr(args, "fix_chisel", False) else "balanced"
+            policy = ConstraintPolicy(
+                min_length=1,
+                max_length=max(1, len(target_dna)),
+                gc_min=args.gc_min,
+                gc_max=args.gc_max,
+                max_homopolymer=args.max_homopolymer,
+                assumption_mode="repair",
+                repair=RepairPolicy(enabled=True, profile=repair_profile),
+            )
+            repaired = ConstraintRepairPipeline(policy).run(target_dna, stage="encode")
+            target_dna = repaired.sequence
             auto_fix_metrics = {
-                "fixed_gc": fix_metrics["gc_content"],
-                "fixed_max_homopolymer": fix_metrics["max_homopolymer"],
-                "constraint_repair_report": fix_metrics.get("repair_report", {}),
+                "fixed_gc": calculate_gc_content(target_dna),
+                "fixed_max_homopolymer": get_max_homopolymer_length(target_dna),
+                "constraint_repair_report": {
+                    "strategy": repaired.repair.strategy if repaired.repair else None,
+                    "changes": len(repaired.repair.changes) if repaired.repair else 0,
+                    "residual_risk": repaired.residual_risk,
+                },
+                "constraint_outcomes": [
+                    {
+                        "stage": repaired.stage,
+                        "violations": {
+                            "before": repaired.report_before.count,
+                            "after": repaired.report_after.count,
+                        },
+                        "repairs_applied": len(repaired.repair.changes) if repaired.repair else 0,
+                        "residual_risk": repaired.residual_risk,
+                    }
+                ],
             }
 
             if args.fec == "triple_repeat":
