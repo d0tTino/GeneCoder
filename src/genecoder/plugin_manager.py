@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import ModuleType
-from typing import Any, Callable
+from typing import Any
 
 import base64
 import importlib
@@ -97,20 +97,6 @@ def install_registry_plugins(
 
 
 
-def _load_and_register(items: list[Any], registrar: Callable[..., object], kind: str, failures: list[str] | None = None) -> None:
-    for item in items:
-        name = getattr(item, "value", getattr(item, "__name__", str(item)))
-        try:
-            module = item if isinstance(item, ModuleType) else (item.load() if hasattr(item, "load") else importlib.import_module(name))
-        except Exception:
-            if failures is not None:
-                failures.append(f"{kind}:{name}")
-            continue
-        register = getattr(module, "register", None)
-        if callable(register):
-            register(registrar)
-
-
 def _collect_installed_plugins() -> tuple[dict[str, dict[str, Any]], list[str]]:
     discovery_mod.entry_points = entry_points
     catalog, failures, _ = collect_installed_plugins(PLUGIN_CATALOG)
@@ -154,6 +140,13 @@ def load_local_plugins() -> list[str]:
             except Exception:
                 failures.append(f"local:{module_name}")
                 continue
+            metadata = getattr(module, "PLUGIN_METADATA", None)
+            if metadata is not None:
+                try:
+                    _validate_plugin_metadata(metadata)
+                except Exception:
+                    failures.append(f"local:{module_name}")
+                    continue
             register = getattr(module, "register", None)
             if callable(register):
                 register(register_codec)
@@ -166,6 +159,14 @@ def load_local_plugins() -> list[str]:
             register_v = getattr(module, "register_visualizer", None)
             if callable(register_v):
                 register_v(register_visualizer)
+
+    metadata = getattr(plugins, "PLUGIN_METADATA", None)
+    if metadata is not None:
+        try:
+            _validate_plugin_metadata(metadata)
+        except Exception:
+            failures.append("local:plugins")
+            return failures
 
     register = getattr(plugins, "register", None)
     if callable(register):

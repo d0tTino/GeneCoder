@@ -9,9 +9,15 @@ from typing import Any, Callable, Iterable, Mapping
 
 from genecoder import plugin_security
 
+from .descriptors import (
+    PLUGIN_DESCRIPTOR_VERSION,
+    PluginLifecycleState,
+    RuntimePluginDescriptor,
+)
+
 logger = logging.getLogger(__name__)
 
-VALID_INTERFACES = {"codec", "FEC", "simulator", "visualizer"}
+VALID_INTERFACES = {"codec", "FEC", "fec", "simulator", "visualizer"}
 ALLOWED_LICENSES = {
     "Apache-2.0",
     "BSD-2-Clause",
@@ -80,6 +86,39 @@ def validate_plugin_metadata(meta: object) -> dict[str, Any]:
         "interfaces": list(interfaces),
         "license": normalized,
     }
+
+
+def validate_runtime_descriptor(descriptor: RuntimePluginDescriptor) -> RuntimePluginDescriptor:
+    if descriptor.api_version != PLUGIN_DESCRIPTOR_VERSION:
+        raise ValueError(
+            f"Unsupported plugin registration API version {descriptor.api_version!r}; "
+            f"expected {PLUGIN_DESCRIPTOR_VERSION!r}"
+        )
+    if descriptor.kind not in VALID_INTERFACES:
+        raise ValueError(f"Unsupported plugin kind {descriptor.kind!r}")
+    if not descriptor.name or not descriptor.name.strip():
+        raise ValueError("Plugin descriptor name must be a non-empty string")
+    return descriptor
+
+
+ALLOWED_LIFECYCLE_TRANSITIONS: dict[PluginLifecycleState, tuple[PluginLifecycleState, ...]] = {
+    PluginLifecycleState.DISCOVERED: (PluginLifecycleState.VALIDATED, PluginLifecycleState.DISABLED, PluginLifecycleState.FAILED),
+    PluginLifecycleState.VALIDATED: (PluginLifecycleState.LOADED, PluginLifecycleState.DISABLED, PluginLifecycleState.FAILED),
+    PluginLifecycleState.LOADED: (PluginLifecycleState.VALIDATED, PluginLifecycleState.DISABLED, PluginLifecycleState.ROLLED_BACK, PluginLifecycleState.FAILED),
+    PluginLifecycleState.DISABLED: (PluginLifecycleState.VALIDATED, PluginLifecycleState.ROLLED_BACK, PluginLifecycleState.FAILED),
+    PluginLifecycleState.ROLLED_BACK: (PluginLifecycleState.VALIDATED, PluginLifecycleState.DISABLED, PluginLifecycleState.FAILED),
+    PluginLifecycleState.FAILED: (PluginLifecycleState.DISCOVERED,),
+}
+
+
+def enforce_lifecycle_transition(
+    current: PluginLifecycleState,
+    nxt: PluginLifecycleState,
+) -> PluginLifecycleState:
+    allowed = ALLOWED_LIFECYCLE_TRANSITIONS.get(current, ())
+    if nxt not in allowed:
+        raise ValueError(f"Invalid plugin lifecycle transition: {current.value} -> {nxt.value}")
+    return nxt
 
 
 def check_signature(impl: Callable[..., Any], base: Callable[..., Any], *, kind: str, method: str) -> None:
