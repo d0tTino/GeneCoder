@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping
 import json
-import warnings
 from pathlib import Path
+from typing import Any, Mapping
+import warnings
 
 
 @dataclass(frozen=True)
@@ -45,24 +45,39 @@ def _load_mapping(path: str | Path) -> Mapping[str, Any]:
     return data
 
 
+def normalize_profile(
+    value: str | Mapping[str, Any] | None,
+    *,
+    kind: str,
+    presets: Mapping[str, VersionedProfile],
+    allow_legacy_dict: bool = False,
+) -> VersionedProfile | None:
+    if value is None:
+        return None
+    if isinstance(value, Mapping):
+        if "parameters" not in value:
+            if not allow_legacy_dict:
+                raise ValueError(
+                    f"{kind} profile mappings must be versioned with schema_version/name/parameters"
+                )
+            warnings.warn(
+                f"Raw dict-based {kind} profiles are deprecated; use a versioned profile object.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            value = {"schema_version": 1, "kind": kind, "name": "custom", "parameters": dict(value)}
+        return validate_profile_schema(value, kind=kind)
+
+    path = Path(value)
+    if path.is_file():
+        return validate_profile_schema(_load_mapping(path), kind=kind)
+    return presets.get(str(value).lower())
+
+
 def resolve_profile(
     value: str | Mapping[str, Any] | None,
     *,
     kind: str,
     presets: Mapping[str, VersionedProfile],
 ) -> VersionedProfile | None:
-    if value is None:
-        return None
-    if isinstance(value, Mapping):
-        warnings.warn(
-            f"Raw dict-based {kind} profiles are deprecated; use a versioned profile object.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if "parameters" not in value:
-            value = {"schema_version": 1, "kind": kind, "name": "custom", "parameters": dict(value)}
-        return validate_profile_schema(value, kind=kind)
-    path = Path(value)
-    if path.is_file():
-        return validate_profile_schema(_load_mapping(path), kind=kind)
-    return presets.get(str(value).lower())
+    return normalize_profile(value, kind=kind, presets=presets, allow_legacy_dict=True)

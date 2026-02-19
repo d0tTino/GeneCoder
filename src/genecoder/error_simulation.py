@@ -9,7 +9,7 @@ from .random_utils import make_rng
 from .plugin_api import Simulator
 from .simulators import register_simulator as _register_simulator
 from .formats import SequenceBatch
-from .simulators.batch_utils import apply_legacy_simulator
+from .channel_engine import ChannelPipeline as RuntimeChannelPipeline
 
 __all__ = [
     "simulate_errors",
@@ -73,6 +73,40 @@ INDEL_PROFILES: dict[str, dict[str, float]] = {
 DEFAULT_ADAPTER_PROFILE = "illumina_adapter"
 
 
+def _simulate_via_channel_graph(
+    sequence: str,
+    *,
+    substitution_prob: float,
+    insertion_prob: float,
+    deletion_prob: float,
+    rng: random.Random | None = None,
+) -> str:
+    runtime_rng = rng or make_rng()
+
+    class _InlineErrorSimulator:
+        supports_batches = False
+
+        def simulate(self, seq: str) -> str:
+            mutated: list[str] = []
+            for nt in seq:
+                if nt.upper() not in NUCLEOTIDES:
+                    mutated.append(nt)
+                    continue
+                if runtime_rng.random() < deletion_prob:
+                    continue
+                if runtime_rng.random() < substitution_prob:
+                    nt = _random_substitution(nt, runtime_rng)
+                mutated.append(nt)
+                if runtime_rng.random() < insertion_prob:
+                    mutated.append(runtime_rng.choice(NUCLEOTIDES))
+            return "".join(mutated)
+
+    runtime = RuntimeChannelPipeline.from_simulators([("indel", _InlineErrorSimulator())])
+    batch = SequenceBatch.build([("error-sim", sequence)], batch_id="error-sim")
+    simulated, _ = runtime.run(batch)
+    return simulated.oligos[0].sequence if simulated.oligos else ""
+
+
 def _random_substitution(nucleotide: str, rng: random.Random) -> str:
     """Return a random nucleotide different from the input."""
     choices = [n for n in NUCLEOTIDES if n != nucleotide]
@@ -127,29 +161,13 @@ def simulate_errors(
     if substitution_prob + insertion_prob + deletion_prob > 1.0:
         raise ValueError("sum of error probabilities must not exceed 1")
 
-    if rng is None:
-        rng = make_rng()
-
-    mutated: list[str] = []
-    for nt in sequence:
-        if nt.upper() not in NUCLEOTIDES:
-            mutated.append(nt)
-            continue
-        # deletion
-        if rng.random() < deletion_prob:
-            continue
-
-        # substitution
-        if rng.random() < substitution_prob:
-            nt = _random_substitution(nt, rng)
-
-        mutated.append(nt)
-
-        # insertion after the (possibly substituted) nucleotide
-        if rng.random() < insertion_prob:
-            mutated.append(rng.choice(NUCLEOTIDES))
-
-    return "".join(mutated)
+    return _simulate_via_channel_graph(
+        sequence,
+        substitution_prob=substitution_prob,
+        insertion_prob=insertion_prob,
+        deletion_prob=deletion_prob,
+        rng=rng,
+    )
 
 
 # Backwards compatibility alias
@@ -262,8 +280,11 @@ class Channel(Simulator):
 
     def _simulate_string(self, sequence: str) -> str:
         if self._delegate is not None:
-            return self._delegate.simulate(sequence)
-        return simulate_errors(
+            runtime = RuntimeChannelPipeline.from_simulators([("sequencing", self._delegate)])
+            batch = SequenceBatch.build([("channel", sequence)], batch_id="channel")
+            result, _ = runtime.run(batch)
+            return result.oligos[0].sequence if result.oligos else ""
+        return _simulate_via_channel_graph(
             sequence,
             substitution_prob=self.substitution_prob,
             insertion_prob=self.insertion_prob,
@@ -272,9 +293,22 @@ class Channel(Simulator):
         )
 
     def simulate(self, sequence: str | SequenceBatch) -> str | SequenceBatch:
+        class _ChannelShim:
+            supports_batches = False
+
+            def __init__(self, fn: Callable[[str], str]) -> None:
+                self._fn = fn
+
+            def simulate(self, seq: str) -> str:
+                return self._fn(seq)
+
+        runtime = RuntimeChannelPipeline.from_simulators([("indel", _ChannelShim(self._simulate_string))])
         if isinstance(sequence, SequenceBatch):
-            return apply_legacy_simulator(sequence, self._simulate_string)
-        return self._simulate_string(sequence)
+            result, _ = runtime.run(sequence)
+            return result
+        batch = SequenceBatch.build([("channel", sequence)], batch_id="channel")
+        result, _ = runtime.run(batch)
+        return result.oligos[0].sequence if result.oligos else ""
 
     def with_profile(self, profile: str) -> "Channel":
         """Return a new channel configured to use ``profile``."""

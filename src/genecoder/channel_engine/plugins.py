@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+import os
 
 from ..formats import SequenceBatch
+from ..random_utils import reset_rng
 from ..simulators.base import BaseChannel
 from ..simulators.batch_utils import apply_legacy_simulator
-from .interfaces import StageResult
+from .interfaces import StageContext, StageResult
 
 
 @dataclass
@@ -16,7 +18,17 @@ class SimulatorStagePlugin:
     simulator: BaseChannel
     stage_name: str
 
-    def run(self, batch: SequenceBatch, *, profile: str | None = None) -> StageResult:
+    def run(
+        self,
+        batch: SequenceBatch,
+        *,
+        profile: str | None = None,
+        context: StageContext,
+    ) -> StageResult:
+        if context.seed is not None:
+            os.environ["GENECODER_SIM_SEED"] = str(context.seed)
+            reset_rng()
+
         sim = self.simulator
         if profile and hasattr(sim, "with_profile"):
             try:
@@ -36,7 +48,11 @@ class SimulatorStagePlugin:
         else:
             out = SequenceBatch.build([(batch.batch_id, str(result))], batch_id=batch.batch_id)
 
-        return StageResult(batch=out, profile_version=profile)
+        merged_metadata = dict(batch.metadata)
+        merged_metadata.update(context.metadata)
+        merged_metadata["sim_stage"] = self.stage_name
+        out.metadata.update(merged_metadata)
+        return StageResult(batch=out, profile_version=profile, metadata=merged_metadata)
 
 
 def mutation_totals_from_batch(batch: SequenceBatch) -> dict[str, int]:
