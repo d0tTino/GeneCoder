@@ -7,6 +7,8 @@ from typing import Any, Mapping
 from pathlib import Path
 import os
 
+from .results.schema import RUN_SCHEMA_VERSION
+
 REQUIRED_ENCODING_KEYS: set[str] = {"method"}
 
 
@@ -35,6 +37,7 @@ def generate_manifest(
     file_basename = os.path.basename(Path(file_name).as_posix())
 
     return {
+        "schema_version": RUN_SCHEMA_VERSION,
         "file": file_basename,
         "encoding_parameters": params,
         "metrics": dict(metrics),

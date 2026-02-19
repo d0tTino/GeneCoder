@@ -7,6 +7,7 @@ import io
 from .plotting import plt, _MATPLOTLIB_AVAILABLE, _dummy_png
 
 from .app_helpers import EncodeResult, DecodeResult
+from .results.schema import RUN_SCHEMA_VERSION
 
 __all__ = [
     "encode_to_markdown",
@@ -69,7 +70,7 @@ def _oligo_metric_lines(metrics: Mapping[str, Any]) -> list[str]:
 
 
 def encode_to_markdown(result: EncodeResult) -> str:
-    lines: list[str] = ["# Encoding Report", "", "## Metrics"]
+    lines: list[str] = ["# Encoding Report", "", f"**Schema Version:** {RUN_SCHEMA_VERSION}", "", "## Metrics"]
     lines.extend(_metric_lines(result.metrics))
     oligo_lines = _oligo_metric_lines(result.metrics)
     if oligo_lines:
@@ -84,7 +85,7 @@ def encode_to_markdown(result: EncodeResult) -> str:
 
 
 def decode_to_markdown(result: DecodeResult) -> str:
-    lines: list[str] = ["# Decoding Report", "", f"**Status:** {result.status_message}"]
+    lines: list[str] = ["# Decoding Report", "", f"**Schema Version:** {RUN_SCHEMA_VERSION}", f"**Status:** {result.status_message}"]
     if result.fec_info:
         lines.append("")
         lines.append(f"**FEC Info:** {result.fec_info}")
