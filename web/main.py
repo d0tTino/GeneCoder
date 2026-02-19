@@ -19,7 +19,6 @@ from genecoder import perform_encoding, perform_decoding
 from genecoder.plugin_manager import init_plugins
 from genecoder import plugins
 from genecoder.cli import plugin as plugin_cli
-from genecoder.formats import from_fasta
 from genecoder.encoders import calculate_gc_content, decode_base4_direct
 from genecoder.utils import get_max_homopolymer_length, get_temp_dir, bit_error_rate
 from genecoder.plotting import (
@@ -27,6 +26,7 @@ from genecoder.plotting import (
     identify_homopolymer_regions,
     generate_sequence_analysis_plot,
 )
+from genecoder.app import AnalyzeRequest as AnalyzeUseCaseRequest, AnalyzeUseCase
 from genecoder.error_simulation import introduce_errors
 from genecoder.simulators.batch_utils import mutation_counts
 from genecoder import constraint_fixer
@@ -290,30 +290,32 @@ async def dashboard_deepdna(
     }
 
 
+_analyze_use_case = AnalyzeUseCase()
+
+
 @app.post("/analyze")
 async def analyze(req: AnalyzeRequest) -> dict[str, object]:
-    parsed = from_fasta(req.fasta_data)
-    if not parsed:
-        raise HTTPException(status_code=400, detail="No valid FASTA records found")
-    _, sequence = parsed[0]
-    gc = calculate_gc_content(sequence)
-    length = len(sequence)
-    max_hp = get_max_homopolymer_length(sequence)
-    _, gc_values = calculate_windowed_gc_content(
-        sequence, req.window_size, req.step_size
-    )
-    avg_gc = sum(gc_values) / len(gc_values) if gc_values else 0.0
-    metrics = {
-        "length": length,
-        "gc_content": gc,
-        "max_homopolymer": max_hp,
+    try:
+        result = _analyze_use_case.execute(
+            AnalyzeUseCaseRequest(
+                fasta_data=req.fasta_data,
+                window_size=req.window_size,
+                step=req.step_size,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {
+        "length": result.length,
+        "gc_content": result.gc_content,
+        "max_homopolymer": result.max_homopolymer,
         "windowed_gc": {
-            "min": min(gc_values) if gc_values else 0.0,
-            "max": max(gc_values) if gc_values else 0.0,
-            "avg": avg_gc,
+            "min": result.min_window_gc,
+            "max": result.max_window_gc,
+            "avg": result.avg_window_gc,
         },
     }
-    return metrics
 
 
 @app.post("/dashboard/metrics")

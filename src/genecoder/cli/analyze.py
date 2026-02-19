@@ -6,18 +6,17 @@ import argparse
 import logging
 import os
 
-from genecoder.formats import from_fasta
+from genecoder.app import AnalyzeRequest, AnalyzeUseCase
 from genecoder.plotting import (
     calculate_windowed_gc_content,
     identify_homopolymer_regions,
     generate_sequence_analysis_plot,
 )
-from genecoder.utils import get_max_homopolymer_length
 from genecoder.encoders import calculate_gc_content
 from genecoder.synthesis import SynthesisConstraints
-from genecoder.constraint_fixer import fix_sequence
 
 logger = logging.getLogger(__name__)
+_ANALYZE_USE_CASE = AnalyzeUseCase()
 
 
 def process_single_analyze(input_file_path: str, args: argparse.Namespace) -> None:
@@ -26,25 +25,18 @@ def process_single_analyze(input_file_path: str, args: argparse.Namespace) -> No
         with open(input_file_path, "r", encoding="utf-8") as f_in:
             file_content_str = f_in.read()
 
-        parsed_records = from_fasta(file_content_str)
-        if not parsed_records:
-            logger.info(
-                f"Error for {input_file_path}: No valid FASTA records found."
+        result = _ANALYZE_USE_CASE.execute(
+            AnalyzeRequest(
+                fasta_data=file_content_str,
+                window_size=args.window_size,
+                step=args.step,
             )
-            return
-        if len(parsed_records) > 1:
-            logger.info(
-                f"Warning for {input_file_path}: Multiple FASTA records found. Processing the first one only."
-            )
-
-        header, sequence = parsed_records[0]
-
+        )
+        sequence = result.sequence
         gc_content = calculate_gc_content(sequence)
-        max_hp = get_max_homopolymer_length(sequence)
+        max_hp = result.max_homopolymer
         window_starts, gc_values = calculate_windowed_gc_content(
-            sequence,
-            args.window_size,
-            args.step,
+            sequence, args.window_size, args.step
         )
         avg_gc = sum(gc_values) / len(gc_values) if gc_values else 0.0
 
@@ -62,18 +54,11 @@ def process_single_analyze(input_file_path: str, args: argparse.Namespace) -> No
                 f"Warning for {input_file_path}: Maximum homopolymer {max_hp} exceeds allowed {constraints.max_homopolymer}."
             )
 
-        if (
-            gc_content < 0.4
-            or gc_content > 0.6
-            or max_hp > constraints.max_homopolymer
-        ):
-            fixed = fix_sequence(
-                sequence,
-                target_gc_min=0.4,
-                target_gc_max=0.6,
-                max_homopolymer=constraints.max_homopolymer,
-            )
+        if result.suggested_fix:
+            fixed = result.suggested_fix
             fixed_gc = calculate_gc_content(fixed)
+            from genecoder.utils import get_max_homopolymer_length
+
             fixed_hp = get_max_homopolymer_length(fixed)
             logger.info(
                 "Suggested fix -> GC: %.2f%%, max HP: %d",
@@ -150,4 +135,3 @@ def analyze_files(args: argparse.Namespace) -> None:
 
     for input_file_path in args.input_files:
         process_single_analyze(input_file_path, args)
-
