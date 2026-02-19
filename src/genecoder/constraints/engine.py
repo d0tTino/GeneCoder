@@ -13,7 +13,11 @@ class ConstraintEngine:
     rules: ConstraintRuleSet
 
     def validate(self, sequence: str) -> ConstraintReport:
-        return ConstraintReport(sequence=sequence, violations=self.rules.validate(sequence))
+        return ConstraintReport(
+            sequence=sequence,
+            violations=self.rules.validate(sequence),
+            score=self.rules.score(sequence),
+        )
 
     def repair(self, sequence: str, strategy: RepairStrategy) -> tuple[ConstraintReport, RepairResult]:
         repair_result = strategy.repair(sequence, self.rules)

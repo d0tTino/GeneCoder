@@ -18,6 +18,7 @@ from genecoder.channel_engine import ChannelPipeline
 from genecoder.channel_config import ChannelConfig
 from genecoder.channels.base import BaseChannel
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
+from genecoder.constraints import ConstraintEngine, ConstraintRepairPipeline, load_constraint_policy
 from genecoder.error_simulation import introduce_errors
 from genecoder.metrics import metrics
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
@@ -189,19 +190,9 @@ def _load_config(
     if "decay_rate" in data:
         extra["decay_rate"] = float(data["decay_rate"])
 
-    constraints: dict[str, float | int] = {}
-    for key, value in synth_section.items():
-        if key in {"min_length", "max_length", "max_homopolymer"}:
-            constraints[key] = int(value)
-        elif key in {"gc_min", "gc_max"}:
-            constraints[key] = float(value)
-        else:
-            constraints[key] = value
-    if constraints:
-        constraints.setdefault("gc_min", 0.0)
-        constraints.setdefault("gc_max", 1.0)
+    policy = load_constraint_policy(synth_section, fallback={"gc_min": 0.0, "gc_max": 1.0})
 
-    return simulators, constraints, cfg, extra
+    return simulators, policy.to_dict(), cfg, extra
 
 
 def _load_profile_file(path: str) -> Dict[str, Any]:
@@ -483,19 +474,10 @@ def process_channel(
         logger.error("No FASTA records found in %s", input_file)
         raise SystemExit(1)
 
-    synth: SynthesisConstraints | None
-    normalized_constraints = dict(constraints)
-    if normalized_constraints:
-        normalized_constraints.setdefault("gc_min", 0.0)
-        normalized_constraints.setdefault("gc_max", 1.0)
-
-    if normalized_constraints:
-        try:
-            synth = SynthesisConstraints(**normalized_constraints)
-        except ValueError:
-            synth = SynthesisConstraints()
-    else:
-        synth = None
+    policy = load_constraint_policy(constraints if constraints else None, fallback={"gc_min": 0.0, "gc_max": 1.0})
+    synth = SynthesisConstraints.from_policy(policy)
+    constraint_engine = ConstraintEngine(policy.to_rule_set())
+    repair_pipeline = ConstraintRepairPipeline(policy)
 
     cfg = config or ChannelConfig()
     stage_metadata: list[dict[str, Any]] = []
@@ -524,9 +506,29 @@ def process_channel(
             dropout_count += 1
         if synth_fail:
             synth_failures += 1
+        pre_report = constraint_engine.validate(original.sequence)
+        processed.metadata["constraint_report_pre"] = {
+            "count": pre_report.count,
+            "score": pre_report.score,
+            "violations": [v.rule_id for v in pre_report.violations],
+        }
         if dropout or synth_fail:
             continue
-        if synth is not None and not validate_sequence(processed.sequence, synth):
+        repaired = repair_pipeline.run(processed.sequence)
+        if repaired.repair is not None:
+            processed.sequence = repaired.sequence
+            processed.metadata["constraint_repair"] = {
+                "strategy": repaired.repair.strategy,
+                "changes": len(repaired.repair.changes),
+                "reason": repaired.repair.reason,
+            }
+        post_report = constraint_engine.validate(processed.sequence)
+        processed.metadata["constraint_report_post"] = {
+            "count": post_report.count,
+            "score": post_report.score,
+            "violations": [v.rule_id for v in post_report.violations],
+        }
+        if not validate_sequence(processed.sequence, synth):
             raise ValueError("Sequence violates synthesis constraints")
         totals_json = processed.metadata.get(RESULT_MUTATION_TOTALS_KEY)
         totals = None
@@ -605,7 +607,7 @@ def process_channel(
             "ins_prob": ins_prob,
             "del_prob": del_prob,
         },
-        "constraints": constraints,
+        "constraint_policy": policy.to_dict(),
         "metrics": {
             "length": total_len,
             "substitutions": sub_total,

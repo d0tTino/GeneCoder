@@ -37,6 +37,7 @@ from genecoder.simulators.batch_utils import (
 )
 from genecoder.metrics import metrics as aggregate_metrics, set_metrics_path
 from genecoder.synthesis import SynthesisConstraints
+from genecoder.constraints import load_constraint_policy
 
 
 logger = logging.getLogger(__name__)
@@ -133,26 +134,11 @@ def _load_config(path: str) -> tuple[str, str | None, str | None, Dict[str, Any]
 def _build_constraints_from_channel(channel_params: Mapping[str, Any]) -> SynthesisConstraints | None:
     """Return synthesis constraints defined in ``channel_params`` when present."""
 
-    constraint_fields = {
-        "min_length": _parse_int,
-        "max_length": _parse_int,
-        "max_homopolymer": _parse_int,
-        "gc_min": _parse_float,
-        "gc_max": _parse_float,
-    }
-    values: dict[str, float | int] = {}
-    for key, parser in constraint_fields.items():
-        if key not in channel_params:
-            continue
-        parsed = parser(channel_params.get(key))
-        if parsed is not None:
-            values[key] = parsed
-
-    if not values:
+    if not channel_params:
         return None
-
     try:
-        return SynthesisConstraints(**values)
+        policy = load_constraint_policy(channel_params)
+        return SynthesisConstraints.from_policy(policy)
     except Exception:
         logger.warning("Ignoring invalid synthesis constraints in channel config")
         return None

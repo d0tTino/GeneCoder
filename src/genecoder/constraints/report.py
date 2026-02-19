@@ -45,6 +45,7 @@ class RepairResult:
 class ConstraintReport:
     sequence: str
     violations: list[ConstraintViolation]
+    score: float = 0.0
 
     @property
     def count(self) -> int:

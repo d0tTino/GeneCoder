@@ -400,3 +400,21 @@ comparison = pd.DataFrame(
 )
 comparison
 ```
+
+## Constraint policy files and reproducible what-if analysis
+
+GeneCoder now supports a portable `ConstraintPolicy` object that can be shared
+across CLI, API, and GUI surfaces. A policy can be stored in YAML/JSON and fed
+into channel or pipeline configs to keep constraints reproducible across runs.
+
+Example policy: `examples/constraint_policy.yaml`.
+
+A simple what-if loop is:
+
+1. Run a baseline with `repair.enabled: false`.
+2. Re-run with `repair.enabled: true` and the same seed.
+3. Compare `constraint_report_pre` and `constraint_report_post` in per-oligo
+   metadata plus the `constraint_policy` block in output manifests.
+
+This keeps a deterministic audit trail for how policy changes impact decode
+success and synthesis violations.
