@@ -14,7 +14,7 @@ import math
 from typing import Any, Iterable, IO, cast
 from types import ModuleType
 
-from .results.schema import canonical_to_legacy_metrics, load_run_schema
+from .results.schema import canonical_metrics_view, load_run_schema
 
 try:  # pragma: no cover - optional dependency
     import streamlit as _st
@@ -66,7 +66,7 @@ def _iterable(val: Iterable[str] | str | None) -> list[str]:
 def _load_metrics(src: str | Path | IO[str]) -> dict[str, Any]:
     try:
         run_schema = load_run_schema(src)
-        return canonical_to_legacy_metrics(run_schema)
+        return canonical_metrics_view(run_schema)
     except Exception:  # pragma: no cover - surfaced in UI
         pass
     return {}

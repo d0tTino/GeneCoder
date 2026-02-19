@@ -1,5 +1,6 @@
 from .schema import (
     RUN_SCHEMA_VERSION,
+    canonical_metrics_view,
     canonical_to_legacy_metrics,
     compare_runs,
     load_run_schema,
@@ -11,6 +12,7 @@ from .schema import (
 
 __all__ = [
     "RUN_SCHEMA_VERSION",
+    "canonical_metrics_view",
     "canonical_to_legacy_metrics",
     "compare_runs",
     "load_run_schema",

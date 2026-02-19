@@ -5,7 +5,15 @@ import json
 from pathlib import Path
 from typing import IO, Any, Mapping
 
-RUN_SCHEMA_VERSION = "1.0"
+RUN_SCHEMA_VERSION = "1.1"
+SUPPORTED_SCHEMA_VERSIONS: tuple[str, ...] = ("1.0", "1.1")
+SCHEMA_DEPRECATIONS: dict[str, dict[str, str]] = {
+    "1.0": {
+        "deprecated_in": "1.1",
+        "supported_until": "2.0",
+        "notes": "Legacy metric mirroring remains available only through explicit migration commands.",
+    }
+}
 
 
 def _as_float(value: object) -> float | None:
@@ -54,6 +62,80 @@ def _normalize_runtime(runtime: Mapping[str, Any] | None) -> dict[str, float | N
         "encode_seconds": _as_float(runtime.get("encode_seconds")),
         "simulate_seconds": _as_float(runtime.get("simulate_seconds")),
         "decode_seconds": _as_float(runtime.get("decode_seconds")),
+    }
+
+
+def _mapping(value: object) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def canonical_metrics_view(run_data: Mapping[str, Any]) -> dict[str, Any]:
+    """Return dashboard/report metrics derived from canonical schema fields."""
+
+    run = migrate_run_schema(run_data)
+    stages = _mapping(run.get("stages"))
+    encode_metrics = _mapping(_mapping(stages.get("encode")).get("metrics"))
+    simulate_metrics = _mapping(_mapping(stages.get("simulate")).get("metrics"))
+    decode_metrics = _mapping(_mapping(stages.get("decode")).get("metrics"))
+    outcome = _mapping(run.get("outcome"))
+    embedded_metrics = _mapping(outcome.get("metrics"))
+
+    metrics: dict[str, Any] = dict(embedded_metrics)
+    metrics.update(
+        {
+            "gc_distribution": metrics.get("gc_distribution", []),
+            "gc_content": encode_metrics.get("gc_content", metrics.get("gc_content")),
+            "gc_variance": encode_metrics.get("gc_variance", outcome.get("gc_stress")),
+            "max_homopolymer": encode_metrics.get(
+                "max_homopolymer", outcome.get("homopolymer_stress")
+            ),
+            "homopolymer_runs": metrics.get("homopolymer_runs", []),
+            "ecc_success_rates": decode_metrics.get(
+                "ecc_success_rates", metrics.get("ecc_success_rates", {})
+            ),
+            "decode_success_rate": decode_metrics.get(
+                "decode_success_rate", outcome.get("decode_success_rate")
+            ),
+            "decode_success": decode_metrics.get(
+                "decode_success", outcome.get("decode_success")
+            ),
+            "substitutions": simulate_metrics.get("substitutions", metrics.get("substitutions")),
+            "insertions": simulate_metrics.get("insertions", metrics.get("insertions")),
+            "deletions": simulate_metrics.get("deletions", metrics.get("deletions")),
+            "substitutions_histogram": metrics.get("substitutions_histogram", []),
+            "insertions_histogram": metrics.get("insertions_histogram", []),
+            "deletions_histogram": metrics.get("deletions_histogram", []),
+            "coverage": simulate_metrics.get("coverage", metrics.get("coverage")),
+            "coverage_distribution": metrics.get("coverage_distribution", []),
+            "constraint_violations": metrics.get("constraint_violations"),
+            "oligo_metrics": metrics.get("oligo_metrics", {}),
+            "dropout_count": simulate_metrics.get("dropout_count", metrics.get("dropout_count")),
+            "dropout_fraction": simulate_metrics.get(
+                "dropout_fraction", outcome.get("dropout_rate")
+            ),
+            "dropout_rate": outcome.get("dropout_rate"),
+            "ber": outcome.get("ber"),
+            "throughput": outcome.get("throughput"),
+        }
+    )
+    return metrics
+
+
+def canonical_comparison_metrics(run_data: Mapping[str, Any]) -> dict[str, float | bool | None]:
+    run = migrate_run_schema(run_data)
+    outcome = _mapping(run.get("outcome"))
+    decode = _mapping(_mapping(_mapping(run.get("stages")).get("decode")).get("metrics"))
+    return {
+        "ber": _as_float(outcome.get("ber")),
+        "throughput": _as_float(outcome.get("throughput")),
+        "dropout_rate": _as_float(outcome.get("dropout_rate")),
+        "gc_stress": _as_float(outcome.get("gc_stress")),
+        "homopolymer_stress": _as_float(outcome.get("homopolymer_stress")),
+        "decode_success": _coerce_success(
+            decode.get("decode_success")
+            if decode.get("decode_success") is not None
+            else outcome.get("decode_success")
+        ),
     }
 
 
@@ -216,11 +298,12 @@ def migrate_run_schema(run_data: Mapping[str, Any], target_version: str = RUN_SC
     if current == target_version:
         return data
 
-    if current in {None, "", 1, "1", "1.0"}:
-        # v1 migration is mostly shape normalization.
+    if current in {None, "", 1, "1", "1.0", "1.1"}:
+        # v1.x migration is mostly shape normalization.
         if "outcome" not in data or not isinstance(data.get("outcome"), Mapping):
             data = translate_manifest(data)
         data["schema_version"] = RUN_SCHEMA_VERSION
+        data.setdefault("schema_support", dict(SCHEMA_DEPRECATIONS))
         return data
 
     # Unknown future version: keep payload but mark requested target.
@@ -245,15 +328,15 @@ def load_run_schema(src: str | Path | IO[str] | Mapping[str, Any]) -> dict[str, 
         if isinstance(data.get("outcome"), Mapping):
             return migrate_run_schema(data)
         if isinstance(data.get("metrics"), Mapping) or "encoding_parameters" in data:
-            return translate_manifest(data)
+            return migrate_run_schema(translate_manifest(data))
         return migrate_run_schema(data)
     if isinstance(data.get("metrics"), Mapping) or "encoding_parameters" in data:
-        return translate_manifest(data)
+        return migrate_run_schema(translate_manifest(data))
     if "total_original_size" in data and "files" in data:
-        return translate_bundle_metrics(data)
+        return migrate_run_schema(translate_bundle_metrics(data))
     if any(key in data for key in ("gc_distribution", "gc_content", "max_homopolymer", "constraint_violations", "oligo_metrics")):
-        return translate_manifest({"file": data.get("run_id") or "run", "encoding_parameters": {"method": data.get("method") or "unknown"}, "metrics": data})
-    return translate_decode_summary(data)
+        return migrate_run_schema(translate_manifest({"file": data.get("run_id") or "run", "encoding_parameters": {"method": data.get("method") or "unknown"}, "metrics": data}))
+    return migrate_run_schema(translate_decode_summary(data))
 
 
 def canonical_to_legacy_metrics(run_data: Mapping[str, Any]) -> dict[str, Any]:
@@ -279,15 +362,7 @@ def canonical_to_legacy_metrics(run_data: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _comparison_slice(run_data: Mapping[str, Any]) -> dict[str, float | bool | None]:
-    outcome = run_data.get("outcome") if isinstance(run_data.get("outcome"), Mapping) else {}
-    return {
-        "ber": _as_float(outcome.get("ber")) if isinstance(outcome, Mapping) else None,
-        "throughput": _as_float(outcome.get("throughput")) if isinstance(outcome, Mapping) else None,
-        "dropout_rate": _as_float(outcome.get("dropout_rate")) if isinstance(outcome, Mapping) else None,
-        "gc_stress": _as_float(outcome.get("gc_stress")) if isinstance(outcome, Mapping) else None,
-        "homopolymer_stress": _as_float(outcome.get("homopolymer_stress")) if isinstance(outcome, Mapping) else None,
-        "decode_success": _coerce_success(outcome.get("decode_success")) if isinstance(outcome, Mapping) else None,
-    }
+    return canonical_comparison_metrics(run_data)
 
 
 def _metric_delta(base: float | None, candidate: float | None) -> dict[str, float | None]:

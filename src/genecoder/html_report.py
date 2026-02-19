@@ -6,7 +6,7 @@ from html import escape
 from typing import Any
 
 from .bool_parsing import parse_bool_like
-from .results.schema import canonical_to_legacy_metrics, load_run_schema
+from .results.schema import canonical_metrics_view, load_run_schema
 
 __all__ = ["generate_html_report"]
 
@@ -106,7 +106,7 @@ def _render_oligo_section(metrics: dict[str, Any], html_lines: list[str]) -> Non
 def generate_html_report(manifest_path: str) -> str:
     """Return HTML summary for the manifest at ``manifest_path``."""
     run_schema = load_run_schema(manifest_path)
-    metrics = canonical_to_legacy_metrics(run_schema)
+    metrics = canonical_metrics_view(run_schema)
     html_lines: list[str] = ["<html>", "<body>", "<h1>GeneCoder Summary Report</h1>"]
 
     gc_content = metrics.get("gc_content")
