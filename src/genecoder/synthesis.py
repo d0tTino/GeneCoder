@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from .constraints import (
     ConstraintEngine,
+    ConstraintPolicy,
     ConstraintRuleSet,
     GcRangeRule,
     HomopolymerMaxRule,
@@ -40,6 +41,30 @@ class SynthesisConstraints:
             raise ValueError("gc_max must be between 0.0 and 1.0")
         if self.gc_min > self.gc_max:
             raise ValueError("gc_min cannot be greater than gc_max")
+
+
+    def to_policy(self) -> ConstraintPolicy:
+        return ConstraintPolicy(
+            min_length=self.min_length,
+            max_length=self.max_length,
+            gc_min=self.gc_min,
+            gc_max=self.gc_max,
+            max_homopolymer=self.max_homopolymer,
+            restriction_site_bans=tuple(self.deny_motifs),
+            required_motifs=tuple(self.allow_motifs),
+        )
+
+    @classmethod
+    def from_policy(cls, policy: ConstraintPolicy) -> "SynthesisConstraints":
+        return cls(
+            min_length=policy.min_length,
+            max_length=policy.max_length,
+            max_homopolymer=policy.max_homopolymer,
+            gc_min=policy.gc_min,
+            gc_max=policy.gc_max,
+            deny_motifs=tuple(policy.restriction_site_bans),
+            allow_motifs=tuple(policy.required_motifs),
+        )
 
     def to_rule_set(self) -> ConstraintRuleSet:
         rules = [

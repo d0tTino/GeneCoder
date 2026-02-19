@@ -14,6 +14,13 @@ class ConstraintRule:
     def validate(self, sequence: str) -> list[ConstraintViolation]:
         raise NotImplementedError
 
+    def score(self, sequence: str) -> float:
+        violations = self.validate(sequence)
+        return float(len(violations))
+
+    def repair(self, sequence: str) -> str | None:
+        return None
+
 
 @dataclass(frozen=True)
 class GcRangeRule(ConstraintRule):
@@ -128,6 +135,9 @@ class ConstraintRuleSet:
         for rule in self.rules:
             violations.extend(rule.validate(sequence))
         return violations
+
+    def score(self, sequence: str) -> float:
+        return sum(rule.score(sequence) for rule in self.rules)
 
     def limits(self) -> dict[str, float | int | list[str]]:
         details: dict[str, float | int | list[str]] = {}

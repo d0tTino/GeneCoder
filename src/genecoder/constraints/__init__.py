@@ -1,5 +1,7 @@
 from .engine import ConstraintEngine
 from .report import ConstraintReport, ConstraintViolation, RepairResult
+from .policy import ConstraintPolicy, RepairPolicy, load_constraint_policy
+from .repair_pipeline import ConstraintRepairPipeline, RepairPipelineResult
 from .rules import (
     ConstraintRuleSet,
     GcRangeRule,
@@ -20,6 +22,11 @@ __all__ = [
     "ConstraintReport",
     "ConstraintViolation",
     "RepairResult",
+    "ConstraintPolicy",
+    "RepairPolicy",
+    "load_constraint_policy",
+    "ConstraintRepairPipeline",
+    "RepairPipelineResult",
     "ConstraintRuleSet",
     "GcRangeRule",
     "HomopolymerMaxRule",

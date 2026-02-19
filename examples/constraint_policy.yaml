@@ -1,0 +1,12 @@
+min_length: 80
+max_length: 180
+gc_min: 0.45
+gc_max: 0.55
+max_homopolymer: 3
+restriction_site_bans:
+  - GAATTC  # EcoRI
+  - AAGCTT  # HindIII
+repair:
+  enabled: true
+  strategy: deterministic
+  ecc_protected_prefix: 16

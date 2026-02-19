@@ -53,6 +53,7 @@ from genecoder.manifest import generate_manifest
 from genecoder.plugin_manager import FEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.synthesis import SynthesisConstraints
+from genecoder.constraints import load_constraint_policy
 
 
 @dataclass
@@ -432,46 +433,21 @@ def _derive_constraints(
 ) -> SynthesisConstraints | None:
     """Return synthesis constraints from encoding and simulation configs."""
 
-    params: dict[str, float | int] = {}
-
-    def _apply_int(key: str, raw: object, *, prefer_min: bool = False) -> None:
-        val = _parse_int(raw)
-        if val is None:
-            return
-        if prefer_min and key in params:
-            try:
-                params[key] = min(int(params[key]), val)
-            except Exception:
-                params[key] = val
-        else:
-            params[key] = val
-
-    def _apply_float(key: str, raw: object) -> None:
-        val = _parse_float(raw)
-        if val is not None:
-            params[key] = val
-
+    params: dict[str, object] = {}
     if isinstance(sim_cfg, Mapping):
-        synth_cfg = sim_cfg.get("synthesis") if isinstance(sim_cfg, Mapping) else None
+        synth_cfg = sim_cfg.get("synthesis")
         if isinstance(synth_cfg, Mapping):
-            _apply_int("min_length", synth_cfg.get("min_length"))
-            _apply_int("max_length", synth_cfg.get("max_length"))
-            _apply_int("max_homopolymer", synth_cfg.get("max_homopolymer"))
-            _apply_float("gc_min", synth_cfg.get("gc_min"))
-            _apply_float("gc_max", synth_cfg.get("gc_max"))
-
+            params.update(dict(synth_cfg))
     if isinstance(enc_cfg, Mapping):
-        _apply_int("min_length", enc_cfg.get("min_length"))
-        _apply_int("max_length", enc_cfg.get("max_length"))
-        _apply_int("max_homopolymer", enc_cfg.get("max_homopolymer"), prefer_min=True)
-        _apply_float("gc_min", enc_cfg.get("gc_min"))
-        _apply_float("gc_max", enc_cfg.get("gc_max"))
+        for key in ("min_length", "max_length", "max_homopolymer", "gc_min", "gc_max"):
+            if key in enc_cfg:
+                params[key] = enc_cfg[key]
 
     if not params:
         return None
-
     try:
-        return SynthesisConstraints(**params)
+        policy = load_constraint_policy(params)
+        return SynthesisConstraints.from_policy(policy)
     except Exception:
         logger.warning("Ignoring invalid synthesis constraints in bundle config")
         return None

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Sequence
 
 from genecoder.options import EncodingOptions, DecodingOptions
+from genecoder.constraints import load_constraint_policy
 
 
 @dataclass
@@ -223,11 +224,15 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
     from .channel import _load_config  # Local import to avoid heavy deps at import time
 
     simulators = list(args.simulators)
-    constraints = {
-        "min_length": args.min_length,
-        "max_length": args.max_length,
-        "max_homopolymer": args.max_homopolymer,
-    }
+    constraints = load_constraint_policy(
+        {
+            "min_length": args.min_length,
+            "max_length": args.max_length,
+            "max_homopolymer": args.max_homopolymer,
+            "gc_min": 0.0,
+            "gc_max": 1.0,
+        }
+    ).to_dict()
 
     sim_specs: list[tuple[str, dict[str, object]]] | None = None
     dropout_rate = getattr(args, "dropout_rate", None)
@@ -241,7 +246,7 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         if cfg_sim:
             sim_specs = cfg_sim
             simulators = [name for name, _ in cfg_sim]
-        constraints.update(cfg_con)
+        constraints = load_constraint_policy(cfg_con, fallback=constraints).to_dict()
         if not args.parallel and cfg_pipeline.parallel:
             args.parallel = True
         if args.threads is None and args.processes is None:
@@ -273,9 +278,6 @@ def build_channel_options(args: argparse.Namespace) -> ChannelOptions:
         raise ValueError("batch_workers must be greater than 0")
     if coverage_distribution is not None:
         coverage_distribution = dict(coverage_distribution)
-    if constraints:
-        constraints.setdefault("gc_min", 0.0)
-        constraints.setdefault("gc_max", 1.0)
     return ChannelOptions(
         simulators=simulators,
         constraints=constraints,
