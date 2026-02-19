@@ -20,6 +20,7 @@ from genecoder.api import Codec
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.reed_solomon_codec import _HAS_REEDSOLO
+from genecoder.constraints import ConstraintPolicy, RepairPolicy, ConstraintStageGateError
 
 
 class _Base4Codec(Codec):
@@ -31,6 +32,15 @@ class _Base4Codec(Codec):
         from genecoder.encoders import decode_base4_direct
         return decode_base4_direct(encoded)[0]
 
+
+
+
+class _ViolatingCodec(Codec):
+    def encode(self, data: bytes) -> str:  # type: ignore[override]
+        return "AAAAAA"
+
+    def decode(self, encoded: str) -> bytes:  # type: ignore[override]
+        return b"ok"
 
 class _BatchAwareCodec(Codec):
     def __init__(self) -> None:
@@ -204,3 +214,39 @@ def test_encode_emits_standardized_layer_metrics() -> None:
     # no fec_info for codec-only path; inspect explicit plan to ensure standardized keys exist
     plan = inspect_coding_plan({"codec": "base4"})
     assert plan["selected"][0]["name"] == "base4"
+
+
+def test_encode_constraint_assumption_fail_fast() -> None:
+    init_plugins()
+    CODEC_REGISTRY["violating"] = {"encode": _ViolatingCodec().encode, "decode": _ViolatingCodec().decode}
+    policy = ConstraintPolicy(
+        min_length=1,
+        max_length=20,
+        gc_min=0.0,
+        gc_max=1.0,
+        max_homopolymer=1,
+        assumption_mode="fail_fast",
+        repair=RepairPolicy(enabled=False),
+    )
+    with pytest.raises(ConstraintStageGateError):
+        encode("violating", None, b"x", constraint_policy=policy)
+
+
+def test_encode_constraint_assumption_repair_deterministic() -> None:
+    init_plugins()
+    CODEC_REGISTRY["violating"] = {"encode": _ViolatingCodec().encode, "decode": _ViolatingCodec().decode}
+    policy = ConstraintPolicy(
+        min_length=1,
+        max_length=20,
+        gc_min=0.0,
+        gc_max=1.0,
+        max_homopolymer=1,
+        assumption_mode="repair",
+        repair=RepairPolicy(enabled=True, profile="strict"),
+    )
+    dna, fec_info = encode("violating", None, b"x", constraint_policy=policy)
+    assert "AA" not in dna.primary_sequence()
+    assert isinstance(fec_info, Mapping) or fec_info is None
+    outcomes = dna.metadata.get("constraint_outcomes")
+    assert isinstance(outcomes, list) and outcomes
+    assert outcomes[0]["repairs_applied"] > 0

@@ -24,6 +24,14 @@ class ConstraintEngine:
         report = self.validate(repair_result.sequence_after)
         return report, repair_result
 
+
+
+    def gate(self, sequence: str, *, stage: str) -> ConstraintReport:
+        report = self.validate(sequence)
+        if report.count > 0:
+            raise ValueError(f"Constraint stage gate '{stage}' failed with {report.count} violation(s)")
+        return report
+
     def as_manifest_report(self, sequence: str) -> dict[str, object]:
         report = self.validate(sequence)
         counts = Counter(v.rule_id for v in report.violations)

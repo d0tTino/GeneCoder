@@ -18,7 +18,8 @@ from .rules import (
 @dataclass(frozen=True)
 class RepairPolicy:
     enabled: bool = False
-    strategy: str = "stochastic"
+    profile: str = "balanced"
+    strategy: str | None = None
     ecc_protected_prefix: int = 0
 
 
@@ -32,6 +33,7 @@ class ConstraintPolicy:
     restriction_site_bans: tuple[str, ...] = ()
     required_motifs: tuple[str, ...] = ()
     repair: RepairPolicy = field(default_factory=RepairPolicy)
+    assumption_mode: str = "repair"
 
     def validate(self) -> None:
         if self.min_length <= 0 or self.max_length <= 0:
@@ -46,6 +48,20 @@ class ConstraintPolicy:
             raise ValueError("max_homopolymer must be >=1")
         if self.repair.ecc_protected_prefix < 0:
             raise ValueError("ecc_protected_prefix must be >=0")
+        if self.assumption_mode not in {"fail_fast", "repair"}:
+            raise ValueError("assumption_mode must be 'fail_fast' or 'repair'")
+
+    def strategy_name(self) -> str:
+        if self.repair.strategy:
+            return self.repair.strategy
+        profile_map = {
+            "strict": "deterministic",
+            "deterministic": "deterministic",
+            "balanced": "stochastic",
+            "exploratory": "stochastic",
+            "solver": "external_solver",
+        }
+        return profile_map.get(self.repair.profile, "stochastic")
 
     def to_rule_set(self) -> ConstraintRuleSet:
         rules = [
@@ -70,9 +86,11 @@ class ConstraintPolicy:
             "required_motifs": list(self.required_motifs),
             "repair": {
                 "enabled": self.repair.enabled,
+                "profile": self.repair.profile,
                 "strategy": self.repair.strategy,
                 "ecc_protected_prefix": self.repair.ecc_protected_prefix,
             },
+            "assumption_mode": self.assumption_mode,
         }
 
     @classmethod
@@ -89,9 +107,11 @@ class ConstraintPolicy:
             required_motifs=tuple(str(x) for x in src.get("required_motifs", src.get("allow_motifs", [])) or ()),
             repair=RepairPolicy(
                 enabled=bool(repair_raw.get("enabled", False)),
-                strategy=str(repair_raw.get("strategy", "stochastic")),
+                profile=str(repair_raw.get("profile", "balanced")),
+                strategy=(str(repair_raw["strategy"]) if repair_raw.get("strategy") is not None else None),
                 ecc_protected_prefix=int(repair_raw.get("ecc_protected_prefix", 0)),
             ),
+            assumption_mode=str(src.get("assumption_mode", "repair")),
         )
         policy.validate()
         return policy
