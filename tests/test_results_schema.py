@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from genecoder.results.schema import (
     RUN_SCHEMA_VERSION,
+    SCHEMA_DEPRECATIONS,
+    canonical_comparison_metrics,
+    canonical_metrics_view,
     canonical_to_legacy_metrics,
     compare_runs,
     load_run_schema,
@@ -40,7 +43,7 @@ def test_backward_compatibility_loader_for_manifest() -> None:
             "metrics": {"substitutions": 2},
         }
     )
-    metrics = canonical_to_legacy_metrics(run)
+    metrics = canonical_metrics_view(run)
     assert metrics["substitutions"] == 2
 
 
@@ -65,3 +68,39 @@ def test_compare_runs_returns_structured_deltas() -> None:
 def test_migrate_legacy_payload() -> None:
     migrated = migrate_run_schema({"metrics": {"substitutions": 1}})
     assert migrated["schema_version"] == RUN_SCHEMA_VERSION
+    assert migrated["schema_support"] == SCHEMA_DEPRECATIONS
+
+
+def test_legacy_conversion_for_migration_only() -> None:
+    run = translate_decode_summary({"decode_success": True, "ber": 0.01, "throughput": 3.0})
+    metrics = canonical_to_legacy_metrics(run)
+    assert metrics["ber"] == 0.01
+
+
+def test_kpi_contract_fields_present_for_comparison_views() -> None:
+    run = load_run_schema(
+        {
+            "run_id": "contract",
+            "schema_version": "1.0",
+            "outcome": {
+                "ber": 0.002,
+                "throughput": 12.4,
+                "dropout_rate": 0.05,
+                "gc_stress": 0.01,
+                "homopolymer_stress": 6,
+                "decode_success": True,
+            },
+            "stages": {"decode": {"metrics": {"decode_success": True}}},
+        }
+    )
+    metrics = canonical_comparison_metrics(run)
+    expected = {
+        "ber",
+        "throughput",
+        "dropout_rate",
+        "gc_stress",
+        "homopolymer_stress",
+        "decode_success",
+    }
+    assert expected.issubset(metrics)
+    assert metrics["decode_success"] is True

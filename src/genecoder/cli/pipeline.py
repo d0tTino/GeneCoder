@@ -37,7 +37,7 @@ from genecoder.simulators.batch_utils import (
 )
 from genecoder.metrics import metrics as aggregate_metrics, set_metrics_path
 from genecoder.synthesis import SynthesisConstraints
-from genecoder.results.schema import canonical_to_legacy_metrics
+from genecoder.results.schema import canonical_metrics_view
 from genecoder.results.collector import (
     DecodeStageEvent,
     EncodeStageEvent,
@@ -46,6 +46,7 @@ from genecoder.results.collector import (
 )
 from genecoder.constraints import load_constraint_policy
 
+RUN_PROFILE_VERSION = "2026.02"
 
 logger = logging.getLogger(__name__)
 
@@ -652,21 +653,20 @@ def _handle_command(args: argparse.Namespace) -> None:
 
     metrics_path = Path(str(args.output) + ".json")
     if isinstance(artifact, dict):
-        legacy_metrics = artifact.setdefault("metrics", canonical_to_legacy_metrics(artifact))
-        if isinstance(legacy_metrics, dict):
-            runtime = artifact.get("input_config", {}).get("channel_runtime", {}) if isinstance(artifact.get("input_config"), dict) else {}
-            if isinstance(runtime, dict):
-                legacy_metrics.setdefault("dropout_count", runtime.get("dropout_count"))
-                legacy_metrics.setdefault("dropout_fraction", runtime.get("dropout_fraction"))
-                legacy_metrics.setdefault(
-                    "channel",
-                    {
-                        "dropout": {
-                            "count": runtime.get("dropout_count"),
-                            "fraction": runtime.get("dropout_fraction"),
-                        }
-                    },
-                )
+        artifact.setdefault("schema_provenance", {}).update(
+            {
+                "seed": args.seed,
+                "profile_version": RUN_PROFILE_VERSION,
+                "command_lineage": ["genecli pipeline", "encode", "simulate", "decode"],
+            }
+        )
+        canonical_metrics = canonical_metrics_view(artifact)
+        runtime = artifact.get("input_config", {}).get("channel_runtime", {}) if isinstance(artifact.get("input_config"), dict) else {}
+        if isinstance(runtime, dict):
+            canonical_metrics.setdefault("dropout_count", runtime.get("dropout_count"))
+            canonical_metrics.setdefault("dropout_fraction", runtime.get("dropout_fraction"))
+        artifact["dashboard_metrics"] = canonical_metrics
+        artifact["metrics"] = dict(canonical_metrics)
     metrics_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
     logger.info("Run artifact written to %s", metrics_path)
 
@@ -678,8 +678,8 @@ def _handle_command(args: argparse.Namespace) -> None:
         if channel_params:
             manifest_params["channel_parameters"] = channel_params
 
-    legacy_metrics = artifact.get("outcome", {}).get("metrics", {}) if isinstance(artifact, dict) else {}
-    manifest = generate_manifest(args.input, manifest_params, legacy_metrics if isinstance(legacy_metrics, dict) else {})
+    manifest_metrics = artifact.get("dashboard_metrics", {}) if isinstance(artifact, dict) else {}
+    manifest = generate_manifest(args.input, manifest_params, manifest_metrics if isinstance(manifest_metrics, dict) else {})
     manifest_path = metrics_path.with_suffix(".manifest.json")
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     logger.info("Manifest written to %s", manifest_path)

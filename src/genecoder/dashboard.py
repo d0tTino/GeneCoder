@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import IO, Any, Iterable, Callable, cast
 
 from .bool_parsing import parse_bool_like
-from .results.schema import canonical_to_legacy_metrics, load_run_schema
+from .results.schema import canonical_metrics_view, load_run_schema
 from types import ModuleType
 
 try:  # pragma: no cover - optional dependency for tests
@@ -81,11 +81,11 @@ def _calc_decode_success(data: dict[str, Any]) -> float | None:
 
 
 def _load_metrics(src: str | Path | IO[str]) -> dict[str, Any]:
-    """Load canonical run artifact and return compatibility metrics view."""
+    """Load canonical run artifact and return dashboard metrics view."""
 
     try:
         run = load_run_schema(src)
-        return canonical_to_legacy_metrics(run)
+        return canonical_metrics_view(run)
     except Exception as exc:  # pragma: no cover - surfaced in UI
         name = getattr(src, "name", str(src))
         if st:  # pragma: no cover - only used in dashboard

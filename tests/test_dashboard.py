@@ -51,7 +51,9 @@ def test_load_metrics_fixture() -> None:
     path = Path(__file__).parent / "data" / "metrics.json"
     from genecoder import dashboard
     expected = json.loads(path.read_text())
-    assert dashboard._load_metrics(str(path)) == expected
+    loaded = dashboard._load_metrics(str(path))
+    for key, value in expected.items():
+        assert loaded.get(key) == value
 
 
 def test_main_runs(tmp_path: Path) -> None:
@@ -75,7 +77,9 @@ def test_load_metrics_manifest(tmp_path: Path) -> None:
 
     from genecoder import dashboard
 
-    assert dashboard._load_metrics(str(manifest_path)) == metrics
+    loaded = dashboard._load_metrics(str(manifest_path))
+    for key, value in metrics.items():
+        assert loaded.get(key) == value
 
 
 def test_display_ecc_and_decode_metric(
