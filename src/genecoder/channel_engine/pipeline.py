@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+import random
 from typing import Iterable, Mapping
 
 from ..channel_config import ChannelConfig
 from ..formats import SequenceBatch
 from ..random_utils import reset_rng
-from .interfaces import SequencingStage, Stage, StorageStage, SynthesisStage
+from .interfaces import SequencingStage, SimulatorStage, StageContext, StorageStage, SynthesisStage
 from .plugins import (
     DecayStorageStage,
     IlluminaSequencingStage,
@@ -60,7 +61,7 @@ class ChannelPipeline:
                 synth.append(plugin)
         return cls(synthesis_stages=synth, storage_stages=storage, sequencing_stages=sequencing)
 
-    def _all_stages(self) -> list[Stage]:
+    def _all_stages(self) -> list[SimulatorStage]:
         return [*self.synthesis_stages, *self.storage_stages, *self.sequencing_stages]
 
     def run(
@@ -74,13 +75,16 @@ class ChannelPipeline:
             os.environ["GENECODER_SIM_SEED"] = str(seed)
             reset_rng()
 
+        rng = random.Random(seed) if seed is not None else random.Random()
+        context = StageContext(seed=seed, rng=rng, metadata=dict(batch.metadata))
+
         current = batch
         provenance: list[dict[str, object]] = []
         profiles = dict(profile or {})
 
         for stage in self._all_stages():
             stage_profile = profiles.get(stage.stage_name)
-            result = stage.run(current, profile=stage_profile)
+            result = stage.run(current, profile=stage_profile, context=context)
             current = result.batch
             provenance.append(
                 {

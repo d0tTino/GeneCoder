@@ -1,9 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import random
 from typing import Protocol
 
 from ..formats import SequenceBatch
+
+
+@dataclass(frozen=True)
+class StageContext:
+    """Execution context passed to every simulator stage."""
+
+    seed: int | None
+    rng: random.Random
+    metadata: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -12,24 +22,31 @@ class StageResult:
 
     batch: SequenceBatch
     profile_version: str | None = None
+    metadata: dict[str, str] | None = None
 
 
-class Stage(Protocol):
+class SimulatorStage(Protocol):
     """Common protocol implemented by all channel stages."""
 
     stage_name: str
 
-    def run(self, batch: SequenceBatch, *, profile: str | None = None) -> StageResult:
+    def run(
+        self,
+        batch: SequenceBatch,
+        *,
+        profile: str | None = None,
+        context: StageContext,
+    ) -> StageResult:
         """Process ``batch`` and return a new :class:`StageResult`."""
 
 
-class SynthesisStage(Stage, Protocol):
+class SynthesisStage(SimulatorStage, Protocol):
     """Stage protocol for synthesis loss and early corruption."""
 
 
-class StorageStage(Stage, Protocol):
+class StorageStage(SimulatorStage, Protocol):
     """Stage protocol for storage/decay modeling."""
 
 
-class SequencingStage(Stage, Protocol):
+class SequencingStage(SimulatorStage, Protocol):
     """Stage protocol for sequencing/readout modeling."""

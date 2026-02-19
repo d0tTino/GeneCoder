@@ -7,7 +7,7 @@ from typing import Any, Mapping, Sequence
 import json
 import warnings
 
-from ...simulation_engine.profiles import VersionedProfile, resolve_profile as _resolve_versioned
+from ...simulation_engine.profiles import VersionedProfile, normalize_profile as _normalize_profile
 
 
 __all__ = [
@@ -125,7 +125,7 @@ ILLUMINA_PROFILES: dict[str, dict[str, float | int]] = {k: dict(v) for k, v in _
 
 
 def _resolve_profile(profile: str | Mapping[str, Any] | None) -> tuple[IlluminaProfile | None, Mapping[str, Any]]:
-    resolved = _resolve_versioned(profile, kind="illumina", presets=ILLUMINA_PROFILE_PRESETS)
+    resolved = _normalize_profile(profile, kind="illumina", presets=ILLUMINA_PROFILE_PRESETS, allow_legacy_dict=False)
     if resolved is None:
         return None, {}
     if isinstance(profile, Mapping):

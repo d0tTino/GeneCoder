@@ -29,7 +29,7 @@ from .nanopore_profiles import (
     validate_rate as _validate_rate,
 )
 from .batch_utils import load_coverage_distribution
-from ..simulation_engine.profiles import VersionedProfile, resolve_profile as _resolve_versioned_profile
+from ..simulation_engine.profiles import VersionedProfile, normalize_profile as _normalize_profile
 
 __all__ = [
     "NanoporeChannel",
@@ -265,10 +265,11 @@ class NanoporeChannel(BaseChannel):
         profile_path: str | None = None,
     ) -> None:
         if profile is not None:
-            resolved = _resolve_versioned_profile(
+            resolved = _normalize_profile(
                 profile,
                 kind="nanopore",
                 presets=NANOPORE_PROFILE_PRESETS,
+                allow_legacy_dict=False,
             )
             params = dict(resolved.parameters) if resolved is not None else None
             if params is not None:

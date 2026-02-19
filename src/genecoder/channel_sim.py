@@ -1,6 +1,6 @@
 """Compatibility wrapper for :mod:`genecoder.error_simulation`.
 
-This module is deprecated; use :mod:`genecoder.error_simulation` instead.
+This module is compatibility-only; all execution is routed through the channel graph runtime.
 """
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def simulate_errors(
     """
 
     warnings.warn(
-        "genecoder.channel_sim is deprecated; import genecoder.channel_engine or genecoder.error_simulation instead",
+        "genecoder.channel_sim is compatibility-only; import genecoder.channel_engine for new code",
         DeprecationWarning,
         stacklevel=2,
     )
