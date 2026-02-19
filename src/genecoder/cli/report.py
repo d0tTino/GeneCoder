@@ -7,6 +7,7 @@ import sys
 from genecoder.app_helpers import DecodeResult, EncodeResult
 from genecoder import report as report_module
 from genecoder.html_report import generate_html_report
+from genecoder.results.schema import RUN_SCHEMA_VERSION, load_run_schema
 
 
 def register_subcommand(
@@ -48,6 +49,14 @@ def register_subcommand(
     )
     html_parser.set_defaults(func=_handle_html_command)
 
+    migrate_parser = subparsers.add_parser(
+        "migrate-artifact",
+        help="Migrate legacy metrics/manifest artifacts to canonical run schema.",
+    )
+    migrate_parser.add_argument("--input", required=True, help="Input artifact JSON path")
+    migrate_parser.add_argument("--output", required=True, help="Output canonical JSON path")
+    migrate_parser.set_defaults(func=_handle_migrate_command)
+
 
 def _handle_command(args: argparse.Namespace) -> None:
     with open(args.input_json, "r") as fh:
@@ -81,3 +90,10 @@ def _handle_html_command(args: argparse.Namespace) -> None:
             fh.write(html)
     else:
         sys.stdout.write(html)
+
+
+def _handle_migrate_command(args: argparse.Namespace) -> None:
+    migrated = load_run_schema(args.input)
+    migrated["schema_version"] = RUN_SCHEMA_VERSION
+    with open(args.output, "w", encoding="utf-8") as fh:
+        json.dump(migrated, fh, indent=2)

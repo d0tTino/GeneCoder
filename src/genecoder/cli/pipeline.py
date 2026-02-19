@@ -13,7 +13,7 @@ from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES
 
 from genecoder.channel_config import ChannelConfig
-from genecoder.core import encode, decode, inspect_coding_plan, metrics as gather_metrics
+from genecoder.core import encode, decode, inspect_coding_plan
 from genecoder.formats import SequenceBatch
 from genecoder.html_report import generate_html_report
 from genecoder.manifest import generate_manifest
@@ -37,6 +37,13 @@ from genecoder.simulators.batch_utils import (
 )
 from genecoder.metrics import metrics as aggregate_metrics, set_metrics_path
 from genecoder.synthesis import SynthesisConstraints
+from genecoder.results.schema import canonical_to_legacy_metrics
+from genecoder.results.collector import (
+    DecodeStageEvent,
+    EncodeStageEvent,
+    RunArtifactCollector,
+    SimulateStageEvent,
+)
 from genecoder.constraints import load_constraint_policy
 
 
@@ -368,19 +375,6 @@ def _run_with_params(
     )
     total_reads = _parse_int(mutated_batch.metadata.get("sim_total_reads"))
 
-    coverage_hist_raw = mutated_batch.metadata.get("sim_coverage_histogram")
-    coverage_hist: dict[str, int] = {}
-    if isinstance(coverage_hist_raw, str) and coverage_hist_raw:
-        try:
-            parsed_hist = json.loads(coverage_hist_raw)
-            if isinstance(parsed_hist, dict):
-                coverage_hist = {
-                    str(key): int(_parse_int(value, 0) or 0)
-                    for key, value in parsed_hist.items()
-                }
-        except (TypeError, ValueError, json.JSONDecodeError):
-            coverage_hist = {}
-
     mutation_totals_raw = mutated_batch.metadata.get("sim_mutation_totals")
     if isinstance(mutation_totals_raw, str) and mutation_totals_raw:
         try:
@@ -408,107 +402,84 @@ def _run_with_params(
         sum(1 for flag in synthesis_flags if flag) / max(1, len(mutated_batch.oligos)),
     )
 
-    metrics: dict[str, Any] = gather_metrics(
-        mutated_sequence,
-        original_data,
-        decoded,
-        fec,
-        subs_total,
-        ins_total,
-        dels_total,
-        coverage_value,
-        constraints=constraints,
-        oligos=[ol.sequence for ol in mutated_batch.oligos],
-        dropout_flags=dropout_flags,
+    collector = RunArtifactCollector(
+        run_id=Path(input_path).stem or "pipeline-run",
+        input_config={
+            "codec": codec,
+            "fec": fec,
+            "channel": channel or "none",
+            "channel_parameters": dict(channel_constructor_params),
+        },
+        reproducibility={
+            "sim_seed": _resolve_sim_seed(),
+            "batch_seed": mutated_batch.seed,
+        },
     )
-
-    constraint_limits = _constraints_limits(constraints)
-    if constraint_limits:
-        metrics.setdefault("constraint_violations", {}).setdefault(
-            "limits", constraint_limits
+    collector.record_encode(
+        EncodeStageEvent(
+            codec=codec,
+            fec=fec,
+            input_path=input_path,
+            original_data=original_data,
+            encoded_batch=original_batch,
+            fec_info=fec_info,
+            encoding_parameters={"method": codec, **({"fec": fec} if fec else {})},
         )
-
-    oligo_metrics = metrics.setdefault("oligo_metrics", {})
-    oligo_metrics.setdefault("coverage_counts", coverage_counts)
-    oligo_metrics.setdefault(
-        "mutation_totals",
-        [
-            {
-                "substitutions": subs,
-                "insertions": ins,
-                "deletions": dele,
+    )
+    collector.record_simulate(
+        SimulateStageEvent(
+            channel=channel,
+            channel_parameters=dict(channel_constructor_params),
+            mutated_batch=mutated_batch,
+            substitutions=subs_total,
+            insertions=ins_total,
+            deletions=dels_total,
+            coverage=coverage_value,
+        )
+    )
+    collector.record_decode(
+        DecodeStageEvent(output_path=output_path, decoded_data=decoded, constraints=constraints)
+    )
+    artifact = collector.emit()
+    artifact.setdefault("input_config", {}).update(
+        {
+            "channel_runtime": {
+                "dropout_count": dropout_total_meta,
+                "dropout_fraction": dropout_fraction,
+                "synthesis_failures": synthesis_total_meta,
+                "synthesis_fraction": synthesis_fraction,
+                "total_reads": total_reads,
             }
-            for subs, ins, dele in per_oligo_totals
-        ],
-    )
-    oligo_metrics.setdefault(
-        "synthesis_failures", [bool(flag) for flag in synthesis_flags]
-    )
-
-    channel_configuration: dict[str, Any] = {}
-    if channel_config is not None:
-        channel_configuration = {
-            "parallel": channel_config.parallel,
-            "workers": channel_config.workers,
-            "use_process_pool": channel_config.use_process_pool,
-            "use_mpi": channel_config.use_mpi,
-            "illumina_profile": channel_config.illumina_profile,
-            "nanopore_profile": channel_config.nanopore_profile,
-            "dropout_rate": channel_config.dropout_rate,
-            "coverage_distribution": (
-                dict(channel_config.coverage_distribution)
-                if channel_config.coverage_distribution
-                else None
-            ),
-            "synthesis_loss": channel_config.synthesis_loss,
         }
+    )
+    if isinstance(artifact.get("outcome"), dict):
+        embedded = artifact["outcome"].setdefault("metrics", {})
+        if isinstance(embedded, dict):
+            oligo = embedded.setdefault("oligo_metrics", {})
+            if isinstance(oligo, dict):
+                oligo.setdefault("coverage_counts", coverage_counts)
+                oligo.setdefault("dropout_flags", [bool(flag) for flag in dropout_flags])
+                oligo.setdefault(
+                    "mutation_totals",
+                    [
+                        {
+                            "substitutions": subs,
+                            "insertions": ins,
+                            "deletions": dele,
+                        }
+                        for subs, ins, dele in per_oligo_totals
+                    ],
+                )
+            embedded.setdefault(
+                "sequence_batch",
+                {
+                    "batch_id": mutated_batch.batch_id,
+                    "seed": mutated_batch.seed,
+                    "metadata": dict(mutated_batch.metadata),
+                },
+            )
 
-    channel_metrics: dict[str, Any] = {
-        "name": channel or "none",
-        "dropout": {
-            "count": dropout_total_meta,
-            "fraction": dropout_fraction,
-        },
-        "coverage": {
-            "average": avg_cov
-            if avg_cov is not None
-            else (
-                sum(coverage_counts) / max(1, len(coverage_counts))
-                if coverage_counts
-                else None
-            ),
-            "total_reads": total_reads,
-            "histogram": coverage_hist,
-        },
-        "synthesis": {
-            "count": synthesis_total_meta,
-            "fraction": synthesis_fraction,
-        },
-        "mutation_totals": {
-            "substitutions": subs_total,
-            "insertions": ins_total,
-            "deletions": dels_total,
-        },
-        "oligo_count": len(mutated_batch.oligos),
-    }
-    if channel_configuration:
-        channel_metrics["configuration"] = channel_configuration
-    if channel_constructor_params:
-        channel_metrics["parameters"] = channel_constructor_params
-    sim_seed = _resolve_sim_seed()
-    if sim_seed is not None:
-        channel_metrics["simulator_seed"] = sim_seed
-
-    metrics["channel"] = channel_metrics
-    metrics["dropout_count"] = dropout_total_meta
-    metrics["dropout_fraction"] = dropout_fraction
-    metrics["sequence_batch"] = {
-        "batch_id": mutated_batch.batch_id,
-        "seed": mutated_batch.seed,
-        "metadata": dict(mutated_batch.metadata),
-    }
-
-    return metrics
+    return artifact
 
 
 
@@ -670,18 +641,34 @@ def _handle_command(args: argparse.Namespace) -> None:
         )
 
     if args.mpi_workers:
-        metrics = parallel_map(
+        artifact = parallel_map(
             lambda _: _execute(),
             [None],
             workers=args.mpi_workers,
             use_mpi=True,
         )[0]
     else:
-        metrics = _execute()
+        artifact = _execute()
 
     metrics_path = Path(str(args.output) + ".json")
-    metrics_path.write_text(json.dumps({"metrics": metrics}))
-    logger.info("Metrics written to %s", metrics_path)
+    if isinstance(artifact, dict):
+        legacy_metrics = artifact.setdefault("metrics", canonical_to_legacy_metrics(artifact))
+        if isinstance(legacy_metrics, dict):
+            runtime = artifact.get("input_config", {}).get("channel_runtime", {}) if isinstance(artifact.get("input_config"), dict) else {}
+            if isinstance(runtime, dict):
+                legacy_metrics.setdefault("dropout_count", runtime.get("dropout_count"))
+                legacy_metrics.setdefault("dropout_fraction", runtime.get("dropout_fraction"))
+                legacy_metrics.setdefault(
+                    "channel",
+                    {
+                        "dropout": {
+                            "count": runtime.get("dropout_count"),
+                            "fraction": runtime.get("dropout_fraction"),
+                        }
+                    },
+                )
+    metrics_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
+    logger.info("Run artifact written to %s", metrics_path)
 
     manifest_params: Dict[str, Any] = {"method": codec}
     if fec:
@@ -691,9 +678,10 @@ def _handle_command(args: argparse.Namespace) -> None:
         if channel_params:
             manifest_params["channel_parameters"] = channel_params
 
-    manifest = generate_manifest(args.input, manifest_params, metrics)
+    legacy_metrics = artifact.get("outcome", {}).get("metrics", {}) if isinstance(artifact, dict) else {}
+    manifest = generate_manifest(args.input, manifest_params, legacy_metrics if isinstance(legacy_metrics, dict) else {})
     manifest_path = metrics_path.with_suffix(".manifest.json")
-    manifest_path.write_text(json.dumps(manifest, indent=2))
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     logger.info("Manifest written to %s", manifest_path)
 
     if args.emit_manifest_report:

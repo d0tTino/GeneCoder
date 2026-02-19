@@ -7,7 +7,6 @@ provided, GC distributions are overlaid and ECC success rates are shown
 side-by-side for easier comparison between datasets.
 """
 
-import json
 import sys
 import math
 from collections import Counter
@@ -15,6 +14,7 @@ from pathlib import Path
 from typing import IO, Any, Iterable, Callable, cast
 
 from .bool_parsing import parse_bool_like
+from .results.schema import canonical_to_legacy_metrics, load_run_schema
 from types import ModuleType
 
 try:  # pragma: no cover - optional dependency for tests
@@ -81,22 +81,13 @@ def _calc_decode_success(data: dict[str, Any]) -> float | None:
 
 
 def _load_metrics(src: str | Path | IO[str]) -> dict[str, Any]:
-    """Load metrics from ``src`` which may be a path or file-like object."""
+    """Load canonical run artifact and return compatibility metrics view."""
 
     try:
-        if hasattr(src, "read"):
-            data = json.load(src)
-            name = getattr(src, "name", "uploaded")
-        else:
-            name = str(src)
-            with open(src, "r", encoding="utf-8") as fh:
-                data = json.load(fh)
-        if isinstance(data, dict):
-            metrics = data.get("metrics")
-            if isinstance(metrics, dict):
-                return metrics
-            return data
+        run = load_run_schema(src)
+        return canonical_to_legacy_metrics(run)
     except Exception as exc:  # pragma: no cover - surfaced in UI
+        name = getattr(src, "name", str(src))
         if st:  # pragma: no cover - only used in dashboard
             st.error(f"Failed to load {name}: {exc}")
         else:

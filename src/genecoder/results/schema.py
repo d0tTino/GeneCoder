@@ -242,11 +242,17 @@ def load_run_schema(src: str | Path | IO[str] | Mapping[str, Any]) -> dict[str, 
     data = dict(raw)
 
     if data.get("schema_version"):
+        if isinstance(data.get("outcome"), Mapping):
+            return migrate_run_schema(data)
+        if isinstance(data.get("metrics"), Mapping) or "encoding_parameters" in data:
+            return translate_manifest(data)
         return migrate_run_schema(data)
     if isinstance(data.get("metrics"), Mapping) or "encoding_parameters" in data:
         return translate_manifest(data)
     if "total_original_size" in data and "files" in data:
         return translate_bundle_metrics(data)
+    if any(key in data for key in ("gc_distribution", "gc_content", "max_homopolymer", "constraint_violations", "oligo_metrics")):
+        return translate_manifest({"file": data.get("run_id") or "run", "encoding_parameters": {"method": data.get("method") or "unknown"}, "metrics": data})
     return translate_decode_summary(data)
 
 
@@ -256,19 +262,17 @@ def canonical_to_legacy_metrics(run_data: Mapping[str, Any]) -> dict[str, Any]:
     embedded_metrics = outcome.get("metrics") if isinstance(outcome, Mapping) and isinstance(outcome.get("metrics"), Mapping) else {}
     metrics: dict[str, Any] = dict(embedded_metrics)
 
-    if "decode_success_rate" not in metrics and isinstance(outcome, Mapping):
+    if "decode_success_rate" not in metrics and isinstance(outcome, Mapping) and outcome.get("decode_success_rate") is not None:
         metrics["decode_success_rate"] = outcome.get("decode_success_rate")
-    if "decode_success" not in metrics and isinstance(outcome, Mapping):
-        metrics["decode_success"] = outcome.get("decode_success")
-    if "throughput" not in metrics and isinstance(outcome, Mapping):
+    if "throughput" not in metrics and isinstance(outcome, Mapping) and outcome.get("throughput") is not None:
         metrics["throughput"] = outcome.get("throughput")
-    if "ber" not in metrics and isinstance(outcome, Mapping):
+    if "ber" not in metrics and isinstance(outcome, Mapping) and outcome.get("ber") is not None:
         metrics["ber"] = outcome.get("ber")
-    if "dropout_fraction" not in metrics and isinstance(outcome, Mapping):
+    if "dropout_fraction" not in metrics and isinstance(outcome, Mapping) and outcome.get("dropout_rate") is not None:
         metrics["dropout_fraction"] = outcome.get("dropout_rate")
-    if "gc_variance" not in metrics and isinstance(outcome, Mapping):
+    if "gc_variance" not in metrics and isinstance(outcome, Mapping) and outcome.get("gc_stress") is not None:
         metrics["gc_variance"] = outcome.get("gc_stress")
-    if "max_homopolymer" not in metrics and isinstance(outcome, Mapping):
+    if "max_homopolymer" not in metrics and isinstance(outcome, Mapping) and outcome.get("homopolymer_stress") is not None:
         metrics["max_homopolymer"] = outcome.get("homopolymer_stress")
 
     return metrics

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import List, Dict, cast
 
 from genecoder import report as report_module
+from genecoder.results.schema import RUN_SCHEMA_VERSION
 
 
 _DATA_SIZE = 1_000_000
@@ -47,6 +48,19 @@ def _parse_results(text: str, fmt: str) -> list[dict[str, float | str]]:
     return [dict(row) for row in reader]
 
 
+def _to_canonical_artifact(results: list[dict[str, float | str]]) -> dict[str, object]:
+    return {
+        "schema_version": RUN_SCHEMA_VERSION,
+        "source_format": "benchmark_fec",
+        "run_id": "benchmark-fec",
+        "profiles": {"encoding": None, "simulation": None, "decode": None},
+        "seeds": {"global": None, "encode": None, "simulate": None, "decode": None},
+        "runtime": {"total_seconds": None, "encode_seconds": None, "simulate_seconds": None, "decode_seconds": None},
+        "stages": {"encode": {"metrics": {}}, "simulate": {"metrics": {}}, "decode": {"metrics": {}}},
+        "outcome": {"metrics": {"benchmark": results}},
+    }
+
+
 def _handle_fec(args: argparse.Namespace) -> None:
     script = Path(__file__).resolve().parents[3] / "benchmarks" / "fec_bench.py"
     cmd = [
@@ -70,8 +84,9 @@ def _handle_fec(args: argparse.Namespace) -> None:
         sys.stderr.write(proc.stderr)
         raise SystemExit(proc.returncode)
     results_text = proc.stdout
+    results = _parse_results(results_text, args.format)
+    artifact = _to_canonical_artifact(results)
     if args.plot:
-        results = _parse_results(results_text, args.format)
         if any("redundancy" in r for r in results):
             buf = report_module.plot_fec_success(results)
         else:
@@ -79,8 +94,9 @@ def _handle_fec(args: argparse.Namespace) -> None:
         with open(args.plot, "wb") as fh:
             fh.write(buf.getvalue())
         buf.close()
+    payload = json.dumps(artifact, indent=2)
     if args.output:
         with open(args.output, "w", encoding="utf-8") as fh:
-            fh.write(results_text)
+            fh.write(payload)
     else:
-        sys.stdout.write(results_text)
+        sys.stdout.write(payload)
