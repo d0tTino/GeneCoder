@@ -70,6 +70,9 @@ def _update_entry_point_metadata(entry_name: str, module: ModuleType) -> None:
 
 def _load_entry_point_module(entry_point: object, registrar: Callable[..., object], kind: str, entry_name: str) -> None:
     module = entry_point.load()
+    metadata = getattr(module, "PLUGIN_METADATA", None)
+    if metadata is not None:
+        validate_plugin_metadata(metadata)
     _update_entry_point_metadata(entry_name, module)
     register = getattr(module, "register", None)
     if callable(register):
