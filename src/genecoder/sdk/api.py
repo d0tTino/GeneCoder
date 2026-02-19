@@ -6,7 +6,7 @@ from typing import Any, Iterable, Mapping
 
 import yaml
 
-from ..pipeline import run_pipeline
+from ..app import RunPipelineRequest, RunPipelineUseCase
 
 SpecInput = "ExperimentSpec | Mapping[str, Any] | str | Path"
 
@@ -71,19 +71,20 @@ def run_experiment(spec: ExperimentSpec | Mapping[str, Any] | str | Path) -> Exp
     """Run one experiment from dataclass, mapping, or YAML file path."""
 
     normalized = _normalize_spec(spec)
-    decoded, metrics, fec_info = run_pipeline(
-        codec=normalized.codec,
-        fec_backend=normalized.fec_backend,
-        channel=normalized.channel,
-        input_path=normalized.input_path,
-        output_path=normalized.output_path,
-        filter_mutated=normalized.filter_mutated,
+    response = RunPipelineUseCase().execute(
+        RunPipelineRequest(
+            codec=normalized.codec,
+            fec=normalized.fec_backend,
+            channel=normalized.channel,
+            input_path=normalized.input_path,
+            output_path=normalized.output_path,
+        )
     )
     return ExperimentResult(
         spec=normalized,
-        decoded=decoded,
-        metrics=dict(metrics),
-        fec_info=(dict(fec_info) if isinstance(fec_info, Mapping) else fec_info),
+        decoded=response.decoded,
+        metrics=dict(response.metrics),
+        fec_info=(dict(response.fec_info) if isinstance(response.fec_info, Mapping) else response.fec_info),
     )
 
 

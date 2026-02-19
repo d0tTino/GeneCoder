@@ -19,29 +19,23 @@ from .shared import (
 from genecoder.metrics import metrics
 
 from genecoder.manifest import generate_manifest
-from genecoder.encoders import (
-    encode_base4_direct,
-    encode_gc_balanced,
-    encode_triple_repeat,
-)
+from genecoder.app import EncodeRequest, EncodeUseCase
+from genecoder.encoders import encode_triple_repeat
 from genecoder.gc_constrained_encoder import (
     calculate_gc_content,
     DEFAULT_GC_MAX,
     DEFAULT_GC_MIN,
     DEFAULT_MAX_HOMOPOLYMER,
 )
-from genecoder.gc_balancer import AdvancedGCBalancer
-from genecoder.hamming_codec import encode_data_with_hamming
 from genecoder.plugin_manager import FEC_REGISTRY
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.formats import SequenceBatch
-from genecoder.huffman_coding import encode_huffman
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
-from genecoder.utils import get_max_homopolymer_length, get_alphabet_maps
+from genecoder.utils import get_max_homopolymer_length
 from genecoder.constraint_fixer import encode as constraint_fix_encode
 from genecoder.synthesis import SynthesisConstraints
 from .common import run_tasks
-from typing import Callable, cast
+from typing import Callable
 
 _COMPLEMENT_MAP = str.maketrans("ACGTacgt", "TGCAtgca")
 
@@ -68,153 +62,16 @@ logger = logging.getLogger(__name__)
 def run_encoding_pipeline(
     data: bytes, options: EncodingOptions, input_file_name: str
 ) -> tuple[str, str, str, bytes, int]:
-    _ensure_security_loaded()
-    current_input = data
-    fec_padding_bits = -1
-    encode_map, _ = get_alphabet_maps(options.alphabet)
-    # Normalize path separators to ensure the FASTA header does not contain
-    # backslashes which can appear on Windows paths.
-    sanitized_name = Path(input_file_name.replace("\\", "/")).name
-    header_parts = [f"method={options.method}", f"input_file={sanitized_name}"]
-
-    if options.fec == "hamming_7_4":
-        if options.add_parity:
-            logger.warning(
-                f"Warning for {input_file_name}: --add-parity is ignored when Hamming(7,4) FEC is applied to binary data."
-            )
-        current_input, fec_padding_bits = encode_data_with_hamming(data)
-        header_parts.append("fec=hamming_7_4")
-        header_parts.append(f"fec_padding_bits={fec_padding_bits}")
-        logger.info(
-            f"Applied Hamming(7,4) FEC to {input_file_name}. Original binary size: {len(data)}, Hamming encoded binary size: {len(current_input)} (padding bits: {fec_padding_bits})."
-        )
-    elif options.fec and options.fec in FEC_REGISTRY:
-        if options.add_parity:
-            logger.warning(
-                f"Warning for {input_file_name}: --add-parity is ignored when {options.fec} FEC is applied to binary data."
-            )
-        enc = FEC_REGISTRY[options.fec]
-        encode_kwargs: dict[str, object | None] = {}
-        if options.fec == "reed_solomon":
-            encode_kwargs = {
-                "symbol_size": options.rs_symbol_size,
-                "primitive": options.rs_primitive,
-            }
-        elif options.fec == "fountain":
-            if options.fountain_chunk_size <= 0:
-                raise ValueError("Fountain chunk size must be positive.")
-            if options.fountain_redundancy <= 0:
-                raise ValueError("Fountain redundancy must be positive.")
-            encode_kwargs = {
-                "chunk_size": options.fountain_chunk_size,
-                "redundancy": options.fountain_redundancy,
-                "manifest_path": options.fountain_manifest,
-            }
-        encode_kwargs = {k: v for k, v in encode_kwargs.items() if v is not None}
-        current_input, info = enc["encode"](data, **encode_kwargs)
-        header_parts.append(f"fec={options.fec}")
-        if info is not None:
-            import base64
-            import json
-
-            encoded_info = base64.b64encode(json.dumps(info).encode()).decode()
-            header_parts.append(f"fec_info={encoded_info}")
-        logger.info(
-            f"Applied {options.fec} FEC to {input_file_name}. Original binary size: {len(data)}, encoded size: {len(current_input)}."
-        )
-    raw_dna = ""
-    disabled_fec = {"hamming_7_4", *FEC_REGISTRY.keys()}
-    should_add_parity = options.add_parity and (
-        options.fec is None or options.fec not in disabled_fec
+    response = EncodeUseCase().execute(
+        EncodeRequest(data=data, options=options, input_name=input_file_name)
     )
-
-    if options.method == "base4_direct":
-        if should_add_parity and options.k_value <= 0:
-            raise ValueError("Parity k-value must be positive.")
-        raw_dna = cast(
-            str,
-            encode_base4_direct(
-                current_input,
-                add_parity=should_add_parity,
-                k_value=options.k_value,
-                parity_rule=options.parity_rule,
-                encode_map=encode_map,
-                stream=False,
-            ),
-        )
-        if should_add_parity:
-            header_parts.extend(
-                [f"parity_k={options.k_value}", f"parity_rule={options.parity_rule}"]
-            )
-    elif options.method == "huffman":
-        if should_add_parity and options.k_value <= 0:
-            raise ValueError("Parity k-value must be positive for Huffman.")
-        raw_dna, huffman_table, num_padding_bits = encode_huffman(
-            current_input,
-            add_parity=should_add_parity,
-            k_value=options.k_value,
-            parity_rule=options.parity_rule,
-            encode_map=encode_map,
-        )
-        serializable_table = {str(k): v for k, v in huffman_table.items()}
-        huffman_params = {"table": serializable_table, "padding": num_padding_bits}
-        header_parts.append(f"huffman_params={json.dumps(huffman_params)}")
-        if should_add_parity:
-            header_parts.extend(
-                [f"parity_k={options.k_value}", f"parity_rule={options.parity_rule}"]
-            )
-    elif options.method == "gc_balanced":
-        if should_add_parity:
-            logger.warning(
-                f"Warning for {input_file_name}: --add-parity not directly used by 'gc_balanced' core logic."
-            )
-        raw_dna = encode_gc_balanced(
-            current_input,
-            options.gc_min,
-            options.gc_max,
-            options.max_homopolymer,
-        )
-        header_parts.extend(
-            [
-                f"gc_min={options.gc_min}",
-                f"gc_max={options.gc_max}",
-                f"max_homopolymer={options.max_homopolymer}",
-            ]
-        )
-    elif options.method == "gc_balanced_advanced":
-        if should_add_parity:
-            logger.warning(
-                f"Warning for {input_file_name}: --add-parity not used by 'gc_balanced_advanced'."
-            )
-        balancer = AdvancedGCBalancer(
-            options.gc_min,
-            options.gc_max,
-            options.max_homopolymer,
-        )
-        raw_dna = balancer.encode(current_input)
-        header_parts.extend(
-            [
-                f"gc_min={options.gc_min}",
-                f"gc_max={options.gc_max}",
-                f"max_homopolymer={options.max_homopolymer}",
-            ]
-        )
-    else:
-        raise ValueError(f"Unknown encoding method '{options.method}'.")
-
-    final_dna = raw_dna
-    if options.fec == "triple_repeat":
-        final_dna = encode_triple_repeat(raw_dna)
-        header_parts.append("fec=triple_repeat")
-        logger.info(
-            f"Applied Triple-Repeat FEC to {input_file_name}. DNA length before: {len(raw_dna)}, after: {len(final_dna)}."
-        )
-    elif options.fec:
-        logger.warning(
-            f"Warning for {input_file_name}: Unknown FEC method '{options.fec}'. No DNA-level FEC applied."
-        )
-
-    return final_dna, " ".join(header_parts), raw_dna, current_input, fec_padding_bits
+    return (
+        response.sequence,
+        response.header,
+        response.raw_sequence,
+        response.transformed_input,
+        response.fec_padding_bits,
+    )
 
 
 def process_single_encode(
