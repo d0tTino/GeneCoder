@@ -1,12 +1,15 @@
 from .api import (
+    ExperimentRequest,
     ExperimentResult,
-    ExperimentSpec,
     SweepResult,
     run_experiment,
     sweep,
 )
 
+ExperimentSpec = ExperimentRequest
+
 __all__ = [
+    "ExperimentRequest",
     "ExperimentSpec",
     "ExperimentResult",
     "SweepResult",

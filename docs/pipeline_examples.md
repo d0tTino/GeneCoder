@@ -418,3 +418,7 @@ A simple what-if loop is:
 
 This keeps a deterministic audit trail for how policy changes impact decode
 success and synthesis violations.
+
+## SDK API workflows
+
+See `examples/sdk_api_workflows.py` for end-to-end API usage patterns covering single run, sweep, compare, and bundle-style orchestration.
