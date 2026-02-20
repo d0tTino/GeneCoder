@@ -2,7 +2,16 @@
 
 from .analyze_use_case import AnalyzeRequest, AnalyzeResponse, AnalyzeUseCase
 from .encode_use_case import EncodeRequest, EncodeResponse, EncodeUseCase
-from .pipeline_use_case import RunPipelineRequest, RunPipelineResponse, RunPipelineUseCase
+from .pipeline_use_case import (
+    ArtifactOutputPolicy,
+    BatchSweepMatrix,
+    ChannelProfile,
+    ConstraintProfile,
+    RunPipelineRequest,
+    RunPipelineResponse,
+    RunPipelineUseCase,
+    SeedProfile,
+)
 
 __all__ = [
     "AnalyzeRequest",
@@ -11,6 +20,11 @@ __all__ = [
     "EncodeRequest",
     "EncodeResponse",
     "EncodeUseCase",
+    "ArtifactOutputPolicy",
+    "BatchSweepMatrix",
+    "ChannelProfile",
+    "ConstraintProfile",
+    "SeedProfile",
     "RunPipelineRequest",
     "RunPipelineResponse",
     "RunPipelineUseCase",

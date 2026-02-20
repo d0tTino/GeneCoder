@@ -15,8 +15,6 @@ from genecoder.simulators.nanopore import NANOPORE_PROFILES
 from genecoder.channel_config import ChannelConfig
 from genecoder.core import encode, decode, inspect_coding_plan
 from genecoder.formats import SequenceBatch
-from genecoder.html_report import generate_html_report
-from genecoder.manifest import generate_manifest
 from genecoder.parallel import parallel_map
 from genecoder.plugin_manager import (
     CODEC_REGISTRY,
@@ -37,7 +35,6 @@ from genecoder.simulators.batch_utils import (
 )
 from genecoder.metrics import metrics as aggregate_metrics, set_metrics_path
 from genecoder.synthesis import SynthesisConstraints
-from genecoder.results.schema import canonical_metrics_view
 from genecoder.results.collector import (
     DecodeStageEvent,
     EncodeStageEvent,
@@ -45,6 +42,13 @@ from genecoder.results.collector import (
     SimulateStageEvent,
 )
 from genecoder.constraints import load_constraint_policy
+from genecoder.app import (
+    ArtifactOutputPolicy,
+    ChannelProfile,
+    RunPipelineRequest,
+    RunPipelineUseCase,
+    SeedProfile,
+)
 
 RUN_PROFILE_VERSION = "2026.02"
 
@@ -637,22 +641,23 @@ def _handle_command(args: argparse.Namespace) -> None:
         logger.info("Coding planner: %s", json.dumps(explanation, indent=2, sort_keys=True))
 
     def _execute() -> Dict[str, Any]:
-        return _run_with_params(
-            codec, fec, channel, channel_params, args.input, args.output
+        response = RunPipelineUseCase().execute(
+            RunPipelineRequest(
+                codec=codec,
+                fec=fec,
+                channel=channel,
+                input_path=args.input,
+                output_path=args.output,
+                profile=(ChannelProfile(name=channel, parameters=channel_params) if channel and channel != "none" else None),
+                seeds=SeedProfile(global_seed=args.seed),
+                artifacts=ArtifactOutputPolicy(
+                    metrics_path=(str(metrics_override) if metrics_override else None),
+                    emit_manifest=True,
+                    emit_html_report=bool(args.emit_manifest_report),
+                ),
+            )
         )
-
-    if args.mpi_workers:
-        artifact = parallel_map(
-            lambda _: _execute(),
-            [None],
-            workers=args.mpi_workers,
-            use_mpi=True,
-        )[0]
-    else:
-        artifact = _execute()
-
-    metrics_path = Path(str(args.output) + ".json")
-    if isinstance(artifact, dict):
+        artifact = dict(response.run_schema)
         artifact.setdefault("schema_provenance", {}).update(
             {
                 "seed": args.seed,
@@ -660,34 +665,28 @@ def _handle_command(args: argparse.Namespace) -> None:
                 "command_lineage": ["genecli pipeline", "encode", "simulate", "decode"],
             }
         )
-        canonical_metrics = canonical_metrics_view(artifact)
-        runtime = artifact.get("input_config", {}).get("channel_runtime", {}) if isinstance(artifact.get("input_config"), dict) else {}
-        if isinstance(runtime, dict):
-            canonical_metrics.setdefault("dropout_count", runtime.get("dropout_count"))
-            canonical_metrics.setdefault("dropout_fraction", runtime.get("dropout_fraction"))
-        artifact["dashboard_metrics"] = canonical_metrics
-        artifact["metrics"] = dict(canonical_metrics)
-    metrics_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
+        return artifact
+
+    if args.mpi_workers:
+        parallel_map(
+            lambda _: _execute(),
+            [None],
+            workers=args.mpi_workers,
+            use_mpi=True,
+        )[0]
+    else:
+        _execute()
+
+    metrics_path = Path(str(metrics_override) if metrics_override else str(args.output) + ".json")
     logger.info("Run artifact written to %s", metrics_path)
 
-    manifest_params: Dict[str, Any] = {"method": codec}
-    if fec:
-        manifest_params["fec"] = fec
-    if channel and channel != "none":
-        manifest_params["channel"] = channel
-        if channel_params:
-            manifest_params["channel_parameters"] = channel_params
-
-    manifest_metrics = artifact.get("dashboard_metrics", {}) if isinstance(artifact, dict) else {}
-    manifest = generate_manifest(args.input, manifest_params, manifest_metrics if isinstance(manifest_metrics, dict) else {})
     manifest_path = metrics_path.with_suffix(".manifest.json")
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    logger.info("Manifest written to %s", manifest_path)
+    if manifest_path.exists():
+        logger.info("Manifest written to %s", manifest_path)
 
     if args.emit_manifest_report:
         html_report_path = metrics_path.with_suffix(".html")
-        html = generate_html_report(str(manifest_path))
-        html_report_path.write_text(html, encoding="utf-8")
-        logger.info("HTML report written to %s", html_report_path)
+        if html_report_path.exists():
+            logger.info("HTML report written to %s", html_report_path)
 
     _launch_dashboard_if_requested()
