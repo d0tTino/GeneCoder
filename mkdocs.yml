@@ -25,6 +25,8 @@ nav:
   - Migration Guide: migration.md
   - Development:
       - Development Roadmap: development_roadmap.md
+      - Architecture Boundaries: architecture_layers.md
+      - Legacy Deprecation Matrix: legacy_deprecation_matrix.md
       - Development Vision: DEVELOPMENT_VISION.md
   - Integrations:
       - n8n Overview: n8n_overview.md

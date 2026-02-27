@@ -1,32 +1,40 @@
-# Command Architecture Layers
+# Package Architecture Boundaries
 
-GeneCoder now follows a transport-agnostic application service architecture.
+GeneCoder uses explicit package boundaries to keep integrations clean and to
+avoid long-term wrapper accumulation.
 
-## Layers
+## Layer map
 
-- **Transport adapters**
-  - CLI modules in `src/genecoder/cli/`
-  - HTTP API handlers in `web/main.py`
-  - SDK wrappers in `src/genecoder/sdk/api.py`
-- **Application services** (`src/genecoder/app/`)
-  - `EncodeUseCase`
-  - `RunPipelineUseCase`
-  - `AnalyzeUseCase`
-- **Domain & orchestration**
-  - Encoding/decoding primitives, constraints, and channel simulation in `src/genecoder/`
-- **Plugin boundary**
-  - Codecs/FEC/channels resolved via plugin registries in `genecoder.plugin_manager`
+| Layer | Packages | Responsibility |
+| --- | --- | --- |
+| Domain | `genecoder.coding`, `genecoder.constraints`, `genecoder.simulators` | Core DNA coding, constraints, and channel/simulator behavior. |
+| Application | `genecoder.app` | Use-cases and orchestration contracts (`RunPipelineUseCase`, `EncodeUseCase`, `AnalyzeUseCase`). |
+| Interfaces | `genecoder.cli`, `genecoder.dashboard`, `genecoder.dashboard_streamlit`, `genecoder.sdk` | User/program entry points that parse IO and call application services. |
+| Infrastructure | `genecoder.plugin_runtime`, `genecoder.*_adapter` modules | Plugin runtime, registry integration, and external-tool adapters. |
+| Compatibility | `genecoder.pipeline`, `genecoder.api`, `genecoder.channel_sim` | Legacy import shims only; no new behavior is allowed here. |
 
-## Data contracts
+## Dependency direction
 
-Each use-case exposes explicit request/response dataclasses to avoid untyped dict coupling:
+Allowed direction is intentionally one-way:
 
-- `EncodeRequest` / `EncodeResponse`
-- `RunPipelineRequest` / `RunPipelineResponse`
-- `AnalyzeRequest` / `AnalyzeResponse`
+- Interfaces -> Application -> Domain
+- Infrastructure can depend on Domain/Application internals where needed, but
+  must not depend on Interface packages.
+- Domain must not depend on Application or Interface packages.
+- Compatibility modules may forward to modern packages but must not gain new
+  business logic.
 
-Adapters are responsible for argument parsing and serialization only. Business orchestration, validation, and output shaping run in the application service layer.
+## Enforced checks
 
-## Compatibility strategy
+Boundary checks run in `tests/test_architecture_boundaries.py` and are wired into
+CI. They verify:
 
-Large CLI modules are decomposed incrementally by command group. Existing subcommand UX is preserved by compatibility wrappers in CLI handlers that delegate to use-cases.
+1. Interface packages do not import marked legacy modules.
+2. Marked legacy modules are imported only by approved compatibility adapters.
+3. Domain/Application/Infrastructure packages respect layer dependency rules.
+
+## Why this matters
+
+These checks make architectural drift visible at review time and ensure that new
+integrations are implemented in the target layers instead of adding additional
+legacy wrappers.

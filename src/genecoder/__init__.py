@@ -24,7 +24,7 @@ from .plugin_manager import (
 )
 from .simulators import SIMULATOR_REGISTRY, simulate_reads
 from .channel_config import ChannelConfig
-from .pipeline import SequencePipeline
+from .app.pipeline_runtime import SequencePipeline
 
 
 __all__ = [
@@ -79,4 +79,3 @@ def __getattr__(name: str) -> object:
         })
         return globals()[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-

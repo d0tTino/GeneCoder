@@ -138,6 +138,9 @@ jobs:
     - name: Run ruff lint
       run: ruff check --exit-non-zero-on-fix .
 
+    - name: Enforce architecture boundaries
+      run: pytest -q tests/test_architecture_boundaries.py
+
     - name: Restore pre-commit cache
       id: precommit-cache
       uses: actions/cache/restore@v3
