@@ -21,6 +21,10 @@ def _make_manifest(path: Path) -> Path:
             "insertion_rate": 0.02,
             "deletion_rate": 0.03,
             "coverage": 42,
+            "constraint_pressure": {
+                "aggregate": {"before": 3, "after": 1, "violations": 1, "pressure": 0.01},
+                "by_oligo": {"ol-1": {"violations_before": 2, "violations_after": 0}},
+            },
         },
     }
     path.write_text(json.dumps(data))
@@ -39,6 +43,8 @@ def test_generate_html_report(tmp_path: Path) -> None:
     assert "Insertions:</strong> count 2; rate 2.0000%" in html
     assert "Deletions:</strong> count 3; rate 3.0000%" in html
     assert "Coverage:</strong> 42" in html
+    assert "Constraint Pressure" in html
+    assert "before 3, after 1" in html
 
 
 def test_cli_html_report_stdout(tmp_path: Path) -> None:

@@ -232,6 +232,67 @@ def _constraint_outcome_payload(result: object) -> dict[str, Any]:
     }
 
 
+def _apply_constraint_stage_to_batch(
+    batch: SequenceBatch,
+    *,
+    policy: ConstraintPolicy,
+    stage: str,
+) -> dict[str, Any]:
+    pipeline = ConstraintRepairPipeline(policy)
+    primaries = batch.primary_oligos() or batch.oligos
+    outcomes = pipeline.repair_batch([ol.sequence for ol in primaries], stage=stage)
+    by_oligo: dict[str, dict[str, Any]] = {}
+    for idx, (oligo, outcome) in enumerate(zip(primaries, outcomes), start=1):
+        if outcome.sequence != oligo.sequence:
+            oligo.sequence = outcome.sequence
+        key = str(
+            oligo.metadata.get("oligo_id")
+            or oligo.oligo_id
+            or oligo.metadata.get("oligo_index")
+            or idx
+        )
+        by_oligo[key] = {
+            "oligo_index": idx,
+            "violations_before": outcome.report_before.count,
+            "violations_after": outcome.report_after.count,
+            "pressure_before": outcome.report_before.pressure,
+            "pressure_after": outcome.report_after.pressure,
+            "repair_strategy": outcome.repair.strategy if outcome.repair is not None else None,
+            "repairs_applied": len(outcome.repair.changes) if outcome.repair is not None else 0,
+            "residual_risk": outcome.residual_risk,
+            "stage": outcome.stage,
+        }
+    return {
+        "stage": stage,
+        "violations": {
+            "before": sum(item.report_before.count for item in outcomes),
+            "after": sum(item.report_after.count for item in outcomes),
+            "pressure_before": (
+                sum(item.report_before.pressure for item in outcomes) / len(outcomes)
+                if outcomes
+                else 0.0
+            ),
+            "pressure_after": (
+                sum(item.report_after.pressure for item in outcomes) / len(outcomes)
+                if outcomes
+                else 0.0
+            ),
+        },
+        "repairs_applied": sum(len(item.repair.changes) if item.repair is not None else 0 for item in outcomes),
+        "repair_strategy": (
+            outcomes[0].repair.strategy
+            if outcomes and outcomes[0].repair is not None
+            else None
+        ),
+        "residual_risk": (
+            sum(item.residual_risk for item in outcomes) / len(outcomes)
+            if outcomes
+            else 0.0
+        ),
+        "by_oligo": by_oligo,
+    }
+
+
 def encode(
     codec: str,
     fec: str | None,
@@ -256,7 +317,7 @@ def encode(
         before_size = (
             len(current)
             if isinstance(current, (bytes, bytearray, str))
-            else len(current.primary_sequence())
+            else len(current.combined_sequence())
         )
         started_at = time.perf_counter()
         layer_out = layer.encode_block(current, context)
@@ -267,7 +328,7 @@ def encode(
         after_size = (
             len(current)
             if isinstance(current, (bytes, bytearray, str))
-            else len(current.primary_sequence())
+            else len(current.combined_sequence())
         )
         layer_metrics.append(
             build_layer_metric(
@@ -292,17 +353,25 @@ def encode(
 
     constraint_outcomes: list[dict[str, Any]] = []
     if constraint_policy is not None:
-        pipeline = ConstraintRepairPipeline(constraint_policy)
-        gate_result = pipeline.run(batch.primary_sequence(), stage="encode")
-        constraint_outcomes.append(_constraint_outcome_payload(gate_result))
-        if gate_result.sequence != batch.primary_sequence() and batch.oligos:
-            batch.oligos[0].sequence = gate_result.sequence
+        stage_outcome = _apply_constraint_stage_to_batch(
+            batch,
+            policy=constraint_policy,
+            stage="encode",
+        )
+        constraint_outcomes.append({k: v for k, v in stage_outcome.items() if k != "by_oligo"})
 
-    normalized_stack = normalize_stack_metrics(layer_metrics, batch.primary_sequence())
+    normalized_stack = normalize_stack_metrics(layer_metrics, "".join(ol.sequence for ol in batch.oligos))
     batch.metadata.setdefault("coding_stack", normalized_stack)
     if constraint_policy is not None:
         batch.metadata["constraint_policy"] = constraint_policy.to_dict()
-        batch.metadata["constraint_outcomes"] = constraint_outcomes
+        existing = batch.metadata.get("constraint_outcomes")
+        if isinstance(existing, Mapping):
+            merged = dict(existing)
+        else:
+            merged = {}
+        merged["by_oligo"] = stage_outcome.get("by_oligo", {})
+        merged["stages"] = constraint_outcomes
+        batch.metadata["constraint_outcomes"] = merged
 
     fec_info: Mapping[str, Any] | None = None
     if layer_info:
@@ -314,7 +383,7 @@ def encode(
             info_dict.update(dict(layer_info[fec]))
         if constraint_policy is not None:
             info_dict["constraint_policy"] = constraint_policy.to_dict()
-            info_dict["constraint_outcomes"] = list(constraint_outcomes)
+            info_dict["constraint_outcomes"] = dict(batch.metadata.get("constraint_outcomes", {}))
         info_dict.setdefault("batch_id", batch.batch_id)
         info_dict.setdefault("batch_metadata", dict(batch.metadata))
         fec_info = info_dict
@@ -494,8 +563,8 @@ def simulate(
             run_context=runtime_context,
         )
 
-        original_sequence = original_batch.primary_sequence()
-        mutated_sequence = mutated_batch.primary_sequence()
+        original_sequence = original_batch.combined_sequence()
+        mutated_sequence = mutated_batch.combined_sequence()
         subs, ins, dels = _count_errors(original_sequence, mutated_sequence)
 
         coverage = _estimate_coverage(mutated_batch)
@@ -598,13 +667,17 @@ def decode(
             "No survivor oligos available after filtering; "
             "adjust channel conditions or disable --filter-mutated."
         )
-    constraint_outcomes: list[dict[str, Any]] = []
+    constraint_outcomes: dict[str, Any] = {}
     if policy is not None:
-        pipeline = ConstraintRepairPipeline(policy)
-        gate = pipeline.run(batch.primary_sequence(), stage="pre_decode")
-        constraint_outcomes.append(_constraint_outcome_payload(gate))
-        if gate.sequence != batch.primary_sequence() and batch.oligos:
-            batch.oligos[0].sequence = gate.sequence
+        stage_outcome = _apply_constraint_stage_to_batch(
+            batch,
+            policy=policy,
+            stage="pre_decode",
+        )
+        constraint_outcomes = {
+            "by_oligo": stage_outcome.get("by_oligo", {}),
+            "stages": [{k: v for k, v in stage_outcome.items() if k != "by_oligo"}],
+        }
     context_meta: dict[str, Any] = {"batch_id": batch.batch_id, **batch.metadata}
     if fec_info:
         context_meta.update(dict(fec_info))
@@ -623,7 +696,7 @@ def decode(
         before_size = (
             len(current)
             if isinstance(current, (bytes, bytearray, str))
-            else len(current.primary_sequence())
+            else len(current.combined_sequence())
         )
         if not codec_decoded and layer.name == codec:
             layer_input: bytes | str | SequenceBatch = current
@@ -641,7 +714,7 @@ def decode(
         after_size = (
             len(current)
             if isinstance(current, (bytes, bytearray, str))
-            else len(current.primary_sequence())
+            else len(current.combined_sequence())
         )
         decode_metrics.append(
             build_layer_metric(
@@ -660,7 +733,7 @@ def decode(
     if isinstance(fec_info, dict):
         fec_info["coding_stack"] = normalize_stack_metrics(decode_metrics)
         if constraint_outcomes:
-            fec_info["constraint_outcomes"] = constraint_outcomes
+            fec_info["constraint_outcomes"] = dict(constraint_outcomes)
     return bytes(current)
 
 
@@ -679,13 +752,13 @@ def metrics(
     dropout_flags: Sequence[bool] | None = None,
     ecc_outcomes: Mapping[str, Sequence[bool | float]] | None = None,
     stack_metrics: Mapping[str, Any] | None = None,
-    constraint_outcomes: Sequence[Mapping[str, Any]] | None = None,
+    constraint_outcomes: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """Return quality metrics for ``dna`` and decode results."""
 
     batch = dna if isinstance(dna, SequenceBatch) else None
     if batch is not None:
-        base_sequence = batch.primary_sequence() or batch.combined_sequence()
+        base_sequence = batch.combined_sequence()
         primary_oligos = batch.primary_oligos() or batch.oligos
         sequences = [ol.sequence for ol in primary_oligos] or [base_sequence]
 
@@ -860,6 +933,22 @@ def metrics(
             if ratios:
                 ecc_map[str(name)] = ratios
 
+    if constraint_outcomes is None and batch is not None:
+        batch_outcomes = batch.metadata.get("constraint_outcomes")
+        if isinstance(batch_outcomes, Mapping):
+            constraint_outcomes = dict(batch_outcomes)
+
+    by_oligo_outcomes = (
+        dict(constraint_outcomes.get("by_oligo", {}))
+        if isinstance(constraint_outcomes, Mapping)
+        else {}
+    )
+    aggregate_before = 0
+    aggregate_after = 0
+    if by_oligo_outcomes:
+        aggregate_before = sum(int(item.get("violations_before", 0)) for item in by_oligo_outcomes.values() if isinstance(item, Mapping))
+        aggregate_after = sum(int(item.get("violations_after", 0)) for item in by_oligo_outcomes.values() if isinstance(item, Mapping))
+
     opportunities = max(0, sum(len(seq) for seq in sequences))
     result: Dict[str, Any] = {
         "gc_distribution": gc_dist,
@@ -871,7 +960,16 @@ def metrics(
         "decode_success_rate": success,
         "coverage": coverage,
         "constraint_violations": constraint_violations,
-        "constraint_outcomes": [dict(item) for item in (constraint_outcomes or ())],
+        "constraint_pressure": {
+            "aggregate": {
+                "before": aggregate_before,
+                "after": aggregate_after,
+                "violations": constraint_violations.get("count", 0),
+                "pressure": constraint_violations.get("pressure", 0.0),
+            },
+            "by_oligo": by_oligo_outcomes,
+        },
+        "constraint_outcomes": dict(constraint_outcomes) if isinstance(constraint_outcomes, Mapping) else {},
         "error_bases": opportunities,
         "substitution_rate": 0.0,
         "insertion_rate": 0.0,

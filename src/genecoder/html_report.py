@@ -103,6 +103,30 @@ def _render_oligo_section(metrics: dict[str, Any], html_lines: list[str]) -> Non
     html_lines.append("</ul>")
 
 
+
+
+def _render_constraint_section(metrics: dict[str, Any], html_lines: list[str]) -> None:
+    pressure = metrics.get("constraint_pressure")
+    if not isinstance(pressure, dict):
+        return
+    aggregate = pressure.get("aggregate") if isinstance(pressure.get("aggregate"), dict) else {}
+    by_oligo = pressure.get("by_oligo") if isinstance(pressure.get("by_oligo"), dict) else {}
+    if not aggregate and not by_oligo:
+        return
+    html_lines.append("<h2>Constraint Pressure</h2>")
+    html_lines.append("<ul>")
+    if aggregate:
+        before = aggregate.get("before", 0)
+        after = aggregate.get("after", 0)
+        current = aggregate.get("violations", 0)
+        level = aggregate.get("pressure", 0.0)
+        html_lines.append(
+            f"<li><strong>Aggregate:</strong> before {before}, after {after}, active {current}, pressure {float(level):.4f}</li>"
+        )
+    if by_oligo:
+        html_lines.append(f"<li><strong>Per-oligo entries:</strong> {len(by_oligo)}</li>")
+    html_lines.append("</ul>")
+
 def generate_html_report(manifest_path: str) -> str:
     """Return HTML summary for the manifest at ``manifest_path``."""
     run_schema = load_run_schema(manifest_path)
@@ -182,6 +206,7 @@ def generate_html_report(manifest_path: str) -> str:
         )
 
     _render_oligo_section(metrics, html_lines)
+    _render_constraint_section(metrics, html_lines)
 
     html_lines.extend(["</body>", "</html>"])
     return "\n".join(html_lines)

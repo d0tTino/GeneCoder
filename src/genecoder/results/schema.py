@@ -5,14 +5,19 @@ import json
 from pathlib import Path
 from typing import IO, Any, Mapping
 
-RUN_SCHEMA_VERSION = "1.1"
-SUPPORTED_SCHEMA_VERSIONS: tuple[str, ...] = ("1.0", "1.1")
+RUN_SCHEMA_VERSION = "1.2"
+SUPPORTED_SCHEMA_VERSIONS: tuple[str, ...] = ("1.0", "1.1", "1.2")
 SCHEMA_DEPRECATIONS: dict[str, dict[str, str]] = {
     "1.0": {
         "deprecated_in": "1.1",
         "supported_until": "2.0",
         "notes": "Legacy metric mirroring remains available only through explicit migration commands.",
-    }
+    },
+    "1.1": {
+        "deprecated_in": "1.2",
+        "supported_until": "2.1",
+        "notes": "Constraint outcomes now include per-oligo entries under constraint_outcomes.by_oligo; migrate readers to handle nested shape.",
+    },
 }
 
 
@@ -108,6 +113,7 @@ def canonical_metrics_view(run_data: Mapping[str, Any]) -> dict[str, Any]:
             "coverage": simulate_metrics.get("coverage", metrics.get("coverage")),
             "coverage_distribution": metrics.get("coverage_distribution", []),
             "constraint_violations": metrics.get("constraint_violations"),
+            "constraint_pressure": metrics.get("constraint_pressure", {}),
             "oligo_metrics": metrics.get("oligo_metrics", {}),
             "dropout_count": simulate_metrics.get("dropout_count", metrics.get("dropout_count")),
             "dropout_fraction": simulate_metrics.get(
@@ -185,6 +191,7 @@ def translate_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
                     "gc_content": metrics.get("gc_content"),
                     "gc_variance": metrics.get("gc_variance"),
                     "max_homopolymer": metrics.get("max_homopolymer"),
+                    "constraint_pressure": metrics.get("constraint_pressure"),
                 },
             },
             "simulate": {
