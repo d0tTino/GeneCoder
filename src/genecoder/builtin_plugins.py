@@ -7,12 +7,8 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from types import ModuleType
 
-from .plugin_runtime.descriptors import (
-    PLUGIN_DESCRIPTOR_VERSION,
-    RegistrationCapabilities,
-    RuntimePluginDescriptor,
-    ValidationContract,
-)
+from .plugin_api import CodecCapability, FECCapability, SimulatorCapability, VisualizerCapability
+from .plugin_runtime.descriptors import PLUGIN_DESCRIPTOR_VERSION, RuntimePluginDescriptor, ValidationContract
 from .plugin_runtime.registry import register_plugin
 
 
@@ -24,10 +20,10 @@ def _register_from_module(module: ModuleType, descriptor_kind: str, name_hint: s
         if callable(register):
             # Compatibility: allow old register(function) modules while built-ins migrate.
             kind_map = {
-                "codec": lambda n, v: register_plugin(RuntimePluginDescriptor(api_version=PLUGIN_DESCRIPTOR_VERSION, name=n, kind="codec", implementation=v, capabilities=RegistrationCapabilities(deterministic=True), validation=ValidationContract(encode_input="bytes", encode_output="sequence", decode_input="sequence|batch", decode_output="bytes"))),
-                "fec": lambda n, v: register_plugin(RuntimePluginDescriptor(api_version=PLUGIN_DESCRIPTOR_VERSION, name=n, kind="fec", implementation=v)),
-                "simulator": lambda n, v: register_plugin(RuntimePluginDescriptor(api_version=PLUGIN_DESCRIPTOR_VERSION, name=n, kind="simulator", implementation=v)),
-                "visualizer": lambda n, v: register_plugin(RuntimePluginDescriptor(api_version=PLUGIN_DESCRIPTOR_VERSION, name=n, kind="visualizer", implementation=v)),
+                "codec": lambda n, v: register_plugin(RuntimePluginDescriptor(api_version=PLUGIN_DESCRIPTOR_VERSION, name=n, kind="codec", implementation=v, capabilities=CodecCapability(), validation=ValidationContract(encode_input="bytes", encode_output="sequence", decode_input="sequence|batch", decode_output="bytes"))),
+                "fec": lambda n, v: register_plugin(RuntimePluginDescriptor(api_version=PLUGIN_DESCRIPTOR_VERSION, name=n, kind="fec", implementation=v, capabilities=FECCapability())),
+                "simulator": lambda n, v: register_plugin(RuntimePluginDescriptor(api_version=PLUGIN_DESCRIPTOR_VERSION, name=n, kind="simulator", implementation=v, capabilities=SimulatorCapability())),
+                "visualizer": lambda n, v: register_plugin(RuntimePluginDescriptor(api_version=PLUGIN_DESCRIPTOR_VERSION, name=n, kind="visualizer", implementation=v, capabilities=VisualizerCapability())),
             }
             register(kind_map[descriptor_kind])
             return
@@ -39,7 +35,7 @@ def _register_from_module(module: ModuleType, descriptor_kind: str, name_hint: s
             name=plugin_name,
             kind=descriptor_kind,
             implementation=impl,
-            capabilities=RegistrationCapabilities(deterministic=True),
+            capabilities=(CodecCapability() if descriptor_kind == "codec" else FECCapability() if descriptor_kind == "fec" else SimulatorCapability() if descriptor_kind == "simulator" else VisualizerCapability()),
             validation=ValidationContract(
                 encode_input="bytes",
                 encode_output="sequence" if descriptor_kind == "codec" else "bytes",

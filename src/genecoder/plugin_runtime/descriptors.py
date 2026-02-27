@@ -4,6 +4,14 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
 
+from genecoder.plugin_api import (
+    FECCapability,
+    PLUGIN_INTERFACE_SEMVER,
+    CodecCapability,
+    SimulatorCapability,
+    VisualizerCapability,
+)
+
 
 class PluginLifecycleState(str, Enum):
     DISCOVERED = "discovered"
@@ -14,14 +22,11 @@ class PluginLifecycleState(str, Enum):
     FAILED = "failed"
 
 
-PLUGIN_DESCRIPTOR_VERSION = "1.0"
+PLUGIN_DESCRIPTOR_VERSION = "2.0"
 PluginKind = Literal["codec", "fec", "simulator", "visualizer", "package", "metadata"]
 
 
-@dataclass(slots=True, frozen=True)
-class RegistrationCapabilities:
-    deterministic: bool = True
-    supports_streaming: bool = False
+CapabilityDescriptor = CodecCapability | FECCapability | SimulatorCapability | VisualizerCapability
 
 
 @dataclass(slots=True, frozen=True)
@@ -38,9 +43,12 @@ class RuntimePluginDescriptor:
     name: str
     kind: PluginKind
     implementation: object
-    capabilities: RegistrationCapabilities = field(default_factory=RegistrationCapabilities)
+    capabilities: CapabilityDescriptor = field(default_factory=CodecCapability)
     validation: ValidationContract = field(default_factory=ValidationContract)
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def interface_version(self) -> str:
+        return self.metadata.get("interface_version", getattr(self.capabilities, "interface_version", PLUGIN_INTERFACE_SEMVER))
 
 
 @dataclass(slots=True)

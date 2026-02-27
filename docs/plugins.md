@@ -1,6 +1,6 @@
 # Plugin development guide
 
-This document explains how to extend GeneCoder with custom codecs, FEC backends, simulators, and visualizers. It covers the registry APIs in `src/genecoder/plugin_manager.py`, how to package plugins as Python entry points, and the security controls applied when loading third-party code.
+This document explains how to extend GeneCoder with custom codecs, FEC backends, simulators, and visualizers. It covers the typed descriptor APIs in `src/genecoder/plugin_runtime/*`, compatibility adapters, packaging via Python entry points, and the security controls applied when loading third-party code.
 
 ## Overview of plugin types
 
@@ -11,7 +11,7 @@ GeneCoder exposes four plugin interfaces defined in [`genecoder.plugin_api`](../
 - **Simulators** implement `simulate(sequence: str | SequenceBatch) -> str | SequenceBatch` and can optionally override `with_profile(profile: str) -> Simulator` for profile-aware variants.
 - **Visualizers** implement `visualize(sequence: str, **kwargs) -> Any`.
 
-Registries for each interface live in [`genecoder.plugin_manager`](../src/genecoder/plugin_manager.py) and are populated by built-in plugins, Python entry points, and optional local modules. Later registrations override earlier ones, letting users replace bundled defaults with custom implementations.
+Registries are authoritative in [`genecoder.plugin_runtime.registry`](../src/genecoder/plugin_runtime/registry.py). The public [`genecoder.plugin_manager`](../src/genecoder/plugin_manager.py) module is an integration facade that delegates lifecycle, validation, and loading behavior to runtime modules.
 
 ## Interoperability status: available now vs exploratory
 
@@ -28,6 +28,68 @@ Registries for each interface live in [`genecoder.plugin_manager`](../src/geneco
 - Expanded policy/security enforcement for distributed plugin artifacts beyond local or ad hoc experimentation.
 
 See also [`docs/development_roadmap.md` (Long-term interoperability strategy)](development_roadmap.md#long-term-interoperability-strategy) for the phase-governed expectations that move integrations from available hooks to release-grade ecosystem support.
+
+
+## Descriptor contract and semantic versioning
+
+Plugin registration now uses explicit `RuntimePluginDescriptor` objects (see [`src/genecoder/plugin_runtime/descriptors.py`](../src/genecoder/plugin_runtime/descriptors.py)). Each descriptor carries:
+
+- `api_version`: plugin registration schema version (currently `2.0`).
+- `capabilities.interface_version`: plugin interface semver (currently `1.0.0`).
+- `kind`, `name`, `implementation`, and validation metadata.
+
+### Compatibility policy
+
+- **Patch/minor updates** to an interface version (`1.x.y`) are backward compatible.
+- **Major updates** (`2.0.0` and above) require plugin updates and may be rejected by runtime validation.
+- Runtime registries store descriptor-backed objects only; map-style registrations are adapted only at registration edges and emit strict deprecation warnings.
+
+### Migration example: map-style to descriptor-style
+
+Legacy map-style registration (deprecated):
+
+```python
+def register(register_codec):
+    register_codec("legacy_codec", {
+        "encode": lambda data, **kwargs: data.hex(),
+        "decode": lambda encoded, **kwargs: bytes.fromhex(encoded),
+    })
+```
+
+Descriptor-style registration (recommended):
+
+```python
+from genecoder.plugin_api import Codec, CodecCapability
+from genecoder.plugin_runtime.descriptors import (
+    PLUGIN_DESCRIPTOR_VERSION,
+    RuntimePluginDescriptor,
+    ValidationContract,
+)
+
+class HexCodec(Codec):
+    def encode(self, data: bytes, /, **kwargs) -> str:
+        return data.hex()
+
+    def decode(self, encoded: str, /, **kwargs) -> bytes:
+        return bytes.fromhex(encoded)
+
+def register(register_plugin):
+    register_plugin(
+        RuntimePluginDescriptor(
+            api_version=PLUGIN_DESCRIPTOR_VERSION,
+            name="hex_codec",
+            kind="codec",
+            implementation=HexCodec,
+            capabilities=CodecCapability(interface_version="1.0.0"),
+            validation=ValidationContract(
+                encode_input="bytes",
+                encode_output="sequence",
+                decode_input="sequence|batch",
+                decode_output="bytes",
+            ),
+        )
+    )
+```
 
 ## Writing a plugin module
 
