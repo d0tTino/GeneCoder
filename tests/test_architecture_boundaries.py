@@ -9,12 +9,15 @@ LEGACY_MODULES = {
     "genecoder.pipeline",
     "genecoder.api",
     "genecoder.channel_sim",
+    "genecoder.error_simulation",
 }
 
 APPROVED_LEGACY_IMPORTERS = {
     "genecoder.pipeline",
     "genecoder.api",
     "genecoder.channel_sim",
+    "genecoder.error_simulation",
+    "genecoder.cli.channel",
 }
 
 

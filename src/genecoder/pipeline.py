@@ -6,8 +6,9 @@ import warnings
 
 from . import core
 from .app.pipeline_runtime import SequencePipeline, run_pipeline
+from .plugin_manager import init_plugins
 
-__all__ = ["SequencePipeline", "run_pipeline", "core"]
+__all__ = ["SequencePipeline", "run_pipeline", "core", "init_plugins"]
 
 warnings.warn(
     "genecoder.pipeline is deprecated and will be removed in a future release; "

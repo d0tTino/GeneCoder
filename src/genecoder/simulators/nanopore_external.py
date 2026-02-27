@@ -22,7 +22,7 @@ except Exception:  # pragma: no cover - fallback when numba missing
 
         return wrapper
 
-from ..error_simulation import NUCLEOTIDES, _random_substitution
+from .mutation_primitives import NUCLEOTIDES, random_substitution
 from ..simulator_utils import _parse_env_options, _run_external
 
 __all__ = [
@@ -55,7 +55,7 @@ def simulate_simple_model(sequence: str, error_rate: float, rng: random.Random) 
             continue
 
         if rng.random() < sub_p:
-            nt = _random_substitution(nt, rng)
+            nt = random_substitution(nt, rng)
 
         mutated.append(nt)
         if rng.random() < ins_p:

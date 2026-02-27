@@ -14,7 +14,7 @@ from typing import Any, Sequence
 
 from .formats import from_fasta, to_fasta
 from .random_utils import make_rng
-from .error_simulation import simulate_errors
+from .compat.error_simulation import simulate_errors
 from .utils import get_temp_dir
 
 logger = logging.getLogger(__name__)

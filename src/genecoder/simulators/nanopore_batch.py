@@ -20,7 +20,7 @@ except Exception:  # pragma: no cover - fallback when numba missing
 
         return wrapper
 
-from ..error_simulation import NUCLEOTIDES, _random_substitution
+from .mutation_primitives import NUCLEOTIDES, random_substitution
 from ..formats import SequenceBatch
 from ..random_utils import make_rng
 from .error_metrics import MutationObservation
@@ -128,7 +128,7 @@ def mutate_read_jit(
             sub_p *= context_errors.get(context, 1.0)
 
         if rng.random() < sub_p:
-            nt = _random_substitution(nt, rng)
+            nt = random_substitution(nt, rng)
             subs += 1
 
         mutated.append(nt)
