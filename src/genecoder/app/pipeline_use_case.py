@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from genecoder.manifest import generate_manifest
-from genecoder.pipeline import run_pipeline
+from .pipeline_runtime import run_pipeline
 from genecoder.results.schema import RUN_SCHEMA_VERSION, canonical_metrics_view
 from genecoder.html_report import generate_html_report
 

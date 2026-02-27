@@ -62,6 +62,19 @@ Use CI outputs and generated reports as the authoritative KPI scorecard:
 4. Release readiness requires that CI artifacts for all three sources are
    attached to the release checklist and that no gate KPI is in fail state.
 
+## Legacy cleanup governance (release-gated)
+
+Compatibility modules listed in `docs/legacy_deprecation_matrix.md` are
+removed only at roadmap phase gates, never ad hoc. A legacy removal PR must
+include:
+
+1. The target roadmap phase transition (for example, Phase 2 -> Phase 3)
+   referenced in release notes.
+2. KPI evidence meeting the gate thresholds in this document (`decode_success`,
+   reproducibility, runtime budget).
+3. CI proof that architecture boundary checks reject new imports of marked
+   legacy modules outside approved compatibility adapters.
+
 ---
 
 ## Phase 1: MVP hardening
