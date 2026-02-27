@@ -168,6 +168,11 @@ def translate_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
             "encode": metrics.get("encode_seed"),
             "simulate": metrics.get("simulate_seed") or metrics.get("sequence_batch", {}).get("seed") if isinstance(metrics.get("sequence_batch"), Mapping) else None,
             "decode": metrics.get("decode_seed"),
+            "provenance": (
+                metrics.get("seed_provenance")
+                or encoding_params.get("seeds")
+                or encoding_params.get("seed_provenance")
+            ),
         },
         "runtime": _normalize_runtime(metrics.get("runtime") if isinstance(metrics.get("runtime"), Mapping) else None),
         "stages": {

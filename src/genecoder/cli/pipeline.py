@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any, Dict, Mapping
 
@@ -35,6 +34,7 @@ from genecoder.simulators.batch_utils import (
 )
 from genecoder.metrics import metrics as aggregate_metrics, set_metrics_path
 from genecoder.synthesis import SynthesisConstraints
+from genecoder.runtime import make_run_context
 from genecoder.results.collector import (
     DecodeStageEvent,
     EncodeStageEvent,
@@ -88,17 +88,6 @@ def _is_truthy(value: object) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in {"true", "1", "yes"}
     return bool(value)
-
-
-def _resolve_sim_seed() -> int | None:
-    seed_env = os.getenv("GENECODER_SIM_SEED")
-    if seed_env is None:
-        return None
-    try:
-        return int(seed_env)
-    except ValueError:
-        logger.warning("Invalid GENECODER_SIM_SEED %r", seed_env)
-        return None
 
 
 
@@ -416,7 +405,7 @@ def _run_with_params(
             "channel_parameters": dict(channel_constructor_params),
         },
         reproducibility={
-            "sim_seed": _resolve_sim_seed(),
+            "sim_seed": make_run_context().simulate_seed,
             "batch_seed": mutated_batch.seed,
         },
     )
@@ -574,8 +563,6 @@ def register_subcommand(
 
 
 def _handle_command(args: argparse.Namespace) -> None:
-    if args.seed is not None:
-        os.environ["GENECODER_SIM_SEED"] = str(args.seed)
     metrics_override: Path | None = None
     if args.metrics_path:
         metrics_override = Path(args.metrics_path)

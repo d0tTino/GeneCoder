@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 from typing import Dict
-import os
 
 from ..plugin_api import Simulator
 from ..formats import SequenceBatch
-from ..random_utils import reset_rng
 from .batch_utils import apply_legacy_simulator
 from .pipeline import ChannelPipeline
 
@@ -110,8 +108,6 @@ def simulate_reads(
                 f"Simulator '{simulator}' does not support profiles"
             )
 
-    if os.getenv("GENECODER_SIM_SEED") is not None:
-        reset_rng()
 
     if hasattr(channel, "substitution_prob"):
         old_rate = getattr(channel, "substitution_prob")

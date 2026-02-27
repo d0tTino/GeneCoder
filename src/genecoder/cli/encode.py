@@ -710,6 +710,4 @@ def encode_files(args: argparse.Namespace) -> list[tuple[str, str] | None]:
 
 
 def _handle_command(args: argparse.Namespace) -> None:
-    if args.seed is not None:
-        os.environ["GENECODER_SIM_SEED"] = str(args.seed)
     encode_files(args)

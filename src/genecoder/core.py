@@ -3,7 +3,6 @@ from __future__ import annotations
 """Simple encode/ECC/channel/decode pipeline utilities."""
 
 import json
-import os
 import time
 from collections import Counter
 from pathlib import Path
@@ -14,7 +13,7 @@ from .gc_constrained_encoder import calculate_gc_content
 from .utils import get_max_homopolymer_length
 
 from .plugin_manager import init_plugins
-from .random_utils import reset_rng
+from .runtime import RunContext, make_run_context
 from .simulators import SIMULATOR_REGISTRY
 from .channel_engine import ChannelPipeline
 from .coding.stack import (
@@ -234,12 +233,22 @@ def _constraint_outcome_payload(result: object) -> dict[str, Any]:
 
 
 def encode(
-    codec: str, fec: str | None, data: bytes, *, constraint_policy: ConstraintPolicy | None = None
+    codec: str,
+    fec: str | None,
+    data: bytes,
+    *,
+    constraint_policy: ConstraintPolicy | None = None,
+    run_context: RunContext | None = None,
 ) -> Tuple[SequenceBatch, Mapping[str, Any] | None]:
     """Return encoded :class:`SequenceBatch` for ``data`` and optional FEC info."""
 
     stack = compile_legacy_stack(codec, fec, constraint_policy=constraint_policy)
-    context = CodingContext(block_id="encode-0", constraint_policy=constraint_policy)
+    runtime_context = run_context or make_run_context()
+    context = CodingContext(
+        block_id="encode-0",
+        constraint_policy=constraint_policy,
+        metadata={"run_context": runtime_context},
+    )
     current: bytes | str | SequenceBatch = data
     layer_info: dict[str, Mapping[str, Any]] = {}
     layer_metrics: list[dict[str, Any]] = []
@@ -380,15 +389,24 @@ def run_canonical_pipeline(
     original_data: bytes,
     *,
     filter_mutated: bool = False,
+    run_context: RunContext | None = None,
 ) -> CanonicalRuntimeResult:
     """Execute the canonical internal runtime route: encode → simulate → decode."""
 
     init_plugins()
-    if os.getenv("GENECODER_SIM_SEED") is not None:
-        reset_rng()
+    runtime_context = run_context or make_run_context()
 
-    encoded_batch, fec_info = encode(codec, fec, original_data)
-    simulated, subs, ins, dels, coverage = simulate(channel, encoded_batch)
+    encoded_batch, fec_info = encode(codec, fec, original_data, run_context=runtime_context)
+    try:
+        simulated, subs, ins, dels, coverage = simulate(
+            channel,
+            encoded_batch,
+            run_context=runtime_context,
+        )
+    except TypeError as exc:
+        if "run_context" not in str(exc):
+            raise
+        simulated, subs, ins, dels, coverage = simulate(channel, encoded_batch)
     simulated_batch = (
         simulated if isinstance(simulated, SequenceBatch) else _wrap_single_sequence(str(simulated))
     )
@@ -400,6 +418,7 @@ def run_canonical_pipeline(
         fec_info,
         filter_mutated=filter_mutated,
         survivor_batch=decode_input,
+        run_context=runtime_context,
     )
     metrics_dict = metrics(
         simulated_batch,
@@ -454,30 +473,25 @@ def _estimate_coverage(batch: SequenceBatch) -> int | None:
 
 
 def simulate(
-    channel: str | None, dna: SequenceBatch | str
+    channel: str | None,
+    dna: SequenceBatch | str,
+    *,
+    run_context: RunContext | None = None,
 ) -> Tuple[SequenceBatch | str, int | None, int | None, int | None, int | None]:
     """Return ``dna`` possibly mutated by ``channel`` and error counts."""
 
+    runtime_context = run_context or make_run_context()
     is_batch = isinstance(dna, SequenceBatch)
     original_batch = dna if is_batch else _wrap_single_sequence(str(dna), batch_id="channel")
 
     if channel and channel != "none":
         if channel not in SIMULATOR_REGISTRY:
             raise ValueError(f"Unknown channel: {channel}")
-        if os.getenv("GENECODER_SIM_SEED") is not None:
-            reset_rng()
         sim = SIMULATOR_REGISTRY[channel]
         pipeline = ChannelPipeline.from_simulators([(channel, sim)])
-        seed_value: int | None = None
-        seed_env = os.getenv("GENECODER_SIM_SEED")
-        if seed_env is not None:
-            try:
-                seed_value = int(seed_env)
-            except ValueError:
-                seed_value = None
         mutated_batch, _ = pipeline.run(
             original_batch,
-            seed=seed_value,
+            run_context=runtime_context,
         )
 
         original_sequence = original_batch.primary_sequence()
@@ -513,6 +527,7 @@ def decode(
     filter_mutated: bool = True,
     survivor_batch: SequenceBatch | None = None,
     constraint_policy: ConstraintPolicy | None = None,
+    run_context: RunContext | None = None,
 ) -> bytes:
     """Return decoded bytes from ``dna`` applying optional FEC.
 
@@ -522,6 +537,7 @@ def decode(
             zero-coverage oligos. Set to ``False`` to retain mutated oligos.
     """
 
+    runtime_context = run_context or make_run_context()
     policy = constraint_policy or _resolve_constraint_policy(fec_info)
     stack = compile_legacy_stack(codec, fec, constraint_policy=policy)
 
@@ -594,7 +610,11 @@ def decode(
         context_meta.update(dict(fec_info))
     if survivor_batch is not None:
         context_meta["survivor_batch"] = survivor_batch
-    context = CodingContext(block_id="decode-0", metadata=context_meta, constraint_policy=policy)
+    context = CodingContext(
+        block_id="decode-0",
+        metadata={**context_meta, "run_context": runtime_context},
+        constraint_policy=policy,
+    )
 
     current: bytes | str | SequenceBatch = batch
     decode_metrics: list[dict[str, Any]] = []

@@ -5,12 +5,14 @@ import random
 from typing import Protocol
 
 from ..formats import SequenceBatch
+from ..runtime import RunContext
 
 
 @dataclass(frozen=True)
 class StageContext:
     """Execution context passed to every simulator stage."""
 
+    run_context: RunContext
     seed: int | None
     rng: random.Random
     metadata: dict[str, str]

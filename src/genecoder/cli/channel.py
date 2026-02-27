@@ -28,6 +28,7 @@ from genecoder.error_simulation import (
     DEFAULT_ADAPTER_PROFILE,
     INDEL_PROFILES,
 )
+from genecoder.runtime import make_run_context
 from genecoder.simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
     RESULT_DROPOUT_FLAG_KEY,
@@ -282,7 +283,12 @@ def _apply_simulators(
         profile_map["sequencing"] = config.nanopore_profile
 
     pipeline = ChannelPipeline.from_simulators(named_channels)
-    final, provenance = pipeline.run(batch, profile=profile_map, seed=seed, config=config)
+    final, provenance = pipeline.run(
+        batch,
+        profile=profile_map,
+        run_context=make_run_context(global_seed=seed),
+        config=config,
+    )
     final.metadata["sim_stage_provenance"] = json.dumps(provenance)
 
     merged_stages: list[dict[str, Any]] = []
@@ -331,16 +337,7 @@ def _parse_int(value: str | None, default: int = 0) -> int:
 
 
 def _resolve_sim_seed(seed: int | None) -> int | None:
-    if seed is not None:
-        return seed
-    seed_env = os.getenv("GENECODER_SIM_SEED")
-    if seed_env is None:
-        return None
-    try:
-        return int(seed_env)
-    except ValueError:
-        logger.warning("Invalid GENECODER_SIM_SEED %r", seed_env)
-        return None
+    return make_run_context(global_seed=seed).simulate_seed
 
 
 def _simulate_probabilities(
@@ -454,9 +451,6 @@ def process_channel(
     config: ChannelConfig | None = None,
     batch_workers: int | None = None,
 ) -> None:
-    if seed is not None:
-        os.environ["GENECODER_SIM_SEED"] = str(seed)
-
     try:
         with open(input_file, "r", encoding="utf-8") as f:
             fasta_str = f.read()
@@ -628,9 +622,11 @@ def process_channel(
             "fraction": synthesis_fraction,
         },
     }
-    sim_seed = _resolve_sim_seed(seed)
+    run_context = make_run_context(global_seed=seed)
+    sim_seed = run_context.simulate_seed
     if sim_seed is not None:
         manifest["simulator_seed"] = sim_seed
+    manifest["seed_provenance"] = run_context.seed_provenance()
     if mutation_totals is not None:
         manifest["mutation_totals"] = mutation_totals
     if stage_metadata:

@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-import os
 
 from ..formats import SequenceBatch
-from ..random_utils import reset_rng
+from ..random_utils import activate_run_context, reset_rng
 from ..simulators.base import BaseChannel
 from ..simulators.batch_utils import apply_legacy_simulator
 from .interfaces import StageContext, StageResult
@@ -25,11 +24,9 @@ class SimulatorStagePlugin:
         profile: str | None = None,
         context: StageContext,
     ) -> StageResult:
-        if context.seed is not None:
-            os.environ["GENECODER_SIM_SEED"] = str(context.seed)
-            reset_rng()
-
         sim = self.simulator
+        reset_rng()
+        activate_run_context(context.run_context)
         if profile and hasattr(sim, "with_profile"):
             try:
                 updated = sim.with_profile(profile)  # type: ignore[attr-defined]
