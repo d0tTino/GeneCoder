@@ -29,6 +29,12 @@ from genecoder.error_simulation import (
     INDEL_PROFILES,
 )
 from genecoder.runtime import make_run_context
+from genecoder.config.loader import (
+    PROFILE_ALIAS_TABLE,
+    load_channel_workflow_config,
+    load_mapping_file,
+    resolve_channel_profile_alias,
+)
 from genecoder.simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
     RESULT_DROPOUT_FLAG_KEY,
@@ -38,7 +44,6 @@ from genecoder.simulators.batch_utils import (
     bool_to_str,
     clone_batch,
     finalize_batch_statistics,
-    load_coverage_distribution,
     mutation_counts,
 )
 from .options import ChannelOptions, build_channel_options, _parse_distribution
@@ -47,18 +52,8 @@ from .shared import add_single_io_args
 logger = logging.getLogger(__name__)
 
 
-PROFILE_MAP: dict[str, tuple[str, str]] = {
-    "miseq": ("illumina", "miseq"),
-    "hiseq": ("illumina", "hiseq"),
-    "novaseq": ("illumina", "novaseq"),
-    "nova": ("illumina", "nova"),
-    "minion": ("nanopore", "minion"),
-    "promethion": ("nanopore", "promethion"),
-    "r9": ("nanopore_dnarsim", "r9"),
-    "r10.3": ("nanopore_dnarsim", "r10.3"),
-    "r10.4": ("nanopore_dnarsim", "r10.4"),
-}
 
+PROFILE_MAP = PROFILE_ALIAS_TABLE
 
 def _normalize_stage_options(value: object) -> list[str]:
     """Return ``value`` as a list of command-line options."""
@@ -108,114 +103,34 @@ def _load_config(
     ChannelConfig,
     dict[str, Any],
 ]:
-    try:
-        import yaml
-    except Exception:  # pragma: no cover - optional dependency
-        from genecoder.plugin_manager import yaml as yaml_module
-        if yaml_module is None:
-            raise
-        yaml = yaml_module
-
-    with open(path, "r", encoding="utf-8") as f:
-        try:
-            data = yaml.safe_load(f) or {}
-        except yaml.YAMLError as exc:  # pragma: no cover - invalid YAML path
-            raise ValueError(f"Invalid YAML in {path}: {exc}") from exc
-
-    if not isinstance(data, dict):
-        raise ValueError("Config file must map keys to values")
-
-    sim_section = data.get("simulators", [])
-    if not isinstance(sim_section, Sequence):
-        raise ValueError("'simulators' must be a list")
-
+    workflow = load_channel_workflow_config(path)
     simulators: list[tuple[str, Dict[str, Any]]] = []
-    for item in sim_section:
-        if isinstance(item, str):
-            simulators.append((item, {}))
-        elif isinstance(item, dict):
-            name = item.get("name")
-            if not isinstance(name, str):
-                raise ValueError("Simulator mapping must contain a string 'name'")
-            params = {k: v for k, v in item.items() if k != "name"}
-            simulators.append((name, params))
-        else:
-            raise ValueError("Each simulator must be a string or mapping")
-
-    synth_section = data.get("synthesis", data.get("constraints", {}))
-    if not isinstance(synth_section, dict):
-        raise ValueError("'synthesis' must be a mapping")
-
-    decay_section = data.get("decay")
-    if decay_section is not None and not isinstance(decay_section, dict):
-        raise ValueError("'decay' must be a mapping")
-
-    pipeline = data.get("pipeline", {})
-    if not isinstance(pipeline, dict):
-        raise ValueError("'pipeline' must be a mapping")
-
-    coverage_config = pipeline.get("coverage_distribution")
-    cfg = ChannelConfig(
-        parallel=bool(pipeline.get("parallel", False)),
-        workers=pipeline.get("workers"),
-        use_process_pool=bool(pipeline.get("use_process_pool", False)),
-        use_mpi=bool(pipeline.get("use_mpi", False)),
-        illumina_profile=pipeline.get("illumina_profile"),
-        nanopore_profile=pipeline.get("nanopore_profile"),
-        dropout_rate=(
-            float(pipeline["dropout_rate"]) if "dropout_rate" in pipeline else None
-        ),
-        coverage_distribution=load_coverage_distribution(coverage_config),
-        synthesis_loss=(
-            float(pipeline["synthesis_loss"]) if "synthesis_loss" in pipeline else None
-        ),
-    )
-
+    for stage in workflow.simulators:
+        params = dict(stage.parameters)
+        if stage.stage:
+            params["stage"] = stage.stage
+        if stage.options:
+            params["options"] = list(stage.options)
+        simulators.append((stage.name, params))
+    constraints = workflow.constraints.to_policy_dict()
+    cfg = workflow.pipeline.to_channel_config()
     extra = {
-        "input_file": data.get("input"),
-        "output_file": data.get("output"),
-        "sub_prob": float(data.get("sub_prob", 0.0) or 0.0),
-        "ins_prob": float(data.get("ins_prob", 0.0) or 0.0),
-        "del_prob": float(data.get("del_prob", 0.0) or 0.0),
-        "seed": data.get("seed"),
-        "batch_workers": data.get("batch_workers"),
+        "input_file": workflow.input_file,
+        "output_file": workflow.output_file,
+        "sub_prob": workflow.sub_prob,
+        "ins_prob": workflow.ins_prob,
+        "del_prob": workflow.del_prob,
+        "seed": workflow.seed,
+        "batch_workers": workflow.batch_workers,
     }
-    decay_section = data.get("decay")
-    if isinstance(decay_section, dict):
-        half_life = float(decay_section.get("half_life", 0.0) or 0.0)
-        variation = float(decay_section.get("variation", 0.0) or 0.0)
-        if half_life > 0.0:
-            decay_rate = 1.0 - 0.5 ** (1.0 / half_life)
-            decay_rate *= 1.0 + variation
-            extra["decay_rate"] = min(max(decay_rate, 0.0), 1.0)
-    if "decay_rate" in data:
-        extra["decay_rate"] = float(data["decay_rate"])
-
-    policy = load_constraint_policy(synth_section, fallback={"gc_min": 0.0, "gc_max": 1.0})
-
-    return simulators, policy.to_dict(), cfg, extra
+    if workflow.decay_rate is not None:
+        extra["decay_rate"] = workflow.decay_rate
+    return simulators, constraints, cfg, extra
 
 
 def _load_profile_file(path: str) -> Dict[str, Any]:
     """Return parameters from JSON or YAML ``path``."""
-    text = Path(path).read_text(encoding="utf-8")
-    try:
-        data: Any = json.loads(text)
-    except json.JSONDecodeError:
-        try:  # Optional at runtime
-            import yaml
-        except Exception:  # pragma: no cover - optional dependency
-            from genecoder.plugin_manager import yaml as yaml_module
-            if yaml_module is None:
-                raise
-            yaml = yaml_module
-        try:
-            data = yaml.safe_load(text)
-        except Exception as exc:  # pragma: no cover - invalid YAML path
-            raise ValueError(f"Invalid profile in {path}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise ValueError("Profile file must map keys to values")
-    return data or {}
+    return dict(load_mapping_file(path))
 
 
 def _apply_simulators(
@@ -602,6 +517,7 @@ def process_channel(
             "del_prob": del_prob,
         },
         "constraint_policy": policy.to_dict(),
+        "constraints": policy.to_dict(),
         "metrics": {
             "length": total_len,
             "substitutions": sub_total,
@@ -879,7 +795,7 @@ def run_channel(args: argparse.Namespace) -> None:
     )
     simulators = opts.simulator_specs
     if opts.profile:
-        sim_name, prof = PROFILE_MAP[opts.profile]
+        sim_name, prof = resolve_channel_profile_alias(opts.profile)
         simulators = [(sim_name, {})]
         if sim_name == "illumina":
             opts.illumina_profile = prof
@@ -1005,7 +921,7 @@ def _handle_run(args: argparse.Namespace) -> None:
         raise SystemExit(1)
 
     if args.profile is not None:
-        sim_name, preset = PROFILE_MAP[args.profile]
+        sim_name, preset = resolve_channel_profile_alias(args.profile)
         simulators = [(sim_name, {})]
         if sim_name == "illumina":
             cfg.illumina_profile = preset
