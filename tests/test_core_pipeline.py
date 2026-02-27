@@ -248,5 +248,7 @@ def test_encode_constraint_assumption_repair_deterministic() -> None:
     assert "AA" not in dna.primary_sequence()
     assert isinstance(fec_info, Mapping) or fec_info is None
     outcomes = dna.metadata.get("constraint_outcomes")
-    assert isinstance(outcomes, list) and outcomes
-    assert outcomes[0]["repairs_applied"] > 0
+    assert isinstance(outcomes, Mapping)
+    assert isinstance(outcomes.get("by_oligo"), Mapping) and outcomes["by_oligo"]
+    assert isinstance(outcomes.get("stages"), list) and outcomes["stages"]
+    assert outcomes["stages"][0]["repairs_applied"] > 0

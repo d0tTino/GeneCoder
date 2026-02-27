@@ -40,3 +40,28 @@ def test_constraint_repair_pipeline_ecc_prefix_preserved() -> None:
 def test_constraint_policy_profile_strategy_resolution() -> None:
     policy = ConstraintPolicy(repair=RepairPolicy(enabled=True, profile="strict"))
     assert policy.strategy_name() == "deterministic"
+
+
+def test_constraint_engine_validate_batch() -> None:
+    policy = ConstraintPolicy(min_length=1, max_length=10, gc_min=0.4, gc_max=0.6, max_homopolymer=3)
+    engine = ConstraintEngine(policy.to_rule_set())
+    reports = engine.validate_batch(["ACGT", "GGGG"])
+    assert len(reports) == 2
+    assert reports[0].count == 0
+    assert reports[1].count >= 1
+
+
+def test_constraint_repair_pipeline_repair_batch() -> None:
+    policy = ConstraintPolicy(
+        min_length=1,
+        max_length=20,
+        gc_min=0.0,
+        gc_max=1.0,
+        max_homopolymer=2,
+        repair=RepairPolicy(enabled=True, profile="strict", strategy="deterministic"),
+    )
+    results = ConstraintRepairPipeline(policy).repair_batch(["AATTTT", "CCGG"], stage="encode")
+    assert len(results) == 2
+    assert results[0].sequence.startswith("AA")
+    assert results[0].report_after.count == 0
+    assert results[1].report_before.count == 0

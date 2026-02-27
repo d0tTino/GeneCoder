@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
 
 from .engine import ConstraintEngine
 from .policy import ConstraintPolicy
@@ -85,3 +86,9 @@ class ConstraintRepairPipeline:
             residual_risk=after_report.pressure,
             stage=stage,
         )
+
+    def repair_batch(self, sequences: Sequence[str], *, stage: str = "encode") -> list[RepairPipelineResult]:
+        return [self.run(sequence, stage=stage) for sequence in sequences]
+
+    def validate_batch(self, sequences: Sequence[str]) -> list[ConstraintReport]:
+        return self.engine.validate_batch(list(sequences))

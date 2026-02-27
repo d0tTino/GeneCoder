@@ -24,8 +24,15 @@ class ConstraintEngine:
         report = self.validate(repair_result.sequence_after)
         return report, repair_result
 
+    def validate_batch(self, sequences: list[str] | tuple[str, ...]) -> list[ConstraintReport]:
+        return [self.validate(sequence) for sequence in sequences]
 
-
+    def repair_batch(
+        self,
+        sequences: list[str] | tuple[str, ...],
+        strategy: RepairStrategy,
+    ) -> list[tuple[ConstraintReport, RepairResult]]:
+        return [self.repair(sequence, strategy) for sequence in sequences]
     def gate(self, sequence: str, *, stage: str) -> ConstraintReport:
         report = self.validate(sequence)
         if report.count > 0:

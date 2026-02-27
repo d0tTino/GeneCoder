@@ -104,7 +104,8 @@ class RunArtifactCollector:
             },
         }
         canonical["coding_stack"] = metrics.get("coding_stack", {})
-        canonical["constraint_outcomes"] = metrics.get("constraint_violations", {})
+        canonical["constraint_outcomes"] = metrics.get("constraint_outcomes", {})
+        canonical["constraint_pressure"] = metrics.get("constraint_pressure", {})
         canonical["decode_results"] = {
             "decode_success_rate": metrics.get("decode_success_rate"),
             "ecc_success_rates": metrics.get("ecc_success_rates", {}),
