@@ -1,43 +1,33 @@
 """Utility helpers for reproducible randomness."""
 from __future__ import annotations
 
-import os
 import random
-import logging
 from typing import Optional
 
-__all__ = ["make_rng", "reset_rng"]
+from .runtime import RunContext, make_run_context
 
-
-logger = logging.getLogger(__name__)
+__all__ = ["make_rng", "reset_rng", "activate_run_context"]
 
 
 _RNG: Optional[random.Random] = None
 _LAST_SEED: Optional[int] = None
+_ACTIVE_CONTEXT: RunContext | None = None
 
 
-def make_rng() -> random.Random:
-    """Return a module-wide :class:`~random.Random` seeded once.
+def activate_run_context(run_context: RunContext | None) -> None:
+    """Register ``run_context`` as the implicit context for :func:`make_rng`."""
 
-    The RNG is seeded from the ``GENECODER_SIM_SEED`` environment variable
-    on first invocation and reused for all subsequent calls.  If the
-    environment variable is unset or invalid, a default RNG is created.
-    """
+    global _ACTIVE_CONTEXT
+    _ACTIVE_CONTEXT = run_context
+
+
+def make_rng(run_context: RunContext | None = None, *, stage: str = "simulate") -> random.Random:
+    """Return a module-wide :class:`~random.Random` seeded once."""
 
     global _RNG, _LAST_SEED
-    seed_env = os.getenv("GENECODER_SIM_SEED")
-    seed: Optional[int]
-    if seed_env is not None:
-        try:
-            seed = int(seed_env)
-        except ValueError:
-            logger.warning(
-                "Invalid GENECODER_SIM_SEED %r, falling back to default RNG",
-                seed_env,
-            )
-            seed = None
-    else:
-        seed = None
+    context = run_context or _ACTIVE_CONTEXT or make_run_context()
+    stage_name = stage if stage in {"global", "encode", "simulate", "decode"} else "simulate"
+    seed = context.seed_for_stage(stage_name)  # type: ignore[arg-type]
 
     if _RNG is None or seed != _LAST_SEED:
         _RNG = random.Random(seed) if seed is not None else random.Random()
@@ -46,14 +36,9 @@ def make_rng() -> random.Random:
 
 
 def reset_rng() -> None:
-    """Reset the module's global RNG.
+    """Reset the module's global RNG."""
 
-    The next call to :func:`make_rng` will reseed from the current
-    ``GENECODER_SIM_SEED`` environment variable. This is useful for
-    test harnesses that invoke CLI commands multiple times within the
-    same process.
-    """
-
-    global _RNG, _LAST_SEED
+    global _RNG, _LAST_SEED, _ACTIVE_CONTEXT
     _RNG = None
     _LAST_SEED = None
+    _ACTIVE_CONTEXT = None

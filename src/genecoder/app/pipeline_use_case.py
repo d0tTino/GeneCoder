@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
-import os
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -10,6 +9,7 @@ from genecoder.manifest import generate_manifest
 from .pipeline_runtime import run_pipeline
 from genecoder.results.schema import RUN_SCHEMA_VERSION, canonical_metrics_view
 from genecoder.html_report import generate_html_report
+from genecoder.runtime import make_run_context
 
 
 @dataclass(frozen=True)
@@ -75,8 +75,12 @@ class RunPipelineResponse:
 
 class RunPipelineUseCase:
     def execute(self, request: RunPipelineRequest) -> RunPipelineResponse:
-        if request.seeds and request.seeds.global_seed is not None:
-            os.environ["GENECODER_SIM_SEED"] = str(request.seeds.global_seed)
+        run_context = make_run_context(
+            global_seed=request.seeds.global_seed if request.seeds else None,
+            encode_seed=request.seeds.encode_seed if request.seeds else None,
+            simulate_seed=request.seeds.simulate_seed if request.seeds else None,
+            decode_seed=request.seeds.decode_seed if request.seeds else None,
+        )
 
         decoded, metrics, fec_info = run_pipeline(
             codec=request.codec,
@@ -85,6 +89,7 @@ class RunPipelineUseCase:
             input_path=request.input_path,
             output_path=request.output_path,
             filter_mutated=request.filter_mutated,
+            run_context=run_context,
         )
 
         metrics_path = Path(request.artifacts.metrics_path or str(request.output_path) + ".json")
@@ -98,10 +103,11 @@ class RunPipelineUseCase:
                 "decode": request.codec,
             },
             "seeds": {
-                "global": request.seeds.global_seed if request.seeds else None,
-                "encode": request.seeds.encode_seed if request.seeds else None,
-                "simulate": request.seeds.simulate_seed if request.seeds else None,
-                "decode": request.seeds.decode_seed if request.seeds else None,
+                "global": run_context.global_seed,
+                "encode": run_context.encode_seed,
+                "simulate": run_context.simulate_seed,
+                "decode": run_context.decode_seed,
+                "provenance": run_context.seed_provenance(),
             },
             "sweep": dict(request.matrix.axes) if request.matrix else {},
             "constraints": (
@@ -142,7 +148,7 @@ class RunPipelineUseCase:
         if request.artifacts.emit_manifest:
             manifest = generate_manifest(
                 request.input_path,
-                {"method": request.codec, "fec": request.fec, "channel": request.channel},
+                {"method": request.codec, "fec": request.fec, "channel": request.channel, "seeds": run_context.seed_provenance()},
                 dashboard_metrics,
             )
             manifest_file = metrics_path.with_suffix(".manifest.json")

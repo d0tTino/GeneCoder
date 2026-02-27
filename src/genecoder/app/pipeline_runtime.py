@@ -12,6 +12,7 @@ from genecoder.parallel import parallel_map
 from genecoder.formats import SequenceBatch
 from genecoder.simulators.batch_utils import RESULT_COVERAGE_KEY, RESULT_DROPOUT_FLAG_KEY
 from genecoder import core
+from genecoder.runtime import RunContext, make_run_context
 
 __all__ = ["SequencePipeline", "run_pipeline"]
 
@@ -113,6 +114,7 @@ def run_pipeline(
     input_path: str,
     output_path: str,
     filter_mutated: bool = False,
+    run_context: RunContext | None = None,
 ) -> Tuple[bytes, dict[str, Any], Mapping[str, Any] | None]:
     """Process ``input_path`` through the selected codec, FEC and channel.
 
@@ -125,12 +127,14 @@ def run_pipeline(
     init_plugins()
 
     original_data = Path(input_path).read_bytes()
+    runtime_seed_context = run_context or make_run_context()
     runtime = core.run_canonical_pipeline(
         codec,
         fec_backend,
         channel,
         original_data,
         filter_mutated=filter_mutated,
+        run_context=runtime_seed_context,
     )
 
     simulated_batch = runtime.simulated_batch

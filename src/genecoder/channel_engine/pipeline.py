@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 import random
 from typing import Iterable, Mapping
 
 from ..channel_config import ChannelConfig
 from ..formats import SequenceBatch
-from ..random_utils import reset_rng
+from ..runtime import RunContext, make_run_context
 from .interfaces import SequencingStage, SimulatorStage, StageContext, StorageStage, SynthesisStage
 from .plugins import (
     DecayStorageStage,
@@ -69,14 +68,18 @@ class ChannelPipeline:
         batch: SequenceBatch,
         profile: Mapping[str, str] | None = None,
         seed: int | None = None,
+        run_context: RunContext | None = None,
         config: ChannelConfig | None = None,
     ) -> tuple[SequenceBatch, list[dict[str, object]]]:
-        if seed is not None:
-            os.environ["GENECODER_SIM_SEED"] = str(seed)
-            reset_rng()
-
-        rng = random.Random(seed) if seed is not None else random.Random()
-        context = StageContext(seed=seed, rng=rng, metadata=dict(batch.metadata))
+        runtime_context = run_context or make_run_context(global_seed=seed)
+        stage_seed = runtime_context.simulate_seed
+        rng = random.Random(stage_seed) if stage_seed is not None else random.Random()
+        context = StageContext(
+            run_context=runtime_context,
+            seed=stage_seed,
+            rng=rng,
+            metadata=dict(batch.metadata),
+        )
 
         current = batch
         provenance: list[dict[str, object]] = []
@@ -90,7 +93,7 @@ class ChannelPipeline:
                 {
                     "stage_name": stage.stage_name,
                     "profile_version": result.profile_version,
-                    "seed": seed,
+                    "seed": stage_seed,
                     "mutation_totals": mutation_totals_from_batch(current),
                 }
             )

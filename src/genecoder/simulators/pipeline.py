@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Iterable, List
 
 from ..channel_config import ChannelConfig
@@ -9,6 +8,7 @@ from ..channels.base import BaseChannel
 from ..channel_engine import ChannelPipeline as EnginePipeline
 from ..formats import SequenceBatch
 from ..metrics import metrics
+from ..runtime import RunContext, make_run_context
 from ..simulation_engine.models import MutationTotals, StageMetrics
 
 __all__ = ["ChannelPipeline"]
@@ -67,7 +67,13 @@ class ChannelPipeline(BaseChannel):
             for stage in stage_names
         ]
 
-    def simulate(self, sequence: str | SequenceBatch, *, config: ChannelConfig | None = None) -> str | SequenceBatch:
+    def simulate(
+        self,
+        sequence: str | SequenceBatch,
+        *,
+        config: ChannelConfig | None = None,
+        run_context: RunContext | None = None,
+    ) -> str | SequenceBatch:
         config = config or ChannelConfig()
         is_batch = isinstance(sequence, SequenceBatch)
         batch = sequence if is_batch else SequenceBatch.build([("pipeline", sequence)], batch_id="pipeline")
@@ -78,12 +84,11 @@ class ChannelPipeline(BaseChannel):
             for channel in resolved
         ]
         runtime = EnginePipeline.from_simulators(simulators)
-        seed_env = os.getenv("GENECODER_SIM_SEED")
-        seed = int(seed_env) if seed_env and seed_env.lstrip("-").isdigit() else None
+        runtime_context = run_context or make_run_context()
         result_batch, provenance = runtime.run(
             batch,
             profile=self._build_profile_map(config),
-            seed=seed,
+            run_context=runtime_context,
             config=config,
         )
 
