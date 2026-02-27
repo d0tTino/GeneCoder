@@ -6,7 +6,7 @@ from typing import Callable
 
 from ..plugin_api import Simulator
 from ..random_utils import make_rng
-from ..error_simulation import _random_substitution
+from .mutation_primitives import random_substitution
 from . import register_simulator as _register_simulator
 
 __all__ = ["DegradationChannel", "register"]
@@ -30,7 +30,7 @@ class DegradationChannel(Simulator):
         if rng.random() < self.deletion_prob:
             return ""
         mutated = [
-            _random_substitution(nt, rng) if rng.random() < self.substitution_prob else nt
+            random_substitution(nt, rng) if rng.random() < self.substitution_prob else nt
             for nt in sequence
         ]
         return "".join(mutated)

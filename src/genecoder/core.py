@@ -7,6 +7,7 @@ import os
 import time
 from collections import Counter
 from pathlib import Path
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Sequence, Tuple
 
 from .gc_constrained_encoder import calculate_gc_content
@@ -35,7 +36,39 @@ from .simulators.batch_utils import (
 if TYPE_CHECKING:
     from .synthesis import SynthesisConstraints
 
-__all__ = ["encode", "simulate", "decode", "metrics", "run_pipeline", "compile_coding_stack", "inspect_coding_plan"]
+__all__ = [
+    "CanonicalRuntimeResult",
+    "encode",
+    "simulate",
+    "decode",
+    "metrics",
+    "run_canonical_pipeline",
+    "run_pipeline",
+    "compile_coding_stack",
+    "inspect_coding_plan",
+]
+
+
+@dataclass(slots=True)
+class CanonicalRuntimeResult:
+    """Canonical encode/simulate/decode execution artifact.
+
+    This dataclass defines the single internal runtime boundary for pipeline
+    execution in GeneCoder.
+    """
+
+    original_data: bytes
+    encoded_batch: SequenceBatch
+    simulated_batch: SequenceBatch
+    decode_input: SequenceBatch
+    survivor_batch: SequenceBatch
+    decoded: bytes
+    metrics: dict[str, Any]
+    fec_info: Mapping[str, Any] | None
+    substitutions: int | None
+    insertions: int | None
+    deletions: int | None
+    coverage: int | None
 
 
 
@@ -286,6 +319,116 @@ def _parse_bool(value: object) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in {"1", "true", "yes", "y"}
     return bool(value)
+
+
+def _batch_for_decode(batch: SequenceBatch, *, filter_mutated: bool) -> SequenceBatch:
+    filtered: list[SequenceOligo] = []
+    for oligo in batch.oligos:
+        dropout_flag = _parse_bool(oligo.metadata.get(RESULT_DROPOUT_FLAG_KEY, False))
+        coverage_raw = oligo.metadata.get(RESULT_COVERAGE_KEY)
+        try:
+            coverage_int = int(coverage_raw) if coverage_raw is not None else None
+        except (TypeError, ValueError):
+            coverage_int = None
+
+        mutation_raw = oligo.metadata.get(RESULT_MUTATION_TOTALS_KEY)
+        mutation_flag = False
+        if mutation_raw not in (None, ""):
+            mutation_data: Mapping[str, Any] | None
+            if isinstance(mutation_raw, Mapping):
+                mutation_data = mutation_raw
+            elif isinstance(mutation_raw, str):
+                try:
+                    parsed = json.loads(mutation_raw)
+                except json.JSONDecodeError:
+                    mutation_data = None
+                else:
+                    mutation_data = parsed if isinstance(parsed, Mapping) else None
+            else:
+                mutation_data = None
+            if mutation_data is not None:
+                for key in ("substitutions", "insertions", "deletions"):
+                    try:
+                        if int(mutation_data.get(key, 0)) > 0:
+                            mutation_flag = True
+                            break
+                    except (TypeError, ValueError):
+                        continue
+
+        if dropout_flag:
+            continue
+        if coverage_int is not None and coverage_int <= 0:
+            continue
+        if filter_mutated and mutation_flag:
+            continue
+        filtered.append(oligo)
+
+    if len(filtered) == len(batch.oligos):
+        return batch
+    return SequenceBatch(
+        batch_id=batch.batch_id,
+        metadata=dict(batch.metadata),
+        seed=batch.seed,
+        oligos=list(filtered),
+    )
+
+
+def run_canonical_pipeline(
+    codec: str,
+    fec: str | None,
+    channel: str | None,
+    original_data: bytes,
+    *,
+    filter_mutated: bool = False,
+) -> CanonicalRuntimeResult:
+    """Execute the canonical internal runtime route: encode → simulate → decode."""
+
+    init_plugins()
+    if os.getenv("GENECODER_SIM_SEED") is not None:
+        reset_rng()
+
+    encoded_batch, fec_info = encode(codec, fec, original_data)
+    simulated, subs, ins, dels, coverage = simulate(channel, encoded_batch)
+    simulated_batch = (
+        simulated if isinstance(simulated, SequenceBatch) else _wrap_single_sequence(str(simulated))
+    )
+    decode_input = _batch_for_decode(simulated_batch, filter_mutated=filter_mutated)
+    decoded = decode(
+        codec,
+        fec,
+        decode_input,
+        fec_info,
+        filter_mutated=filter_mutated,
+        survivor_batch=decode_input,
+    )
+    metrics_dict = metrics(
+        simulated_batch,
+        original_data,
+        decoded,
+        fec,
+        subs,
+        ins,
+        dels,
+        coverage,
+        stack_metrics=(dict(fec_info).get("coding_stack") if isinstance(fec_info, Mapping) else None),
+        constraint_outcomes=(
+            dict(fec_info).get("constraint_outcomes") if isinstance(fec_info, Mapping) else None
+        ),
+    )
+    return CanonicalRuntimeResult(
+        original_data=original_data,
+        encoded_batch=encoded_batch,
+        simulated_batch=simulated_batch,
+        decode_input=decode_input,
+        survivor_batch=decode_input,
+        decoded=decoded,
+        metrics=metrics_dict,
+        fec_info=fec_info,
+        substitutions=subs,
+        insertions=ins,
+        deletions=dels,
+        coverage=coverage,
+    )
 
 
 def _estimate_coverage(batch: SequenceBatch) -> int | None:
@@ -775,34 +918,7 @@ def run_pipeline(
 
     The decoded bytes are written to ``output_path`` and also returned.
     """
-    init_plugins()
-    if os.getenv("GENECODER_SIM_SEED") is not None:
-        reset_rng()
-
     original_data = Path(input_path).read_bytes()
-    dna_batch, fec_info = encode(codec, fec, original_data)
-    simulated, subs, ins, dels, coverage = simulate(channel, dna_batch)
-    batch_result = simulated if isinstance(simulated, SequenceBatch) else _wrap_single_sequence(simulated)
-    survivor_batch = batch_result if isinstance(batch_result, SequenceBatch) else None
-    decoded = decode(
-        codec,
-        fec,
-        batch_result,
-        fec_info,
-        survivor_batch=survivor_batch,
-    )
-
-    Path(output_path).write_bytes(decoded)
-    metrics_dict = metrics(
-        batch_result,
-        original_data,
-        decoded,
-        fec,
-        subs,
-        ins,
-        dels,
-        coverage,
-        stack_metrics=(dict(fec_info).get("coding_stack") if isinstance(fec_info, Mapping) else None),
-        constraint_outcomes=(dict(fec_info).get("constraint_outcomes") if isinstance(fec_info, Mapping) else None),
-    )
-    return decoded, metrics_dict
+    result = run_canonical_pipeline(codec, fec, channel, original_data)
+    Path(output_path).write_bytes(result.decoded)
+    return result.decoded, result.metrics

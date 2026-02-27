@@ -1,7 +1,7 @@
 """Sequencing simulator implementations and registry."""
 from __future__ import annotations
 
-from typing import Dict, Type
+from typing import Dict
 import os
 
 from ..plugin_api import Simulator
@@ -12,51 +12,40 @@ from .pipeline import ChannelPipeline
 
 SIMULATOR_REGISTRY: Dict[str, Simulator] = {}
 
-_ADAPTER_CACHE: Dict[Type[Simulator], Type[Simulator]] = {}
+
+class BatchSimulatorAdapter(Simulator):
+    """Explicit wrapper adding SequenceBatch support to legacy simulators."""
+
+    supports_batches = True
+
+    def __init__(self, delegate: Simulator) -> None:
+        self.delegate = delegate
+
+    def simulate(self, sequence: str | SequenceBatch) -> str | SequenceBatch:
+        if isinstance(sequence, SequenceBatch):
+            return apply_legacy_simulator(sequence, self.delegate.simulate)
+        return self.delegate.simulate(sequence)
+
+    def with_profile(self, profile: str) -> Simulator:
+        profiled = self.delegate.with_profile(profile)
+        if getattr(profiled, "supports_batches", False):
+            return profiled
+        return BatchSimulatorAdapter(profiled)
 
 
-def _get_batch_adapter(base_cls: Type[Simulator]) -> Type[Simulator]:
-    if getattr(base_cls, "supports_batches", False):
-        return base_cls
-    adapter = _ADAPTER_CACHE.get(base_cls)
-    if adapter is not None:
-        return adapter
-
-    class BatchAdapter(base_cls):  # type: ignore[misc]
-        """Auto-generated adapter adding SequenceBatch support."""
-
-        supports_batches = True
-
-        def simulate(self, sequence: str | SequenceBatch) -> str | SequenceBatch:  # type: ignore[override]
-            if isinstance(sequence, SequenceBatch):
-                return apply_legacy_simulator(
-                    sequence,
-                    super(BatchAdapter, self).simulate,  # type: ignore[misc]
-                )
-            return super(BatchAdapter, self).simulate(sequence)  # type: ignore[misc]
-
-        def with_profile(self, profile: str):  # type: ignore[override]
-            result = super(BatchAdapter, self).with_profile(profile)
-            if isinstance(result, base_cls) and not getattr(
-                result.__class__, "supports_batches", False
-            ):
-                result.__class__ = _get_batch_adapter(result.__class__)
-            return result
-
-    BatchAdapter.__name__ = f"{base_cls.__name__}BatchAdapter"
-    BatchAdapter.__qualname__ = BatchAdapter.__name__
-    BatchAdapter.__module__ = base_cls.__module__
-    _ADAPTER_CACHE[base_cls] = BatchAdapter
-    return BatchAdapter
+def _ensure_batch_simulator(channel: Simulator) -> Simulator:
+    if getattr(channel, "supports_batches", False):
+        return channel
+    if isinstance(channel, BatchSimulatorAdapter):
+        return channel
+    return BatchSimulatorAdapter(channel)
 
 
 def register_simulator(name: str, channel: Simulator) -> None:
     """Register ``channel`` under ``name``."""
 
-    adapter_cls = _get_batch_adapter(channel.__class__)
-    if adapter_cls is not channel.__class__:
-        channel.__class__ = adapter_cls  # type: ignore[misc]
-    SIMULATOR_REGISTRY[name] = channel
+    SIMULATOR_REGISTRY[name] = _ensure_batch_simulator(channel)
+
 
 from .base import BaseChannel, BaseSimulator
 from .illumina import (
@@ -73,6 +62,7 @@ from .nanopore import (
 
 __all__ = [
     "SIMULATOR_REGISTRY",
+    "BatchSimulatorAdapter",
     "register_simulator",
     "BaseChannel",
     "BaseSimulator",
@@ -103,21 +93,22 @@ def simulate_reads(
 
     if profile is not None:
         prof = profile.lower()
-        if isinstance(channel, (IlluminaChannel, IlluminaInSilicoSeqChannel)):
+        profile_target = channel.delegate if isinstance(channel, BatchSimulatorAdapter) else channel
+        if isinstance(profile_target, (IlluminaChannel, IlluminaInSilicoSeqChannel)):
             if prof not in ILLUMINA_PROFILES:
                 raise ValueError(f"Unknown Illumina profile: {profile}")
             channel = channel.with_profile(prof)
         elif isinstance(
-            channel,
+            profile_target,
             (NanoporeChannel, NanoporeDeSPChannel, NanoporeDNArSimChannel),
         ):
             if prof not in NANOPORE_PROFILES:
                 raise ValueError(f"Unknown Nanopore profile: {profile}")
             channel = channel.with_profile(prof)
         else:
-                raise ValueError(
-                    f"Simulator '{simulator}' does not support profiles"
-                )
+            raise ValueError(
+                f"Simulator '{simulator}' does not support profiles"
+            )
 
     if os.getenv("GENECODER_SIM_SEED") is not None:
         reset_rng()

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 """Simple pipeline for processing sequences step by step."""
 
-import json
 from collections.abc import MutableMapping
 from pathlib import Path
 import warnings
@@ -11,58 +10,10 @@ from typing import Any, Callable, Iterable, Mapping, Sequence, Tuple
 from genecoder.plugin_manager import init_plugins
 from genecoder.parallel import parallel_map
 from genecoder.formats import SequenceBatch
-from genecoder.simulators.batch_utils import (
-    RESULT_COVERAGE_KEY,
-    RESULT_DROPOUT_FLAG_KEY,
-    RESULT_MUTATION_TOTALS_KEY,
-)
+from genecoder.simulators.batch_utils import RESULT_COVERAGE_KEY, RESULT_DROPOUT_FLAG_KEY
 from genecoder import core
 
 __all__ = ["SequencePipeline", "run_pipeline"]
-
-
-def _metadata_flag_true(value: object) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        return value != 0
-    if isinstance(value, str):
-        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
-    return False
-
-
-def _metadata_int(value: object) -> int | None:
-    try:
-        return int(value) if value is not None else None
-    except (TypeError, ValueError):
-        return None
-
-
-def _has_mutations(metadata: Mapping[str, Any]) -> bool:
-    value = metadata.get(RESULT_MUTATION_TOTALS_KEY)
-    if value in (None, ""):
-        return False
-    data: Mapping[str, Any] | None
-    if isinstance(value, Mapping):
-        data = value
-    elif isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-        except json.JSONDecodeError:
-            return False
-        if isinstance(parsed, Mapping):
-            data = parsed
-        else:
-            return False
-    else:
-        return False
-    for key in ("substitutions", "insertions", "deletions"):
-        try:
-            if int(data.get(key, 0)) > 0:
-                return True
-        except (TypeError, ValueError):
-            continue
-    return False
 
 
 class SequencePipeline:
@@ -174,62 +125,21 @@ def run_pipeline(
     init_plugins()
 
     original_data = Path(input_path).read_bytes()
-    dna_batch, fec_info = core.encode(codec, fec_backend, original_data)
-    if not isinstance(dna_batch, SequenceBatch):
-        dna_batch = SequenceBatch.build(
-            [
-                (
-                    f"batch_id={codec}-pipeline oligo_index=1",
-                    str(dna_batch),
-                )
-            ],
-            batch_id=f"{codec}-pipeline",
-        )
-
-    simulated_batch, subs, ins, dels, coverage = core.simulate(channel, dna_batch)
-    if not isinstance(simulated_batch, SequenceBatch):
-        simulated_batch = SequenceBatch.build(
-            [
-                (
-                    dna_batch.first_header() or "batch_id=pipeline oligo_index=1",
-                    str(simulated_batch),
-                )
-            ],
-            batch_id=dna_batch.batch_id,
-        )
-
-    decode_input: SequenceBatch | str = simulated_batch
-    survivor_batch: SequenceBatch | None = (
-        simulated_batch if isinstance(simulated_batch, SequenceBatch) else None
+    runtime = core.run_canonical_pipeline(
+        codec,
+        fec_backend,
+        channel,
+        original_data,
+        filter_mutated=filter_mutated,
     )
-    if survivor_batch is not None:
-        filtered = [
-            oligo
-            for oligo in survivor_batch.oligos
-            if not _metadata_flag_true(oligo.metadata.get(RESULT_DROPOUT_FLAG_KEY))
-            and not (
-                (coverage_val := _metadata_int(oligo.metadata.get(RESULT_COVERAGE_KEY)))
-                is not None
-                and coverage_val <= 0
-            )
-            and (not filter_mutated or not _has_mutations(oligo.metadata))
-        ]
-        if len(filtered) != len(survivor_batch.oligos):
-            decode_input = SequenceBatch(
-                batch_id=survivor_batch.batch_id,
-                metadata=dict(survivor_batch.metadata),
-                seed=survivor_batch.seed,
-                oligos=list(filtered),
-            )
-            survivor_batch = decode_input
-        else:
-            decode_input = survivor_batch
 
-    channel_source = simulated_batch if isinstance(simulated_batch, SequenceBatch) else None
+    simulated_batch = runtime.simulated_batch
+    channel_source = simulated_batch
     channel_report: dict[str, Any] | None = None
     dropout_flags: list[bool] = []
-    if channel_source is not None:
-        channel_report, dropout_flags = _channel_report(channel_source)
+    channel_report, dropout_flags = _channel_report(channel_source)
+
+    fec_info = runtime.fec_info
     if (
         fec_backend == "fountain"
         and channel_report is not None
@@ -240,37 +150,10 @@ def run_pipeline(
         channel_report.setdefault("status", "pending")
         fec_info["channel"] = channel_report
 
-    try:
-        decoded = core.decode(
-            codec,
-            fec_backend,
-            decode_input,
-            fec_info,
-            filter_mutated=filter_mutated,
-            survivor_batch=survivor_batch,
-        )
-    except Exception:
-        if (
-            fec_backend == "fountain"
-            and channel_report is not None
-            and isinstance(fec_info, MutableMapping)
-        ):
-            channel_report["decode_success"] = False
-            channel_report["decode_success_rate"] = 0.0
-            channel_report["status"] = "failed"
-        raise
+    decoded = runtime.decoded
     Path(output_path).write_bytes(decoded)
 
-    metrics_dict = core.metrics(
-        simulated_batch,
-        original_data,
-        decoded,
-        fec_backend,
-        subs,
-        ins,
-        dels,
-        coverage,
-    )
+    metrics_dict = runtime.metrics
 
     if (
         fec_backend == "fountain"
