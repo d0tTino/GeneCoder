@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from genecoder.plugin_api import Codec
+from genecoder.plugin_api import Codec, CodecCapability
 from genecoder.plugin_runtime.descriptors import (
     PLUGIN_DESCRIPTOR_VERSION,
     PluginLifecycleState,
-    RegistrationCapabilities,
     RuntimePluginDescriptor,
     ValidationContract,
 )
@@ -38,7 +37,7 @@ def _descriptor(name: str, impl: type[Codec]) -> RuntimePluginDescriptor:
         name=name,
         kind="codec",
         implementation=impl,
-        capabilities=RegistrationCapabilities(deterministic=True),
+        capabilities=CodecCapability(),
         validation=ValidationContract(
             encode_input="bytes",
             encode_output="sequence",

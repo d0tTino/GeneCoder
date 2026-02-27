@@ -8,7 +8,6 @@ import importlib
 import json
 import logging
 import os
-import pkgutil
 import subprocess
 import urllib.request
 from pathlib import Path
@@ -22,6 +21,7 @@ from .plugin_runtime.discovery import (
     ENTRY_POINT_METADATA as _ENTRY_POINT_METADATA,
     collect_installed_plugins,
     load_entry_point_plugins as _load_entry_point_plugins,
+    load_local_plugins as _load_local_plugins,
 )
 from .plugin_runtime.descriptors import PluginDescriptor
 from .plugin_runtime.installer import (
@@ -41,6 +41,7 @@ from .plugin_runtime.registry import (
     FEC_REGISTRY,
     VISUALIZER_REGISTRY,
     register_codec,
+    register_plugin,
     register_fec,
     register_simulator,
     register_visualizer,
@@ -127,61 +128,14 @@ def load_entry_point_plugins() -> list[str]:
 
 
 def load_local_plugins() -> list[str]:
-    failures: list[str] = []
-    try:
-        import plugins
-    except ModuleNotFoundError:
-        return failures
-
-    if hasattr(plugins, "__path__"):
-        for _, module_name, _ in pkgutil.iter_modules(plugins.__path__):
-            try:
-                module = importlib.import_module(f"plugins.{module_name}")
-            except Exception:
-                failures.append(f"local:{module_name}")
-                continue
-            metadata = getattr(module, "PLUGIN_METADATA", None)
-            if metadata is not None:
-                try:
-                    _validate_plugin_metadata(metadata)
-                except Exception:
-                    failures.append(f"local:{module_name}")
-                    continue
-            register = getattr(module, "register", None)
-            if callable(register):
-                register(register_codec)
-            register_f = getattr(module, "register_fec", None)
-            if callable(register_f):
-                register_f(register_fec)
-            register_s = getattr(module, "register_simulator", None)
-            if callable(register_s):
-                register_s(register_simulator)
-            register_v = getattr(module, "register_visualizer", None)
-            if callable(register_v):
-                register_v(register_visualizer)
-
-    metadata = getattr(plugins, "PLUGIN_METADATA", None)
-    if metadata is not None:
-        try:
-            _validate_plugin_metadata(metadata)
-        except Exception:
-            failures.append("local:plugins")
-            return failures
-
-    register = getattr(plugins, "register", None)
-    if callable(register):
-        register(register_codec)
-    register_f = getattr(plugins, "register_fec", None)
-    if callable(register_f):
-        register_f(register_fec)
-    register_s = getattr(plugins, "register_simulator", None)
-    if callable(register_s):
-        register_s(register_simulator)
-    register_v = getattr(plugins, "register_visualizer", None)
-    if callable(register_v):
-        register_v(register_visualizer)
-    return failures
-
+    return _load_local_plugins(
+        registrars={
+            "codec": register_codec,
+            "fec": register_fec,
+            "simulator": register_simulator,
+            "visualizer": register_visualizer,
+        }
+    )
 
 
 def _verify_catalog_signature(data: bytes, signature_b64: str, *, padding_scheme: str | None = None) -> bool:
@@ -300,6 +254,7 @@ __all__ = [
     "VISUALIZER_REGISTRY",
     "SIMULATOR_REGISTRY",
     "PLUGIN_CATALOG",
+    "register_plugin",
     "register_codec",
     "register_fec",
     "register_simulator",

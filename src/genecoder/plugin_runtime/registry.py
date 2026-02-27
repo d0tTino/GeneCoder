@@ -1,31 +1,20 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
 from typing import Any, Callable, cast
 import logging
 
-from genecoder.coding.stack import (
-    CodecCapabilities,
-    FECCapabilities,
-    PluginLayerDescriptor,
-    ValidationMetadata,
-)
+from genecoder.coding.stack import CodecCapabilities, FECCapabilities, PluginLayerDescriptor, ValidationMetadata
 from genecoder.plugin_api import Codec, FEC, Simulator, Visualizer
 from genecoder.simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
 
-from .descriptors import (
-    PLUGIN_DESCRIPTOR_VERSION,
-    PluginLifecycleState,
-    RegistrationCapabilities,
-    RuntimePluginDescriptor,
-    ValidationContract,
-)
+from .adapters import descriptor_from_legacy_callable, descriptor_from_legacy_mapping, mapping_to_bound_methods
+from .descriptors import PluginLifecycleState, RuntimePluginDescriptor
 from .policy import coerce_plugin, enforce_lifecycle_transition, validate_runtime_descriptor
 
 logger = logging.getLogger(__name__)
 
-CODEC_REGISTRY: dict[str, PluginLayerDescriptor | dict[str, Callable[..., Any]]] = {}
-FEC_REGISTRY: dict[str, PluginLayerDescriptor | dict[str, Callable[..., Any]]] = {}
+CODEC_REGISTRY: dict[str, PluginLayerDescriptor] = {}
+FEC_REGISTRY: dict[str, PluginLayerDescriptor] = {}
 VISUALIZER_REGISTRY: dict[str, Callable[..., Any]] = {}
 DEPRECATION_NOTICES: list[dict[str, str]] = []
 REGISTRATION_STATES: dict[str, PluginLifecycleState] = {}
@@ -49,20 +38,29 @@ class RuntimeRegistry:
 RUNTIME_REGISTRY = RuntimeRegistry()
 
 
-class _LazyMappingPlugin(MutableMapping[str, Callable[..., Any]]):
+class _LazyLayerDescriptor(PluginLayerDescriptor):
     __slots__ = ("_kind", "_name", "_registry", "_fallback", "_loading")
 
-    def __init__(self, kind: str, name: str, registry: dict[str, Any], fallback: Mapping[str, Callable[..., Any]] | None = None) -> None:
+    def __init__(self, kind: str, name: str, registry: dict[str, PluginLayerDescriptor], fallback: PluginLayerDescriptor | None = None) -> None:
+        super().__init__(
+            name=name,
+            kind=cast(Any, "codec" if kind == "codec" else "fec"),
+            encode_fn=lambda *_args, **_kwargs: None,
+            decode_fn=lambda *_args, **_kwargs: None,
+            capabilities=CodecCapabilities() if kind == "codec" else FECCapabilities(),
+        )
         self._kind = kind
         self._name = name
         self._registry = registry
         self._fallback = fallback
         self._loading = False
 
-    def _resolve(self) -> Mapping[str, Callable[..., Any]]:
+    def _resolve(self) -> PluginLayerDescriptor:
         value = self._registry.get(self._name)
         if value is not self:
-            return cast(Mapping[str, Callable[..., Any]], value)
+            if value is None:
+                raise KeyError(f"{self._kind} plugin {self._name} is missing")
+            return value
         if self._loading:
             raise RuntimeError(f"Recursive load for {self._kind} plugin {self._name}")
         self._loading = True
@@ -70,39 +68,36 @@ class _LazyMappingPlugin(MutableMapping[str, Callable[..., Any]]):
             RUNTIME_REGISTRY.load_pending(self._kind, self._name)
         except Exception:
             if self._fallback is not None:
-                new_map = dict(self._fallback)
-                dict.__setitem__(self._registry, self._name, new_map)
-                return new_map
+                self._registry[self._name] = self._fallback
+                return self._fallback
             raise
         finally:
             self._loading = False
         value = self._registry.get(self._name)
         if value is self:
             if self._fallback is not None:
-                new_map = dict(self._fallback)
-                dict.__setitem__(self._registry, self._name, new_map)
-                return new_map
+                self._registry[self._name] = self._fallback
+                return self._fallback
             raise KeyError(f"{self._kind} plugin {self._name} failed to register")
-        return cast(Mapping[str, Callable[..., Any]], value)
+        if value is None:
+            raise KeyError(f"{self._kind} plugin {self._name} is missing")
+        return value
 
-    def __getitem__(self, key: str) -> Callable[..., Any]:
-        return self._resolve()[key]
+    @property
+    def encode_fn(self):  # type: ignore[override]
+        return self._resolve().encode_fn
 
-    def __setitem__(self, key: str, value: Callable[..., Any]) -> None:
-        m = dict(self._resolve())
-        m[key] = value
-        dict.__setitem__(self._registry, self._name, m)
+    @encode_fn.setter
+    def encode_fn(self, value):
+        self._resolve().encode_fn = value
 
-    def __delitem__(self, key: str) -> None:
-        m = dict(self._resolve())
-        del m[key]
-        dict.__setitem__(self._registry, self._name, m)
+    @property
+    def decode_fn(self):  # type: ignore[override]
+        return self._resolve().decode_fn
 
-    def __iter__(self):
-        return iter(self._resolve())
-
-    def __len__(self) -> int:
-        return len(self._resolve())
+    @decode_fn.setter
+    def decode_fn(self, value):
+        self._resolve().decode_fn = value
 
 
 class _LazyVisualizer:
@@ -170,18 +165,18 @@ class _LazySimulator(Simulator):
         return cast(Simulator, channel)
 
     def simulate(self, sequence: str) -> str:
-        return self._resolve().simulate(sequence)
+        return cast(str, self._resolve().simulate(sequence))
 
 
 def register_lazy_placeholder(kind: str, name: str) -> None:
     if kind == "codec":
         existing = CODEC_REGISTRY.get(name)
-        fallback = existing if isinstance(existing, Mapping) and not isinstance(existing, _LazyMappingPlugin) else None
-        CODEC_REGISTRY[name] = _LazyMappingPlugin("codec", name, CODEC_REGISTRY, fallback)
+        fallback = existing if isinstance(existing, PluginLayerDescriptor) and not isinstance(existing, _LazyLayerDescriptor) else None
+        CODEC_REGISTRY[name] = _LazyLayerDescriptor("codec", name, CODEC_REGISTRY, fallback)
     elif kind == "FEC":
         existing = FEC_REGISTRY.get(name)
-        fallback = existing if isinstance(existing, Mapping) and not isinstance(existing, _LazyMappingPlugin) else None
-        FEC_REGISTRY[name] = _LazyMappingPlugin("FEC", name, FEC_REGISTRY, fallback)
+        fallback = existing if isinstance(existing, PluginLayerDescriptor) and not isinstance(existing, _LazyLayerDescriptor) else None
+        FEC_REGISTRY[name] = _LazyLayerDescriptor("FEC", name, FEC_REGISTRY, fallback)
     elif kind == "visualizer":
         existing = VISUALIZER_REGISTRY.get(name)
         fallback = existing if callable(existing) and not isinstance(existing, _LazyVisualizer) else None
@@ -205,7 +200,7 @@ def _emit_legacy_notice(name: str, kind: str) -> None:
         "plugin": name,
         "kind": kind,
         "message": "Legacy registration entry point is deprecated.",
-        "migration_hint": "Return RuntimePluginDescriptor via register_plugin() or keep using register_* wrappers temporarily.",
+        "migration_hint": "Return RuntimePluginDescriptor via register_plugin() or use descriptor adapters.",
     }
     DEPRECATION_NOTICES.append(notice)
     logger.warning("%s", notice)
@@ -217,17 +212,24 @@ def transition_plugin_state(name: str, new_state: PluginLifecycleState) -> Plugi
 
 
 def register_plugin(descriptor: RuntimePluginDescriptor) -> None:
-    validate_runtime_descriptor(descriptor)
+    descriptor = validate_runtime_descriptor(descriptor)
     _set_state(descriptor.name, PluginLifecycleState.VALIDATED)
 
-    if descriptor.kind == "codec":
-        inst = cast(Any, coerce_plugin(descriptor.implementation, Codec, ("encode", "decode"), "codec"))
+    kind = "fec" if descriptor.kind == "FEC" else descriptor.kind
+
+    implementation = descriptor.implementation
+    if isinstance(implementation, dict):
+        descriptor = descriptor_from_legacy_mapping(descriptor.name, cast(Any, kind), implementation)
+        implementation = mapping_to_bound_methods(cast(Any, implementation), kind=cast(str, kind))
+
+    if kind == "codec":
+        inst = cast(Any, coerce_plugin(implementation, Codec, ("encode", "decode"), "codec"))
         CODEC_REGISTRY[descriptor.name] = PluginLayerDescriptor(
             name=descriptor.name,
             kind="codec",
             encode_fn=inst.encode,
             decode_fn=inst.decode,
-            capabilities=CodecCapabilities(supports_streaming=descriptor.capabilities.supports_streaming),
+            capabilities=CodecCapabilities(supports_streaming=getattr(descriptor.capabilities, "supports_streaming", False)),
             validation=ValidationMetadata(
                 encode_input=descriptor.validation.encode_input,
                 encode_output=descriptor.validation.encode_output,
@@ -235,14 +237,14 @@ def register_plugin(descriptor: RuntimePluginDescriptor) -> None:
                 decode_output=descriptor.validation.decode_output,
             ),
         )
-    elif descriptor.kind == "fec":
-        inst = cast(Any, coerce_plugin(descriptor.implementation, FEC, ("encode", "decode"), "FEC"))
+    elif kind == "fec":
+        inst = cast(Any, coerce_plugin(implementation, FEC, ("encode", "decode"), "FEC"))
         FEC_REGISTRY[descriptor.name] = PluginLayerDescriptor(
             name=descriptor.name,
             kind="fec",
             encode_fn=inst.encode,
             decode_fn=inst.decode,
-            capabilities=FECCapabilities(supports_streaming=descriptor.capabilities.supports_streaming),
+            capabilities=FECCapabilities(supports_streaming=getattr(descriptor.capabilities, "supports_streaming", False)),
             validation=ValidationMetadata(
                 encode_input=descriptor.validation.encode_input,
                 encode_output=descriptor.validation.encode_output,
@@ -250,11 +252,11 @@ def register_plugin(descriptor: RuntimePluginDescriptor) -> None:
                 decode_output=descriptor.validation.decode_output,
             ),
         )
-    elif descriptor.kind == "simulator":
-        inst = cast(Any, coerce_plugin(descriptor.implementation, Simulator, ("simulate",), "simulator"))
+    elif kind == "simulator":
+        inst = cast(Any, coerce_plugin(implementation, Simulator, ("simulate",), "simulator"))
         _register_simulator(descriptor.name, inst)
-    elif descriptor.kind == "visualizer":
-        inst = cast(Any, coerce_plugin(descriptor.implementation, Visualizer, ("visualize",), "visualizer"))
+    elif kind == "visualizer":
+        inst = cast(Any, coerce_plugin(implementation, Visualizer, ("visualize",), "visualizer"))
         VISUALIZER_REGISTRY[descriptor.name] = inst.visualize
     else:
         raise ValueError(f"Unsupported runtime descriptor kind: {descriptor.kind}")
@@ -262,58 +264,21 @@ def register_plugin(descriptor: RuntimePluginDescriptor) -> None:
     _set_state(descriptor.name, PluginLifecycleState.LOADED)
 
 
-def register_codec(name: str, codec: Codec | type[Codec]) -> None:
+def register_codec(name: str, codec: Codec | type[Codec] | dict[str, Any]) -> None:
     _emit_legacy_notice(name, "codec")
-    register_plugin(
-        RuntimePluginDescriptor(
-            api_version=PLUGIN_DESCRIPTOR_VERSION,
-            name=name,
-            kind="codec",
-            implementation=codec,
-            capabilities=RegistrationCapabilities(deterministic=True),
-            validation=ValidationContract(
-                encode_input="bytes",
-                encode_output="sequence",
-                decode_input="sequence|batch",
-                decode_output="bytes",
-            ),
-        )
-    )
+    register_plugin(descriptor_from_legacy_callable(name, "codec", codec))
 
 
-def register_fec(name: str, fec: FEC | type[FEC]) -> None:
+def register_fec(name: str, fec: FEC | type[FEC] | dict[str, Any]) -> None:
     _emit_legacy_notice(name, "fec")
-    register_plugin(
-        RuntimePluginDescriptor(
-            api_version=PLUGIN_DESCRIPTOR_VERSION,
-            name=name,
-            kind="fec",
-            implementation=fec,
-            capabilities=RegistrationCapabilities(deterministic=True),
-            validation=ValidationContract(),
-        )
-    )
+    register_plugin(descriptor_from_legacy_callable(name, "fec", fec))
 
 
-def register_simulator(name: str, channel: Simulator | type[Simulator]) -> None:
+def register_simulator(name: str, channel: Simulator | type[Simulator] | dict[str, Any]) -> None:
     _emit_legacy_notice(name, "simulator")
-    register_plugin(
-        RuntimePluginDescriptor(
-            api_version=PLUGIN_DESCRIPTOR_VERSION,
-            name=name,
-            kind="simulator",
-            implementation=channel,
-        )
-    )
+    register_plugin(descriptor_from_legacy_callable(name, "simulator", channel))
 
 
-def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer]) -> None:
+def register_visualizer(name: str, visualizer: Visualizer | type[Visualizer] | dict[str, Any]) -> None:
     _emit_legacy_notice(name, "visualizer")
-    register_plugin(
-        RuntimePluginDescriptor(
-            api_version=PLUGIN_DESCRIPTOR_VERSION,
-            name=name,
-            kind="visualizer",
-            implementation=visualizer,
-        )
-    )
+    register_plugin(descriptor_from_legacy_callable(name, "visualizer", visualizer))

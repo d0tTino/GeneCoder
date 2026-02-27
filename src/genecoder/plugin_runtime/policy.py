@@ -96,6 +96,15 @@ def validate_runtime_descriptor(descriptor: RuntimePluginDescriptor) -> RuntimeP
         )
     if descriptor.kind not in VALID_INTERFACES:
         raise ValueError(f"Unsupported plugin kind {descriptor.kind!r}")
+    kind = "fec" if descriptor.kind == "FEC" else descriptor.kind
+    capability_interface = getattr(descriptor.capabilities, "interface", "")
+    if capability_interface and capability_interface != kind:
+        raise ValueError(
+            f"Capability interface {capability_interface!r} does not match descriptor kind {kind!r}"
+        )
+    interface_version = getattr(descriptor.capabilities, "interface_version", "")
+    if interface_version and interface_version != PLUGIN_DESCRIPTOR_VERSION and not interface_version.startswith("1."):
+        raise ValueError(f"Unsupported interface version {interface_version!r}")
     if not descriptor.name or not descriptor.name.strip():
         raise ValueError("Plugin descriptor name must be a non-empty string")
     return descriptor

@@ -132,6 +132,45 @@ def load_entry_point_plugins(*, offline: bool, registrars: dict[str, tuple[Calla
     return failures, descriptors
 
 
+
+def load_local_plugins(*, registrars: dict[str, Callable[..., Any]]) -> list[str]:
+    failures: list[str] = []
+    try:
+        import plugins
+    except ModuleNotFoundError:
+        return failures
+
+    def _register_module(module: ModuleType, module_name: str) -> None:
+        metadata = getattr(module, "PLUGIN_METADATA", None)
+        if metadata is not None:
+            validate_plugin_metadata(metadata)
+        register = getattr(module, "register", None)
+        if callable(register):
+            register(registrars["codec"])
+        register_f = getattr(module, "register_fec", None)
+        if callable(register_f):
+            register_f(registrars["fec"])
+        register_s = getattr(module, "register_simulator", None)
+        if callable(register_s):
+            register_s(registrars["simulator"])
+        register_v = getattr(module, "register_visualizer", None)
+        if callable(register_v):
+            register_v(registrars["visualizer"])
+
+    if hasattr(plugins, "__path__"):
+        for _, module_name, _ in pkgutil.iter_modules(plugins.__path__):
+            try:
+                module = importlib.import_module(f"plugins.{module_name}")
+                _register_module(module, module_name)
+            except Exception:
+                failures.append(f"local:{module_name}")
+
+    try:
+        _register_module(plugins, "plugins")
+    except Exception:
+        failures.append("local:plugins")
+    return failures
+
 def collect_installed_plugins(existing_catalog: dict[str, dict[str, Any]]) -> tuple[dict[str, dict[str, Any]], list[str], list[PluginDescriptor]]:
     ENTRY_POINT_METADATA.clear()
     catalog: dict[str, dict[str, Any]] = {}

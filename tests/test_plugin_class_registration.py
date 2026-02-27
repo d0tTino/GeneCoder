@@ -1,3 +1,4 @@
+from genecoder.coding.stack import PluginLayerDescriptor
 from importlib.metadata import EntryPoint
 from pathlib import Path
 
@@ -60,8 +61,17 @@ def register(register_fec):
     plugins.load_plugins()
 
     assert "dummy_cls" in plugins.CODEC_REGISTRY
+    assert isinstance(plugins.CODEC_REGISTRY["dummy_cls"], PluginLayerDescriptor)
     assert plugins.CODEC_REGISTRY["dummy_cls"]["encode"](b"abc") == "cba"
 
     assert "dummy_fec_cls" in plugins.FEC_REGISTRY
+    assert isinstance(plugins.FEC_REGISTRY["dummy_fec_cls"], PluginLayerDescriptor)
     decoded, corr = plugins.FEC_REGISTRY["dummy_fec_cls"]["decode"](b"abcx", {})
     assert decoded == b"abc" and corr == 0
+
+
+def test_legacy_map_registration_warns(monkeypatch: pytest.MonkeyPatch) -> None:
+    plugins.CODEC_REGISTRY.clear()
+    with pytest.deprecated_call(match="legacy map-style"):
+        plugins.register_codec("legacy_map", {"encode": lambda data, **kwargs: "ok", "decode": lambda text, **kwargs: b"ok"})
+    assert isinstance(plugins.CODEC_REGISTRY["legacy_map"], PluginLayerDescriptor)
