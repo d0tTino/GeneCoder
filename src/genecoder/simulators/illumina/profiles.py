@@ -7,7 +7,8 @@ from typing import Any, Mapping, Sequence
 import json
 import warnings
 
-from ...simulation_engine.profiles import VersionedProfile, normalize_profile as _normalize_profile
+from ...config.loader import VersionedProfile, load_mapping_file
+from ...simulation_engine.profiles import normalize_profile as _normalize_profile
 
 
 __all__ = [
@@ -87,22 +88,7 @@ def _validate_profile(data: Mapping[str, Any]) -> IlluminaProfile:
 
 
 def _load_profile_file(path: str | Path) -> Mapping[str, Any]:
-    text = Path(path).read_text(encoding="utf-8")
-    try:
-        data: Any = json.loads(text)
-    except json.JSONDecodeError:
-        try:
-            import yaml
-        except Exception:
-            from genecoder.plugin_manager import yaml as yaml_module
-
-            if yaml_module is None:
-                raise
-            yaml = yaml_module
-        data = yaml.safe_load(text) or {}
-    if not isinstance(data, Mapping):
-        raise ValueError("Profile file must map keys to values")
-    return data
+    return load_mapping_file(path)
 
 
 _BASE_PRESETS: dict[str, dict[str, float | int]] = {

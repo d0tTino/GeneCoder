@@ -12,13 +12,13 @@ from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES
 
 from genecoder.channel_config import ChannelConfig
+from genecoder.config.loader import load_mapping_file, validate_bundle_document
 from genecoder.core import encode, decode, inspect_coding_plan
 from genecoder.formats import SequenceBatch
 from genecoder.parallel import parallel_map
 from genecoder.plugin_manager import (
     CODEC_REGISTRY,
     FEC_REGISTRY,
-    yaml as yaml_module,
     init_plugins,
 )
 from genecoder.simulators import SIMULATOR_REGISTRY, ChannelPipeline
@@ -92,21 +92,10 @@ def _is_truthy(value: object) -> bool:
 
 
 def _load_config(path: str) -> tuple[str, str | None, str | None, Dict[str, Any]]:
-    """Parse pipeline settings from a YAML ``path``."""
+    """Parse pipeline settings from a YAML/JSON ``path``."""
 
-    if yaml_module is None:  # pragma: no cover - optional dependency
-        import yaml as yaml_fallback
-    else:
-        yaml_fallback = yaml_module
-
-    with open(path, "r", encoding="utf-8") as f:
-        try:
-            data = yaml_fallback.safe_load(f) or {}
-        except Exception as exc:  # pragma: no cover - invalid YAML path
-            raise ValueError(f"Invalid YAML in {path}: {exc}") from exc
-
-    if not isinstance(data, dict):
-        raise ValueError("Config file must map keys to values")
+    data = dict(load_mapping_file(path))
+    validate_bundle_document({"encode": {"input_files": ["placeholder"], "method": "base4_direct"}, "simulate": data})
 
     codec = data.get("codec")
     if not isinstance(codec, str):

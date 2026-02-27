@@ -52,6 +52,7 @@ from genecoder.core import metrics as gather_metrics
 from genecoder.manifest import generate_manifest
 from genecoder.plugin_manager import FEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
+from genecoder.config.loader import validate_bundle_document
 from genecoder.synthesis import SynthesisConstraints
 from genecoder.constraints import load_constraint_policy
 
@@ -182,14 +183,10 @@ def _format_schema_error(error: ValidationError) -> str:
 
 def _validate_bundle_config(config: Mapping[str, object], config_path: Path) -> None:
     init_plugins()
-    schema = _augment_schema(_load_bundle_schema())
-    validator = Draft202012Validator(schema)
-    error = best_match(validator.iter_errors(config))
-    if error is None:
-        return
-
-    message = _format_schema_error(error)
-    raise ValueError(f"Invalid bundle config at {config_path} ({message})")
+    try:
+        validate_bundle_document(config)
+    except ValueError as exc:
+        raise ValueError(f"Invalid bundle config at {config_path} ({exc})") from exc
 
 
 def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:

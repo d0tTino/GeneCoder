@@ -1,48 +1,17 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-import json
 from pathlib import Path
 from typing import Any, Mapping
-import warnings
 
-
-@dataclass(frozen=True)
-class VersionedProfile:
-    schema_version: int
-    kind: str
-    name: str
-    parameters: Mapping[str, Any]
-
-
-def validate_profile_schema(profile: Mapping[str, Any], *, kind: str) -> VersionedProfile:
-    schema_version = int(profile.get("schema_version", 1))
-    if schema_version != 1:
-        raise ValueError(f"Unsupported {kind} profile schema_version: {schema_version}")
-    name = str(profile.get("name") or kind)
-    params = profile.get("parameters")
-    if not isinstance(params, Mapping):
-        raise ValueError(f"{kind} profile requires 'parameters' mapping")
-    return VersionedProfile(schema_version=schema_version, kind=kind, name=name, parameters=dict(params))
+from genecoder.config.loader import (
+    VersionedProfile,
+    load_mapping_file,
+    resolve_profile as _resolve_profile
+)
 
 
 def _load_mapping(path: str | Path) -> Mapping[str, Any]:
-    text = Path(path).read_text(encoding="utf-8")
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        try:
-            import yaml
-        except Exception:
-            from genecoder.plugin_manager import yaml as yaml_module
-
-            if yaml_module is None:
-                raise
-            yaml = yaml_module
-        data = yaml.safe_load(text) or {}
-    if not isinstance(data, Mapping):
-        raise ValueError("Profile file must map keys to values")
-    return data
+    return load_mapping_file(path)
 
 
 def normalize_profile(
@@ -52,26 +21,12 @@ def normalize_profile(
     presets: Mapping[str, VersionedProfile],
     allow_legacy_dict: bool = False,
 ) -> VersionedProfile | None:
-    if value is None:
-        return None
-    if isinstance(value, Mapping):
-        if "parameters" not in value:
-            if not allow_legacy_dict:
-                raise ValueError(
-                    f"{kind} profile mappings must be versioned with schema_version/name/parameters"
-                )
-            warnings.warn(
-                f"Raw dict-based {kind} profiles are deprecated; use a versioned profile object.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            value = {"schema_version": 1, "kind": kind, "name": "custom", "parameters": dict(value)}
-        return validate_profile_schema(value, kind=kind)
-
-    path = Path(value)
-    if path.is_file():
-        return validate_profile_schema(_load_mapping(path), kind=kind)
-    return presets.get(str(value).lower())
+    return _resolve_profile(
+        value,
+        kind=kind,
+        presets=presets,
+        allow_legacy_dict=allow_legacy_dict,
+    )
 
 
 def resolve_profile(
@@ -80,4 +35,4 @@ def resolve_profile(
     kind: str,
     presets: Mapping[str, VersionedProfile],
 ) -> VersionedProfile | None:
-    return normalize_profile(value, kind=kind, presets=presets, allow_legacy_dict=True)
+    return _resolve_profile(value, kind=kind, presets=presets, allow_legacy_dict=True)
