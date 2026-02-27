@@ -1,23 +1,16 @@
-import flet as ft
-import os 
-import json 
-import flet as ft
-import os
-import json
+import asyncio
 import base64 # For displaying matplotlib plots in Flet
+import json
+import os
 import re # For parsing header parameters
-import asyncio # For asynchronous operations
+
+import flet as ft
 
 # Project module imports
-from genecoder.encoders import (
-    encode_base4_direct, decode_base4_direct,
-    encode_gc_balanced, decode_gc_balanced, calculate_gc_content,
-    get_max_homopolymer_length
-)
-from genecoder.encoders import encode_triple_repeat, decode_triple_repeat # FEC functions
-from genecoder.huffman_coding import encode_huffman, decode_huffman
-from genecoder.formats import to_fasta, from_fasta
+from genecoder.encoders import calculate_gc_content, get_max_homopolymer_length
 from genecoder.error_detection import PARITY_RULE_GC_EVEN_A_ODD_T
+from genecoder.formats import to_fasta, from_fasta
+from genecoder.pipeline import DecodeRequest, EncodeRequest, GeneCoderPipeline
 from genecoder.plotting import (
     prepare_huffman_codeword_length_data,
     generate_codeword_length_histogram,
@@ -161,7 +154,7 @@ def main(page: ft.Page):
            asynchronously if applicable.
         10. Updates status messages and re-enables UI controls in a `finally` block.
         """
-        nonlocal decoded_bytes_to_save
+        global decoded_bytes_to_save
         decoded_bytes_to_save = b""
 
         # Disable buttons and show progress
@@ -226,32 +219,26 @@ def main(page: ft.Page):
             with open(input_path, 'rb') as f_in:
                 input_data = await asyncio.to_thread(f_in.read)
 
-            raw_dna_sequence = ""
-            huffman_table_for_header = {} 
-            num_padding_bits_for_header = 0
-            
-            if method == "Base-4 Direct":
-                raw_dna_sequence = await asyncio.to_thread(
-                    encode_base4_direct, input_data, add_parity_encode, k_val_encode, PARITY_RULE_GC_EVEN_A_ODD_T
-                )
-            elif method == "Huffman":
-                # encode_huffman returns a tuple, so handle its result
-                encode_result = await asyncio.to_thread(
-                    encode_huffman, input_data, add_parity_encode, k_val_encode, PARITY_RULE_GC_EVEN_A_ODD_T
-                )
-                raw_dna_sequence, huffman_table_for_header, num_padding_bits_for_header = encode_result
+            method_key = method.lower().replace(' ', '_').replace('-', '_')
+            pipeline = GeneCoderPipeline()
+            stage_result = await asyncio.to_thread(
+                pipeline.run_encode,
+                EncodeRequest(
+                    data=input_data,
+                    method=method_key,
+                    add_parity=add_parity_encode and method != "GC-Balanced",
+                    k_value=k_val_encode,
+                    parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T,
+                    pre_transform='none',
+                    channel='triple_repeat' if apply_fec_encode else 'none',
+                ),
+            )
+            raw_dna_sequence = stage_result.encoded_dna
+            final_encoded_dna = stage_result.channel_output_dna
+            huffman_table_for_header = stage_result.metadata.get('huffman_table', {})
+            num_padding_bits_for_header = stage_result.metadata.get('huffman_padding', 0)
 
-            elif method == "GC-Balanced":
-                target_gc_min, target_gc_max, max_homopolymer = 0.45, 0.55, 3
-                raw_dna_sequence = await asyncio.to_thread(
-                    encode_gc_balanced, input_data, target_gc_min, target_gc_max, max_homopolymer
-                )
-            else:
-                encode_status_text.value = f"Error: Unknown method '{method}'."
-                page.update()
-                return
-
-            header_parts = [f"method={method.lower().replace(' ', '_').replace('-', '_')}", f"input_file={os.path.basename(input_path)}"]
+            header_parts = [f"method={method_key}", f"input_file={os.path.basename(input_path)}"]
             if add_parity_encode and method != "GC-Balanced":
                 header_parts.extend([f"parity_k={k_val_encode}", f"parity_rule={PARITY_RULE_GC_EVEN_A_ODD_T}"])
             if method == "Huffman":
@@ -259,18 +246,12 @@ def main(page: ft.Page):
                 huffman_params = {"table": serializable_table, "padding": num_padding_bits_for_header}
                 header_parts.append(f"huffman_params={json.dumps(huffman_params)}")
             elif method == "GC-Balanced":
-                header_parts.extend([f"gc_min={target_gc_min}", f"gc_max={target_gc_max}", f"max_homopolymer={max_homopolymer}"])
+                header_parts.extend(["gc_min=0.45", "gc_max=0.55", "max_homopolymer=3"])
 
-            final_encoded_dna = raw_dna_sequence
             if apply_fec_encode:
-                final_encoded_dna = await asyncio.to_thread(encode_triple_repeat, raw_dna_sequence)
                 header_parts.append("fec=triple_repeat")
-                # Append to status text; ensure it's not overwritten if already an info message
                 current_status = encode_status_text.value
-                if "Info:" in current_status: # If there's already an info message (like GC-Balanced + Parity)
-                     encode_status_text.value = current_status + " Triple-Repeat FEC applied."
-                else: # Otherwise, set it directly or append to a success message later
-                     encode_status_text.value = "Triple-Repeat FEC applied." # This might get overwritten by "Encoding successful"
+                encode_status_text.value = (current_status + " ").strip() + "Triple-Repeat FEC applied."
                 encode_status_text.color = ft.colors.BLUE_GREY_400
             
             fasta_header = " ".join(header_parts)
@@ -492,6 +473,7 @@ def main(page: ft.Page):
             allowed_extensions=["fasta", "fa", "txt"] 
         )
     )
+    decode_button = ft.ElevatedButton("Decode")
 
     async def decode_file_data(e): # Corrected from 'def' to 'async def' in my thoughts, already async in code
         """
@@ -510,7 +492,7 @@ def main(page: ft.Page):
         9. Applies the primary decoding method asynchronously.
         10. Updates status messages and re-enables UI controls in a `finally` block.
         """
-        nonlocal decoded_bytes_to_save 
+        global decoded_bytes_to_save 
         
         decode_status_text.value = "Processing..."
         decode_fec_info_text.value = "" 
@@ -545,100 +527,84 @@ def main(page: ft.Page):
 
             header, sequence_from_fasta = parsed_records[0]
             
-            sequence_for_primary_decode = sequence_from_fasta
-            if "fec=triple_repeat" in header:
+            pre_transform = 'hamming_7_4' if "fec=hamming_7_4" in header else 'none'
+            channel = 'triple_repeat' if "fec=triple_repeat" in header else 'none'
+            if channel == 'triple_repeat':
                 current_decode_status_messages.append("Triple-Repeat FEC detected.")
-                if len(sequence_from_fasta) % 3 != 0:
-                    warning_msg = f"Warning: FEC sequence length ({len(sequence_from_fasta)}) not multiple of 3. Using original sequence."
-                    current_decode_status_messages.append(warning_msg)
-                    decode_fec_info_text.value = warning_msg
-                    decode_fec_info_text.color = ft.colors.AMBER_ACCENT_700
-                else:
-                    try:
-                        decode_fec_result = await asyncio.to_thread(decode_triple_repeat, sequence_from_fasta)
-                        sequence_for_primary_decode, corrected, uncorrectable = decode_fec_result
-                        fec_msg = f"Triple-Repeat FEC: {corrected} corrected, {uncorrectable} uncorrectable."
-                        current_decode_status_messages.append(fec_msg)
-                        decode_fec_info_text.value = fec_msg
-                        decode_fec_info_text.color = ft.colors.GREEN_700 if uncorrectable == 0 else ft.colors.ORANGE_ACCENT_700
-                    except ValueError as ve_fec:
-                         err_msg = f"FEC decoding error: {ve_fec}. Using original sequence."
-                         current_decode_status_messages.append(err_msg)
-                         decode_fec_info_text.value = err_msg
-                         decode_fec_info_text.color = ft.colors.RED_ACCENT_700
-            else:
-                decode_fec_info_text.value = "No FEC detected in header."
-            page.update()
 
-            detected_method_str = None; huffman_table = None; num_padding_bits = 0
-            check_parity = False; k_val_decode = 7; parity_rule_decode = PARITY_RULE_GC_EVEN_A_ODD_T
+            detected_method_str = None
+            huffman_table = None
+            num_padding_bits = 0
+            check_parity = False
+            k_val_decode = 7
 
             if "method=huffman" in header and "huffman_params={" in header:
                 detected_method_str = "huffman"
-                # ... (Huffman param parsing logic - assumed to be synchronous for now, or needs to_thread if complex)
-                try:
-                    json_param_field_start = header.find("huffman_params=")
-                    json_part_with_key = header[json_param_field_start + len("huffman_params="):]
-                    first_bracket_index = json_part_with_key.find('{')
-                    if first_bracket_index == -1: raise ValueError("JSON object for huffman_params not found or malformed.")
-                    open_brackets = 0; json_end_index = -1
-                    for i, char_h in enumerate(json_part_with_key[first_bracket_index:]):
-                        if char_h == '{': open_brackets += 1
-                        elif char_h == '}': open_brackets -= 1
-                        if open_brackets == 0: json_end_index = first_bracket_index + i + 1; break
-                    if json_end_index == -1: raise ValueError("JSON object for huffman_params not properly closed.")
-                    params_json_str = json_part_with_key[first_bracket_index:json_end_index]
-                    huffman_params = json.loads(params_json_str) # json.loads is sync
-                    huffman_table_str_keys = huffman_params.get('table')
-                    num_padding_bits = huffman_params.get('padding')
-                    if huffman_table_str_keys is None or num_padding_bits is None: raise ValueError("Essential 'table' or 'padding' missing.")
-                    huffman_table = {int(k): v for k, v in huffman_table_str_keys.items()}
-                except Exception as json_ex:
-                    decode_status_text.value = f"Error: Invalid Huffman parameters: {json_ex}"
-                    decode_status_text.color = ft.colors.RED_ACCENT_700; page.update(); return
-            elif "method=base4_direct" in header: detected_method_str = "base4_direct"
-            elif "method=gc_balanced" in header: detected_method_str = "gc_balanced"
-            else: decode_status_text.value = "Error: Could not determine decoding method."; decode_status_text.color = ft.colors.RED_ACCENT_700; page.update(); return
-            
+                json_param_field_start = header.find("huffman_params=")
+                json_part_with_key = header[json_param_field_start + len("huffman_params="):]
+                first_bracket_index = json_part_with_key.find('{')
+                open_brackets = 0
+                json_end_index = -1
+                for i, char_h in enumerate(json_part_with_key[first_bracket_index:]):
+                    if char_h == '{':
+                        open_brackets += 1
+                    elif char_h == '}':
+                        open_brackets -= 1
+                    if open_brackets == 0:
+                        json_end_index = first_bracket_index + i + 1
+                        break
+                huffman_params = json.loads(json_part_with_key[first_bracket_index:json_end_index])
+                huffman_table = {int(k): v for k, v in huffman_params.get('table', {}).items()}
+                num_padding_bits = huffman_params.get('padding', 0)
+            elif "method=base4_direct" in header:
+                detected_method_str = "base4_direct"
+            elif "method=gc_balanced" in header:
+                detected_method_str = "gc_balanced"
+
+            if detected_method_str is None:
+                decode_status_text.value = "Error: Could not determine decoding method."
+                decode_status_text.color = ft.colors.RED_ACCENT_700
+                page.update()
+                return
+
             if detected_method_str != "gc_balanced" and "parity_k=" in header and "parity_rule=" in header:
                 check_parity = True
-                try:
-                    parity_k_str = header.split("parity_k=")[1].split()[0]
-                    k_val_decode = int(parity_k_str)
-                    parity_rule_str = header.split("parity_rule=")[1].split()[0]
-                    if parity_rule_str != PARITY_RULE_GC_EVEN_A_ODD_T: raise ValueError(f"Unsupported parity rule '{parity_rule_str}'.")
-                    if k_val_decode <=0: raise ValueError("Parity k-value must be positive.")
-                except Exception as parity_ex:
-                    decode_status_text.value = f"Error: Invalid parity parameters: {parity_ex}"; decode_status_text.color = ft.colors.RED_ACCENT_700; page.update(); return
-            
-            decoded_bytes_result = b""; parity_errors = []
+                k_val_decode = int(header.split("parity_k=")[1].split()[0])
 
-            if detected_method_str == "base4_direct":
-                decode_result = await asyncio.to_thread(
-                    decode_base4_direct, sequence_for_primary_decode, check_parity, k_val_decode, parity_rule_decode
-                )
-                decoded_bytes_result, parity_errors = decode_result
-            elif detected_method_str == "huffman":
-                if huffman_table is None: decode_status_text.value = "Error: Huffman params missing."; decode_status_text.color = ft.colors.RED_ACCENT_700; page.update(); return
-                decode_result = await asyncio.to_thread(
-                    decode_huffman, sequence_for_primary_decode, huffman_table, num_padding_bits, check_parity, k_val_decode, parity_rule_decode
-                )
-                decoded_bytes_result, parity_errors = decode_result
-            elif detected_method_str == "gc_balanced":
-                # Param parsing for GC-balanced (sync or needs to_thread if complex)
-                expected_gc_min_val, expected_gc_max_val, expected_max_homopolymer_val = None, None, None
-                # ... (re.search logic as before, this part is fast and can remain sync)
-                gc_min_match = re.search(r"gc_min=([\d.]+)", header); gc_max_match = re.search(r"gc_max=([\d.]+)", header); max_homopolymer_match = re.search(r"max_homopolymer=(\d+)", header)
-                if gc_min_match: expected_gc_min_val = float(gc_min_match.group(1))
-                if gc_max_match: expected_gc_max_val = float(gc_max_match.group(1))
-                if max_homopolymer_match: expected_max_homopolymer_val = int(max_homopolymer_match.group(1))
-                if not all([expected_gc_min_val, expected_gc_max_val, expected_max_homopolymer_val]):
-                     current_decode_status_messages.append("Warning: Could not parse all GC constraint params.")
-                
-                decoded_bytes_result = await asyncio.to_thread(
-                    decode_gc_balanced, sequence_for_primary_decode, expected_gc_min_val, expected_gc_max_val, expected_max_homopolymer_val
-                )
-            else: decode_status_text.value = "Error: Internal method error."; decode_status_text.color = ft.colors.RED_ACCENT_700; page.update(); return
+            gc_min_match = re.search(r"gc_min=([\d.]+)", header)
+            gc_max_match = re.search(r"gc_max=([\d.]+)", header)
+            max_homopolymer_match = re.search(r"max_homopolymer=(\d+)", header)
+            fec_padding_match = re.search(r"fec_padding_bits=(\d+)", header)
+
+            pipeline = GeneCoderPipeline()
+            decode_stage_result = await asyncio.to_thread(
+                pipeline.run_decode,
+                DecodeRequest(
+                    dna_sequence=sequence_from_fasta,
+                    method=detected_method_str,
+                    check_parity=check_parity,
+                    k_value=k_val_decode,
+                    parity_rule=PARITY_RULE_GC_EVEN_A_ODD_T,
+                    pre_transform=pre_transform,
+                    channel=channel,
+                    huffman_table=huffman_table,
+                    huffman_padding=num_padding_bits,
+                    gc_min=float(gc_min_match.group(1)) if gc_min_match else None,
+                    gc_max=float(gc_max_match.group(1)) if gc_max_match else None,
+                    max_homopolymer=int(max_homopolymer_match.group(1)) if max_homopolymer_match else None,
+                    pre_transform_padding_bits=int(fec_padding_match.group(1)) if fec_padding_match else 0,
+                ),
+            )
+            decoded_bytes_result = decode_stage_result.decoded_bytes or decode_stage_result.transformed_bytes
+            parity_errors = decode_stage_result.parity_errors
+
+            if channel == 'triple_repeat':
+                corrected = decode_stage_result.metadata.get('channel_corrected', 0)
+                uncorrectable = decode_stage_result.metadata.get('channel_uncorrectable', 0)
+                decode_fec_info_text.value = f"Triple-Repeat FEC: {corrected} corrected, {uncorrectable} uncorrectable."
+            else:
+                decode_fec_info_text.value = "No FEC detected in header."
+            page.update()
 
             decoded_bytes_to_save = decoded_bytes_result
             final_status_message = " ".join(current_decode_status_messages) + " Decoding successful."
@@ -664,7 +630,7 @@ def main(page: ft.Page):
     decode_button.on_click = decode_file_data
 
     async def on_save_decoded_file_result(e: ft.FilePickerResultEvent): # Made async
-        nonlocal decoded_bytes_to_save
+        global decoded_bytes_to_save
         if e.path:
             try:
                 with open(e.path, "wb") as f_out: 
