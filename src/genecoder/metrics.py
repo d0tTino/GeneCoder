@@ -3,7 +3,7 @@ import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, IO, Mapping, Sequence, cast
+from typing import Any, IO, cast
 from os import PathLike
 
 try:  # pragma: no cover - optional dependency
@@ -29,17 +29,7 @@ except Exception:  # pragma: no cover - fallback for tests
 
     portalocker = cast(Any, types.SimpleNamespace(Lock=_NoLock))
 
-__all__ = [
-    "Metrics",
-    "metrics",
-    "increment",
-    "get_metrics",
-    "oligos_per_week",
-    "append_gc_distribution",
-    "append_homopolymer_runs",
-    "append_oligo_metrics",
-    "set_metrics_path",
-]
+__all__ = ["Metrics", "metrics", "increment", "get_metrics", "oligos_per_week", "set_metrics_path"]
 
 
 def _get_metrics_path() -> Path:
@@ -50,7 +40,6 @@ def _get_metrics_path() -> Path:
 
 
 def _load(path: Path, fh: IO[str] | None = None) -> dict[str, object]:
-    """Load metrics from ``path`` with optional file handle ``fh``."""
     if fh is not None:
         fh.seek(0)
         content = fh.read()
@@ -62,7 +51,6 @@ def _load(path: Path, fh: IO[str] | None = None) -> dict[str, object]:
             except Exception:
                 pass
         return {}
-
     if path.is_file():
         try:
             with portalocker.Lock(path, "r", timeout=10, encoding="utf-8") as f:
@@ -73,7 +61,6 @@ def _load(path: Path, fh: IO[str] | None = None) -> dict[str, object]:
 
 
 def _save(path: Path, metrics: dict[str, object], fh: IO[str] | None = None) -> None:
-    """Persist ``metrics`` to ``path`` using optional open file handle ``fh``."""
     path.parent.mkdir(parents=True, exist_ok=True)
     data = json.dumps(metrics)
 
@@ -92,7 +79,7 @@ def _save(path: Path, metrics: dict[str, object], fh: IO[str] | None = None) -> 
 
 
 class Metrics:
-    """Simple metrics manager for atomic updates."""
+    """Operational telemetry manager for usage counters and heartbeat timestamps."""
 
     def __init__(self, path: Path | str | PathLike[str] | None = None) -> None:
         self._path = Path(path) if path is not None else None
@@ -100,90 +87,27 @@ class Metrics:
 
     @property
     def path(self) -> Path:
-        """Metrics file path, respecting environment overrides."""
         return self._path or _get_metrics_path()
 
     def set_path(self, path: Path | str | PathLike[str] | None) -> None:
-        """Override the metrics destination used by this manager."""
-
         with self._lock:
             self._path = Path(path) if path is not None else None
 
-    def increment(self, key: str, counts: Sequence[float | int] | None = None) -> None:
+    def increment(self, key: str) -> None:
         with self._lock:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with portalocker.Lock(self.path, "a+", timeout=10, encoding="utf-8") as fh:
                 metrics = _load(self.path, fh)
-                if key == "gc_distribution":
-                    if counts is None:
-                        raise ValueError("counts required for gc_distribution")
-                    existing_gc_obj: Any = metrics.get(key, [])
-                    existing_gc = cast(list[float], existing_gc_obj) if isinstance(existing_gc_obj, list) else []
-                    existing_gc.extend(float(c) for c in counts)
-                    metrics[key] = existing_gc
-                elif key == "homopolymer_runs":
-                    if counts is None:
-                        raise ValueError("counts required for homopolymer_runs")
-                    existing_hp_obj: Any = metrics.get(key, [])
-                    existing_hp = cast(list[int], existing_hp_obj) if isinstance(existing_hp_obj, list) else []
-                    if len(existing_hp) < len(counts):
-                        existing_hp.extend([0] * (len(counts) - len(existing_hp)))
-                    for i, c in enumerate(counts):
-                        existing_hp[i] += int(c)
-                    metrics[key] = existing_hp
-                elif key in {"oligo_gc_percentages", "oligo_homopolymers"}:
-                    if counts is None:
-                        raise ValueError(f"counts required for {key}")
-                    existing_obj: Any = metrics.get(key, [])
-                    existing = (
-                        cast(list[float], existing_obj)
-                        if isinstance(existing_obj, list)
-                        else []
-                    )
-                    existing.extend(float(c) for c in counts)
-                    metrics[key] = existing
-                elif key == "oligo_dropout_flags":
-                    if counts is None:
-                        raise ValueError("counts required for oligo_dropout_flags")
-                    existing_obj = metrics.get(key, [])
-                    existing = (
-                        cast(list[int], existing_obj)
-                        if isinstance(existing_obj, list)
-                        else []
-                    )
-                    existing.extend(1 if bool(c) else 0 for c in counts)
-                    metrics[key] = existing
-                elif key == "oligo_ecc_success":
-                    if counts is None or not isinstance(counts, dict):
-                        raise ValueError("mapping required for oligo_ecc_success")
-                    existing_map_obj: Any = metrics.get(key, {})
-                    existing_map = (
-                        cast(dict[str, list[float]], existing_map_obj)
-                        if isinstance(existing_map_obj, dict)
-                        else {}
-                    )
-                    for name, values in counts.items():
-                        try:
-                            seq = list(values)
-                        except TypeError as exc:  # pragma: no cover - defensive
-                            raise ValueError("values for oligo_ecc_success must be iterable") from exc
-                        current = existing_map.setdefault(str(name), [])
-                        current.extend(
-                            float(val) if not isinstance(val, bool) else (1.0 if val else 0.0)
-                            for val in seq
-                        )
-                    metrics[key] = existing_map
-                else:
-                    current = metrics.get(key, 0)
-                    if not isinstance(current, int):
-                        current = 0
-                    metrics[key] = current + 1
+                current = metrics.get(key, 0)
+                if not isinstance(current, int):
+                    current = 0
+                metrics[key] = current + 1
 
-                    if key == "oligos_simulated":
-                        ts_obj: Any = metrics.get("oligos_simulated_ts", [])
-                        ts_list = cast(list[str], ts_obj) if isinstance(ts_obj, list) else []
-                        ts_list.append(datetime.now(timezone.utc).isoformat())
-                        metrics["oligos_simulated_ts"] = ts_list
+                if key in {"oligos_simulated", "heartbeat"}:
+                    ts_obj: Any = metrics.get(f"{key}_ts", [])
+                    ts_list = ts_obj if isinstance(ts_obj, list) else []
+                    ts_list.append(datetime.now(timezone.utc).isoformat())
+                    metrics[f"{key}_ts"] = ts_list
                 _save(self.path, metrics, fh)
 
     def get_metrics(self) -> dict[str, object]:
@@ -208,40 +132,16 @@ class Metrics:
             except Exception:
                 continue
             iso_year, iso_week, _ = dt.isocalendar()
-            key = f"{iso_year}-W{iso_week:02d}"
-            counts[key] = counts.get(key, 0) + 1
+            wk = f"{iso_year}-W{iso_week:02d}"
+            counts[wk] = counts.get(wk, 0) + 1
         return counts
 
 
 metrics = Metrics()
 
 
-def append_gc_distribution(values: Sequence[float]) -> None:
-    metrics.increment("gc_distribution", values)
-
-
-def append_homopolymer_runs(counts: Sequence[int]) -> None:
-    metrics.increment("homopolymer_runs", counts)
-
-
-def append_oligo_metrics(
-    gc_percentages: Sequence[float] | None = None,
-    homopolymers: Sequence[int] | None = None,
-    dropouts: Sequence[bool | int] | None = None,
-    ecc_success: Mapping[str, Sequence[float | bool]] | None = None,
-) -> None:
-    if gc_percentages is not None:
-        metrics.increment("oligo_gc_percentages", gc_percentages)
-    if homopolymers is not None:
-        metrics.increment("oligo_homopolymers", homopolymers)
-    if dropouts is not None:
-        metrics.increment("oligo_dropout_flags", [1 if bool(v) else 0 for v in dropouts])
-    if ecc_success is not None:
-        metrics.increment("oligo_ecc_success", ecc_success)
-
-
-def increment(key: str, counts: Sequence[float | int] | None = None) -> None:
-    metrics.increment(key, counts)
+def increment(key: str) -> None:
+    metrics.increment(key)
 
 
 def get_metrics() -> dict[str, object]:
@@ -254,5 +154,3 @@ def oligos_per_week() -> dict[str, int]:
 
 def set_metrics_path(path: Path | str | PathLike[str] | None) -> None:
     metrics.set_path(path)
-
-

@@ -138,6 +138,19 @@ class RunPipelineUseCase:
                 "metrics": dict(metrics),
                 "fec_info": dict(fec_info) if isinstance(fec_info, Mapping) else fec_info,
             },
+            "constraint_outcomes": {
+                "summary": metrics.get("constraint_violations"),
+                "by_oligo": {},
+            },
+            "decode_outcomes": {
+                "decode_success": metrics.get("decode_success"),
+                "decode_success_rate": metrics.get("decode_success_rate"),
+                "ecc_success_rates": metrics.get("ecc_success_rates", {}),
+            },
+            "provenance": {
+                "source_format": "pipeline_use_case",
+                "generator": "RunPipelineUseCase",
+            },
         }
         dashboard_metrics = canonical_metrics_view(run_schema)
         run_schema["dashboard_metrics"] = dashboard_metrics

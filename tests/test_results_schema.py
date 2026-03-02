@@ -7,7 +7,9 @@ from genecoder.results.schema import (
     canonical_metrics_view,
     canonical_to_legacy_metrics,
     compare_runs,
+    convert_legacy_run_output,
     load_run_schema,
+    require_canonical_run_fields,
     migrate_run_schema,
     translate_bundle_metrics,
     translate_decode_summary,
@@ -104,3 +106,38 @@ def test_kpi_contract_fields_present_for_comparison_views() -> None:
     }
     assert expected.issubset(metrics)
     assert metrics["decode_success"] is True
+
+
+def test_schema_transition_1_0_to_1_1() -> None:
+    migrated = migrate_run_schema({"schema_version": "1.0", "metrics": {"substitutions": 1}}, target_version="1.1")
+    assert migrated["schema_version"] == "1.1"
+    assert "constraint_outcomes" in migrated
+
+
+def test_schema_transition_1_1_to_1_2() -> None:
+    migrated = migrate_run_schema(
+        {
+            "schema_version": "1.1",
+            "run_id": "r",
+            "profiles": {},
+            "seeds": {},
+            "runtime": {},
+            "stages": {"decode": {"metrics": {"decode_success": True}}},
+            "outcome": {},
+            "constraint_outcomes": {"summary": None, "by_oligo": {}},
+        }
+    )
+    assert migrated["schema_version"] == RUN_SCHEMA_VERSION
+    assert migrated["decode_outcomes"]["decode_success"] is True
+
+
+def test_conversion_utility_for_legacy_output() -> None:
+    converted = convert_legacy_run_output({"file": "old.bin", "encoding_parameters": {"method": "base4_direct"}, "metrics": {"ber": 0.1}})
+    validated = require_canonical_run_fields(converted)
+    assert validated["run_id"] == "old.bin"
+
+
+def test_schema_transition_1_0_to_1_2() -> None:
+    migrated = migrate_run_schema({"schema_version": "1.0", "metrics": {"substitutions": 1}})
+    assert migrated["schema_version"] == RUN_SCHEMA_VERSION
+    assert "decode_outcomes" in migrated
