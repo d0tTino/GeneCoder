@@ -19,22 +19,16 @@ from genecoder.channel_config import ChannelConfig
 from genecoder.channels.base import BaseChannel
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
 from genecoder.constraints import ConstraintEngine, ConstraintRepairPipeline, load_constraint_policy
-from genecoder.error_simulation import introduce_errors
+from genecoder.channel_engine.legacy_adapter import introduce_errors, ADAPTER_PROFILES, DEFAULT_ADAPTER_PROFILE, INDEL_PROFILES
 from genecoder.metrics import metrics
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES, DNARSIM_RATE_TABLES
-from genecoder.error_simulation import (
-    ADAPTER_PROFILES,
-    DEFAULT_ADAPTER_PROFILE,
-    INDEL_PROFILES,
-)
 from genecoder.runtime import make_run_context
 from genecoder.config.loader import (
-    PROFILE_ALIAS_TABLE,
     load_channel_workflow_config,
     load_mapping_file,
-    resolve_channel_profile_alias,
 )
+from genecoder.simulators.profile_resolver import PROFILE_ALIAS_TABLE, resolve_named_profiles
 from genecoder.simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
     RESULT_DROPOUT_FLAG_KEY,
@@ -794,15 +788,19 @@ def run_channel(args: argparse.Namespace) -> None:
         synthesis_loss=opts.synthesis_loss,
     )
     simulators = opts.simulator_specs
+    resolved_profiles = resolve_named_profiles(
+        profile=opts.profile,
+        illumina_profile=opts.illumina_profile,
+        nanopore_profile=opts.nanopore_profile,
+        dnarsim_profile=opts.dnarsim_profile,
+    )
+    opts.illumina_profile = resolved_profiles.illumina_profile
+    opts.nanopore_profile = resolved_profiles.nanopore_profile
+    opts.dnarsim_profile = resolved_profiles.dnarsim_profile
+
     if opts.profile:
-        sim_name, prof = resolve_channel_profile_alias(opts.profile)
-        simulators = [(sim_name, {})]
-        if sim_name == "illumina":
-            opts.illumina_profile = prof
-        elif sim_name == "nanopore_dnarsim":
-            opts.dnarsim_profile = prof
-        else:
-            opts.nanopore_profile = prof
+        target_sim, _ = PROFILE_ALIAS_TABLE[opts.profile.lower()]
+        simulators = [(target_sim, {})]
     elif simulators is None:
         simulators = [(name, {}) for name in opts.simulators]
 
@@ -920,18 +918,19 @@ def _handle_run(args: argparse.Namespace) -> None:
         logger.error(str(exc))
         raise SystemExit(1)
 
+    resolved_profiles = resolve_named_profiles(
+        profile=args.profile,
+        illumina_profile=args.illumina_profile,
+        nanopore_profile=args.nanopore_profile,
+        dnarsim_profile=args.dnarsim_profile,
+    )
     if args.profile is not None:
-        sim_name, preset = resolve_channel_profile_alias(args.profile)
-        simulators = [(sim_name, {})]
-        if sim_name == "illumina":
-            cfg.illumina_profile = preset
-        else:
-            cfg.nanopore_profile = preset
-
-    if args.illumina_profile is not None:
-        cfg.illumina_profile = args.illumina_profile
-    if args.nanopore_profile is not None:
-        cfg.nanopore_profile = args.nanopore_profile
+        target_sim, _ = PROFILE_ALIAS_TABLE[args.profile.lower()]
+        simulators = [(target_sim, {})]
+    if resolved_profiles.illumina_profile is not None:
+        cfg.illumina_profile = resolved_profiles.illumina_profile
+    if resolved_profiles.nanopore_profile is not None:
+        cfg.nanopore_profile = resolved_profiles.nanopore_profile
     if args.dropout_rate is not None:
         cfg.dropout_rate = args.dropout_rate
     if args.synthesis_loss is not None:

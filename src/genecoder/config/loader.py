@@ -10,6 +10,7 @@ import warnings
 from genecoder.channel_config import ChannelConfig
 from genecoder.constraints import load_constraint_policy
 from genecoder.simulators.batch_utils import load_coverage_distribution
+from genecoder.simulators.profile_resolver import resolve_channel_profile_alias as _resolve_channel_profile_alias
 
 try:  # pragma: no cover - optional dependency
     from jsonschema import Draft202012Validator
@@ -18,17 +19,6 @@ except Exception:  # pragma: no cover - optional dependency
     Draft202012Validator = None  # type: ignore[assignment]
     best_match = None  # type: ignore[assignment]
 
-PROFILE_ALIAS_TABLE: dict[str, tuple[str, str]] = {
-    "miseq": ("illumina", "miseq"),
-    "hiseq": ("illumina", "hiseq"),
-    "novaseq": ("illumina", "novaseq"),
-    "nova": ("illumina", "nova"),
-    "minion": ("nanopore", "minion"),
-    "promethion": ("nanopore", "promethion"),
-    "r9": ("nanopore_dnarsim", "r9"),
-    "r10.3": ("nanopore_dnarsim", "r10.3"),
-    "r10.4": ("nanopore_dnarsim", "r10.4"),
-}
 
 CONSTRAINT_ALIASES: dict[str, str] = {
     "homopolymer_max": "max_homopolymer",
@@ -204,11 +194,9 @@ def resolve_profile(
     return presets.get(str(value).lower())
 
 
+
 def resolve_channel_profile_alias(alias: str) -> tuple[str, str]:
-    lowered = alias.lower()
-    if lowered not in PROFILE_ALIAS_TABLE:
-        raise ValueError(f"Unknown profile alias: {alias}")
-    return PROFILE_ALIAS_TABLE[lowered]
+    return _resolve_channel_profile_alias(alias)
 
 
 def _schema_path() -> Path:

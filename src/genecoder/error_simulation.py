@@ -1,4 +1,13 @@
-"""Compatibility shim for :mod:`genecoder.compat.error_simulation`."""
+"""Deprecated compatibility shim for legacy error simulation imports."""
 from __future__ import annotations
 
-from .compat.error_simulation import *  # noqa: F403
+import warnings
+
+warnings.warn(
+    "genecoder.error_simulation is deprecated and will be removed in v0.15.0; "
+    "use genecoder.channel_engine and genecoder.simulators instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from .channel_engine.legacy_adapter import *  # noqa: F403

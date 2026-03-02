@@ -1,7 +1,7 @@
 """Compatibility wrapper for legacy channel simulation imports."""
 from __future__ import annotations
 
-from genecoder.compat.error_simulation import (
+from genecoder.channel_engine.legacy_adapter import (
     ADAPTER_PROFILES,
     DEFAULT_ADAPTER_PROFILE,
     INDEL_PROFILES,

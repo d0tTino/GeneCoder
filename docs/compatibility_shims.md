@@ -19,3 +19,9 @@ Core execution must route through `genecoder.core.run_canonical_pipeline` (encod
 - Core runtime modules (`genecoder.core`, `genecoder.app.*`, `genecoder.simulators.*`) must not import shim-only modules.
 - Shim modules may re-export compatibility APIs for downstream users during the deprecation window.
 - Removals are gated by release notes + migration callouts.
+
+## First-party shim import audit
+
+- `src/genecoder/cli/channel.py` now routes legacy indel compatibility through `channel_engine.legacy_adapter` and no longer imports `genecoder.error_simulation` directly.
+- `src/genecoder/simulator_utils.py` now routes through `channel_engine.legacy_adapter` to keep first-party modules off shim-only imports.
+- Remaining top-level shim modules (`genecoder.error_simulation`, `genecoder.channel_sim`) stay for external compatibility only and are scheduled for removal in **v0.15.0**.

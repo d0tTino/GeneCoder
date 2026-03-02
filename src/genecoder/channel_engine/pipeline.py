@@ -7,7 +7,15 @@ from typing import Iterable, Mapping
 from ..channel_config import ChannelConfig
 from ..formats import SequenceBatch
 from ..runtime import RunContext, make_run_context
-from .interfaces import SequencingStage, SimulatorStage, StageContext, StorageStage, SynthesisStage
+from .interfaces import (
+    SequencingStage,
+    SimulatorStage,
+    StageContext,
+    StageMutationTotals,
+    StageProvenance,
+    StorageStage,
+    SynthesisStage,
+)
 from .plugins import (
     DecayStorageStage,
     IlluminaSequencingStage,
@@ -82,20 +90,23 @@ class ChannelPipeline:
         )
 
         current = batch
-        provenance: list[dict[str, object]] = []
+        provenance: list[StageProvenance] = []
         profiles = dict(profile or {})
 
         for stage in self._all_stages():
             stage_profile = profiles.get(stage.stage_name)
             result = stage.run(current, profile=stage_profile, context=context)
-            current = result.batch
+            current = result.output_batch
             provenance.append(
-                {
-                    "stage_name": stage.stage_name,
-                    "profile_version": result.profile_version,
-                    "seed": stage_seed,
-                    "mutation_totals": mutation_totals_from_batch(current),
-                }
+                StageProvenance(
+                    stage_name=stage.stage_name,
+                    stage_kind=stage.stage_name,
+                    profile=stage_profile,
+                    profile_version=result.profile_version,
+                    seed=stage_seed,
+                    mutation_totals=StageMutationTotals(**mutation_totals_from_batch(current)),
+                    metadata=dict(result.metadata),
+                )
             )
 
-        return current, provenance
+        return current, [entry.to_dict() for entry in provenance]
