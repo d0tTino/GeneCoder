@@ -10,6 +10,7 @@ from types import ModuleType
 from typing import Any, Callable, cast
 
 from .descriptors import PluginDescriptor, PluginLifecycleState
+from .entry_points import ENTRY_POINT_GROUPS
 from .policy import validate_plugin_metadata
 from .registry import RUNTIME_REGISTRY, register_lazy_placeholder
 
@@ -178,12 +179,7 @@ def collect_installed_plugins(existing_catalog: dict[str, dict[str, Any]]) -> tu
     descriptors: list[PluginDescriptor] = []
     offline = bool(os.getenv("GENECODER_OFFLINE"))
 
-    groups = {
-        "genecoder.plugins": "codec",
-        "genecoder.fec": "FEC",
-        "genecoder.simulators": "simulator",
-        "genecoder.visualizers": "visualizer",
-    }
+    groups = ENTRY_POINT_GROUPS
     for group, kind in groups.items():
         try:
             entries = entry_points(group=group)

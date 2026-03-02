@@ -1,5 +1,5 @@
 from tests.test_cli import run_cli_command
-import genecoder.plugin_manager as plugins
+import genecoder.plugin_runtime as plugins
 
 
 def test_install_registry_requires_flag(monkeypatch):
