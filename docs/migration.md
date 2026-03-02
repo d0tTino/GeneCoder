@@ -1,5 +1,20 @@
 # Migration Guide
 
+## Canonical integration surface (supported API)
+
+Starting in **v0.14.0**, GeneCoder supports external integrations only through:
+
+- `genecoder.sdk` (stable external SDK requests/results and plugin contracts).
+- `genecoder.app` (application-layer use-case contracts for runtime orchestration).
+
+Deprecated facades (`genecoder.api`, `genecoder.pipeline`) now forward through versioned adapters in `genecoder.compat.v1` and do **not** add behavior beyond forwarding.
+
+## Explicit removal milestones
+
+- **v0.15.0**: last release where `genecoder.api` and `genecoder.pipeline` remain available with deprecation warnings.
+- **v0.16.0**: removal target for both deprecated facades; integrations must be on `genecoder.sdk` + `genecoder.app`.
+- **v0.16.0**: first-party tests are canonical-import only except dedicated compatibility/deprecation tests.
+
 ## Channel attribute rename
 
 The `Channel.error_rate` attribute has been renamed to `Channel.substitution_prob`.
@@ -20,4 +35,3 @@ an older plugin:
    invoke ``finalize_batch_statistics`` to generate aggregate metrics.
 4. Reuse ``apply_legacy_simulator`` for simple passthrough simulators that do not
    yet understand batches; it automatically produces ``SequenceBatch`` outputs.
-

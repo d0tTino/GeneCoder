@@ -16,7 +16,7 @@ from genecoder.core import (
     simulate,
 )
 from genecoder.formats import SequenceBatch
-from genecoder.api import Codec
+from genecoder.sdk.plugins import Codec
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.reed_solomon_codec import _HAS_REEDSOLO

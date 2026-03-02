@@ -7,7 +7,7 @@ import pytest
 
 yaml = pytest.importorskip("yaml")
 
-from genecoder.api import Codec
+from genecoder.sdk.plugins import Codec
 from genecoder.core import run_pipeline
 from genecoder.encoders import decode_base4_direct, encode_base4_direct
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins

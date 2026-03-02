@@ -8,7 +8,7 @@ name, version and supported interfaces. For simulators, change the interface to
 
 from typing import Callable
 
-from genecoder.api import Codec
+from genecoder.sdk.plugins import Codec
 
 # Metadata that will show up in the plugin catalog; keep the interfaces list
 # aligned with the entry point group(s) used below.

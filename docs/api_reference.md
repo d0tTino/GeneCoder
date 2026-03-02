@@ -1,5 +1,19 @@
 # API Reference
 
+## Supported external integration surface
+
+The only supported external integration surface is:
+
+- `genecoder.sdk`
+- `genecoder.app`
+
+For plugin packages, use `genecoder.sdk.plugins`.
+
+Deprecated modules are compatibility-only and versioned through `genecoder.compat.v1`:
+
+- `genecoder.api` → `genecoder.sdk.plugins` (removal target: **v0.16.0**)
+- `genecoder.pipeline` → `genecoder.app.pipeline_runtime` / `genecoder.app` contracts (removal target: **v0.16.0**)
+
 ## Package Root
 ::: genecoder
 
@@ -8,10 +22,10 @@
 
 ::: genecoder.sdk.api
 
-## Plugin Interfaces
-::: genecoder.plugin_api
+::: genecoder.sdk.plugins
 
-> `genecoder.api` is still available as a deprecated compatibility facade for existing plugin packages.
+## App contracts
+::: genecoder.app
 
 ## Encoders
 ::: genecoder.encoders

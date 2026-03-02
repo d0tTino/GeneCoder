@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from genecoder.manifest import generate_manifest
 from genecoder.core import run_pipeline
-from genecoder.api import Codec
+from genecoder.sdk.plugins import Codec
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
 import json
 from genecoder.cli import EncodingOptions

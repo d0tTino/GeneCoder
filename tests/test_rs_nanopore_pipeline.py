@@ -8,7 +8,7 @@ import genecoder.simulators.nanopore_external as nanopore_external
 from genecoder.core import run_pipeline
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
-from genecoder.api import Codec
+from genecoder.sdk.plugins import Codec
 from genecoder.reed_solomon_codec import _HAS_REEDSOLO
 
 

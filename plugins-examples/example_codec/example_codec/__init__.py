@@ -1,5 +1,5 @@
 from typing import Callable
-from genecoder.api import Codec
+from genecoder.sdk.plugins import Codec
 
 
 class ExampleCodec(Codec):  # type: ignore[misc]

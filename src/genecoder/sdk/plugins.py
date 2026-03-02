@@ -1,4 +1,8 @@
-from .plugins import (
+from __future__ import annotations
+
+"""Canonical SDK plugin contracts for external integrations."""
+
+from ..plugin_api import (
     PLUGIN_INTERFACE_SEMVER,
     Codec,
     CodecCapability,
@@ -10,23 +14,7 @@ from .plugins import (
     VisualizerCapability,
 )
 
-from .api import (
-    ExperimentRequest,
-    ExperimentResult,
-    SweepResult,
-    run_experiment,
-    sweep,
-)
-
-ExperimentSpec = ExperimentRequest
-
 __all__ = [
-    "ExperimentRequest",
-    "ExperimentSpec",
-    "ExperimentResult",
-    "SweepResult",
-    "run_experiment",
-    "sweep",
     "PLUGIN_INTERFACE_SEMVER",
     "Codec",
     "CodecCapability",

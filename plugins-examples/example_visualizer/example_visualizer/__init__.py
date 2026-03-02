@@ -1,6 +1,6 @@
 from typing import Callable
 
-from genecoder.api import Visualizer
+from genecoder.sdk.plugins import Visualizer
 
 
 class ExampleVisualizer(Visualizer):  # type: ignore[misc]

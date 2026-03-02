@@ -5,7 +5,7 @@ import urllib.request
 import pytest
 
 import genecoder.plugin_manager as plugins
-from genecoder.api import Codec
+from genecoder.sdk.plugins import Codec
 
 
 def test_registry_remote_rejected_offline(monkeypatch: pytest.MonkeyPatch) -> None:

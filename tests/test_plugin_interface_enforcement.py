@@ -39,7 +39,7 @@ def test_fec_missing_method(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     fec_mod = tmp_path / "bad_fec.py"
     fec_mod.write_text(
         """
-from genecoder.api import FEC
+from genecoder.sdk.plugins import FEC
 
 class BadFEC(FEC):
     def encode(self, data: bytes, /, **kwargs) -> tuple[bytes, dict[str, object]]:
@@ -67,7 +67,7 @@ def test_simulator_missing_method(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     sim_mod = tmp_path / "bad_sim.py"
     sim_mod.write_text(
         """
-from genecoder.api import Simulator
+from genecoder.sdk.plugins import Simulator
 
 class BadSim(Simulator):
     simulate = None  # type: ignore[assignment]
@@ -93,7 +93,7 @@ def test_visualizer_missing_method(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     vis_mod = tmp_path / "bad_vis.py"
     vis_mod.write_text(
         """
-from genecoder.api import Visualizer
+from genecoder.sdk.plugins import Visualizer
 
 class BadVis(Visualizer):
     visualize = None  # type: ignore[assignment]

@@ -1,6 +1,6 @@
 import pytest
 
-from genecoder.pipeline import SequencePipeline
+from genecoder.app.pipeline_runtime import SequencePipeline
 
 
 def test_sequence_pipeline_basic() -> None:
