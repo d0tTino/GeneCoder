@@ -17,6 +17,8 @@ from ..app import (
     SeedProfile,
 )
 
+
+from ..simulators.profile_resolver import canonicalize_profile_name
 SpecInput = "ExperimentRequest | Mapping[str, Any] | str | Path"
 
 
@@ -90,7 +92,7 @@ def _request_from_mapping(raw: Mapping[str, Any]) -> ExperimentRequest:
         filter_mutated=bool(raw.get("filter_mutated", False)),
         profile=(
             ChannelProfile(
-                name=str(profile_raw.get("name")),
+                name=str(canonicalize_profile_name(str(profile_raw.get("name"))) or str(profile_raw.get("name"))),
                 parameters={str(k): v for k, v in _as_mapping(profile_raw.get("parameters")).items()},
             )
             if profile_raw

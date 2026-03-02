@@ -49,7 +49,7 @@ class SimulatorStagePlugin:
         merged_metadata.update(context.metadata)
         merged_metadata["sim_stage"] = self.stage_name
         out.metadata.update(merged_metadata)
-        return StageResult(batch=out, profile_version=profile, metadata=merged_metadata)
+        return StageResult(output_batch=out, profile_version=profile, metadata=merged_metadata)
 
 
 def mutation_totals_from_batch(batch: SequenceBatch) -> dict[str, int]:

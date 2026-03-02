@@ -55,6 +55,7 @@ from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.config.loader import validate_bundle_document
 from genecoder.synthesis import SynthesisConstraints
 from genecoder.constraints import load_constraint_policy
+from genecoder.simulators.profile_resolver import canonicalize_profile_name
 
 
 @dataclass
@@ -711,7 +712,7 @@ def _extract_channel_profile(sim_cfg: Mapping[str, object] | None) -> str | None
     if isinstance(pipeline_cfg, Mapping):
         profile = pipeline_cfg.get("profile") or pipeline_cfg.get("name")
         if profile:
-            return str(profile)
+            return str(canonicalize_profile_name(str(profile)) or profile)
     config_path = sim_cfg.get("config")
     if isinstance(config_path, str):
         return config_path
