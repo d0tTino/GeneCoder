@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import IO, Any, Iterable, Callable, cast
 
 from .bool_parsing import parse_bool_like
-from .results.schema import canonical_metrics_view, load_run_schema
+from .results.schema import canonical_metrics_view, load_run_schema, require_canonical_run_fields
 from types import ModuleType
 
 try:  # pragma: no cover - optional dependency for tests
@@ -83,16 +83,8 @@ def _calc_decode_success(data: dict[str, Any]) -> float | None:
 def _load_metrics(src: str | Path | IO[str]) -> dict[str, Any]:
     """Load canonical run artifact and return dashboard metrics view."""
 
-    try:
-        run = load_run_schema(src)
-        return canonical_metrics_view(run)
-    except Exception as exc:  # pragma: no cover - surfaced in UI
-        name = getattr(src, "name", str(src))
-        if st:  # pragma: no cover - only used in dashboard
-            st.error(f"Failed to load {name}: {exc}")
-        else:
-            print(f"Failed to load {name}: {exc}")
-    return {}
+    run = require_canonical_run_fields(load_run_schema(src))
+    return canonical_metrics_view(run)
 
 
 def _iterable(val: Iterable[str] | str | None) -> list[str]:

@@ -7,7 +7,7 @@ import sys
 from genecoder.app_helpers import DecodeResult, EncodeResult
 from genecoder import report as report_module
 from genecoder.html_report import generate_html_report
-from genecoder.results.schema import RUN_SCHEMA_VERSION, canonical_to_legacy_metrics, load_run_schema
+from genecoder.results.schema import RUN_SCHEMA_VERSION, canonical_to_legacy_metrics, convert_legacy_run_output, load_run_schema, require_canonical_run_fields
 
 
 def register_subcommand(
@@ -84,6 +84,7 @@ def _handle_command(args: argparse.Namespace) -> None:
 
 
 def _handle_html_command(args: argparse.Namespace) -> None:
+    require_canonical_run_fields(load_run_schema(args.manifest))
     html = generate_html_report(args.manifest)
     if args.output_file:
         with open(args.output_file, "w", encoding="utf-8") as fh:
@@ -93,7 +94,7 @@ def _handle_html_command(args: argparse.Namespace) -> None:
 
 
 def _handle_migrate_command(args: argparse.Namespace) -> None:
-    migrated = load_run_schema(args.input)
+    migrated = convert_legacy_run_output(args.input)
     migrated["schema_version"] = RUN_SCHEMA_VERSION
     migrated["legacy_metrics"] = canonical_to_legacy_metrics(migrated)
     with open(args.output, "w", encoding="utf-8") as fh:

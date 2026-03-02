@@ -20,6 +20,19 @@ SCHEMA_DEPRECATIONS: dict[str, dict[str, str]] = {
     },
 }
 
+REQUIRED_CANONICAL_KEYS: tuple[str, ...] = (
+    "schema_version",
+    "run_id",
+    "profiles",
+    "seeds",
+    "runtime",
+    "stages",
+    "outcome",
+    "constraint_outcomes",
+    "decode_outcomes",
+    "provenance",
+)
+
 
 def _as_float(value: object) -> float | None:
     if isinstance(value, bool):
@@ -77,12 +90,13 @@ def _mapping(value: object) -> Mapping[str, Any]:
 def canonical_metrics_view(run_data: Mapping[str, Any]) -> dict[str, Any]:
     """Return dashboard/report metrics derived from canonical schema fields."""
 
-    run = migrate_run_schema(run_data)
+    run = require_canonical_run_fields(migrate_run_schema(run_data))
     stages = _mapping(run.get("stages"))
     encode_metrics = _mapping(_mapping(stages.get("encode")).get("metrics"))
     simulate_metrics = _mapping(_mapping(stages.get("simulate")).get("metrics"))
-    decode_metrics = _mapping(_mapping(stages.get("decode")).get("metrics"))
     outcome = _mapping(run.get("outcome"))
+    constraint_outcomes = _mapping(run.get("constraint_outcomes"))
+    decode_outcomes = _mapping(run.get("decode_outcomes"))
     embedded_metrics = _mapping(outcome.get("metrics"))
 
     metrics: dict[str, Any] = dict(embedded_metrics)
@@ -95,15 +109,9 @@ def canonical_metrics_view(run_data: Mapping[str, Any]) -> dict[str, Any]:
                 "max_homopolymer", outcome.get("homopolymer_stress")
             ),
             "homopolymer_runs": metrics.get("homopolymer_runs", []),
-            "ecc_success_rates": decode_metrics.get(
-                "ecc_success_rates", metrics.get("ecc_success_rates", {})
-            ),
-            "decode_success_rate": decode_metrics.get(
-                "decode_success_rate", outcome.get("decode_success_rate")
-            ),
-            "decode_success": decode_metrics.get(
-                "decode_success", outcome.get("decode_success")
-            ),
+            "ecc_success_rates": decode_outcomes.get("ecc_success_rates", {}),
+            "decode_success_rate": decode_outcomes.get("decode_success_rate"),
+            "decode_success": decode_outcomes.get("decode_success"),
             "substitutions": simulate_metrics.get("substitutions", metrics.get("substitutions")),
             "insertions": simulate_metrics.get("insertions", metrics.get("insertions")),
             "deletions": simulate_metrics.get("deletions", metrics.get("deletions")),
@@ -112,7 +120,7 @@ def canonical_metrics_view(run_data: Mapping[str, Any]) -> dict[str, Any]:
             "deletions_histogram": metrics.get("deletions_histogram", []),
             "coverage": simulate_metrics.get("coverage", metrics.get("coverage")),
             "coverage_distribution": metrics.get("coverage_distribution", []),
-            "constraint_violations": metrics.get("constraint_violations"),
+            "constraint_violations": constraint_outcomes.get("summary"),
             "constraint_pressure": metrics.get("constraint_pressure", {}),
             "oligo_metrics": metrics.get("oligo_metrics", {}),
             "dropout_count": simulate_metrics.get("dropout_count", metrics.get("dropout_count")),
@@ -159,6 +167,19 @@ def translate_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
     decode_success = _coerce_success(metrics.get("decode_success"))
     if decode_success is None and decode_success_rate is not None:
         decode_success = decode_success_rate >= 1.0
+
+    constraint_outcomes = metrics.get("constraint_outcomes")
+    if not isinstance(constraint_outcomes, Mapping):
+        constraint_outcomes = {
+            "summary": metrics.get("constraint_violations"),
+            "by_oligo": {},
+        }
+
+    decode_outcomes = {
+        "decode_success": decode_success,
+        "decode_success_rate": decode_success_rate,
+        "ecc_success_rates": metrics.get("ecc_success_rates") or {},
+    }
 
     return {
         "schema_version": RUN_SCHEMA_VERSION,
@@ -227,6 +248,15 @@ def translate_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
             "decode_success_rate": decode_success_rate,
             "metrics": dict(metrics),
         },
+        "constraint_outcomes": {
+            "summary": constraint_outcomes.get("summary"),
+            "by_oligo": dict(_mapping(constraint_outcomes.get("by_oligo"))),
+        },
+        "decode_outcomes": decode_outcomes,
+        "provenance": {
+            "source_format": "manifest",
+            "generator": "translate_manifest",
+        },
     }
 
 
@@ -260,6 +290,13 @@ def translate_bundle_metrics(bundle_metrics: Mapping[str, Any], *, run_id: str =
             "decode_success_rate": _as_float(data.get("decode_success_rate")),
             "metrics": data,
         },
+        "constraint_outcomes": {"summary": data.get("total_constraint_violations"), "by_oligo": {}},
+        "decode_outcomes": {
+            "decode_success": _coerce_success(data.get("decode_success")),
+            "decode_success_rate": _as_float(data.get("decode_success_rate")),
+            "ecc_success_rates": {},
+        },
+        "provenance": {"source_format": "bundle_metrics", "generator": "translate_bundle_metrics"},
     }
 
 
@@ -301,7 +338,53 @@ def translate_decode_summary(summary: Mapping[str, Any], *, run_id: str = "decod
             "decode_success_rate": decode_success_rate,
             "metrics": dict(data),
         },
+        "constraint_outcomes": {"summary": data.get("constraint_violations"), "by_oligo": {}},
+        "decode_outcomes": {
+            "decode_success": decode_success,
+            "decode_success_rate": decode_success_rate,
+            "ecc_success_rates": data.get("ecc_success_rates") if isinstance(data.get("ecc_success_rates"), Mapping) else {},
+        },
+        "provenance": {"source_format": "decode_summary", "generator": "translate_decode_summary"},
     }
+
+
+def require_canonical_run_fields(run_data: Mapping[str, Any]) -> dict[str, Any]:
+    run = dict(run_data)
+    missing = [key for key in REQUIRED_CANONICAL_KEYS if key not in run]
+    if missing:
+        raise KeyError(f"Missing canonical run keys: {', '.join(missing)}")
+    return run
+
+
+def convert_legacy_run_output(src: str | Path | IO[str] | Mapping[str, Any]) -> dict[str, Any]:
+    """Backward-compatible conversion utility for pre-canonical artifacts."""
+
+    return load_run_schema(src)
+
+
+def _migrate_v1_0_to_v1_1(data: dict[str, Any]) -> dict[str, Any]:
+    migrated = dict(data)
+    if "outcome" not in migrated or not isinstance(migrated.get("outcome"), Mapping):
+        migrated = translate_manifest(migrated)
+    migrated["schema_version"] = "1.1"
+    migrated.setdefault("profiles", {"encoding": None, "simulation": None, "decode": None})
+    migrated.setdefault("seeds", {"global": None, "encode": None, "simulate": None, "decode": None})
+    migrated.setdefault("runtime", _normalize_runtime(None))
+    migrated.setdefault("stages", {"encode": {"metrics": {}}, "simulate": {"metrics": {}}, "decode": {"metrics": {}}})
+    migrated.setdefault("constraint_outcomes", {"summary": None, "by_oligo": {}})
+    return migrated
+
+
+def _migrate_v1_1_to_v1_2(data: dict[str, Any]) -> dict[str, Any]:
+    migrated = dict(data)
+    migrated["schema_version"] = "1.2"
+    migrated.setdefault("decode_outcomes", {
+        "decode_success": _mapping(_mapping(_mapping(migrated.get("stages")).get("decode")).get("metrics")).get("decode_success"),
+        "decode_success_rate": _mapping(_mapping(_mapping(migrated.get("stages")).get("decode")).get("metrics")).get("decode_success_rate"),
+        "ecc_success_rates": _mapping(_mapping(_mapping(migrated.get("stages")).get("decode")).get("metrics")).get("ecc_success_rates") or {},
+    })
+    migrated.setdefault("provenance", {"source_format": "migrated", "generator": "migrate_run_schema"})
+    return migrated
 
 
 def migrate_run_schema(run_data: Mapping[str, Any], target_version: str = RUN_SCHEMA_VERSION) -> dict[str, Any]:
@@ -310,13 +393,20 @@ def migrate_run_schema(run_data: Mapping[str, Any], target_version: str = RUN_SC
     if current == target_version:
         return data
 
-    if current in {None, "", 1, "1", "1.0", "1.1"}:
-        # v1.x migration is mostly shape normalization.
-        if "outcome" not in data or not isinstance(data.get("outcome"), Mapping):
-            data = translate_manifest(data)
-        data["schema_version"] = RUN_SCHEMA_VERSION
+    if current in {None, "", 1, "1", "1.0"}:
+        data = _migrate_v1_0_to_v1_1(data)
+        current = "1.1"
+        if target_version == "1.1":
+            data.setdefault("schema_support", dict(SCHEMA_DEPRECATIONS))
+            return data
+
+    if current == "1.1":
+        data = _migrate_v1_1_to_v1_2(data)
+        current = "1.2"
+
+    if current == "1.2":
         data.setdefault("schema_support", dict(SCHEMA_DEPRECATIONS))
-        return data
+        return require_canonical_run_fields(data)
 
     # Unknown future version: keep payload but mark requested target.
     data["schema_version"] = target_version
