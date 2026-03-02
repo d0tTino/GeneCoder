@@ -141,6 +141,9 @@ jobs:
     - name: Enforce architecture boundaries
       run: pytest -q tests/test_architecture_boundaries.py
 
+    - name: Enforce deprecated import boundaries
+      run: pytest -q tests/test_deprecated_import_boundaries.py
+
     - name: Restore pre-commit cache
       id: precommit-cache
       uses: actions/cache/restore@v3

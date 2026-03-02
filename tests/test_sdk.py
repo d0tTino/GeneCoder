@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from genecoder.plugin_api import Codec as PluginCodec
+from genecoder.sdk.plugins import Codec as PluginCodec
 from genecoder.sdk import ExperimentSpec, run_experiment, sweep
 
 

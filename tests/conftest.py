@@ -100,7 +100,7 @@ except Exception:  # pragma: no cover - import guard
     sys.modules.setdefault("jsonschema.exceptions", js_exc)
 
 
-from genecoder.api import Codec
+from genecoder.sdk.plugins import Codec
 from genecoder.encoders import decode_base4_direct, encode_base4_direct
 from genecoder.formats import SequenceBatch
 from genecoder.plugin_manager import CODEC_REGISTRY, register_codec

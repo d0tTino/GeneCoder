@@ -13,7 +13,7 @@ from genecoder.plugin_manager import (
     register_simulator,
     init_plugins,
 )
-from genecoder.api import Codec
+from genecoder.sdk.plugins import Codec
 from genecoder.fountain_codec import (
     FountainFEC,
     droplet_batch_to_bytes,

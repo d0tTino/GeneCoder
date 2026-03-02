@@ -7,7 +7,7 @@ import pytest
 import genecoder.simulators.nanopore as nanopore
 import genecoder.simulators.nanopore_external as nanopore_external
 
-from genecoder.api import Codec, FEC
+from genecoder.sdk.plugins import Codec, FEC
 from genecoder.core import run_pipeline
 from genecoder.fountain_codec import FountainFEC
 from genecoder.plugin_manager import (

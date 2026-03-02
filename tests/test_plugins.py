@@ -12,7 +12,7 @@ def test_external_plugin_package(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     (pkg / "ext.py").write_text(
         """
 from typing import Callable, Mapping, Tuple, Any
-from genecoder.api import Codec, FEC
+from genecoder.sdk.plugins import Codec, FEC
 
 class ExtCodec(Codec):
     def encode(self, data: bytes, /, **kwargs: Any) -> str:

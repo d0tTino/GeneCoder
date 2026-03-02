@@ -1,5 +1,5 @@
 from typing import Callable, Mapping
-from genecoder.api import FEC
+from genecoder.sdk.plugins import FEC
 
 
 class ExampleFEC(FEC):  # type: ignore[misc]

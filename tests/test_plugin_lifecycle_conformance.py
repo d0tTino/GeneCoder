@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from genecoder.plugin_api import Codec, CodecCapability
+from genecoder.sdk.plugins import Codec, CodecCapability
 from genecoder.plugin_runtime.descriptors import (
     PLUGIN_DESCRIPTOR_VERSION,
     PluginLifecycleState,

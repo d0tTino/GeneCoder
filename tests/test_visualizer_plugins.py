@@ -16,7 +16,7 @@ class DummyBase:
         pass
 
 def register(register_visualizer):
-    from genecoder.api import Visualizer
+    from genecoder.sdk.plugins import Visualizer
     from genecoder.app_helpers import EncodeResult, DecodeResult
 
     class DummyViz(DummyBase, Visualizer):

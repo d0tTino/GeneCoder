@@ -1,6 +1,6 @@
 from typing import Callable
 
-from genecoder.api import Codec
+from genecoder.sdk.plugins import Codec
 
 
 class TemplateEncoder(Codec):  # type: ignore[misc]

@@ -6,7 +6,7 @@ import pytest
 from genecoder.core import run_pipeline
 from genecoder.plugin_manager import CODEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
-from genecoder.api import Codec
+from genecoder.sdk.plugins import Codec
 from genecoder.simulators.illumina import IlluminaChannel
 from genecoder.raptorq_codec import encode_data_raptorq, _HAS_RAPTORQ
 

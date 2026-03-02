@@ -1,6 +1,6 @@
 from typing import Callable
 
-from genecoder.api import Visualizer
+from genecoder.sdk.plugins import Visualizer
 from genecoder.app_helpers import EncodeResult, DecodeResult
 from genecoder.helix_view import show_helix_ui
 

@@ -18,7 +18,7 @@ def test_visualizer_plugin_list(tmp_path: Path) -> None:
     (viz_mod / "__init__.py").write_text(
         """
 from typing import Callable
-from genecoder.api import Visualizer
+from genecoder.sdk.plugins import Visualizer
 
 class TempViz(Visualizer):
     def visualize(self, sequence: str, /, **kwargs: object) -> str:

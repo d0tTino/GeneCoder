@@ -4,7 +4,7 @@ This document explains how to extend GeneCoder with custom codecs, FEC backends,
 
 ## Overview of plugin types
 
-GeneCoder exposes four plugin interfaces defined in [`genecoder.plugin_api`](../src/genecoder/plugin_api.py):
+GeneCoder exposes four plugin interfaces defined in [`genecoder.sdk.plugins`](../src/genecoder/sdk/plugins.py):
 
 - **Codecs** implement `encode(data: bytes, **kwargs) -> str` and `decode(encoded: SequenceBatch | str, **kwargs) -> bytes`.
 - **FEC backends** implement `encode(data: bytes, **kwargs) -> tuple[bytes, Mapping[str, Any]]` and `decode(encoded: bytes, info: Mapping[str, Any], **kwargs) -> tuple[bytes, int]`.
@@ -59,7 +59,7 @@ def register(register_codec):
 Descriptor-style registration (recommended):
 
 ```python
-from genecoder.plugin_api import Codec, CodecCapability
+from genecoder.sdk.plugins import Codec, CodecCapability
 from genecoder.plugin_runtime.descriptors import (
     PLUGIN_DESCRIPTOR_VERSION,
     RuntimePluginDescriptor,
@@ -97,7 +97,7 @@ A plugin module must expose registration helpers that accept the corresponding r
 
 ```python
 # plugins/my_codec.py
-from genecoder.plugin_api import Codec
+from genecoder.sdk.plugins import Codec
 
 class MyCodec(Codec):
     def encode(self, data: bytes, **kwargs) -> str:
@@ -180,7 +180,7 @@ Modules inside `plugins/` are discovered by `load_local_plugins()` without packa
 
 ```python
 # plugins/my_simulator.py
-from genecoder.plugin_api import Simulator
+from genecoder.sdk.plugins import Simulator
 
 class MySimulator(Simulator):
     def __init__(self, error_rate: float = 0.01):

@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 from typing import Callable
 
-from genecoder.api import Simulator
+from genecoder.sdk.plugins import Simulator
 from genecoder.formats import SequenceBatch
 from genecoder.simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
