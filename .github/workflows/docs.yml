@@ -47,7 +47,7 @@ jobs:
         run: pip install pre-commit
       - name: Check Markdown links
         run: pre-commit run markdown-link-check --files README.md $(git ls-files "docs/**/*.md")
-      - name: Check capability matrix/doc consistency
+      - name: Check capability matrix references and generated doc consistency
         run: python scripts/check_capability_docs_sync.py
       - name: Build docs
         run: mkdocs build --strict

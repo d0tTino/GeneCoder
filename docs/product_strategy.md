@@ -31,15 +31,15 @@ Operational outputs include FASTA and manifest artifacts, metrics exports, and d
 
 | Capability | Status | Phase | Owner modules | Validation artifacts |
 | --- | --- | --- | --- | --- |
-| CLI bundle presets for end-to-end pipelines | `implemented` | 1 | `src/genecoder/cli/bundle.py`<br>`src/genecoder/pipeline.py` | `tests/test_cli_bundle.py`, `docs/mvp_checklist.md` |
-| Illumina simulation with profile-resolved errors | `implemented` | 1 | `src/genecoder/simulators/illumina/simulator.py`<br>`src/genecoder/simulators/illumina/profiles.py` | `tests/test_illumina_coverage_quality.py`, `docs/channel_profiles.md` |
+| CLI bundle presets for end-to-end pipelines | `implemented` | 1 | `src/genecoder/cli/bundle.py`<br>`src/genecoder/pipeline.py` | `tests/test_bundle.py`, `docs/mvp_checklist.md` |
+| Illumina simulation with profile-resolved errors | `implemented` | 1 | `src/genecoder/simulators/illumina/channel.py`<br>`src/genecoder/simulators/illumina/profiles.py` | `tests/test_illumina_coverage_quality.py`, `docs/channel_profiles.md` |
 | Nanopore simulation with context-aware profile controls | `implemented` | 1 | `src/genecoder/simulators/nanopore.py`<br>`src/genecoder/simulators/nanopore_profiles.py` | `tests/test_nanopore_context_profile.py`, `docs/channel_profiles.md` |
 
 ### Priority gap status snapshot (generated from `docs/capabilities.yaml`)
 
 | Capability | Status | Phase | Owner modules | Validation artifacts |
 | --- | --- | --- | --- | --- |
-| Deterministic seed/profile reproducibility governance | `partial` | 2 | `src/genecoder/pipeline.py`<br>`src/genecoder/cli/main.py` | `tests/test_simulator_seed_reproducibility.py`, `docs/reproducibility.md` |
+| Deterministic seed/profile reproducibility governance | `partial` | 2 | `src/genecoder/pipeline.py`<br>`src/genecoder/cli/cli.py` | `tests/test_simulator_seed_reproducibility.py`, `docs/reproducibility.md` |
 | Standardized benchmark depth and parity validation | `partial` | 3 | `benchmarks/throughput.py`<br>`benchmarks/error_rate.py` | `benchmarks/throughput.py`, `benchmarks/error_rate.py`, `docs/performance.md` |
 | Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`configs/registry.yaml` | `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py`, `docs/plugins.md` |
 <!-- capabilities:strategy-status:end -->
