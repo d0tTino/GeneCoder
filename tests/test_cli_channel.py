@@ -319,7 +319,8 @@ def test_cli_indel_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     output_fasta = tmp_path / "out_indel_profile.fasta"
     called: list[tuple[float, float, float]] = []
 
-    from genecoder.error_simulation import Channel as IndelChannel, INDEL_PROFILES
+    from genecoder.error_simulation import Channel as IndelChannel
+    from genecoder.compat.channel_cli import MODERN_INDEL_PROFILES
 
     def fake_simulate(self: IndelChannel, seq: str) -> str:
         called.append((self.substitution_prob, self.insertion_prob, self.deletion_prob))
@@ -351,7 +352,7 @@ def test_cli_indel_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
         env=env,
     )
     assert result.returncode == 0, result.stderr
-    prof = INDEL_PROFILES["illumina"]
+    prof = MODERN_INDEL_PROFILES["illumina"]
     assert called == [(
         prof["substitution_prob"],
         prof["insertion_prob"],
@@ -367,10 +368,7 @@ def test_cli_indel_default_adapter(
     output_fasta = tmp_path / "out_indel_default.fasta"
     observed_profiles: list[str | None] = []
 
-    from genecoder.error_simulation import (
-        Channel as IndelChannel,
-        DEFAULT_ADAPTER_PROFILE,
-    )
+    from genecoder.error_simulation import Channel as IndelChannel
 
     def fake_init(
         self: IndelChannel,
@@ -412,7 +410,7 @@ def test_cli_indel_default_adapter(
     )
     assert result.returncode == 0, result.stderr
     adapter_profiles = [p for p in observed_profiles if p is not None]
-    assert adapter_profiles[-1:] == [DEFAULT_ADAPTER_PROFILE]
+    assert adapter_profiles[-1:] == ["illumina"]
 
 
 def test_channel_cli_yaml(tmp_path: Path) -> None:

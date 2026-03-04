@@ -23,3 +23,6 @@ Legacy imports are routed through versioned adapters under `genecoder.compat.v1`
 - Shim modules may re-export compatibility APIs for downstream users during the deprecation window.
 - Removals are gated by release notes + migration callouts.
 - CI enforces no new `genecoder.api` / `genecoder.pipeline` imports outside approved compatibility tests.
+
+
+- `genecoder.channel_engine.legacy_adapter` is now treated as a compatibility-only implementation detail and must not be imported from interface packages (`genecoder.cli`, `genecoder.sdk`, `genecoder.dashboard`).
