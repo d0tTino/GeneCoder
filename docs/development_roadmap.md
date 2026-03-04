@@ -21,6 +21,7 @@ above their phase targets.
 > **Source of truth for phase gates:** This document is the canonical
 > definition of phase numbering, phase names, KPI thresholds, and gate evidence.
 > Any other roadmap/strategy document must align to this framework.
+> Capability status metadata that strategy/vision docs must reflect is maintained in `docs/capabilities.yaml` and checked in CI via `scripts/check_capability_docs_sync.py`.
 
 Roadmap phases advance only when KPI thresholds, validation checks, and evidence
 artifacts all satisfy the quarter/phase definitions in the table above.

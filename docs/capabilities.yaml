@@ -1,0 +1,176 @@
+version: 1
+last_updated: "2026-03-04"
+
+capabilities:
+  - id: cli_bundle_presets
+    name: CLI bundle presets for end-to-end pipelines
+    status: implemented
+    phase: 1
+    owner_modules:
+      - src/genecoder/cli/bundle.py
+      - src/genecoder/pipeline.py
+    validation_artifacts:
+      - type: test
+        path: tests/test_cli_bundle.py
+      - type: doc
+        path: docs/mvp_checklist.md
+
+  - id: illumina_simulation_profiles
+    name: Illumina simulation with profile-resolved errors
+    status: implemented
+    phase: 1
+    owner_modules:
+      - src/genecoder/simulators/illumina/simulator.py
+      - src/genecoder/simulators/illumina/profiles.py
+    validation_artifacts:
+      - type: test
+        path: tests/test_illumina_coverage_quality.py
+      - type: doc
+        path: docs/channel_profiles.md
+
+  - id: nanopore_simulation_profiles
+    name: Nanopore simulation with context-aware profile controls
+    status: implemented
+    phase: 1
+    owner_modules:
+      - src/genecoder/simulators/nanopore.py
+      - src/genecoder/simulators/nanopore_profiles.py
+    validation_artifacts:
+      - type: test
+        path: tests/test_nanopore_context_profile.py
+      - type: doc
+        path: docs/channel_profiles.md
+
+  - id: deterministic_reproducibility_governance
+    name: Deterministic seed/profile reproducibility governance
+    status: partial
+    phase: 2
+    owner_modules:
+      - src/genecoder/pipeline.py
+      - src/genecoder/cli/main.py
+    validation_artifacts:
+      - type: test
+        path: tests/test_simulator_seed_reproducibility.py
+      - type: doc
+        path: docs/reproducibility.md
+
+  - id: benchmark_depth_and_parity
+    name: Standardized benchmark depth and parity validation
+    status: partial
+    phase: 3
+    owner_modules:
+      - benchmarks/throughput.py
+      - benchmarks/error_rate.py
+    validation_artifacts:
+      - type: benchmark
+        path: benchmarks/throughput.py
+      - type: benchmark
+        path: benchmarks/error_rate.py
+      - type: doc
+        path: docs/performance.md
+
+  - id: plugin_registry_policy_automation
+    name: Plugin registry policy/security automation
+    status: partial
+    phase: 4
+    owner_modules:
+      - src/genecoder/plugin_manager.py
+      - configs/registry.yaml
+    validation_artifacts:
+      - type: test
+        path: tests/test_plugin_spec_validation.py
+      - type: test
+        path: tests/test_plugin_security.py
+      - type: doc
+        path: docs/plugins.md
+
+strategy_sections:
+  product_strategy_current_capabilities:
+    include_ids:
+      - cli_bundle_presets
+      - illumina_simulation_profiles
+      - nanopore_simulation_profiles
+  product_strategy_priority_gaps:
+    include_ids:
+      - deterministic_reproducibility_governance
+      - benchmark_depth_and_parity
+      - plugin_registry_policy_automation
+  vision_capability_status:
+    include_ids:
+      - cli_bundle_presets
+      - illumina_simulation_profiles
+      - nanopore_simulation_profiles
+      - deterministic_reproducibility_governance
+      - benchmark_depth_and_parity
+      - plugin_registry_policy_automation
+
+phase_gates:
+  - gate: "Phase 1 -> Phase 2"
+    canonical_source: docs/development_roadmap.md
+    measurable_checks:
+      - metric: Weekly usage (oligos_per_week)
+        threshold: ">= 1,000 simulated oligos/week for 4 consecutive ISO weeks"
+        tests_or_checks:
+          - genecli stats
+          - /metrics endpoint export
+        docs_links:
+          - docs/metrics.md
+        evidence_artifacts:
+          - ~/.genecoder/metrics.json
+
+  - gate: "Phase 2 -> Phase 3"
+    canonical_source: docs/development_roadmap.md
+    measurable_checks:
+      - metric: Reproducibility pass rate
+        threshold: "100% deterministic seed/profile checks for 2 consecutive weeks"
+        tests_or_checks:
+          - tests/test_simulator_seed_reproducibility.py
+          - tests/test_illumina_coverage_quality.py
+          - tests/test_nanopore_context_profile.py
+        docs_links:
+          - docs/reproducibility.md
+        evidence_artifacts:
+          - CI pytest logs
+      - metric: Throughput median floor
+        threshold: ">= 2.0 MB/s Base-4 encode throughput"
+        tests_or_checks:
+          - PYTHONPATH=src python benchmarks/throughput.py
+        docs_links:
+          - docs/performance.md
+        evidence_artifacts:
+          - benchmark stdout artifact
+
+  - gate: "Phase 3 -> Phase 4"
+    canonical_source: docs/development_roadmap.md
+    measurable_checks:
+      - metric: BER baseline quality
+        threshold: "<= 0.01 BER on documented baseline profile/seed"
+        tests_or_checks:
+          - PYTHONPATH=src python benchmarks/error_rate.py
+        docs_links:
+          - docs/performance.md
+        evidence_artifacts:
+          - benchmark stdout artifact
+      - metric: Suite category health
+        threshold: "Green CI across CLI/API, pipeline/simulation, plugins/security categories"
+        tests_or_checks:
+          - pytest tests/test_cli*.py tests/test_web_api*.py
+          - pytest tests/test_pipeline*.py tests/test_simulator*.py
+          - pytest tests/test_plugin*.py tests/test_security*.py
+        docs_links:
+          - docs/development_roadmap.md
+        evidence_artifacts:
+          - CI pytest summaries
+
+  - gate: "Phase 4 release gate"
+    canonical_source: docs/development_roadmap.md
+    measurable_checks:
+      - metric: Plugin policy compliance
+        threshold: "100% pass on plugin spec/security checks before registry publication"
+        tests_or_checks:
+          - pytest tests/test_plugin_spec_validation.py tests/test_plugin_security.py
+          - registry schema validation for configs/registry.yaml
+        docs_links:
+          - docs/plugins.md
+        evidence_artifacts:
+          - CI logs and registry validation output
