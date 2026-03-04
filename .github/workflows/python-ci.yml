@@ -13,6 +13,7 @@ on:
       - '.github/workflows/**'
       - 'scripts/**'
       - 'configs/**'
+      - 'benchmarks/**'
       - 'docs/mvp_checklist.md'
 
 # Ensure only a single workflow run per PR or branch
@@ -43,6 +44,7 @@ jobs:
               - 'ruff.toml'
               - '.github/workflows/**'
               - 'scripts/**'
+              - 'benchmarks/**'
             mvp_checklist:
               - 'configs/**'
               - 'docs/mvp_checklist.md'
@@ -185,6 +187,76 @@ jobs:
 
     - name: Check glossary terms
       run: python scripts/check_glossary_terms.py
+
+  benchmark-throughput:
+    needs: [changes, check-comments, lint]
+    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Run throughput benchmark
+      shell: bash
+      run: |
+        mkdir -p artifacts/benchmarks
+        PYTHONPATH=src python benchmarks/throughput.py | tee artifacts/benchmarks/throughput.stdout
+
+    - name: Evaluate throughput gate
+      shell: bash
+      run: |
+        python scripts/evaluate_benchmark_gates.py \
+          --benchmark throughput \
+          --stdout-file artifacts/benchmarks/throughput.stdout \
+          --output-json artifacts/benchmarks/throughput-gate.json
+
+    - name: Upload throughput benchmark artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-throughput
+        path: artifacts/benchmarks/throughput.*
+
+  benchmark-error-rate:
+    needs: [changes, check-comments, lint]
+    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Run BER benchmark
+      shell: bash
+      run: |
+        mkdir -p artifacts/benchmarks
+        PYTHONPATH=src python benchmarks/error_rate.py | tee artifacts/benchmarks/error_rate.stdout
+
+    - name: Evaluate BER gate
+      shell: bash
+      run: |
+        python scripts/evaluate_benchmark_gates.py \
+          --benchmark error_rate \
+          --stdout-file artifacts/benchmarks/error_rate.stdout \
+          --output-json artifacts/benchmarks/error_rate-gate.json
+
+    - name: Upload BER benchmark artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-error-rate
+        path: artifacts/benchmarks/error_rate.*
 
   mvp-checklist:
     needs: [changes, check-comments]

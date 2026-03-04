@@ -11,8 +11,8 @@ above their phase targets.
 | --- | --- | --- | --- | --- | --- |
 | 2026-Q1 | Foundation sustainment (Phase 1) | Weekly usage (`oligos_per_week`) | At least 1,000 simulated oligos/week for 4 consecutive ISO weeks | `docs/metrics.md` metric definition + `genecli stats`/`/metrics` output | `~/.genecoder/metrics.json` |
 | 2026-Q2 | Robust Encoding Pipeline (Phase 2) | Pipeline reproducibility pass rate | 100% pass for deterministic seed/profile checks in CI for two consecutive weeks | `docs/reproducibility.md`, `tests/test_simulator_seed_reproducibility.py`, `tests/test_illumina_coverage_quality.py`, `tests/test_nanopore_context_profile.py` | CI pytest logs for reproducibility suites |
-| 2026-Q2 | Robust Encoding Pipeline (Phase 2) | Runtime throughput floor | `benchmarks/throughput.py` median encode throughput stays at or above 2.0 MB/s (Base-4) on the project benchmark runner | `docs/performance.md`, `benchmarks/throughput.py` | benchmark stdout artifact from `PYTHONPATH=src python benchmarks/throughput.py` |
-| 2026-Q3 | Simulation & Analysis (Phase 3) | Benchmark quality under noise | `benchmarks/error_rate.py` BER at or below 0.01 on baseline profile with documented seed | `docs/performance.md`, `benchmarks/error_rate.py` | benchmark stdout artifact from `PYTHONPATH=src python benchmarks/error_rate.py` |
+| 2026-Q2 | Robust Encoding Pipeline (Phase 2) | Runtime throughput floor | `benchmarks/throughput.py` median encode throughput stays at or above 2.0 MB/s (Base-4) on the project benchmark runner | `docs/performance.md`, `benchmarks/throughput.py` | benchmark stdout/JSON artifacts from `PYTHONPATH=src python benchmarks/throughput.py` |
+| 2026-Q3 | Simulation & Analysis (Phase 3) | Benchmark quality under noise | `benchmarks/error_rate.py` BER at or below 0.01 on baseline profile with documented seed | `docs/performance.md`, `benchmarks/error_rate.py` | benchmark stdout/JSON artifacts from `PYTHONPATH=src python benchmarks/error_rate.py` |
 | 2026-Q3 | Simulation & Analysis (Phase 3) | Test coverage breadth (suite categories) | Stable green coverage across inferred categories: CLI/API (`tests/test_cli*.py`, `tests/test_web_api*.py`), pipeline/simulation (`tests/test_pipeline*.py`, `tests/test_simulator*.py`), plugins/security (`tests/test_plugin*.py`, `tests/test_security*.py`) | `tests/` suite taxonomy by filename prefixes | CI pytest summary grouped by selected markers/path globs |
 | 2026-Q4 | Ecosystem & Automation (Phase 4) | Plugin policy compliance quality | 100% pass on plugin spec/security checks before registry publication | `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py`, `docs/plugins.md` | CI pytest logs + registry validation output (`configs/registry.yaml` checks) |
 
@@ -33,7 +33,9 @@ For operational details behind each KPI, use:
 - [`docs/reproducibility.md`](reproducibility.md) for deterministic seed/profile
   controls and reproducibility test suites.
 - [`docs/performance.md`](performance.md) for throughput and BER benchmark
-  scripts (`benchmarks/throughput.py`, `benchmarks/error_rate.py`).
+  scripts (`benchmarks/throughput.py`, `benchmarks/error_rate.py`) and CI gate
+  implementation details (`scripts/evaluate_benchmark_gates.py`,
+  `configs/benchmark_thresholds.json`, workflow benchmark artifacts).
 
 ### Phase 1 → Phase 2 (Foundation sustainment to Robust Encoding Pipeline)
 
@@ -59,7 +61,7 @@ For operational details behind each KPI, use:
     runner.
 - **Required evidence artifacts**
   - CI logs for deterministic reproducibility suites (seed/profile checks).
-  - Benchmark artifact from
+  - Benchmark stdout and gate JSON artifacts from
     `PYTHONPATH=src python benchmarks/throughput.py`.
 
 ### Phase 3 → Phase 4 (Simulation & Analysis to Ecosystem & Automation)
@@ -72,7 +74,7 @@ For operational details behind each KPI, use:
   - CI remains green across test-suite categories: CLI/API,
     pipeline/simulation, and plugins/security.
 - **Required evidence artifacts**
-  - Benchmark artifact from
+  - Benchmark stdout and gate JSON artifacts from
     `PYTHONPATH=src python benchmarks/error_rate.py`.
   - CI summaries for category-level suite health across the defined pytest
     globs.
