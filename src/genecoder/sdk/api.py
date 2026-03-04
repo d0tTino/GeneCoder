@@ -18,7 +18,7 @@ from ..app import (
 )
 
 
-from ..simulators.profile_resolver import canonicalize_profile_name
+from ..profiles.registry import canonicalize_profile_name
 SpecInput = "ExperimentRequest | Mapping[str, Any] | str | Path"
 
 

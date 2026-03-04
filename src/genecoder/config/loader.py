@@ -5,12 +5,18 @@ import copy
 import json
 from pathlib import Path
 from typing import Any, Mapping, Sequence
-import warnings
 
 from genecoder.channel_config import ChannelConfig
 from genecoder.constraints import load_constraint_policy
+from genecoder.profiles.registry import (
+    LegacyProfilePolicy,
+    VersionedProfile,
+    policy_from_legacy_flag,
+    resolve_channel_profile_alias as _resolve_channel_profile_alias,
+    resolve_versioned_profile as _resolve_versioned_profile,
+    validate_profile_schema as _validate_profile_schema,
+)
 from genecoder.simulators.batch_utils import load_coverage_distribution
-from genecoder.simulators.profile_resolver import resolve_channel_profile_alias as _resolve_channel_profile_alias
 
 try:  # pragma: no cover - optional dependency
     from jsonschema import Draft202012Validator
@@ -28,14 +34,6 @@ PIPELINE_ALIASES: dict[str, str] = {
     "threads": "workers",
     "processes": "workers",
 }
-
-
-@dataclass(frozen=True)
-class VersionedProfile:
-    schema_version: int
-    kind: str
-    name: str
-    parameters: Mapping[str, Any]
 
 
 @dataclass(frozen=True)
@@ -137,14 +135,7 @@ def load_mapping_file(path: str | Path) -> Mapping[str, Any]:
 
 
 def validate_profile_schema(profile: Mapping[str, Any], *, kind: str) -> VersionedProfile:
-    schema_version = int(profile.get("schema_version", 1))
-    if schema_version != 1:
-        raise ValueError(f"Unsupported {kind} profile schema_version: {schema_version}")
-    params = profile.get("parameters")
-    if not isinstance(params, Mapping):
-        raise ValueError(f"{kind} profile requires 'parameters' mapping")
-    name = str(profile.get("name") or kind)
-    return VersionedProfile(schema_version=schema_version, kind=kind, name=name, parameters=dict(params))
+    return _validate_profile_schema(profile, kind=kind)
 
 
 def resolve_profile(
@@ -153,45 +144,15 @@ def resolve_profile(
     kind: str,
     presets: Mapping[str, VersionedProfile],
     allow_legacy_dict: bool = False,
+    policy: LegacyProfilePolicy | None = None,
 ) -> VersionedProfile | None:
-    if value is None:
-        return None
-    if isinstance(value, Mapping):
-        if "parameters" not in value:
-            if not allow_legacy_dict:
-                raise ValueError(
-                    f"{kind} profile mappings must be versioned with schema_version/name/parameters"
-                )
-            warnings.warn(
-                f"Raw dict-based {kind} profiles are deprecated; use a versioned profile object.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            value = {
-                "schema_version": 1,
-                "kind": kind,
-                "name": "custom",
-                "parameters": dict(value),
-            }
-        return validate_profile_schema(value, kind=kind)
-
-    path = Path(value)
-    if path.is_file():
-        loaded = dict(load_mapping_file(path))
-        if "parameters" not in loaded:
-            warnings.warn(
-                f"Raw dict-based {kind} profiles are deprecated; use a versioned profile object.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            loaded = {
-                "schema_version": 1,
-                "kind": kind,
-                "name": path.stem,
-                "parameters": loaded,
-            }
-        return validate_profile_schema(loaded, kind=kind)
-    return presets.get(str(value).lower())
+    effective_policy = policy or policy_from_legacy_flag(allow_legacy_dict=allow_legacy_dict)
+    return _resolve_versioned_profile(
+        value,
+        kind=kind,
+        presets=presets,
+        policy=effective_policy,
+    )
 
 
 

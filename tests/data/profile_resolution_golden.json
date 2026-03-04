@@ -1,0 +1,29 @@
+[
+  {
+    "input": {"profile": "nova"},
+    "expected": {
+      "illumina_profile": "novaseq",
+      "nanopore_profile": null,
+      "dnarsim_profile": null,
+      "canonical_name": "novaseq"
+    }
+  },
+  {
+    "input": {"profile": "minion"},
+    "expected": {
+      "illumina_profile": null,
+      "nanopore_profile": "minion",
+      "dnarsim_profile": null,
+      "canonical_name": "minion"
+    }
+  },
+  {
+    "input": {"profile": "r10.4"},
+    "expected": {
+      "illumina_profile": null,
+      "nanopore_profile": null,
+      "dnarsim_profile": "r10.4",
+      "canonical_name": "r10.4"
+    }
+  }
+]

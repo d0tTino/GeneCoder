@@ -33,7 +33,7 @@ from genecoder.config.loader import (
     load_channel_workflow_config,
     load_mapping_file,
 )
-from genecoder.simulators.profile_resolver import PROFILE_ALIAS_TABLE, resolve_named_profiles
+from genecoder.profiles.registry import PROFILE_ALIAS_TABLE, resolve_channel_profile_alias, resolve_named_profiles
 from genecoder.simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
     RESULT_DROPOUT_FLAG_KEY,
@@ -804,7 +804,7 @@ def run_channel(args: argparse.Namespace) -> None:
     opts.dnarsim_profile = resolved_profiles.dnarsim_profile
 
     if opts.profile:
-        target_sim, _ = PROFILE_ALIAS_TABLE[opts.profile.lower()]
+        target_sim, _ = resolve_channel_profile_alias(opts.profile)
         simulators = [(target_sim, {})]
     elif simulators is None:
         simulators = [(name, {}) for name in opts.simulators]
@@ -861,7 +861,7 @@ def _handle_run(args: argparse.Namespace) -> None:
         dnarsim_profile=args.dnarsim_profile,
     )
     if args.profile is not None:
-        target_sim, _ = PROFILE_ALIAS_TABLE[args.profile.lower()]
+        target_sim, _ = resolve_channel_profile_alias(args.profile)
         simulators = [(target_sim, {})]
     if resolved_profiles.illumina_profile is not None:
         cfg.illumina_profile = resolved_profiles.illumina_profile

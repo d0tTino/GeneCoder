@@ -9,7 +9,7 @@ from genecoder import plugins
 from genecoder.html_report import generate_html_report
 from genecoder.manifest import generate_manifest
 from genecoder.results.schema import compare_runs, load_run_schema, canonical_metrics_view
-from genecoder.simulators.profile_resolver import available_profiles
+from genecoder.profiles.registry import available_profiles
 
 from .pipeline_use_case import RunPipelineRequest, RunPipelineResponse, RunPipelineUseCase
 
