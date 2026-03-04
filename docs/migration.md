@@ -9,6 +9,10 @@ Starting in **v0.14.0**, GeneCoder supports external integrations only through:
 
 Deprecated facades (`genecoder.api`, `genecoder.pipeline`) now forward through versioned adapters in `genecoder.compat.v1` and do **not** add behavior beyond forwarding.
 
+## Orchestration entrypoint migration
+
+See [`docs/orchestration_migration.md`](orchestration_migration.md) for the authoritative mapping from deprecated orchestration imports (`genecoder.pipeline`, `genecoder.api`, and `SequencePipeline`) to canonical APIs.
+
 ## Explicit removal milestones
 
 - **v0.15.0**: last release where `genecoder.api` and `genecoder.pipeline` remain available with deprecation warnings.

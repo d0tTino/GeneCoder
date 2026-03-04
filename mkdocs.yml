@@ -23,6 +23,7 @@ nav:
       - Implemented Features: features.md
       - Technology Stack: technology_stack.md
   - Migration Guide: migration.md
+  - Orchestration Migration Map: orchestration_migration.md
   - Development:
       - Development Roadmap: development_roadmap.md
       - Architecture Boundaries: architecture_layers.md

@@ -26,3 +26,6 @@ Legacy imports are routed through versioned adapters under `genecoder.compat.v1`
 
 
 - `genecoder.channel_engine.legacy_adapter` is now treated as a compatibility-only implementation detail and must not be imported from interface packages (`genecoder.cli`, `genecoder.sdk`, `genecoder.dashboard`).
+
+
+See `docs/orchestration_migration.md` for a direct import-to-import migration table.
