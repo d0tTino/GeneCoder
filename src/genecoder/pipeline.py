@@ -10,7 +10,7 @@ __all__ = ["SequencePipeline", "run_pipeline", "core", "init_plugins"]
 
 warnings.warn(
     "genecoder.pipeline is deprecated and will be removed in v0.16.0; "
-    "import pipeline runtime/use-case helpers from genecoder.app.",
+    "import genecoder.app.RunPipelineUseCase for orchestration.",
     DeprecationWarning,
     stacklevel=2,
 )

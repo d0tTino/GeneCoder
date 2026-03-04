@@ -46,8 +46,8 @@ from genecoder.app import (
     ArtifactOutputPolicy,
     ChannelProfile,
     RunPipelineRequest,
+    RunPipelineUseCase,
     SeedProfile,
-    UIService,
 )
 
 RUN_PROFILE_VERSION = "2026.02"
@@ -617,7 +617,7 @@ def _handle_command(args: argparse.Namespace) -> None:
         logger.info("Coding planner: %s", json.dumps(explanation, indent=2, sort_keys=True))
 
     def _execute() -> Dict[str, Any]:
-        response = UIService().run_pipeline(
+        response = RunPipelineUseCase().execute(
             RunPipelineRequest(
                 codec=codec,
                 fec=fec,

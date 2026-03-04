@@ -50,12 +50,13 @@ from genecoder.html_report import generate_html_report
 from genecoder.metrics import metrics, set_metrics_path
 from genecoder.core import metrics as gather_metrics
 from genecoder.manifest import generate_manifest
-from genecoder.plugin_manager import FEC_REGISTRY, init_plugins
+from genecoder.plugin_manager import CODEC_REGISTRY, FEC_REGISTRY, init_plugins
 from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.config.loader import validate_bundle_document
 from genecoder.synthesis import SynthesisConstraints
 from genecoder.constraints import load_constraint_policy
 from genecoder.profiles.registry import canonicalize_profile_name
+from genecoder.app import ArtifactOutputPolicy, RunPipelineRequest, RunPipelineUseCase
 
 
 @dataclass
@@ -358,6 +359,64 @@ def _simple_args(prefix: str, opts: dict[str, object], allowed: set[str]) -> lis
             args.extend([opt, str(value)])
     return args
 
+
+
+
+
+
+def _backfill_manifest_metrics(manifest_path: Path, original_path: Path, encoded_path: Path) -> None:
+    if not manifest_path.exists() or not original_path.exists() or not encoded_path.exists():
+        return
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return
+    if not isinstance(payload, dict):
+        return
+    metrics_payload = payload.setdefault("metrics", {})
+    if not isinstance(metrics_payload, dict):
+        return
+    required = {"original_size", "dna_length", "compression_ratio", "bits_per_nt"}
+    if required.issubset(metrics_payload):
+        return
+
+    original_size = len(original_path.read_bytes())
+    try:
+        batch = SequenceBatch.from_fasta(encoded_path.read_text(encoding="utf-8"))
+        dna_length = sum(len(ol.sequence) for ol in batch.oligos)
+    except Exception:
+        dna_length = 0
+    compression_ratio = (dna_length / original_size) if original_size else 0.0
+    bits_per_nt = ((original_size * 8) / dna_length) if dna_length else 0.0
+
+    metrics_payload.setdefault("original_size", original_size)
+    metrics_payload.setdefault("dna_length", dna_length)
+    metrics_payload.setdefault("compression_ratio", compression_ratio)
+    metrics_payload.setdefault("bits_per_nt", bits_per_nt)
+    manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+def _run_bundle_pipeline_use_case(
+    *,
+    codec: str,
+    fec: str | None,
+    input_path: Path,
+    output_path: Path,
+    metrics_path: Path,
+) -> None:
+    RunPipelineUseCase().execute(
+        RunPipelineRequest(
+            codec=codec,
+            fec=fec,
+            channel="none",
+            input_path=str(input_path),
+            output_path=str(output_path),
+            artifacts=ArtifactOutputPolicy(
+                metrics_path=str(metrics_path),
+                emit_manifest=False,
+                emit_html_report=False,
+            ),
+        )
+    )
 
 def _run_cli(args_list: list[str]) -> None:
     try:
@@ -984,6 +1043,7 @@ def _run_single_bundle(
 
     original_inputs = [Path(p) for p in enc_cfg.get("input_files", [])]
     input_files = [encoded_dir / (Path(p).name + ".fasta") for p in enc_cfg.get("input_files", [])]
+    encoded_to_original = {encoded: original for original, encoded in zip(original_inputs, input_files)}
     batch_summary: dict[str, object] = {}
     for fasta_path in input_files:
         if not fasta_path.exists():
@@ -1010,6 +1070,13 @@ def _run_single_bundle(
         metadata_path = fasta_path.with_suffix(fasta_path.suffix + ".batch.json")
         with open(metadata_path, "w", encoding="utf-8") as meta_f:
             json.dump(payload, meta_f, indent=2)
+        original_for_fasta = encoded_to_original.get(fasta_path)
+        if original_for_fasta is not None:
+            _backfill_manifest_metrics(
+                fasta_path.with_suffix(".manifest.json"),
+                original_for_fasta,
+                fasta_path,
+            )
         try:
             rel = fasta_path.relative_to(run_dir)
         except ValueError:
@@ -1111,28 +1178,56 @@ def _run_single_bundle(
         input_files = new_inputs
 
     if dec_cfg:
-        dec_args = _simple_args("decode", dec_cfg, {"method"})
-        dec_args += ["--input-files"] + [str(p) for p in input_files]
-        dec_args += ["--output-dir", str(decoded_dir)]
-        _run_cli(dec_args)
+        decode_method = dec_cfg.get("method") if isinstance(dec_cfg, dict) else None
+        can_use_canonical_path = (
+            sim_cfg is None
+            and isinstance(decode_method, str)
+            and decode_method == enc_cfg.get("method")
+            and str(decode_method) in CODEC_REGISTRY
+        )
 
-        for original, simulated in zip(original_inputs, input_files):
-            decoded_file = decoded_dir / (Path(simulated).stem + "_decoded.bin")
-            if not decoded_file.exists():
-                logger.warning(
-                    "Decoded output missing for %s; writing placeholder metrics",
-                    simulated,
-                )
+        if can_use_canonical_path:
+            for original in original_inputs:
+                decoded_file = decoded_dir / f"{Path(original).stem}_decoded.bin"
                 decoded_file.parent.mkdir(parents=True, exist_ok=True)
-                decoded_file.write_bytes(b"")
-            _write_decoded_metrics(
-                original,
-                Path(simulated),
-                decoded_file,
-                enc_cfg,
-                sim_cfg if isinstance(sim_cfg, dict) else None,
-                emit_manifest_report=emit_manifest_report,
-            )
+                _run_bundle_pipeline_use_case(
+                    codec=str(enc_cfg.get("method")),
+                    fec=_effective_fec(enc_cfg),
+                    input_path=Path(original),
+                    output_path=decoded_file,
+                    metrics_path=decoded_file.with_suffix(".json"),
+                )
+                _write_decoded_metrics(
+                    Path(original),
+                    Path(original),
+                    decoded_file,
+                    enc_cfg,
+                    None,
+                    emit_manifest_report=emit_manifest_report,
+                )
+        else:
+            dec_args = _simple_args("decode", dec_cfg, {"method"})
+            dec_args += ["--input-files"] + [str(p) for p in input_files]
+            dec_args += ["--output-dir", str(decoded_dir)]
+            _run_cli(dec_args)
+
+            for original, simulated in zip(original_inputs, input_files):
+                decoded_file = decoded_dir / (Path(simulated).stem + "_decoded.bin")
+                if not decoded_file.exists():
+                    logger.warning(
+                        "Decoded output missing for %s; writing placeholder metrics",
+                        simulated,
+                    )
+                    decoded_file.parent.mkdir(parents=True, exist_ok=True)
+                    decoded_file.write_bytes(b"")
+                _write_decoded_metrics(
+                    original,
+                    Path(simulated),
+                    decoded_file,
+                    enc_cfg,
+                    sim_cfg if isinstance(sim_cfg, dict) else None,
+                    emit_manifest_report=emit_manifest_report,
+                )
 
     logger.info("Bundle output written to %s", run_dir)
     summary_path = _write_summary_file(

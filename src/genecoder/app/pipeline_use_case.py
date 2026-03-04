@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+"""Authoritative application orchestration entrypoint.
+
+`RunPipelineUseCase` is the canonical public orchestration API for GeneCoder
+runtime execution. Internally it delegates to `genecoder.core.run_canonical_pipeline`
+via `genecoder.app.pipeline_runtime.run_pipeline`, which returns metrics derived
+from the canonical runtime model (`genecoder.core.CanonicalRuntimeResult`).
+"""
+
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
@@ -75,6 +83,8 @@ class RunPipelineResponse:
 
 
 class RunPipelineUseCase:
+    """Execute the canonical encode/simulate/decode orchestration flow."""
+
     def execute(self, request: RunPipelineRequest) -> RunPipelineResponse:
         run_context = make_run_context(
             global_seed=request.seeds.global_seed if request.seeds else None,

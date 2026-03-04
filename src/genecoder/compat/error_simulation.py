@@ -1,4 +1,7 @@
-"""Compatibility re-exports backed by channel_engine legacy adapter."""
+"""Compatibility wrapper for legacy error simulation imports.
+
+Compatibility-only module: do not add new feature logic.
+"""
 from __future__ import annotations
 
-from genecoder.channel_engine.legacy_adapter import *  # noqa: F403
+from genecoder.compat.legacy.channel_adapter_exports import *  # noqa: F403
