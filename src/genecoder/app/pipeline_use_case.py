@@ -10,6 +10,7 @@ from .pipeline_runtime import run_pipeline
 from genecoder.results.schema import RUN_SCHEMA_VERSION, canonical_metrics_view
 from genecoder.html_report import generate_html_report
 from genecoder.runtime import make_run_context
+from genecoder.profiles.registry import canonicalize_profile_name
 
 
 @dataclass(frozen=True)
@@ -81,11 +82,15 @@ class RunPipelineUseCase:
             simulate_seed=request.seeds.simulate_seed if request.seeds else None,
             decode_seed=request.seeds.decode_seed if request.seeds else None,
         )
+        resolved_profile_name = (
+            canonicalize_profile_name(request.profile.name) if request.profile else None
+        )
+        resolved_channel_name = canonicalize_profile_name(request.channel)
 
         decoded, metrics, fec_info = run_pipeline(
             codec=request.codec,
             fec_backend=request.fec,
-            channel=request.channel,
+            channel=resolved_channel_name,
             input_path=request.input_path,
             output_path=request.output_path,
             filter_mutated=request.filter_mutated,
@@ -99,7 +104,7 @@ class RunPipelineUseCase:
             "run_id": Path(request.output_path).stem,
             "profiles": {
                 "encoding": request.codec,
-                "simulation": request.profile.name if request.profile else request.channel,
+                "simulation": resolved_profile_name if resolved_profile_name else resolved_channel_name,
                 "decode": request.codec,
             },
             "seeds": {
@@ -125,7 +130,7 @@ class RunPipelineUseCase:
                     },
                 },
                 "simulate": {
-                    "profile": request.profile.name if request.profile else request.channel,
+                    "profile": resolved_profile_name if resolved_profile_name else resolved_channel_name,
                     "metrics": {
                         "substitutions": metrics.get("substitutions"),
                         "insertions": metrics.get("insertions"),
@@ -159,10 +164,10 @@ class RunPipelineUseCase:
             "input_config": {
                 "codec": request.codec,
                 "fec": request.fec,
-                "channel": request.channel,
+                "channel": resolved_channel_name,
                 "channel_profile": (
                     {
-                        "name": request.profile.name,
+                        "name": resolved_profile_name or request.profile.name,
                         "parameters": dict(request.profile.parameters),
                     }
                     if request.profile
@@ -196,7 +201,7 @@ class RunPipelineUseCase:
         if request.artifacts.emit_manifest:
             manifest = generate_manifest(
                 request.input_path,
-                {"method": request.codec, "fec": request.fec, "channel": request.channel, "seeds": run_context.seed_provenance()},
+                {"method": request.codec, "fec": request.fec, "channel": resolved_channel_name, "seeds": run_context.seed_provenance()},
                 dashboard_metrics,
             )
             manifest_file = metrics_path.with_suffix(".manifest.json")

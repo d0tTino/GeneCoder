@@ -55,7 +55,7 @@ from genecoder.simulators import SIMULATOR_REGISTRY
 from genecoder.config.loader import validate_bundle_document
 from genecoder.synthesis import SynthesisConstraints
 from genecoder.constraints import load_constraint_policy
-from genecoder.simulators.profile_resolver import canonicalize_profile_name
+from genecoder.profiles.registry import canonicalize_profile_name
 
 
 @dataclass
