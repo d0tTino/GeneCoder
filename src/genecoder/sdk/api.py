@@ -13,7 +13,7 @@ from ..app import (
     ConstraintProfile,
     RunPipelineRequest,
     RunPipelineResponse,
-    RunPipelineUseCase,
+    UIService,
     SeedProfile,
 )
 
@@ -163,7 +163,7 @@ def run_experiment(spec: SpecInput) -> ExperimentResult:
     """Run one experiment from dataclass, mapping, or YAML file path."""
 
     normalized = _normalize_request(spec)
-    response = RunPipelineUseCase().execute(
+    response = UIService().run_pipeline(
         RunPipelineRequest(
             codec=normalized.codec,
             fec=normalized.fec_backend,

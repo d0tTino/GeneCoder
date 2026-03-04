@@ -95,7 +95,7 @@ class RunPipelineUseCase:
         metrics_path = Path(request.artifacts.metrics_path or str(request.output_path) + ".json")
         run_schema: dict[str, Any] = {
             "schema_version": RUN_SCHEMA_VERSION,
-            "source_format": "sdk_pipeline",
+            "source_format": "pipeline_use_case",
             "run_id": Path(request.output_path).stem,
             "profiles": {
                 "encoding": request.codec,
@@ -108,6 +108,41 @@ class RunPipelineUseCase:
                 "simulate": run_context.simulate_seed,
                 "decode": run_context.decode_seed,
                 "provenance": run_context.seed_provenance(),
+            },
+            "runtime": {
+                "total_seconds": None,
+                "encode_seconds": None,
+                "simulate_seconds": None,
+                "decode_seconds": None,
+            },
+            "stages": {
+                "encode": {
+                    "parameters": {"codec": request.codec, "fec": request.fec},
+                    "metrics": {
+                        "gc_content": metrics.get("gc_content"),
+                        "gc_variance": metrics.get("gc_variance"),
+                        "max_homopolymer": metrics.get("max_homopolymer"),
+                    },
+                },
+                "simulate": {
+                    "profile": request.profile.name if request.profile else request.channel,
+                    "metrics": {
+                        "substitutions": metrics.get("substitutions"),
+                        "insertions": metrics.get("insertions"),
+                        "deletions": metrics.get("deletions"),
+                        "coverage": metrics.get("coverage"),
+                        "dropout_count": metrics.get("dropout_count"),
+                        "dropout_fraction": metrics.get("dropout_fraction"),
+                    },
+                },
+                "decode": {
+                    "parameters": {"codec": request.codec, "fec": request.fec},
+                    "metrics": {
+                        "decode_success": metrics.get("decode_success"),
+                        "decode_success_rate": metrics.get("decode_success_rate"),
+                        "ecc_success_rates": metrics.get("ecc_success_rates", {}),
+                    },
+                },
             },
             "sweep": dict(request.matrix.axes) if request.matrix else {},
             "constraints": (
