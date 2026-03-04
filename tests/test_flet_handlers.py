@@ -39,7 +39,7 @@ def test_make_encode_handler_calls_perform_encoding(tmp_path, monkeypatch: pytes
             info_messages=[],
         )
 
-    monkeypatch.setattr("genecoder.flet_handlers.perform_encoding", fake_perform_encoding)
+    monkeypatch.setattr("genecoder.flet_handlers._ui_service.run_encode", fake_perform_encoding)
     monkeypatch.setattr("genecoder.flet_handlers.generate_manifest", lambda *a, **k: {})
 
     inp = tmp_path / "data.bin"
@@ -95,7 +95,7 @@ def test_make_decode_handler_sets_global(tmp_path, monkeypatch: pytest.MonkeyPat
     def fake_perform_decoding(fasta: str, alphabet: str) -> object:
         return types.SimpleNamespace(decoded_bytes=b"out", status_message="ok", fec_info="")
 
-    monkeypatch.setattr("genecoder.flet_handlers.perform_decoding", fake_perform_decoding)
+    monkeypatch.setattr("genecoder.flet_handlers._ui_service.run_decode", fake_perform_decoding)
 
     fasta = tmp_path / "seq.fa"
     fasta.write_text(">s\nAC")

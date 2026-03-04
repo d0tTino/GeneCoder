@@ -63,3 +63,10 @@ genecli dashboard examples/illumina_metrics.json examples/nanopore_metrics.json
 
 The combined view highlights differences such as error profiles or GC balance
 between Illumina and Nanopore simulations.
+
+## UI Adapter Contract
+
+Flet, Streamlit, and React interfaces are **presentation-only clients over app
+services**. Keep UI code focused on widgets, validation, and event wiring; move
+pipeline execution, artifact inspection/comparison, and metrics transformations
+into application services (`UIService` and shared UI DTOs).

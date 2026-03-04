@@ -11,10 +11,10 @@ from ..app import (
     BatchSweepMatrix,
     ChannelProfile,
     ConstraintProfile,
-    RunPipelineRequest,
-    RunPipelineResponse,
     UIService,
     SeedProfile,
+    UIRunRequest,
+    UIRunResult,
 )
 
 
@@ -143,7 +143,7 @@ def _normalize_request(spec: SpecInput) -> ExperimentRequest:
     return _request_from_mapping(_load_yaml_spec(path))
 
 
-def _to_result(request: ExperimentRequest, response: RunPipelineResponse) -> ExperimentResult:
+def _to_result(request: ExperimentRequest, response: UIRunResult) -> ExperimentResult:
     return ExperimentResult(
         request=request,
         decoded=response.decoded,
@@ -163,8 +163,8 @@ def run_experiment(spec: SpecInput) -> ExperimentResult:
     """Run one experiment from dataclass, mapping, or YAML file path."""
 
     normalized = _normalize_request(spec)
-    response = UIService().run_pipeline(
-        RunPipelineRequest(
+    response = UIService().run_pipeline_ui(
+        UIRunRequest(
             codec=normalized.codec,
             fec=normalized.fec_backend,
             channel=normalized.channel,

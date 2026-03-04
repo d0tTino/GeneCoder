@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import IO, Any, Iterable, Callable, cast
 
 from .bool_parsing import parse_bool_like
-from .results.schema import canonical_metrics_view, load_run_schema, require_canonical_run_fields
+from .results.schema import canonical_metrics_view, require_canonical_run_fields
+from .app.ui_service import UIService
 from types import ModuleType
 
 try:  # pragma: no cover - optional dependency for tests
@@ -81,9 +82,9 @@ def _calc_decode_success(data: dict[str, Any]) -> float | None:
 
 
 def _load_metrics(src: str | Path | IO[str]) -> dict[str, Any]:
-    """Load canonical run artifact and return dashboard metrics view."""
+    """Load canonical run artifact through UIService and return dashboard metrics."""
 
-    run = require_canonical_run_fields(load_run_schema(src))
+    run = require_canonical_run_fields(UIService().load_artifact(src))
     return canonical_metrics_view(run)
 
 
