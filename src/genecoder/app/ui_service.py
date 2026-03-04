@@ -6,12 +6,15 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from genecoder import plugins
+from genecoder.app_helpers import EncodeResult, DecodeResult, perform_decoding, perform_encoding
+from genecoder.options import EncodeOptions
 from genecoder.html_report import generate_html_report
 from genecoder.manifest import generate_manifest
 from genecoder.results.schema import compare_runs, load_run_schema, canonical_metrics_view
 from genecoder.profiles.registry import available_profiles
 
 from .pipeline_use_case import RunPipelineRequest, RunPipelineResponse, RunPipelineUseCase
+from .ui_dto import UIMetricsSummary, UIRunRequest, UIRunResult
 
 
 @dataclass(frozen=True)
@@ -29,6 +32,19 @@ class UIService:
 
     def run_pipeline(self, request: RunPipelineRequest) -> RunPipelineResponse:
         return self._pipeline_use_case.execute(request)
+
+    def run_pipeline_ui(self, request: UIRunRequest | Mapping[str, Any]) -> UIRunResult:
+        normalized = request if isinstance(request, UIRunRequest) else UIRunRequest(**request)
+        return UIRunResult.from_use_case_response(self.run_pipeline(normalized.to_use_case_request()))
+
+    def summarize_metrics(self, metrics: Mapping[str, Any]) -> UIMetricsSummary:
+        return UIMetricsSummary.from_metrics(metrics)
+
+    def run_encode(self, input_data: bytes, options: EncodeOptions) -> EncodeResult:
+        return perform_encoding(input_data, options)
+
+    def run_decode(self, fasta_data: str, alphabet: str) -> DecodeResult:
+        return perform_decoding(fasta_data, alphabet)
 
     def load_artifact(self, artifact: str | Path | Mapping[str, Any]) -> dict[str, Any]:
         run_schema = load_run_schema(artifact)

@@ -14,7 +14,6 @@ import flet as ft
 # Compatibility alias for color constants across Flet versions
 COLORS = getattr(ft, "colors", getattr(ft, "Colors", None)) or ft.Colors
 
-from .app_helpers import perform_decoding
 import base64
 from .constraint_fixer import fix_sequence
 from .flet_helpers import parse_int_input
@@ -31,11 +30,13 @@ from .plotting import (
     identify_homopolymer_regions,
     generate_sequence_analysis_plot,
 )
-from .app_helpers import perform_encoding, EncodeResult
+from .app_helpers import EncodeResult
+from .app.ui_service import UIService
 from .flet_ws import ws_clients
 
 logger = logging.getLogger(__name__)
 
+_ui_service = UIService()
 
 decoded_bytes_to_save: bytes = b""
 _DEFAULT_GC_MIN = 0.4
@@ -189,7 +190,7 @@ def make_encode_handler(
 
             try:
                 result: EncodeResult = await asyncio.to_thread(
-                    perform_encoding, input_data, options
+                    _ui_service.run_encode, input_data, options
                 )
             except ValueError as ex:
                 encode_status_text.value = f"Error: {ex}"
@@ -471,7 +472,7 @@ def make_decode_handler(
 
             try:
                 result = await asyncio.to_thread(
-                    perform_decoding, file_content_str, decode_alphabet_dropdown.value
+                    _ui_service.run_decode, file_content_str, decode_alphabet_dropdown.value
                 )
             except ValueError as ex:
                 decode_status_text.value = f"Error: {ex}"
@@ -512,3 +513,27 @@ def make_decode_handler(
             page.update()
 
     return decode_file_data
+
+
+def load_run_artifact(artifact: str) -> dict[str, object]:
+    """Load a run artifact via the app service layer."""
+
+    return _ui_service.load_artifact(artifact)
+
+
+def compare_run_artifacts(baseline: str, candidate: str, *others: str) -> dict[str, object]:
+    """Compare one or more run artifacts via UIService."""
+
+    return _ui_service.compare_artifacts(baseline, candidate, *others)
+
+
+def discover_profiles() -> dict[str, object]:
+    """Return profile aliases via UIService."""
+
+    return _ui_service.list_profiles()
+
+
+def discover_plugins() -> dict[str, object]:
+    """Return plugin catalog via UIService."""
+
+    return _ui_service.list_plugins()

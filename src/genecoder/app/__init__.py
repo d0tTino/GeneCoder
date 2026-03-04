@@ -13,6 +13,7 @@ from .pipeline_use_case import (
     RunPipelineUseCase,
     SeedProfile,
 )
+from .ui_dto import UIMetricsSummary, UIRunRequest, UIRunResult
 
 __all__ = [
     "AnalyzeRequest",
@@ -31,4 +32,7 @@ __all__ = [
     "RunPipelineUseCase",
     "UIService",
     "ArtifactExportRequest",
+    "UIRunRequest",
+    "UIRunResult",
+    "UIMetricsSummary",
 ]

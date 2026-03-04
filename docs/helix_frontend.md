@@ -94,3 +94,10 @@ Use the mouse to interact with the helix scene:
 The overlay checkboxes toggle animation, GC colouring, homopolymer
 highlights, progress pulses and error flashes. Adjust the FPS slider to
 limit frame rate if the viewer becomes sluggish.
+
+## UI Adapter Contract
+
+The Helix React frontend is a **presentation-only client over app services**.
+It should only collect user input, render output, and call app-layer service
+contracts (`UIService` + shared UI DTOs) for run execution, artifact loading,
+comparisons, and profile/plugin discovery.
