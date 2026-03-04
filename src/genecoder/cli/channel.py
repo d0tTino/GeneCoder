@@ -19,7 +19,12 @@ from genecoder.channel_config import ChannelConfig
 from genecoder.channels.base import BaseChannel
 from genecoder.synthesis import SynthesisConstraints, validate_sequence
 from genecoder.constraints import ConstraintEngine, ConstraintRepairPipeline, load_constraint_policy
-from genecoder.channel_engine.legacy_adapter import introduce_errors, ADAPTER_PROFILES, DEFAULT_ADAPTER_PROFILE, INDEL_PROFILES
+from genecoder.simulators.error_mutation import introduce_errors
+from genecoder.simulators.channel_cli_adapter import (
+    adapt_channel_options_to_simulators,
+    apply_run_indel_profile_compat,
+    validate_indel_profile,
+)
 from genecoder.metrics import metrics
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES, DNARSIM_RATE_TABLES
@@ -807,95 +812,26 @@ def run_channel(args: argparse.Namespace) -> None:
     if opts.decay_rate is not None:
         simulators.append(("decay", {"deletion_prob": opts.decay_rate}))
 
-    updated: list[tuple[str, dict[str, object]]] = []
-    for name, params in simulators:
-        new_params = dict(params)
-        if name == "illumina" or name.startswith("nanopore"):
-            if opts.coverage is not None:
-                new_params.setdefault("coverage", opts.coverage)
-            if opts.quality_profile is not None:
-                new_params.setdefault("quality_profile", opts.quality_profile)
-        if name == "illumina":
-            if opts.illumina_profile:
-                new_params.setdefault("profile", opts.illumina_profile)
-            if opts.illumina_depth is not None:
-                new_params["coverage"] = opts.illumina_depth
-            if opts.illumina_quality is not None:
-                new_params["quality_profile"] = opts.illumina_quality
-            if opts.illumina_context is not None:
-                new_params["context_errors"] = opts.illumina_context
-            if opts.illumina_sub_rate is not None:
-                new_params["substitution_rate"] = opts.illumina_sub_rate
-            if opts.illumina_ins_rate is not None:
-                new_params["insertion_rate"] = opts.illumina_ins_rate
-            if opts.illumina_del_rate is not None:
-                new_params["deletion_rate"] = opts.illumina_del_rate
-        if name.startswith("nanopore"):
-            selected_profile = opts.nanopore_profile
-            profile_source = NANOPORE_PROFILES
-            if name == "nanopore_dnarsim":
-                selected_profile = opts.dnarsim_profile or opts.nanopore_profile
-                profile_source = DNARSIM_RATE_TABLES
+    try:
+        selection = adapt_channel_options_to_simulators(simulators, opts)
+    except ValueError as exc:
+        logger.error(str(exc))
+        raise SystemExit(1)
+    simulators = selection.simulators
+    for warning in selection.warnings:
+        logger.warning(warning)
 
-            if selected_profile:
-                prof = profile_source.get(selected_profile)
-                if prof is None:
-                    label = "DNArSim" if name == "nanopore_dnarsim" else "Nanopore"
-                    logger.error("Unknown %s profile: %s", label, selected_profile)
-                    raise SystemExit(1)
-                for k, v in prof.items():
-                    new_params.setdefault(k, v)
-                if name == "nanopore_dnarsim":
-                    new_params.setdefault("profile", selected_profile)
+    if opts.nanopore_profile_file:
+        file_params = _load_profile_file(opts.nanopore_profile_file)
+        with_file: list[tuple[str, dict[str, object]]] = []
+        for name, params in simulators:
+            new_params = dict(params)
+            if name.startswith("nanopore"):
+                for key, value in file_params.items():
+                    new_params.setdefault(key, value)
+            with_file.append((name, new_params))
+        simulators = with_file
 
-            if opts.nanopore_profile_file:
-                file_params = _load_profile_file(opts.nanopore_profile_file)
-                for k, v in file_params.items():
-                    new_params.setdefault(k, v)
-            if opts.nanopore_depth is not None:
-                new_params["coverage"] = opts.nanopore_depth
-            if opts.nanopore_quality is not None:
-                new_params["quality_profile"] = opts.nanopore_quality
-            if opts.nanopore_context is not None:
-                new_params["context_errors"] = opts.nanopore_context
-            if opts.nanopore_sub_rate is not None:
-                new_params["substitution_rate"] = opts.nanopore_sub_rate
-            if opts.nanopore_ins_rate is not None:
-                new_params["insertion_rate"] = opts.nanopore_ins_rate
-            if opts.nanopore_del_rate is not None:
-                new_params["deletion_rate"] = opts.nanopore_del_rate
-            if name == "nanopore_dnarsim":
-                for unsupported in ("insertion_profile", "deletion_profile"):
-                    new_params.pop(unsupported, None)
-        if name == "indel":
-            indel_profile = opts.indel_profile
-            if indel_profile is None and not any(
-                rate is not None
-                for rate in (opts.sub_rate, opts.ins_rate, opts.del_rate)
-            ):
-                indel_profile = DEFAULT_ADAPTER_PROFILE
-            if indel_profile is not None:
-                if indel_profile not in INDEL_PROFILES and indel_profile not in ADAPTER_PROFILES:
-                    logger.error("Unknown indel profile: %s", indel_profile)
-                    raise SystemExit(1)
-                new_params.setdefault("profile", indel_profile)
-            if opts.sub_rate is not None:
-                new_params["substitution_prob"] = opts.sub_rate
-            if opts.ins_rate is not None:
-                new_params["insertion_prob"] = opts.ins_rate
-            if opts.del_rate is not None:
-                new_params["deletion_prob"] = opts.del_rate
-        if name == "simple" and opts.sub_rate is not None:
-            new_params["substitution_prob"] = opts.sub_rate
-        if name == "illumina_builtin":
-            if opts.sub_rate is not None:
-                new_params["error_rate"] = opts.sub_rate
-            if opts.illumina_depth is not None:
-                new_params["coverage_depth"] = opts.illumina_depth
-            if opts.illumina_quality is not None:
-                new_params["quality_distribution"] = opts.illumina_quality
-        updated.append((name, new_params))
-    simulators = updated
 
     process_channel(
         args.input_file,
@@ -942,21 +878,18 @@ def _handle_run(args: argparse.Namespace) -> None:
             if name == "nanopore_dnarsim":
                 params.setdefault("profile", args.dnarsim_profile)
     if args.indel_profile is not None:
-        if args.indel_profile not in INDEL_PROFILES and args.indel_profile not in ADAPTER_PROFILES:
+        try:
+            validate_indel_profile(args.indel_profile)
+        except ValueError:
             logger.error("Unknown indel profile: %s", args.indel_profile)
             raise SystemExit(1)
-        for name, params in simulators:
-            if name == "indel":
-                params.setdefault("profile", args.indel_profile)
-    else:
-        for name, params in simulators:
-            if name == "indel" and "profile" not in params:
-                if any(
-                    key in params
-                    for key in ("substitution_prob", "insertion_prob", "deletion_prob", "error_rate")
-                ):
-                    continue
-                params.setdefault("profile", DEFAULT_ADAPTER_PROFILE)
+
+    simulators, compat_warnings = apply_run_indel_profile_compat(
+        simulators,
+        indel_profile=args.indel_profile,
+    )
+    for warning in compat_warnings:
+        logger.warning(warning)
     if args.nanopore_profile_file is not None:
         prof = _load_profile_file(args.nanopore_profile_file)
         for name, params in simulators:

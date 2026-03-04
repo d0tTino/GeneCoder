@@ -5,6 +5,8 @@ from pathlib import Path
 
 SRC_ROOT = Path("src/genecoder")
 
+LEGACY_CHANNEL_ADAPTER_MODULE = "genecoder.channel_engine.legacy_adapter"
+
 LEGACY_MODULES = {
     "genecoder.pipeline",
     "genecoder.api",
@@ -93,6 +95,16 @@ def test_only_compat_adapters_can_import_legacy_modules() -> None:
             continue
         if module not in APPROVED_LEGACY_IMPORTERS:
             violations.append(f"{module} imports {bad}")
+    assert not violations, "\n".join(violations)
+
+
+def test_interface_packages_do_not_import_channel_legacy_adapter() -> None:
+    violations: list[str] = []
+    for module, imports in _all_imports().items():
+        if not _is_interface_module(module):
+            continue
+        if LEGACY_CHANNEL_ADAPTER_MODULE in imports:
+            violations.append(f"{module} imports {LEGACY_CHANNEL_ADAPTER_MODULE}")
     assert not violations, "\n".join(violations)
 
 

@@ -35,3 +35,10 @@ an older plugin:
    invoke ``finalize_batch_statistics`` to generate aggregate metrics.
 4. Reuse ``apply_legacy_simulator`` for simple passthrough simulators that do not
    yet understand batches; it automatically produces ``SequenceBatch`` outputs.
+
+
+## Channel CLI legacy boundary
+
+`genecoder.cli.channel` now resolves profiles and mutation behavior from `genecoder.simulators.*` modules and the typed channel option adapter in `genecoder.simulators.channel_cli_adapter`.
+
+Legacy `channel_engine.legacy_adapter` usage is restricted to compatibility shims under `genecoder.compat.*` and deprecated top-level re-export modules. If you still use legacy flags such as `--indel-profile` with adapter-era aliases, the CLI emits migration warnings and maps them onto modern profile names (`illumina`, `nanopore`).
