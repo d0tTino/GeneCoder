@@ -4,6 +4,22 @@ GeneCoder aims to make DNA data storage experimentation practical and reproducib
 
 ## Vision and Current State
 
+
+> Phase-gate criteria are canonically defined in [`docs/development_roadmap.md`](development_roadmap.md). This vision doc is a narrative summary only.
+
+<!-- capabilities:vision-status:start -->
+## Capability status snapshot (generated from `docs/capabilities.yaml`)
+
+| Capability | Status | Phase | Owner modules | Validation artifacts |
+| --- | --- | --- | --- | --- |
+| CLI bundle presets for end-to-end pipelines | `implemented` | 1 | `src/genecoder/cli/bundle.py`<br>`src/genecoder/pipeline.py` | `tests/test_cli_bundle.py`, `docs/mvp_checklist.md` |
+| Illumina simulation with profile-resolved errors | `implemented` | 1 | `src/genecoder/simulators/illumina/simulator.py`<br>`src/genecoder/simulators/illumina/profiles.py` | `tests/test_illumina_coverage_quality.py`, `docs/channel_profiles.md` |
+| Nanopore simulation with context-aware profile controls | `implemented` | 1 | `src/genecoder/simulators/nanopore.py`<br>`src/genecoder/simulators/nanopore_profiles.py` | `tests/test_nanopore_context_profile.py`, `docs/channel_profiles.md` |
+| Deterministic seed/profile reproducibility governance | `partial` | 2 | `src/genecoder/pipeline.py`<br>`src/genecoder/cli/main.py` | `tests/test_simulator_seed_reproducibility.py`, `docs/reproducibility.md` |
+| Standardized benchmark depth and parity validation | `partial` | 3 | `benchmarks/throughput.py`<br>`benchmarks/error_rate.py` | `benchmarks/throughput.py`, `benchmarks/error_rate.py`, `docs/performance.md` |
+| Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`configs/registry.yaml` | `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py`, `docs/plugins.md` |
+<!-- capabilities:vision-status:end -->
+
 GeneCoder already ships an end-to-end simulation path for common DNA storage experiments. The current implementation includes:
 
 - **Built-in sequencing simulators and presets** for **Illumina** and **Nanopore** workflows, including profile-driven runs in the bundled pipeline examples.

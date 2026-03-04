@@ -9,6 +9,7 @@ Use this alongside:
 - [Development roadmap KPI governance](development_roadmap.md)
 
 > **Phase framework note:** Use phase numbering/names from `docs/development_roadmap.md` as canonical when interpreting milestones in this execution plan.
+> **Capability metadata note:** Feature status, ownership modules, and validation artifact references live in `docs/capabilities.yaml`; CI verifies strategy/vision status sections stay synchronized with that matrix.
 
 ## KPI tracking fields (apply to every milestone)
 
@@ -25,17 +26,20 @@ Record these fields in milestone notes, release checklists, or issue templates:
 Threshold values above are the initial governance defaults and are expected to
 be tightened as test coverage, profile breadth, and benchmark stability improve.
 
-## MVP gate (release-blocking)
+## Phase-gate measurable checks (execution mapping)
 
-The following gate is a required pass/fail checklist for promoting MVP releases.
-Any failure is release-blocking until a documented exception is approved by the
-roadmap governance owners.
+`docs/development_roadmap.md` is the only canonical phase-gate definition.
+This section is an implementation-facing mapping that ties each canonical gate
+to explicit measurable checks, repository evidence paths, and execution commands.
 
-| Gate KPI | Artifact(s) | Pass criterion | Fail condition |
-| --- | --- | --- | --- |
-| Decode success by preset | `tests/test_pipeline*.py` | All MVP preset pipeline tests pass and computed decode success is `>= 0.95` per preset in the CI report summary. | Any MVP preset test failure or decode success `< 0.95` for a covered preset. |
-| Reproducibility stability | `tests/test_simulator_seed_reproducibility.py` | CI job passes and rolling reproducibility pass rate is `>= 0.99`. | Test failure, flaky rerun not resolved, or rolling rate `< 0.99`. |
-| Throughput/runtime budget | `benchmarks/throughput.py` | Median runtime is `<= 45 s/MB` for the benchmarked MVP workload and profile matrix. | Runtime median exceeds `45 s/MB` without an approved waiver. |
+| Canonical gate | Measurable check | Threshold | Explicit check command(s) | Evidence/docs links |
+| --- | --- | --- | --- | --- |
+| Phase 1 -> Phase 2 | Weekly usage sustainability | `oligos_per_week >= 1,000` for 4 consecutive ISO weeks | `genecli stats` and `/metrics` export review | `~/.genecoder/metrics.json`, `docs/metrics.md` |
+| Phase 2 -> Phase 3 | Deterministic reproducibility stability | 100% pass for deterministic seed/profile checks across two consecutive weeks | `pytest tests/test_simulator_seed_reproducibility.py tests/test_illumina_coverage_quality.py tests/test_nanopore_context_profile.py` | CI pytest logs, `docs/reproducibility.md` |
+| Phase 2 -> Phase 3 | Throughput floor | Median Base-4 encode throughput `>= 2.0 MB/s` | `PYTHONPATH=src python benchmarks/throughput.py` | Benchmark stdout artifact, `docs/performance.md` |
+| Phase 3 -> Phase 4 | BER baseline quality | BER `<= 0.01` for baseline profile/seed | `PYTHONPATH=src python benchmarks/error_rate.py` | Benchmark stdout artifact, `docs/performance.md` |
+| Phase 3 -> Phase 4 | Suite category health | Green CI across CLI/API, pipeline/simulation, and plugins/security test categories | `pytest tests/test_cli*.py tests/test_web_api*.py`<br>`pytest tests/test_pipeline*.py tests/test_simulator*.py`<br>`pytest tests/test_plugin*.py tests/test_security*.py` | CI pytest summaries, `docs/development_roadmap.md` |
+| Phase 4 release gate | Plugin policy compliance | 100% pass for plugin spec/security checks before publication | `pytest tests/test_plugin_spec_validation.py tests/test_plugin_security.py` | CI logs, `configs/registry.yaml`, `docs/plugins.md` |
 
 ## KPI governance ownership and revision policy
 
