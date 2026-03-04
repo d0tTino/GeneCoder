@@ -29,6 +29,22 @@ DOC_CONFIGS = {
 }
 
 
+def _collect_missing_matrix_paths(matrix: dict, root: Path) -> list[str]:
+    missing: list[str] = []
+    for capability in matrix.get("capabilities", []):
+        capability_id = capability.get("id", "<unknown>")
+        for owner_module in capability.get("owner_modules", []):
+            if not (root / owner_module).exists():
+                missing.append(f"{capability_id}: owner_modules -> {owner_module}")
+        for artifact in capability.get("validation_artifacts", []):
+            artifact_path = artifact.get("path")
+            if artifact_path and not (root / artifact_path).exists():
+                missing.append(
+                    f"{capability_id}: validation_artifacts.path -> {artifact_path}"
+                )
+    return missing
+
+
 def _artifact_list(capability: dict) -> str:
     entries = capability.get("validation_artifacts", [])
     if not entries:
@@ -70,6 +86,13 @@ def main() -> int:
     args = parser.parse_args()
 
     matrix = yaml.safe_load(MATRIX_PATH.read_text(encoding="utf-8"))
+    missing_matrix_paths = _collect_missing_matrix_paths(matrix, ROOT)
+    if missing_matrix_paths:
+        print("Missing files referenced by docs/capabilities.yaml:")
+        for entry in missing_matrix_paths:
+            print(f" - {entry}")
+        return 1
+
     caps_by_id = {item["id"]: item for item in matrix.get("capabilities", [])}
     strategy_sections = matrix.get("strategy_sections", {})
 

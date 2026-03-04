@@ -11,7 +11,7 @@ capabilities:
       - src/genecoder/pipeline.py
     validation_artifacts:
       - type: test
-        path: tests/test_cli_bundle.py
+        path: tests/test_bundle.py
       - type: doc
         path: docs/mvp_checklist.md
 
@@ -20,7 +20,7 @@ capabilities:
     status: implemented
     phase: 1
     owner_modules:
-      - src/genecoder/simulators/illumina/simulator.py
+      - src/genecoder/simulators/illumina/channel.py
       - src/genecoder/simulators/illumina/profiles.py
     validation_artifacts:
       - type: test
@@ -47,7 +47,7 @@ capabilities:
     phase: 2
     owner_modules:
       - src/genecoder/pipeline.py
-      - src/genecoder/cli/main.py
+      - src/genecoder/cli/cli.py
     validation_artifacts:
       - type: test
         path: tests/test_simulator_seed_reproducibility.py
