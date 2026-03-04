@@ -139,6 +139,7 @@ phase_gates:
           - docs/performance.md
         evidence_artifacts:
           - benchmark stdout artifact
+          - benchmark gate JSON artifact
 
   - gate: "Phase 3 -> Phase 4"
     canonical_source: docs/development_roadmap.md
@@ -151,6 +152,7 @@ phase_gates:
           - docs/performance.md
         evidence_artifacts:
           - benchmark stdout artifact
+          - benchmark gate JSON artifact
       - metric: Suite category health
         threshold: "Green CI across CLI/API, pipeline/simulation, plugins/security categories"
         tests_or_checks:

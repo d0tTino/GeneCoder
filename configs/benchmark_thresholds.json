@@ -1,0 +1,26 @@
+{
+  "throughput": {
+    "gate": "Phase 2 -> Phase 3",
+    "metric": "Throughput median floor",
+    "benchmark_command": "PYTHONPATH=src python benchmarks/throughput.py",
+    "references": [
+      "docs/development_roadmap.md",
+      "docs/capabilities.yaml"
+    ],
+    "thresholds": {
+      "base4_encode_mb_s_min": 2.0
+    }
+  },
+  "error_rate": {
+    "gate": "Phase 3 -> Phase 4",
+    "metric": "BER baseline quality",
+    "benchmark_command": "PYTHONPATH=src python benchmarks/error_rate.py",
+    "references": [
+      "docs/development_roadmap.md",
+      "docs/capabilities.yaml"
+    ],
+    "thresholds": {
+      "ber_max": 0.01
+    }
+  }
+}
