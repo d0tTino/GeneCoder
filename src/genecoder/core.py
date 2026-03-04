@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+import warnings
 from collections import Counter
 from pathlib import Path
 from dataclasses import dataclass
@@ -46,6 +47,19 @@ __all__ = [
     "compile_coding_stack",
     "inspect_coding_plan",
 ]
+
+ORCHESTRATION_DEPRECATION_GATE = "v0.18.0"
+
+
+def _warn_orchestration_deprecation(name: str) -> None:
+    warnings.warn(
+        (
+            f"genecoder.core.{name} is a compatibility facade and will be removed in "
+            f"{ORCHESTRATION_DEPRECATION_GATE}; use genecoder.app.RunPipelineUseCase instead."
+        ),
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 @dataclass(slots=True)
@@ -461,6 +475,8 @@ def run_canonical_pipeline(
     run_context: RunContext | None = None,
 ) -> CanonicalRuntimeResult:
     """Execute the canonical internal runtime route: encode → simulate → decode."""
+
+    _warn_orchestration_deprecation("run_canonical_pipeline")
 
     init_plugins()
     runtime_context = run_context or make_run_context()
@@ -1036,6 +1052,7 @@ def run_pipeline(
 
     The decoded bytes are written to ``output_path`` and also returned.
     """
+    _warn_orchestration_deprecation("run_pipeline")
     original_data = Path(input_path).read_bytes()
     result = run_canonical_pipeline(codec, fec, channel, original_data)
     Path(output_path).write_bytes(result.decoded)
