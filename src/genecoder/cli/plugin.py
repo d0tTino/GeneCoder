@@ -4,6 +4,7 @@ import argparse
 import logging
 
 import genecoder.plugin_runtime as plugins
+from genecoder.app.ui_service import UIService
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
 
 
 def _handle_list(args: argparse.Namespace) -> None:
-    if not plugins.PLUGIN_CATALOG:
+    plugin_catalog = UIService().list_plugins().get("plugins", {})
+    if not plugin_catalog:
         logger.info("No plugin catalog available")
         return
-    for name, meta in plugins.PLUGIN_CATALOG.items():
+    for name, meta in plugin_catalog.items():
         version = meta.get("version", "")
         desc = meta.get("description", "")
         display = f"{name}" + (f"=={version}" if version else "")

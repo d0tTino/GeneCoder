@@ -17,7 +17,6 @@ import re
 from genecoder.options import EncodeOptions
 from genecoder import perform_encoding, perform_decoding
 from genecoder.plugin_manager import init_plugins
-from genecoder import plugins
 from genecoder.cli import plugin as plugin_cli
 from genecoder.encoders import calculate_gc_content, decode_base4_direct
 from genecoder.utils import get_max_homopolymer_length, get_temp_dir, bit_error_rate
@@ -27,6 +26,7 @@ from genecoder.plotting import (
     generate_sequence_analysis_plot,
 )
 from genecoder.app import AnalyzeRequest as AnalyzeUseCaseRequest, AnalyzeUseCase
+from genecoder.app.ui_service import ArtifactExportRequest, UIService
 from genecoder.error_simulation import introduce_errors
 from genecoder.simulators.batch_utils import mutation_counts
 from genecoder import constraint_fixer
@@ -291,6 +291,7 @@ async def dashboard_deepdna(
 
 
 _analyze_use_case = AnalyzeUseCase()
+_ui_service = UIService()
 
 
 @app.post("/analyze")
@@ -588,12 +589,61 @@ class PluginInstallRequest(BaseModel):
     name: str
 
 
+class CompareRunsRequest(BaseModel):
+    baseline: str
+    candidates: list[str]
+
+
+class ExportArtifactsRequest(BaseModel):
+    run_data: dict[str, object]
+    output_dir: str
+    run_id: str
+
+
+@app.get("/profiles")
+async def list_profiles() -> dict[str, object]:
+    return _ui_service.list_profiles()
+
+
+@app.post("/runs/compare")
+async def compare_runs_endpoint(
+    req: CompareRunsRequest,
+    _: None = Depends(verify_token),
+) -> dict[str, object]:
+    if not req.candidates:
+        raise HTTPException(status_code=400, detail="At least one candidate run is required")
+    baseline = req.baseline
+    first = req.candidates[0]
+    others = req.candidates[1:]
+    return _ui_service.compare_artifacts(baseline, first, *others)
+
+
+@app.post("/artifacts/load")
+async def load_artifact_endpoint(
+    artifact_path: str,
+    _: None = Depends(verify_token),
+) -> dict[str, object]:
+    return _ui_service.load_artifact(artifact_path)
+
+
+@app.post("/artifacts/export")
+async def export_artifacts_endpoint(
+    req: ExportArtifactsRequest,
+    _: None = Depends(verify_token),
+) -> dict[str, str]:
+    return _ui_service.export_artifacts(
+        ArtifactExportRequest(
+            run_data=req.run_data,
+            output_dir=req.output_dir,
+            run_id=req.run_id,
+        )
+    )
 
 
 @app.get("/plugins")
 async def list_plugins() -> dict[str, object]:
     """Return the plugin catalog."""
-    return {"plugins": plugins.PLUGIN_CATALOG}
+    return _ui_service.list_plugins()
 
 
 @app.post("/plugins/install")
