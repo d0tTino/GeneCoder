@@ -2,6 +2,7 @@
 
 from .analyze_use_case import AnalyzeRequest, AnalyzeResponse, AnalyzeUseCase
 from .encode_use_case import EncodeRequest, EncodeResponse, EncodeUseCase
+from .ui_service import ArtifactExportRequest, UIService
 from .pipeline_use_case import (
     ArtifactOutputPolicy,
     BatchSweepMatrix,
@@ -28,4 +29,6 @@ __all__ = [
     "RunPipelineRequest",
     "RunPipelineResponse",
     "RunPipelineUseCase",
+    "UIService",
+    "ArtifactExportRequest",
 ]

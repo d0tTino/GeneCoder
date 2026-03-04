@@ -28,3 +28,15 @@ Set `GENECODER_API_TOKEN` to your desired bearer token. When the server is
 running it serves the dashboard from `web/helix-ui/dist` at the root URL.
 
 See [mpi.md](mpi.md) for instructions on running channel simulations across multiple nodes using MPI.
+
+
+## Primary UI Track and Adapter Policy
+
+GeneCoder now maintains a single **primary UI track** for deployments:
+
+- **Primary (fully supported):** `genecli` + React dashboard (`/dashboard` in the FastAPI app).
+- **Optional adapters (best-effort support):** Flet desktop UI and Streamlit dashboards.
+
+All UI adapters must call the same headless application contract (`genecoder.app.ui_service.UIService`) for pipeline runs, run comparison, plugin/profile discovery, and artifact load/export. This keeps behavior consistent across transport layers.
+
+For production deployments, use CLI automation and/or the React dashboard as the default operator surface. Optional adapters may lag behind in feature parity and are not part of the strict deployment compatibility guarantee.
