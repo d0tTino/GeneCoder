@@ -39,7 +39,8 @@ Actual numbers will depend on your machine and Python version.
 Benchmark gate thresholds are centralized in
 `configs/benchmark_thresholds.json` and evaluated by
 `scripts/evaluate_benchmark_gates.py` so updates are intentional and reviewed
-in one place.
+in one place. Alignment to roadmap/capability gate definitions is validated by
+`scripts/check_benchmark_gate_alignment.py`.
 
 The Python CI workflow runs both benchmark commands and evaluates them against
 the phase-gate thresholds defined in `docs/development_roadmap.md` and
@@ -52,8 +53,12 @@ the phase-gate thresholds defined in `docs/development_roadmap.md` and
 
 Each run publishes artifacts for auditability:
 
-- Raw benchmark stdout (`*.stdout`)
-- Machine-readable gate evaluation JSON (`*-gate.json`)
+- Throughput job artifact `benchmark-throughput` with:
+  - `artifacts/benchmarks/throughput.stdout`
+  - `artifacts/benchmarks/throughput-gate.json`
+- BER job artifact `benchmark-error-rate` with:
+  - `artifacts/benchmarks/error_rate.stdout`
+  - `artifacts/benchmarks/error_rate-gate.json`
 
 You can run a local gate check with:
 
@@ -63,4 +68,10 @@ python scripts/evaluate_benchmark_gates.py \
   --benchmark throughput \
   --stdout-file throughput.stdout \
   --output-json throughput-gate.json
+```
+
+To verify thresholds and documentation stay in sync locally:
+
+```bash
+python scripts/check_benchmark_gate_alignment.py
 ```
