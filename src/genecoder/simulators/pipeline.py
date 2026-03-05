@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import inspect
 from typing import Iterable, List
 
 from ..channel_config import ChannelConfig
@@ -26,6 +27,25 @@ class ChannelPipeline(BaseChannel):
     def add_channel(self, channel: BaseChannel) -> None:
         self.channels.append(channel)
 
+    @staticmethod
+    def _apply_constructor_parameters(channel: BaseChannel, parameters: dict[str, object]) -> BaseChannel:
+        if not parameters:
+            return channel
+        signature = inspect.signature(type(channel).__init__)
+        accepted = {
+            name
+            for name, param in signature.parameters.items()
+            if name != "self" and param.kind in (param.POSITIONAL_OR_KEYWORD, param.KEYWORD_ONLY)
+        }
+        kwargs = {key: value for key, value in parameters.items() if key in accepted}
+        if not kwargs:
+            return channel
+        try:
+            updated = type(channel)(**kwargs)
+        except Exception:
+            return channel
+        return updated if isinstance(updated, BaseChannel) else channel
+
     def _resolve_channels(self, config: ChannelConfig) -> list[BaseChannel]:
         from ..dnarsim_adapter import DNArSimChannel
         from ..insilicoseq_adapter import InSilicoSeqChannel
@@ -33,12 +53,19 @@ class ChannelPipeline(BaseChannel):
         from ..simulators.nanopore import NanoporeChannel
 
         resolved: list[BaseChannel] = []
+        shared_parameters = dict(config.profile_parameters or {})
         for channel in self.channels:
             ch = channel
             if config.illumina_profile is not None and isinstance(ch, (InSilicoSeqChannel, IlluminaChannel)):
                 ch = ch.with_profile(config.illumina_profile)
+                illumina_params = dict(shared_parameters)
+                illumina_params.update(dict(config.illumina_parameters or {}))
+                ch = self._apply_constructor_parameters(ch, illumina_params)
             elif config.nanopore_profile is not None and isinstance(ch, (DNArSimChannel, NanoporeChannel)):
                 ch = ch.with_profile(config.nanopore_profile)
+                nanopore_params = dict(shared_parameters)
+                nanopore_params.update(dict(config.nanopore_parameters or {}))
+                ch = self._apply_constructor_parameters(ch, nanopore_params)
             resolved.append(ch)
         return resolved
 

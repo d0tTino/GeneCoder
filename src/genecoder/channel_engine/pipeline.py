@@ -106,6 +106,7 @@ class ChannelPipeline:
                     seed=stage_seed,
                     mutation_totals=StageMutationTotals(**mutation_totals_from_batch(current)),
                     metadata=dict(result.metadata),
+                    parameters=dict(result.parameters),
                 )
             )
 

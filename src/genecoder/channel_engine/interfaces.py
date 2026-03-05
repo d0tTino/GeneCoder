@@ -45,6 +45,7 @@ class StageProvenance:
     seed: int | None
     mutation_totals: StageMutationTotals = field(default_factory=StageMutationTotals)
     metadata: Mapping[str, str] = field(default_factory=dict)
+    parameters: Mapping[str, object] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -55,6 +56,7 @@ class StageProvenance:
             "seed": self.seed,
             "mutation_totals": self.mutation_totals.to_dict(),
             "metadata": dict(self.metadata),
+            "parameters": dict(self.parameters),
         }
 
 
@@ -65,6 +67,7 @@ class StageResult:
     output_batch: SequenceBatch
     profile_version: str | None = None
     metadata: Mapping[str, str] = field(default_factory=dict)
+    parameters: Mapping[str, object] = field(default_factory=dict)
 
 
 class SimulatorStage(Protocol):

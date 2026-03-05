@@ -3,8 +3,9 @@ from __future__ import annotations
 """Simple pipeline for processing sequences step by step."""
 
 from collections.abc import MutableMapping
+import json
 from pathlib import Path
-from typing import Any, Mapping, Tuple
+from typing import Any, Mapping, Tuple, TypeAlias
 
 from genecoder.plugin_manager import init_plugins
 from genecoder.formats import SequenceBatch
@@ -12,7 +13,10 @@ from genecoder.simulators.batch_utils import RESULT_COVERAGE_KEY, RESULT_DROPOUT
 from genecoder import core
 from genecoder.runtime import RunContext, make_run_context
 
-__all__ = ["SequencePipeline", "run_pipeline"]
+ProfileParameterValue: TypeAlias = str | int | float | bool
+ProfileParameterOverrides: TypeAlias = Mapping[str, ProfileParameterValue]
+
+__all__ = ["SequencePipeline", "run_pipeline", "ProfileParameterOverrides", "ProfileParameterValue"]
 
 from genecoder.compat.legacy import SequencePipeline
 
@@ -70,6 +74,7 @@ def run_pipeline(
     output_path: str,
     filter_mutated: bool = False,
     run_context: RunContext | None = None,
+    profile_parameter_overrides: ProfileParameterOverrides | None = None,
 ) -> Tuple[bytes, dict[str, Any], Mapping[str, Any] | None]:
     """Process ``input_path`` through the selected codec, FEC and channel.
 
@@ -90,6 +95,7 @@ def run_pipeline(
         original_data,
         filter_mutated=filter_mutated,
         run_context=runtime_seed_context,
+        channel_parameters=profile_parameter_overrides,
     )
 
     simulated_batch = runtime.simulated_batch
@@ -112,7 +118,21 @@ def run_pipeline(
     decoded = runtime.decoded
     Path(output_path).write_bytes(decoded)
 
-    metrics_dict = runtime.metrics
+    metrics_dict = dict(runtime.metrics)
+
+    provenance_raw = simulated_batch.metadata.get("sim_stage_provenance")
+    if provenance_raw is not None:
+        try:
+            metrics_dict["_sim_stage_provenance"] = json.loads(provenance_raw) if isinstance(provenance_raw, str) else provenance_raw
+        except Exception:
+            metrics_dict["_sim_stage_provenance"] = provenance_raw
+
+    applied_params_raw = simulated_batch.metadata.get("sim_channel_parameters")
+    if applied_params_raw is not None:
+        try:
+            metrics_dict["_applied_channel_parameters"] = json.loads(applied_params_raw) if isinstance(applied_params_raw, str) else applied_params_raw
+        except Exception:
+            metrics_dict["_applied_channel_parameters"] = applied_params_raw
 
     if (
         fec_backend == "fountain"

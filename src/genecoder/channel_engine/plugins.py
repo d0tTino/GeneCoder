@@ -10,6 +10,23 @@ from ..simulators.batch_utils import apply_legacy_simulator
 from .interfaces import StageContext, StageResult
 
 
+def simulator_parameters(simulator: BaseChannel) -> dict[str, object]:
+    keys = (
+        "error_rate",
+        "substitution_rate",
+        "insertion_rate",
+        "deletion_rate",
+        "coverage",
+        "read_length",
+        "profile",
+    )
+    params: dict[str, object] = {}
+    for key in keys:
+        if hasattr(simulator, key):
+            params[key] = getattr(simulator, key)
+    return params
+
+
 @dataclass
 class SimulatorStagePlugin:
     """Adapter that exposes an existing simulator as a channel stage plugin."""
@@ -49,7 +66,12 @@ class SimulatorStagePlugin:
         merged_metadata.update(context.metadata)
         merged_metadata["sim_stage"] = self.stage_name
         out.metadata.update(merged_metadata)
-        return StageResult(output_batch=out, profile_version=profile, metadata=merged_metadata)
+        return StageResult(
+            output_batch=out,
+            profile_version=profile,
+            metadata=merged_metadata,
+            parameters=simulator_parameters(sim),
+        )
 
 
 def mutation_totals_from_batch(batch: SequenceBatch) -> dict[str, int]:
