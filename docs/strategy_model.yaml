@@ -1,0 +1,112 @@
+version: 1
+last_validated_commit: "4eb89f0cde3b7d75fcaf8311634be19ec56b90f0"
+
+phases:
+  - id: 1
+    name: Foundation sustainment
+    objective: Keep MVP workflows reliable and reproducible.
+    execution_focus: Stabilize shipped bundles, manifests, and dashboard compatibility.
+  - id: 2
+    name: Robust encoding pipeline
+    objective: Expand profile/codec breadth while preserving determinism.
+    execution_focus: Increase simulator profile coverage without violating runtime budgets.
+  - id: 3
+    name: Simulation and analysis
+    objective: Scale benchmark quality and cross-suite confidence.
+    execution_focus: Enforce BER, throughput, and category-level CI guardrails.
+  - id: 4
+    name: Ecosystem and automation
+    objective: Harden plugin governance and operational automation.
+    execution_focus: Keep registry publication and execution policy checks continuously green.
+
+feature_capabilities:
+  - id: cli_bundle_presets
+    name: CLI bundle presets for end-to-end pipelines
+    status: implemented
+    phase: 1
+    owner_modules:
+      - src/genecoder/cli/bundle.py
+      - src/genecoder/pipeline.py
+  - id: illumina_simulation_profiles
+    name: Illumina simulation with profile-resolved errors
+    status: implemented
+    phase: 1
+    owner_modules:
+      - src/genecoder/simulators/illumina/channel.py
+      - src/genecoder/simulators/illumina/profiles.py
+  - id: nanopore_simulation_profiles
+    name: Nanopore simulation with context-aware profile controls
+    status: implemented
+    phase: 1
+    owner_modules:
+      - src/genecoder/simulators/nanopore.py
+      - src/genecoder/simulators/nanopore_profiles.py
+  - id: deterministic_reproducibility_governance
+    name: Deterministic seed/profile reproducibility governance
+    status: partial
+    phase: 2
+    owner_modules:
+      - src/genecoder/pipeline.py
+      - src/genecoder/cli/cli.py
+  - id: benchmark_depth_and_parity
+    name: Standardized benchmark depth and parity validation
+    status: partial
+    phase: 3
+    owner_modules:
+      - benchmarks/throughput.py
+      - benchmarks/error_rate.py
+  - id: plugin_registry_policy_automation
+    name: Plugin registry policy/security automation
+    status: partial
+    phase: 4
+    owner_modules:
+      - src/genecoder/plugin_manager.py
+      - src/genecoder/plugin_runtime/registry.py
+
+kpi_gates:
+  - gate: Phase 1 -> Phase 2
+    checks:
+      - metric: Weekly usage (oligos_per_week)
+        threshold: ">= 1,000 simulated oligos/week for 4 consecutive ISO weeks"
+        evidence:
+          - ~/.genecoder/metrics.json
+          - docs/metrics.md
+  - gate: Phase 2 -> Phase 3
+    checks:
+      - metric: Deterministic reproducibility stability
+        threshold: "100% deterministic seed/profile checks for 2 consecutive weeks"
+        evidence:
+          - tests/test_simulator_seed_reproducibility.py
+          - tests/test_illumina_coverage_quality.py
+          - tests/test_nanopore_context_profile.py
+      - metric: Throughput floor
+        threshold: ">= 2.0 MB/s Base-4 encode throughput"
+        evidence:
+          - benchmarks/throughput.py
+          - docs/performance.md
+  - gate: Phase 3 -> Phase 4
+    checks:
+      - metric: BER baseline quality
+        threshold: "<= 0.01 BER on baseline profile/seed"
+        evidence:
+          - benchmarks/error_rate.py
+          - docs/performance.md
+      - metric: Suite category health
+        threshold: Green CI across CLI/API, pipeline/simulation, and plugins/security suites
+        evidence:
+          - tests/test_cli*.py
+          - tests/test_pipeline*.py
+          - tests/test_plugin*.py
+  - gate: Phase 4 release gate
+    checks:
+      - metric: Plugin policy compliance
+        threshold: 100% pass on plugin spec/security checks before publication
+        evidence:
+          - tests/test_plugin_spec_validation.py
+          - tests/test_plugin_security.py
+          - configs/registry.yaml
+
+deployment_posture:
+  cloud_enabled: false
+  cloud_worker_enabled: false
+  local_execution_only: true
