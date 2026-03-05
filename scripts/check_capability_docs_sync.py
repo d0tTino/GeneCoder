@@ -34,11 +34,21 @@ def _collect_missing_matrix_paths(matrix: dict, root: Path) -> list[str]:
     for capability in matrix.get("capabilities", []):
         capability_id = capability.get("id", "<unknown>")
         for owner_module in capability.get("owner_modules", []):
+            if not isinstance(owner_module, str) or not owner_module.strip():
+                missing.append(
+                    f"{capability_id}: owner_modules -> <missing or invalid path entry>"
+                )
+                continue
             if not (root / owner_module).exists():
                 missing.append(f"{capability_id}: owner_modules -> {owner_module}")
         for artifact in capability.get("validation_artifacts", []):
             artifact_path = artifact.get("path")
-            if artifact_path and not (root / artifact_path).exists():
+            if not isinstance(artifact_path, str) or not artifact_path.strip():
+                missing.append(
+                    f"{capability_id}: validation_artifacts.path -> <missing or invalid path entry>"
+                )
+                continue
+            if not (root / artifact_path).exists():
                 missing.append(
                     f"{capability_id}: validation_artifacts.path -> {artifact_path}"
                 )
