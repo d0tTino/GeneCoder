@@ -103,6 +103,10 @@ def test_kpi_contract_fields_present_for_comparison_views() -> None:
         "gc_stress",
         "homopolymer_stress",
         "decode_success",
+        "runtime_total_seconds",
+        "runtime_encode_seconds",
+        "runtime_simulate_seconds",
+        "runtime_decode_seconds",
     }
     assert expected.issubset(metrics)
     assert metrics["decode_success"] is True

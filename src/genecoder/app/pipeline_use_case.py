@@ -109,7 +109,13 @@ class RunPipelineUseCase:
         )
 
         sim_stage_provenance = metrics.pop("_sim_stage_provenance", [])
+        sim_stage_metrics = metrics.pop("_sim_stage_metrics", [])
+        runtime_metrics = metrics.pop("_runtime", {})
         applied_channel_parameters = metrics.pop("_applied_channel_parameters", dict(request.profile.parameters) if request.profile else {})
+
+        constraint_outcomes_payload = metrics.get("constraint_outcomes") if isinstance(metrics.get("constraint_outcomes"), Mapping) else {}
+        constraint_by_oligo = constraint_outcomes_payload.get("by_oligo") if isinstance(constraint_outcomes_payload.get("by_oligo"), Mapping) else {}
+        constraint_stage_breakdown = constraint_outcomes_payload.get("stages") if isinstance(constraint_outcomes_payload.get("stages"), list) else []
 
         metrics_path = Path(request.artifacts.metrics_path or str(request.output_path) + ".json")
         run_schema: dict[str, Any] = {
@@ -129,10 +135,10 @@ class RunPipelineUseCase:
                 "provenance": run_context.seed_provenance(),
             },
             "runtime": {
-                "total_seconds": None,
-                "encode_seconds": None,
-                "simulate_seconds": None,
-                "decode_seconds": None,
+                "total_seconds": runtime_metrics.get("total_seconds"),
+                "encode_seconds": runtime_metrics.get("encode_seconds"),
+                "simulate_seconds": runtime_metrics.get("simulate_seconds"),
+                "decode_seconds": runtime_metrics.get("decode_seconds"),
             },
             "stages": {
                 "encode": {
@@ -154,6 +160,7 @@ class RunPipelineUseCase:
                         "coverage": metrics.get("coverage"),
                         "dropout_count": metrics.get("dropout_count"),
                         "dropout_fraction": metrics.get("dropout_fraction"),
+                        "stage_metrics": sim_stage_metrics if isinstance(sim_stage_metrics, list) else [],
                     },
                 },
                 "decode": {
@@ -196,7 +203,8 @@ class RunPipelineUseCase:
             },
             "constraint_outcomes": {
                 "summary": metrics.get("constraint_violations"),
-                "by_oligo": {},
+                "by_oligo": dict(constraint_by_oligo),
+                "stages": list(constraint_stage_breakdown),
             },
             "decode_outcomes": {
                 "decode_success": metrics.get("decode_success"),

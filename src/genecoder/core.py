@@ -83,6 +83,7 @@ class CanonicalRuntimeResult:
     insertions: int | None
     deletions: int | None
     coverage: int | None
+    runtime: Mapping[str, float]
 
 
 
@@ -483,7 +484,13 @@ def run_canonical_pipeline(
     init_plugins()
     runtime_context = run_context or make_run_context()
 
+    total_started_at = time.perf_counter()
+
+    encode_started_at = time.perf_counter()
     encoded_batch, fec_info = encode(codec, fec, original_data, run_context=runtime_context)
+    encode_seconds = time.perf_counter() - encode_started_at
+
+    simulate_started_at = time.perf_counter()
     try:
         simulated, subs, ins, dels, coverage = simulate(
             channel,
@@ -512,10 +519,14 @@ def run_canonical_pipeline(
             )
         else:
             raise
+    simulate_seconds = time.perf_counter() - simulate_started_at
+
     simulated_batch = (
         simulated if isinstance(simulated, SequenceBatch) else _wrap_single_sequence(str(simulated))
     )
     decode_input = _batch_for_decode(simulated_batch, filter_mutated=filter_mutated)
+
+    decode_started_at = time.perf_counter()
     decoded = decode(
         codec,
         fec,
@@ -525,6 +536,8 @@ def run_canonical_pipeline(
         survivor_batch=decode_input,
         run_context=runtime_context,
     )
+    decode_seconds = time.perf_counter() - decode_started_at
+
     metrics_dict = metrics(
         simulated_batch,
         original_data,
@@ -539,6 +552,8 @@ def run_canonical_pipeline(
             dict(fec_info).get("constraint_outcomes") if isinstance(fec_info, Mapping) else None
         ),
     )
+    total_seconds = time.perf_counter() - total_started_at
+
     return CanonicalRuntimeResult(
         original_data=original_data,
         encoded_batch=encoded_batch,
@@ -552,6 +567,12 @@ def run_canonical_pipeline(
         insertions=ins,
         deletions=dels,
         coverage=coverage,
+        runtime={
+            "total_seconds": total_seconds,
+            "encode_seconds": encode_seconds,
+            "simulate_seconds": simulate_seconds,
+            "decode_seconds": decode_seconds,
+        },
     )
 
 
