@@ -498,6 +498,24 @@ def register_subcommand(
         ),
     )
     parser.add_argument(
+        "--illumina-profile",
+        choices=sorted(ILLUMINA_PROFILES),
+        default=None,
+        help=(
+            "Named Illumina profile override for pipeline runs. "
+            "Takes precedence over values loaded from --config."
+        ),
+    )
+    parser.add_argument(
+        "--nanopore-profile",
+        choices=sorted(NANOPORE_PROFILES),
+        default=None,
+        help=(
+            "Named Nanopore profile override for pipeline runs. "
+            "Takes precedence over values loaded from --config."
+        ),
+    )
+    parser.add_argument(
         "--sub-rate",
         type=float,
         default=None,
@@ -580,6 +598,47 @@ def _handle_command(args: argparse.Namespace) -> None:
     fec = args.fec if args.fec is not None else cfg_fec
     channel = args.channel or cfg_channel
     channel_params = cfg_params if channel == cfg_channel else {}
+
+    resolved_channel_config = ChannelConfig(
+        illumina_profile=(
+            args.illumina_profile
+            if args.illumina_profile is not None
+            else (
+                str(channel_params.get("illumina_profile"))
+                if channel_params.get("illumina_profile") is not None
+                else None
+            )
+        ),
+        nanopore_profile=(
+            args.nanopore_profile
+            if args.nanopore_profile is not None
+            else (
+                str(channel_params.get("nanopore_profile"))
+                if channel_params.get("nanopore_profile") is not None
+                else None
+            )
+        ),
+    )
+
+    if resolved_channel_config.illumina_profile is not None:
+        channel_params["illumina_profile"] = resolved_channel_config.illumina_profile
+    if resolved_channel_config.nanopore_profile is not None:
+        channel_params["nanopore_profile"] = resolved_channel_config.nanopore_profile
+
+    if channel in {"illumina", "illumina_builtin", "illumina_d2sim", "illumina_insilicoseq"}:
+        selected_illumina_profile = resolved_channel_config.illumina_profile
+        if selected_illumina_profile is None and channel_params.get("profile") is not None:
+            selected_illumina_profile = str(channel_params["profile"])
+        if selected_illumina_profile is not None:
+            channel_params["profile"] = selected_illumina_profile
+
+    if channel in {"nanopore", "nanopore_d2sim", "nanopore_desp", "nanopore_dnarsim", "dnarsim"}:
+        selected_nanopore_profile = resolved_channel_config.nanopore_profile
+        if selected_nanopore_profile is None and channel_params.get("profile") is not None:
+            selected_nanopore_profile = str(channel_params["profile"])
+        if selected_nanopore_profile is not None:
+            channel_params["profile"] = selected_nanopore_profile
+
     if channel is not None and channel != "none":
         if args.sub_rate is not None:
             if channel == "indel":

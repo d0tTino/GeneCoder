@@ -50,7 +50,7 @@ The CLI also exposes `--seed` wherever randomness is involved. Passing
 of the command, so you can either export it globally or set it per invocation:
 
 ```bash
-genecli pipeline input.txt decoded.txt --channel illumina --profile miseq --seed 12345
+genecli pipeline input.txt decoded.txt --channel illumina --illumina-profile miseq --seed 12345
 ```
 
 Any sub-process launched by the CLI (including bundled simulators) inherits the
@@ -69,12 +69,12 @@ select the desired profile in your CLI commands or bundle configuration.
 # MiSeq-style short reads
 GENECODER_SIM_SEED=12345 genecli pipeline \
   examples/pipeline_demo_input.txt decoded_miseq.txt \
-  --channel illumina --profile miseq
+  --channel illumina --illumina-profile miseq
 
 # NovaSeq high-throughput profile
 GENECODER_SIM_SEED=12345 genecli pipeline \
   examples/pipeline_demo_input.txt decoded_novaseq.txt \
-  --channel illumina --profile novaseq
+  --channel illumina --illumina-profile novaseq
 ```
 
 ### Bundle and pipeline configurations

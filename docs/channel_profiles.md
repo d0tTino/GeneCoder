@@ -71,6 +71,13 @@ genecli channel --simulator nanopore --nanopore-profile r10 --nanopore-coverage 
     --input-file encoded.fasta --output-file r10_cov60.fasta
 ```
 
+Use matching profiles in `genecli pipeline` with the same explicit flags:
+
+```bash
+genecli pipeline input.bin decoded.bin --codec reverse --channel illumina --illumina-profile hiseq --seed 12345
+genecli pipeline input.bin decoded.bin --codec reverse --channel nanopore --nanopore-profile r10 --seed 12345
+```
+
 ### What Nanopore presets record in manifests and dashboards
 
 Nanopore presets also populate manifest summaries and dashboard panels. When you
