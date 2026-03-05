@@ -38,6 +38,8 @@ def test_cli_and_sdk_emit_same_run_schema_structure_for_seeded_profile_request(t
         input=str(source),
         output=str(output),
         emit_manifest_report=False,
+        illumina_profile=None,
+        nanopore_profile=None,
     )
     pipeline_cli._handle_command(cli_args)
     cli_schema = json.loads(Path(str(output) + ".json").read_text(encoding="utf-8"))
@@ -57,3 +59,43 @@ def test_cli_and_sdk_emit_same_run_schema_structure_for_seeded_profile_request(t
     )
 
     assert _schema_shape(cli_schema) == _schema_shape(dict(sdk_result.canonical_run))
+
+
+def test_successful_pipeline_runs_emit_non_null_runtime_telemetry(tmp_path: Path) -> None:
+    source = tmp_path / "input.bin"
+    source.write_bytes(b"runtime-telemetry")
+
+    output = tmp_path / "decoded.bin"
+    cli_args = argparse.Namespace(
+        seed=7,
+        metrics_path=None,
+        launch_dashboard=False,
+        config=None,
+        codec="reverse",
+        fec=None,
+        channel="simple",
+        sub_rate=0.0,
+        ins_rate=0.0,
+        del_rate=0.0,
+        explain_coding_stack=False,
+        mpi_workers=None,
+        input=str(source),
+        output=str(output),
+        emit_manifest_report=False,
+        illumina_profile=None,
+        nanopore_profile=None,
+    )
+    pipeline_cli._handle_command(cli_args)
+    cli_schema = json.loads(Path(str(output) + ".json").read_text(encoding="utf-8"))
+
+    runtime = cli_schema["runtime"]
+    assert runtime["total_seconds"] is not None
+    assert runtime["encode_seconds"] is not None
+    assert runtime["simulate_seconds"] is not None
+    assert runtime["decode_seconds"] is not None
+
+    dashboard_metrics = cli_schema["dashboard_metrics"]
+    assert dashboard_metrics["runtime_total_seconds"] == runtime["total_seconds"]
+    assert dashboard_metrics["runtime_encode_seconds"] == runtime["encode_seconds"]
+    assert dashboard_metrics["runtime_simulate_seconds"] == runtime["simulate_seconds"]
+    assert dashboard_metrics["runtime_decode_seconds"] == runtime["decode_seconds"]

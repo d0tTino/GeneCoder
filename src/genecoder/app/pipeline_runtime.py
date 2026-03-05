@@ -119,6 +119,7 @@ def run_pipeline(
     Path(output_path).write_bytes(decoded)
 
     metrics_dict = dict(runtime.metrics)
+    metrics_dict["_runtime"] = dict(runtime.runtime)
 
     provenance_raw = simulated_batch.metadata.get("sim_stage_provenance")
     if provenance_raw is not None:
@@ -133,6 +134,13 @@ def run_pipeline(
             metrics_dict["_applied_channel_parameters"] = json.loads(applied_params_raw) if isinstance(applied_params_raw, str) else applied_params_raw
         except Exception:
             metrics_dict["_applied_channel_parameters"] = applied_params_raw
+
+    stage_metrics_raw = simulated_batch.metadata.get("sim_stage_metrics")
+    if stage_metrics_raw is not None:
+        try:
+            metrics_dict["_sim_stage_metrics"] = json.loads(stage_metrics_raw) if isinstance(stage_metrics_raw, str) else stage_metrics_raw
+        except Exception:
+            metrics_dict["_sim_stage_metrics"] = stage_metrics_raw
 
     if (
         fec_backend == "fountain"

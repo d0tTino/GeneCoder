@@ -92,6 +92,7 @@ def canonical_metrics_view(run_data: Mapping[str, Any]) -> dict[str, Any]:
 
     run = require_canonical_run_fields(migrate_run_schema(run_data))
     stages = _mapping(run.get("stages"))
+    runtime = _normalize_runtime(_mapping(run.get("runtime")))
     encode_metrics = _mapping(_mapping(stages.get("encode")).get("metrics"))
     simulate_metrics = _mapping(_mapping(stages.get("simulate")).get("metrics"))
     outcome = _mapping(run.get("outcome"))
@@ -130,6 +131,12 @@ def canonical_metrics_view(run_data: Mapping[str, Any]) -> dict[str, Any]:
             "dropout_rate": outcome.get("dropout_rate"),
             "ber": outcome.get("ber"),
             "throughput": outcome.get("throughput"),
+            "runtime_total_seconds": runtime.get("total_seconds"),
+            "runtime_encode_seconds": runtime.get("encode_seconds"),
+            "runtime_simulate_seconds": runtime.get("simulate_seconds"),
+            "runtime_decode_seconds": runtime.get("decode_seconds"),
+            "constraint_stage_outcomes": constraint_outcomes.get("stages", []),
+            "simulate_stage_metrics": simulate_metrics.get("stage_metrics", []),
         }
     )
     return metrics
@@ -138,6 +145,7 @@ def canonical_metrics_view(run_data: Mapping[str, Any]) -> dict[str, Any]:
 def canonical_comparison_metrics(run_data: Mapping[str, Any]) -> dict[str, float | bool | None]:
     run = migrate_run_schema(run_data)
     outcome = _mapping(run.get("outcome"))
+    runtime = _normalize_runtime(_mapping(run.get("runtime")))
     decode = _mapping(_mapping(_mapping(run.get("stages")).get("decode")).get("metrics"))
     return {
         "ber": _as_float(outcome.get("ber")),
@@ -150,6 +158,10 @@ def canonical_comparison_metrics(run_data: Mapping[str, Any]) -> dict[str, float
             if decode.get("decode_success") is not None
             else outcome.get("decode_success")
         ),
+        "runtime_total_seconds": _as_float(runtime.get("total_seconds")),
+        "runtime_encode_seconds": _as_float(runtime.get("encode_seconds")),
+        "runtime_simulate_seconds": _as_float(runtime.get("simulate_seconds")),
+        "runtime_decode_seconds": _as_float(runtime.get("decode_seconds")),
     }
 
 
