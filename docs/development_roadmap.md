@@ -35,7 +35,9 @@ For operational details behind each KPI, use:
 - [`docs/performance.md`](performance.md) for throughput and BER benchmark
   scripts (`benchmarks/throughput.py`, `benchmarks/error_rate.py`) and CI gate
   implementation details (`scripts/evaluate_benchmark_gates.py`,
-  `configs/benchmark_thresholds.json`, workflow benchmark artifacts).
+  `scripts/check_benchmark_gate_alignment.py`,
+  `configs/benchmark_thresholds.json`, `.github/workflows/python-ci.yml`
+  benchmark artifacts).
 
 ### Phase 1 → Phase 2 (Foundation sustainment to Robust Encoding Pipeline)
 
