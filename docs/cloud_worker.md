@@ -1,4 +1,9 @@
-# Cloud Worker Removed
+# Cloud Worker Status
 
-Previous versions of GeneCoder shipped a REST worker and Docker image for remote bundle execution. This component is no longer maintained.
-All workflows should run locally using `genecli bundle run`.
+> last_validated_commit: `4eb89f0cde3b7d75fcaf8311634be19ec56b90f0`
+
+## Deployment posture
+
+- `cloud_enabled`: `False`
+- `cloud_worker_enabled`: `False`
+- `local_execution_only`: `True`

@@ -49,6 +49,8 @@ jobs:
         run: pre-commit run markdown-link-check --files README.md $(git ls-files "docs/**/*.md")
       - name: Fail on missing capability metadata paths or stale generated sections
         run: python scripts/check_capability_docs_sync.py
+      - name: Fail on stale generated strategy docs
+        run: python scripts/render_strategy_docs.py
       - name: Build docs
         run: mkdocs build --strict
       - name: Upload PDF

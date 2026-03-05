@@ -13,13 +13,6 @@ ROOT = Path(__file__).resolve().parents[1]
 MATRIX_PATH = ROOT / "docs" / "capabilities.yaml"
 
 DOC_CONFIGS = {
-    ROOT / "docs" / "product_strategy.md": {
-        "marker": "capabilities:strategy-status",
-        "sections": [
-            ("product_strategy_current_capabilities", "### Capability status snapshot (generated from `docs/capabilities.yaml`)"),
-            ("product_strategy_priority_gaps", "### Priority gap status snapshot (generated from `docs/capabilities.yaml`)"),
-        ],
-    },
     ROOT / "docs" / "vision.md": {
         "marker": "capabilities:vision-status",
         "sections": [

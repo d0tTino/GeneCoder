@@ -1,5 +1,9 @@
-# Local Execution Only
+# Cloud Status
 
-The previous cloud submission feature has been removed.
-All workflows should now be run locally with the standard CLI commands.
-Use `genecli bundle run` to execute bundles on your machine.
+> last_validated_commit: `4eb89f0cde3b7d75fcaf8311634be19ec56b90f0`
+
+## Deployment posture
+
+- `cloud_enabled`: `False`
+- `cloud_worker_enabled`: `False`
+- `local_execution_only`: `True`

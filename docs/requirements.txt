@@ -1,3 +1,4 @@
 mkdocs-material
 mkdocs-pdf-export-plugin
 mkdocstrings[python]
+pyyaml
