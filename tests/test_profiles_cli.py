@@ -11,3 +11,5 @@ def test_pipeline_profiles_listed() -> None:
     assert "promethion" in out
     assert "novaseq" in out
     assert "r10" in out
+    assert "--illumina-profile" in out
+    assert "--nanopore-profile" in out
