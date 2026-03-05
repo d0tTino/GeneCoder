@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from genecoder.manifest import generate_manifest
-from .pipeline_runtime import run_pipeline
+from .pipeline_runtime import ProfileParameterOverrides, run_pipeline
 from genecoder.results.schema import RUN_SCHEMA_VERSION, canonical_metrics_view
 from genecoder.html_report import generate_html_report
 from genecoder.runtime import make_run_context
@@ -24,7 +24,7 @@ from genecoder.profiles.registry import canonicalize_profile_name
 @dataclass(frozen=True)
 class ChannelProfile:
     name: str
-    parameters: Mapping[str, Any] = field(default_factory=dict)
+    parameters: ProfileParameterOverrides = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -105,7 +105,11 @@ class RunPipelineUseCase:
             output_path=request.output_path,
             filter_mutated=request.filter_mutated,
             run_context=run_context,
+            profile_parameter_overrides=(request.profile.parameters if request.profile else None),
         )
+
+        sim_stage_provenance = metrics.pop("_sim_stage_provenance", [])
+        applied_channel_parameters = metrics.pop("_applied_channel_parameters", dict(request.profile.parameters) if request.profile else {})
 
         metrics_path = Path(request.artifacts.metrics_path or str(request.output_path) + ".json")
         run_schema: dict[str, Any] = {
@@ -141,6 +145,8 @@ class RunPipelineUseCase:
                 },
                 "simulate": {
                     "profile": resolved_profile_name if resolved_profile_name else resolved_channel_name,
+                    "parameters": dict(applied_channel_parameters) if isinstance(applied_channel_parameters, Mapping) else {},
+                    "provenance": sim_stage_provenance,
                     "metrics": {
                         "substitutions": metrics.get("substitutions"),
                         "insertions": metrics.get("insertions"),
@@ -178,7 +184,7 @@ class RunPipelineUseCase:
                 "channel_profile": (
                     {
                         "name": resolved_profile_name or request.profile.name,
-                        "parameters": dict(request.profile.parameters),
+                        "parameters": dict(applied_channel_parameters) if isinstance(applied_channel_parameters, Mapping) else {},
                     }
                     if request.profile
                     else None

@@ -3,6 +3,7 @@ from __future__ import annotations
 """Simple encode/ECC/channel/decode pipeline utilities."""
 
 import json
+import inspect
 import time
 import warnings
 from collections import Counter
@@ -472,6 +473,7 @@ def run_canonical_pipeline(
     original_data: bytes,
     *,
     filter_mutated: bool = False,
+    channel_parameters: Mapping[str, Any] | None = None,
     run_context: RunContext | None = None,
 ) -> CanonicalRuntimeResult:
     """Execute the canonical internal runtime route: encode → simulate → decode."""
@@ -486,12 +488,30 @@ def run_canonical_pipeline(
         simulated, subs, ins, dels, coverage = simulate(
             channel,
             encoded_batch,
+            channel_parameters=channel_parameters,
             run_context=runtime_context,
         )
     except TypeError as exc:
-        if "run_context" not in str(exc):
+        message = str(exc)
+        if "channel_parameters" in message:
+            try:
+                simulated, subs, ins, dels, coverage = simulate(
+                    channel,
+                    encoded_batch,
+                    run_context=runtime_context,
+                )
+            except TypeError as nested_exc:
+                if "run_context" not in str(nested_exc):
+                    raise
+                simulated, subs, ins, dels, coverage = simulate(channel, encoded_batch)
+        elif "run_context" in message:
+            simulated, subs, ins, dels, coverage = simulate(
+                channel,
+                encoded_batch,
+                channel_parameters=channel_parameters,
+            )
+        else:
             raise
-        simulated, subs, ins, dels, coverage = simulate(channel, encoded_batch)
     simulated_batch = (
         simulated if isinstance(simulated, SequenceBatch) else _wrap_single_sequence(str(simulated))
     )
@@ -557,10 +577,32 @@ def _estimate_coverage(batch: SequenceBatch) -> int | None:
     return None
 
 
+def _apply_channel_constructor_parameters(simulator: object, parameters: Mapping[str, Any] | None) -> object:
+    if not parameters:
+        return simulator
+    signature = inspect.signature(type(simulator).__init__)
+    accepted = {
+        name
+        for name, param in signature.parameters.items()
+        if name != "self" and param.kind in (param.POSITIONAL_OR_KEYWORD, param.KEYWORD_ONLY)
+    }
+    kwargs = {key: value for key, value in parameters.items() if key in accepted}
+    if not kwargs:
+        return simulator
+    current_profile = getattr(simulator, "profile", None)
+    if "profile" in accepted and "profile" not in kwargs and current_profile is not None:
+        kwargs["profile"] = current_profile
+    try:
+        return type(simulator)(**kwargs)
+    except Exception:
+        return simulator
+
+
 def simulate(
     channel: str | None,
     dna: SequenceBatch | str,
     *,
+    channel_parameters: Mapping[str, Any] | None = None,
     run_context: RunContext | None = None,
 ) -> Tuple[SequenceBatch | str, int | None, int | None, int | None, int | None]:
     """Return ``dna`` possibly mutated by ``channel`` and error counts."""
@@ -572,12 +614,16 @@ def simulate(
     if channel and channel != "none":
         if channel not in SIMULATOR_REGISTRY:
             raise ValueError(f"Unknown channel: {channel}")
-        sim = SIMULATOR_REGISTRY[channel]
+        sim = _apply_channel_constructor_parameters(SIMULATOR_REGISTRY[channel], channel_parameters)
         pipeline = ChannelPipeline.from_simulators([(channel, sim)])
-        mutated_batch, _ = pipeline.run(
+        mutated_batch, provenance = pipeline.run(
             original_batch,
             run_context=runtime_context,
         )
+
+        mutated_batch.metadata["sim_stage_provenance"] = json.dumps(provenance)
+        if channel_parameters:
+            mutated_batch.metadata["sim_channel_parameters"] = json.dumps(dict(channel_parameters))
 
         original_sequence = original_batch.combined_sequence()
         mutated_sequence = mutated_batch.combined_sequence()
@@ -1047,6 +1093,7 @@ def run_pipeline(
     channel: str | None,
     input_path: str,
     output_path: str,
+    channel_parameters: Mapping[str, Any] | None = None,
 ) -> Tuple[bytes, Dict[str, Any]]:
     """Process ``input_path`` through the selected codec, FEC and channel.
 
@@ -1054,6 +1101,6 @@ def run_pipeline(
     """
     _warn_orchestration_deprecation("run_pipeline")
     original_data = Path(input_path).read_bytes()
-    result = run_canonical_pipeline(codec, fec, channel, original_data)
+    result = run_canonical_pipeline(codec, fec, channel, original_data, channel_parameters=channel_parameters)
     Path(output_path).write_bytes(result.decoded)
     return result.decoded, result.metrics
