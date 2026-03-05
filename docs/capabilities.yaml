@@ -75,7 +75,7 @@ capabilities:
     phase: 4
     owner_modules:
       - src/genecoder/plugin_manager.py
-      - configs/registry.yaml
+      - src/genecoder/plugin_runtime/registry.py
     validation_artifacts:
       - type: test
         path: tests/test_plugin_spec_validation.py

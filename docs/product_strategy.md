@@ -41,7 +41,7 @@ Operational outputs include FASTA and manifest artifacts, metrics exports, and d
 | --- | --- | --- | --- | --- |
 | Deterministic seed/profile reproducibility governance | `partial` | 2 | `src/genecoder/pipeline.py`<br>`src/genecoder/cli/cli.py` | `tests/test_simulator_seed_reproducibility.py`, `docs/reproducibility.md` |
 | Standardized benchmark depth and parity validation | `partial` | 3 | `benchmarks/throughput.py`<br>`benchmarks/error_rate.py` | `benchmarks/throughput.py`, `benchmarks/error_rate.py`, `docs/performance.md` |
-| Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`configs/registry.yaml` | `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py`, `docs/plugins.md` |
+| Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`src/genecoder/plugin_runtime/registry.py` | `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py`, `docs/plugins.md` |
 <!-- capabilities:strategy-status:end -->
 
 ### Operational baseline (completed)

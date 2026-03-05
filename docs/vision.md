@@ -17,7 +17,7 @@ GeneCoder aims to make DNA data storage experimentation practical and reproducib
 | Nanopore simulation with context-aware profile controls | `implemented` | 1 | `src/genecoder/simulators/nanopore.py`<br>`src/genecoder/simulators/nanopore_profiles.py` | `tests/test_nanopore_context_profile.py`, `docs/channel_profiles.md` |
 | Deterministic seed/profile reproducibility governance | `partial` | 2 | `src/genecoder/pipeline.py`<br>`src/genecoder/cli/cli.py` | `tests/test_simulator_seed_reproducibility.py`, `docs/reproducibility.md` |
 | Standardized benchmark depth and parity validation | `partial` | 3 | `benchmarks/throughput.py`<br>`benchmarks/error_rate.py` | `benchmarks/throughput.py`, `benchmarks/error_rate.py`, `docs/performance.md` |
-| Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`configs/registry.yaml` | `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py`, `docs/plugins.md` |
+| Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`src/genecoder/plugin_runtime/registry.py` | `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py`, `docs/plugins.md` |
 <!-- capabilities:vision-status:end -->
 
 GeneCoder already ships an end-to-end simulation path for common DNA storage experiments. The current implementation includes:
