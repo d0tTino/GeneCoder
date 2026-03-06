@@ -215,13 +215,37 @@ jobs:
       run: |
         mkdir -p artifacts/benchmarks
         PYTHONPATH=src python benchmarks/throughput.py | tee artifacts/benchmarks/throughput.stdout
+        python - <<'PY2'
+        import json
+        import re
+        from pathlib import Path
+        text = Path('artifacts/benchmarks/throughput.stdout').read_text(encoding='utf-8')
+        match = None
+        pattern = re.compile(r'^Base-4\s+encode:\s+([0-9.]+)\s+MB/s\s+decode:\s+([0-9.]+)\s+MB/s$')
+        for line in text.splitlines():
+            found = pattern.match(line.strip())
+            if found:
+                match = found
+                break
+        if match is None:
+            raise SystemExit('Unable to parse throughput benchmark output')
+        payload = {
+            'benchmark': 'throughput',
+            'parsed_metrics': {
+                'base4_encode_mb_s': float(match.group(1)),
+                'base4_decode_mb_s': float(match.group(2)),
+            },
+            'evidence_artifact': 'artifacts/benchmarks/throughput.stdout',
+        }
+        Path('artifacts/benchmarks/throughput.kpi.json').write_text(json.dumps(payload, indent=2), encoding='utf-8')
+        PY2
 
     - name: Evaluate throughput gate
       shell: bash
       run: |
         python scripts/evaluate_benchmark_gates.py \
           --benchmark throughput \
-          --stdout-file artifacts/benchmarks/throughput.stdout \
+          --artifact-json artifacts/benchmarks/throughput.kpi.json \
           --output-json artifacts/benchmarks/throughput-gate.json
 
     - name: Upload throughput benchmark artifacts
@@ -229,7 +253,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: benchmark-throughput
-        path: artifacts/benchmarks/throughput.*
+        path: |
+          artifacts/benchmarks/throughput.*
+          artifacts/benchmarks/throughput.kpi.json
 
   benchmark-error-rate:
     needs: [changes, check-comments, lint]
@@ -255,13 +281,38 @@ jobs:
       run: |
         mkdir -p artifacts/benchmarks
         PYTHONPATH=src python benchmarks/error_rate.py | tee artifacts/benchmarks/error_rate.stdout
+        python - <<'PY2'
+        import json
+        import re
+        from pathlib import Path
+        text = Path('artifacts/benchmarks/error_rate.stdout').read_text(encoding='utf-8')
+        match = None
+        pattern = re.compile(r'^encode:\s+([0-9.]+)\s+MB/s\s+decode:\s+([0-9.]+)\s+MB/s\s+BER:\s+([0-9.]+)$')
+        for line in text.splitlines():
+            found = pattern.match(line.strip())
+            if found:
+                match = found
+                break
+        if match is None:
+            raise SystemExit('Unable to parse error-rate benchmark output')
+        payload = {
+            'benchmark': 'error_rate',
+            'parsed_metrics': {
+                'encode_mb_s': float(match.group(1)),
+                'decode_mb_s': float(match.group(2)),
+                'ber': float(match.group(3)),
+            },
+            'evidence_artifact': 'artifacts/benchmarks/error_rate.stdout',
+        }
+        Path('artifacts/benchmarks/error_rate.kpi.json').write_text(json.dumps(payload, indent=2), encoding='utf-8')
+        PY2
 
     - name: Evaluate BER gate
       shell: bash
       run: |
         python scripts/evaluate_benchmark_gates.py \
           --benchmark error_rate \
-          --stdout-file artifacts/benchmarks/error_rate.stdout \
+          --artifact-json artifacts/benchmarks/error_rate.kpi.json \
           --output-json artifacts/benchmarks/error_rate-gate.json
 
     - name: Upload BER benchmark artifacts
@@ -269,7 +320,54 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: benchmark-error-rate
-        path: artifacts/benchmarks/error_rate.*
+        path: |
+          artifacts/benchmarks/error_rate.*
+          artifacts/benchmarks/error_rate.kpi.json
+
+  benchmark-gates-from-artifacts:
+    needs: [benchmark-throughput, benchmark-error-rate]
+    if: always()
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Download throughput artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: benchmark-throughput
+        path: artifacts/benchmarks
+
+    - name: Download BER artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: benchmark-error-rate
+        path: artifacts/benchmarks
+
+    - name: Evaluate gates from run-scoped KPI artifacts
+      shell: bash
+      run: |
+        python scripts/evaluate_benchmark_gates.py \
+          --benchmark throughput \
+          --artifact-json artifacts/benchmarks/throughput.kpi.json \
+          --output-json artifacts/benchmarks/throughput-gate-from-artifact.json
+        python scripts/evaluate_benchmark_gates.py \
+          --benchmark error_rate \
+          --artifact-json artifacts/benchmarks/error_rate.kpi.json \
+          --output-json artifacts/benchmarks/error_rate-gate-from-artifact.json
+
+    - name: Upload artifact-based gate reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-gates-from-artifacts
+        path: artifacts/benchmarks/*-gate-from-artifact.json
 
   mvp-checklist:
     needs: [changes, check-comments]
