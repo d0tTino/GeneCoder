@@ -16,7 +16,7 @@ from genecoder.config.loader import load_mapping_file, validate_bundle_document
 from genecoder.core import encode, decode, inspect_coding_plan
 from genecoder.formats import SequenceBatch
 from genecoder.parallel import parallel_map
-from genecoder.pipeline import build_kpi_bundle
+from genecoder.results.schema import canonical_comparison_metrics, canonical_metrics_view, migrate_run_schema
 from genecoder.plugin_manager import (
     CODEC_REGISTRY,
     FEC_REGISTRY,
@@ -52,6 +52,25 @@ from genecoder.app import (
 )
 
 RUN_PROFILE_VERSION = "2026.02"
+
+def build_kpi_bundle(run_schema: Mapping[str, Any], *, artifact_path: str | None = None) -> dict[str, Any]:
+    """Return the machine-readable KPI bundle for a canonical run artifact."""
+
+    canonical_run = migrate_run_schema(run_schema)
+    run_id = str(canonical_run.get("run_id") or "run")
+    metrics_view = canonical_metrics_view(canonical_run)
+    comparison = canonical_comparison_metrics(canonical_run)
+
+    bundle: dict[str, Any] = {
+        "schema_version": "1.0",
+        "source": "genecoder.cli.pipeline",
+        "run_id": run_id,
+        "kpis": {"comparison": comparison, "dashboard": metrics_view},
+    }
+    if artifact_path:
+        bundle["artifacts"] = {"run_schema": str(Path(artifact_path))}
+    return bundle
+
 
 logger = logging.getLogger(__name__)
 

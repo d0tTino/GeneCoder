@@ -18,7 +18,7 @@ ProfileParameterOverrides: TypeAlias = Mapping[str, ProfileParameterValue]
 
 __all__ = ["SequencePipeline", "run_pipeline", "ProfileParameterOverrides", "ProfileParameterValue"]
 
-from genecoder.compat.legacy import SequencePipeline
+from .sequence_pipeline import SequencePipeline
 
 
 def _flag_from_metadata(value: object) -> bool:
