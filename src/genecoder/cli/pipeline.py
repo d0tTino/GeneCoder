@@ -16,6 +16,7 @@ from genecoder.config.loader import load_mapping_file, validate_bundle_document
 from genecoder.core import encode, decode, inspect_coding_plan
 from genecoder.formats import SequenceBatch
 from genecoder.parallel import parallel_map
+from genecoder.pipeline import build_kpi_bundle
 from genecoder.plugin_manager import (
     CODEC_REGISTRY,
     FEC_REGISTRY,
@@ -702,6 +703,7 @@ def _handle_command(args: argparse.Namespace) -> None:
         )
         return artifact
 
+    artifact: Dict[str, Any] | None = None
     if args.mpi_workers:
         parallel_map(
             lambda _: _execute(),
@@ -710,10 +712,18 @@ def _handle_command(args: argparse.Namespace) -> None:
             use_mpi=True,
         )[0]
     else:
-        _execute()
+        artifact = _execute()
 
     metrics_path = Path(str(metrics_override) if metrics_override else str(args.output) + ".json")
     logger.info("Run artifact written to %s", metrics_path)
+
+    kpi_bundle_path = metrics_path.with_suffix(".kpi.json")
+    source_artifact = artifact
+    if source_artifact is None:
+        source_artifact = json.loads(metrics_path.read_text(encoding="utf-8"))
+    kpi_bundle = build_kpi_bundle(source_artifact, artifact_path=str(metrics_path))
+    kpi_bundle_path.write_text(json.dumps(kpi_bundle, indent=2), encoding="utf-8")
+    logger.info("KPI bundle written to %s", kpi_bundle_path)
 
     manifest_path = metrics_path.with_suffix(".manifest.json")
     if manifest_path.exists():

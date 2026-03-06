@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GeneCoder KPI report artifact",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "kpis"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "kpis": {
+      "type": "object",
+      "required": [
+        "comparison",
+        "dashboard"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "comparison": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "dashboard": {
+          "type": "object"
+        }
+      }
+    },
+    "benchmark": {
+      "type": "string"
+    },
+    "parsed_metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "evidence_artifact": {
+      "type": "string"
+    }
+  }
+}

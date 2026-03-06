@@ -1,6 +1,6 @@
 # Usage Metrics
 
-GeneCoder records basic usage statistics in a `metrics.json` file located in `~/.genecoder/` by default. The following counters are tracked:
+GeneCoder records usage statistics into run-scoped artifact files. For pipeline and bundle workflows, keep `metrics.json` and `metrics.kpi.json` next to each run output directory (for example `artifacts/runs/<run-id>/`). The following counters are tracked:
 
 - `encode_runs` – times the `encode` command has been executed.
 - `bundle_runs` – number of `bundle run` workflows executed.
@@ -9,11 +9,10 @@ GeneCoder records basic usage statistics in a `metrics.json` file located in `~/
   aggregation.
 - `oligos_per_week` – aggregated counts of simulated sequences per ISO week.
 
-Pass `--metrics-path /path/to/metrics.json` to `genecli bundle run` or
-`genecli pipeline` to override the default metrics destination for a specific
-invocation. Set the `GENECODER_METRICS_PATH` environment variable to update the
-default location for every command (useful for web dashboards or headless
-deployments).
+Pass `--metrics-path /path/to/run/metrics.json` to `genecli bundle run` or
+`genecli pipeline` so the metrics and KPI evidence live with each run's outputs.
+`genecli pipeline` always emits a sibling `metrics.kpi.json` artifact with a
+machine-readable KPI bundle contract.
 
 GeneCoder's north-star goal is to accelerate DNA storage research by enabling more oligos to be simulated each week. The `oligos_per_week` metric aggregates `oligos_simulated_ts` into ISO weeks, providing a clear view of weekly usage trends.
 
