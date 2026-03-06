@@ -270,3 +270,36 @@ External simulators accept additional flags through environment variables. Set
 `GENECODER_D2SIM_OPTIONS`, `GENECODER_DNARSIM_OPTIONS` or
 `GENECODER_SQUIGULATOR_OPTIONS` to pass options to the respective tool. Use
 `GENECODER_SIM_SEED` to make runs reproducible.
+
+
+## Two-tier test dependency profiles
+
+GeneCoder supports a two-tier test architecture:
+
+- `core` tests (`@pytest.mark.core`) are required for minimal environments.
+- `integration_optional` tests (`@pytest.mark.integration_optional`) validate optional integrations and external tools.
+
+### Minimal core profile
+
+Use this profile when you only need the required test tier:
+
+```bash
+python -m pip install -e . pytest pytest-xdist pytest-cov
+pytest -m core --test-tier=core -q
+```
+
+Core CI enforces **zero skipped tests** for this tier.
+
+### Optional integration profile
+
+Use this profile for full ecosystem coverage (GUI, web, optional codecs, and external integrations):
+
+```bash
+poetry install --with gui,web,dev   --extras ldpc --extras fountain --extras bch   --extras raptorq --extras deepdna --extras chamaeleo   --no-interaction --no-root
+poetry run pytest -m integration_optional --test-tier=integration -rs -q
+python scripts/report_optional_test_dependencies.py
+```
+
+The integration tier allows skips and requires publishing the dependency report
+(`artifacts/optional-integration-dependency-report.md`) so missing tools are
+explicitly documented.
