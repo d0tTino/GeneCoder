@@ -1,52 +1,15 @@
 from __future__ import annotations
 
-"""Legacy string-oriented pipeline shim.
-
-`SequencePipeline` remains available only for backwards compatibility with older
-integrations that built pipeline stages around plain strings.
-
-No new feature work should target this adapter. New orchestration must go
-through `genecoder.app.RunPipelineUseCase` and `genecoder.core.CanonicalRuntimeResult`.
-"""
+"""Compatibility shim for deprecated ``SequencePipeline`` import path."""
 
 import warnings
-from typing import Callable, Iterable, Sequence
 
-from genecoder.parallel import parallel_map
+from genecoder.app.sequence_pipeline import SequencePipeline
 
+__all__ = ["SequencePipeline"]
 
-class SequencePipeline:
-    """Legacy string-based pipeline wrapper."""
-
-    def __init__(self, steps: Iterable[Callable[[str], str]] | None = None) -> None:
-        warnings.warn(
-            "SequencePipeline is deprecated; use genecoder.app.RunPipelineUseCase instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        self.steps: list[Callable[[str], str]] = list(steps or [])
-
-    def add_step(self, step: Callable[[str], str]) -> None:
-        self.steps.append(step)
-
-    def run(self, sequence: str) -> str:
-        for step in self.steps:
-            sequence = step(sequence)
-        return sequence
-
-    def run_batch(
-        self,
-        sequences: Sequence[str],
-        *,
-        parallel: bool = False,
-        workers: int | None = None,
-        use_processes: bool = False,
-    ) -> list[str]:
-        if parallel:
-            return parallel_map(
-                self.run,
-                sequences,
-                workers=workers,
-                use_processes=use_processes,
-            )
-        return [self.run(s) for s in sequences]
+warnings.warn(
+    "genecoder.compat.legacy.sequence_pipeline is deprecated; import SequencePipeline from genecoder.app.sequence_pipeline.",
+    DeprecationWarning,
+    stacklevel=2,
+)

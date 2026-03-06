@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Sequence
 
-from genecoder.compat.channel_cli import (
+from genecoder.core import (
     LEGACY_INDEL_PROFILE_NAMES,
     MODERN_INDEL_PROFILES,
     resolve_indel_profile,

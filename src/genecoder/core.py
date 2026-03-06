@@ -47,9 +47,65 @@ __all__ = [
     "run_pipeline",
     "compile_coding_stack",
     "inspect_coding_plan",
+    "MODERN_INDEL_PROFILES",
+    "LEGACY_INDEL_PROFILE_ALIASES",
+    "LEGACY_INDEL_PROFILE_NAMES",
+    "LEGACY_DEFAULT_INDEL_PROFILE",
+    "resolve_indel_profile",
 ]
 
 ORCHESTRATION_DEPRECATION_GATE = "v0.18.0"
+
+MODERN_INDEL_PROFILES: dict[str, dict[str, float]] = {
+    "illumina": {
+        "substitution_prob": 0.002,
+        "insertion_prob": 0.0001,
+        "deletion_prob": 0.0001,
+    },
+    "nanopore": {
+        "substitution_prob": 0.01,
+        "insertion_prob": 0.02,
+        "deletion_prob": 0.02,
+    },
+}
+
+LEGACY_INDEL_PROFILE_ALIASES: dict[str, str] = {
+    "illumina_adapter": "illumina",
+    "nanopore_adapter": "nanopore",
+}
+
+LEGACY_INDEL_PROFILE_NAMES: set[str] = set(LEGACY_INDEL_PROFILE_ALIASES)
+LEGACY_DEFAULT_INDEL_PROFILE: str = "illumina_adapter"
+
+
+def resolve_indel_profile(
+    *,
+    requested_profile: str | None,
+    has_explicit_rates: bool,
+) -> tuple[str | None, list[str]]:
+    profile_warnings: list[str] = []
+    profile = requested_profile
+    if profile is None and not has_explicit_rates:
+        profile = LEGACY_DEFAULT_INDEL_PROFILE
+        profile_warnings.append(
+            "Using legacy implicit indel default profile; migrate to --simulator indel --indel-profile illumina."
+        )
+    if profile is None:
+        return None, profile_warnings
+
+    lowered = profile.lower()
+    if lowered in LEGACY_INDEL_PROFILE_ALIASES:
+        profile_warnings.append(
+            f"Legacy indel profile '{profile}' is deprecated; using '{LEGACY_INDEL_PROFILE_ALIASES[lowered]}' instead."
+        )
+        return LEGACY_INDEL_PROFILE_ALIASES[lowered], profile_warnings
+    if lowered in MODERN_INDEL_PROFILES:
+        if requested_profile is not None:
+            profile_warnings.append(
+                "--indel-profile is a compatibility flag and may be removed; prefer simulator config in workflow YAML."
+            )
+        return lowered, profile_warnings
+    raise ValueError(f"Unknown indel profile: {profile}")
 
 
 def _warn_orchestration_deprecation(name: str) -> None:
