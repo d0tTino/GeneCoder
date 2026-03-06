@@ -118,3 +118,33 @@ measure the new rates (optionally seeding `GENECODER_SIM_SEED` for repeatable
 experiments) and tighten the assertions once the numbers stabilise. This keeps
 future regression runs honest and provides a lightweight checklist for
 contributors submitting improved sequencing statistics.
+
+
+## Reproducible two-tier testing
+
+The CI pipeline runs tests in two deterministic tiers:
+
+1. **Core tier**: `pytest -m core --test-tier=core`
+   - Targets the minimal dependency profile.
+   - Must complete with **zero skipped tests**.
+2. **Optional integration tier**: `pytest -m integration_optional --test-tier=integration`
+   - Covers optional dependencies and external executables.
+   - Skips are allowed when dependencies are unavailable.
+   - A dependency availability report is generated via
+     `python scripts/report_optional_test_dependencies.py`.
+
+To reproduce CI behavior locally, run:
+
+```bash
+# Core (minimal)
+python -m pip install -e . pytest pytest-xdist pytest-cov
+pytest -m core --test-tier=core --junitxml=artifacts/core-junit.xml -q
+
+# Optional integrations
+poetry install --with gui,web,dev   --extras ldpc --extras fountain --extras bch   --extras raptorq --extras deepdna --extras chamaeleo   --no-interaction --no-root
+python scripts/report_optional_test_dependencies.py
+poetry run pytest -m integration_optional --test-tier=integration -rs -q
+```
+
+Keeping these commands and dependency profiles pinned in automation makes test
+outcomes easier to compare across machines and over time.

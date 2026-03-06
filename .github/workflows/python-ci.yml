@@ -671,3 +671,68 @@ jobs:
           GENECODER_SIM_SEED: "5"
         run: |
           poetry run pytest -vv tests/test_bundle_cli_integration.py
+
+  test-tier-matrix:
+    needs: [changes, check-comments, lint]
+    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tier: [core, integration]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install core test dependencies
+        if: matrix.tier == 'core'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pytest pytest-xdist pytest-cov
+
+      - name: Run core test tier
+        if: matrix.tier == 'core'
+        run: |
+          pytest -m core --test-tier=core --junitxml=artifacts/core-junit.xml -q
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          xml_path = Path('artifacts/core-junit.xml')
+          root = ET.parse(xml_path).getroot()
+          skipped = int(root.attrib.get('skipped', '0'))
+          if skipped != 0:
+              raise SystemExit(f'core tier cannot skip tests; observed {skipped} skipped tests')
+          print('core tier skip check passed (0 skipped tests)')
+          PY
+
+      - name: Install integration dependencies
+        if: matrix.tier == 'integration'
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install --with gui,web,dev --extras ldpc --extras fountain --extras bch --extras raptorq --extras deepdna --extras chamaeleo --no-interaction --no-root
+
+      - name: Generate optional integration dependency report
+        if: matrix.tier == 'integration'
+        run: |
+          python scripts/report_optional_test_dependencies.py
+
+      - name: Run optional integration test tier
+        if: matrix.tier == 'integration'
+        run: |
+          poetry run pytest -m integration_optional --test-tier=integration -rs -q
+
+      - name: Upload integration dependency report
+        if: matrix.tier == 'integration' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: optional-integration-dependency-report
+          path: |
+            artifacts/optional-integration-dependency-report.md
+            artifacts/optional-integration-dependency-report.json

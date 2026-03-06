@@ -100,6 +100,89 @@ except Exception:  # pragma: no cover - import guard
     sys.modules.setdefault("jsonschema.exceptions", js_exc)
 
 
+OPTIONAL_INTEGRATION_HINTS = (
+    "pytest.importorskip(",
+    "shutil.which(",
+    "not _HAS_",
+    "@pytest.mark.skipif(",
+    "rapidfuzz",
+    "flet",
+    "streamlit",
+    "fastapi",
+    "playwright",
+    "mpi4py",
+    "dnachisel",
+    "chamaeleo",
+    "deepdna",
+    "raptorq",
+    "pyldpc",
+    "bchlib",
+    "pyfinite",
+)
+
+
+def _is_optional_integration_file(path: Path) -> bool:
+    if path.suffix != ".py" or not path.name.startswith("test_"):
+        return False
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return any(hint in content for hint in OPTIONAL_INTEGRATION_HINTS)
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--test-tier",
+        action="store",
+        default="all",
+        choices=("all", "core", "integration"),
+        help="Select test tier: all (default), core, or integration.",
+    )
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers",
+        "core: required tests for minimal environments; skips are not allowed in core CI",
+    )
+    config.addinivalue_line(
+        "markers",
+        "integration_optional: tests requiring optional dependencies or external tools",
+    )
+
+
+def pytest_ignore_collect(collection_path: Path, config: pytest.Config) -> bool:
+    tier = config.getoption("--test-tier")
+    if tier == "core" and _is_optional_integration_file(collection_path):
+        return True
+    return False
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    tier = config.getoption("--test-tier")
+    selected: list[pytest.Item] = []
+    deselected: list[pytest.Item] = []
+
+    for item in items:
+        item_path = Path(str(item.fspath))
+        if _is_optional_integration_file(item_path):
+            item.add_marker(pytest.mark.integration_optional)
+            is_optional = True
+        else:
+            item.add_marker(pytest.mark.core)
+            is_optional = False
+
+        if tier == "integration" and not is_optional:
+            deselected.append(item)
+        else:
+            selected.append(item)
+
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = selected
+
+
 from genecoder.sdk.plugins import Codec
 from genecoder.encoders import decode_base4_direct, encode_base4_direct
 from genecoder.formats import SequenceBatch
