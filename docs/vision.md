@@ -12,12 +12,12 @@ GeneCoder aims to make DNA data storage experimentation practical and reproducib
 
 | Capability | Status | Phase | Owner modules | Validation artifacts |
 | --- | --- | --- | --- | --- |
-| CLI bundle presets for end-to-end pipelines | `implemented` | 1 | `src/genecoder/cli/bundle.py`<br>`src/genecoder/pipeline.py` | `tests/test_bundle.py`, `docs/mvp_checklist.md` |
-| Illumina simulation with profile-resolved errors | `implemented` | 1 | `src/genecoder/simulators/illumina/channel.py`<br>`src/genecoder/simulators/illumina/profiles.py` | `tests/test_illumina_coverage_quality.py`, `docs/channel_profiles.md` |
-| Nanopore simulation with context-aware profile controls | `implemented` | 1 | `src/genecoder/simulators/nanopore.py`<br>`src/genecoder/simulators/nanopore_profiles.py` | `tests/test_nanopore_context_profile.py`, `docs/channel_profiles.md` |
-| Deterministic seed/profile reproducibility governance | `partial` | 2 | `src/genecoder/pipeline.py`<br>`src/genecoder/cli/cli.py` | `tests/test_simulator_seed_reproducibility.py`, `docs/reproducibility.md` |
-| Standardized benchmark depth and parity validation | `partial` | 3 | `benchmarks/throughput.py`<br>`benchmarks/error_rate.py` | `benchmarks/throughput.py`, `benchmarks/error_rate.py`, `docs/performance.md` |
-| Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`src/genecoder/plugin_runtime/registry.py` | `tests/test_plugin_spec_validation.py`, `tests/test_plugin_security.py`, `docs/plugins.md` |
+| CLI bundle presets for end-to-end pipelines | `implemented` | 1 | `src/genecoder/cli/bundle.py`<br>`src/genecoder/pipeline.py` | `tests/test_bundle.py` |
+| Illumina simulation with profile-resolved errors | `implemented` | 1 | `src/genecoder/simulators/illumina/channel.py`<br>`src/genecoder/simulators/illumina/profiles.py` | `tests/test_illumina_coverage_quality.py` |
+| Nanopore simulation with context-aware profile controls | `implemented` | 1 | `src/genecoder/simulators/nanopore.py`<br>`src/genecoder/simulators/nanopore_profiles.py` | `tests/test_nanopore_context_profile.py` |
+| Deterministic seed/profile reproducibility governance | `partial` | 2 | `src/genecoder/pipeline.py`<br>`src/genecoder/cli/cli.py` | `tests/test_acceptance_deterministic_reproducibility_governance.py` |
+| Standardized benchmark depth and parity validation | `partial` | 3 | `benchmarks/throughput.py`<br>`benchmarks/error_rate.py` | `tests/test_acceptance_benchmark_depth_and_parity.py` |
+| Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`src/genecoder/plugin_runtime/registry.py` | `tests/test_acceptance_plugin_registry_policy_automation.py` |
 <!-- capabilities:vision-status:end -->
 
 GeneCoder already ships an end-to-end simulation path for common DNA storage experiments. The current implementation includes:

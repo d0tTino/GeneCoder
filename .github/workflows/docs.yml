@@ -51,6 +51,8 @@ jobs:
         run: python scripts/check_capability_docs_sync.py
       - name: Fail on stale generated strategy docs
         run: python scripts/render_strategy_docs.py
+      - name: Fail on stale capability maturity badges
+        run: python scripts/render_capability_maturity_badges.py
       - name: Build docs
         run: mkdocs build --strict
       - name: Upload PDF
