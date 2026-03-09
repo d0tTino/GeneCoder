@@ -21,6 +21,7 @@
 | Deterministic seed/profile reproducibility governance | `partial` | 2 | `src/genecoder/pipeline.py`<br>`src/genecoder/cli/cli.py` |
 | Standardized benchmark depth and parity validation | `partial` | 3 | `benchmarks/throughput.py`<br>`benchmarks/error_rate.py` |
 | Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`src/genecoder/plugin_runtime/registry.py` |
+| Cloud worker remote execution | `deprecated` | 4 | `src/genecoder/compat/legacy/cloud/worker.py` |
 
 ## Deployment posture flags
 

@@ -17,7 +17,7 @@ import pytest
 def worker_plugins(monkeypatch: pytest.MonkeyPatch) -> tuple[object, object]:
     """Return the worker and plugin manager with required modules stubbed."""
 
-    # Minimal FastAPI stub so ``genecoder.cloud.worker`` can be imported
+    # Minimal FastAPI stub so ``genecoder.compat.legacy.cloud.worker`` can be imported
     fastapi_stub = types.ModuleType("fastapi")
 
     class HTTPException(Exception):
@@ -43,7 +43,7 @@ def worker_plugins(monkeypatch: pytest.MonkeyPatch) -> tuple[object, object]:
 
     monkeypatch.setitem(sys.modules, "fastapi", fastapi_stub)
 
-    from genecoder.cloud import worker
+    from genecoder.compat.legacy.cloud import worker
     from genecoder import plugin_manager as plugins
 
     yield worker, plugins
