@@ -8,7 +8,7 @@ import pytest
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from genecoder.cloud import worker
+from genecoder.compat.legacy.cloud import worker
 
 
 def _build_archive(bundle_path: Path) -> str:
