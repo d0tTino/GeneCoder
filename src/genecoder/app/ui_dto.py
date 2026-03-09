@@ -3,6 +3,36 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+
+@dataclass(frozen=True)
+class UIConstraintLimits:
+    gc_min: float = 0.4
+    gc_max: float = 0.6
+    max_homopolymer: int = 8
+
+
+@dataclass(frozen=True)
+class UIPresentationPayload:
+    """Canonical UI payload used by all presentation adapters.
+
+    This DTO normalizes metric-derived fields that multiple frontends render,
+    so adapters (Flet/Streamlit/React) consume identical data semantics.
+    """
+
+    metrics: Mapping[str, Any]
+    constraint_limits: UIConstraintLimits
+    oligo_records: tuple[Mapping[str, Any], ...]
+
+    @classmethod
+    def from_metrics(cls, metrics: Mapping[str, Any]) -> "UIPresentationPayload":
+        limits = _constraint_limits(metrics)
+        records = _extract_oligo_records(metrics)
+        return cls(
+            metrics=dict(metrics),
+            constraint_limits=limits,
+            oligo_records=tuple(records),
+        )
+
 from .pipeline_use_case import (
     ArtifactOutputPolicy,
     BatchSweepMatrix,
@@ -92,3 +122,73 @@ class UIMetricsSummary:
             ),
             constraint_violations=violation_count,
         )
+
+
+def _parse_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(int(value))
+    if isinstance(value, str):
+        norm = value.strip().lower()
+        if norm in {"1", "true", "yes", "on"}:
+            return True
+    return False
+
+
+def _constraint_limits(metrics: Mapping[str, Any]) -> UIConstraintLimits:
+    gc_min = 0.4
+    gc_max = 0.6
+    max_hp = 8
+    violations = metrics.get("constraint_violations")
+    if isinstance(violations, Mapping):
+        limits = violations.get("limits")
+        if isinstance(limits, Mapping):
+            gc_min_val = limits.get("gc_min")
+            gc_max_val = limits.get("gc_max")
+            max_hp_val = limits.get("max_homopolymer")
+            if isinstance(gc_min_val, (int, float)) and not isinstance(gc_min_val, bool):
+                gc_min = float(gc_min_val)
+            if isinstance(gc_max_val, (int, float)) and not isinstance(gc_max_val, bool):
+                gc_max = float(gc_max_val)
+            if isinstance(max_hp_val, (int, float)) and not isinstance(max_hp_val, bool):
+                max_hp = int(max_hp_val)
+    return UIConstraintLimits(gc_min=gc_min, gc_max=gc_max, max_homopolymer=max_hp)
+
+
+def _extract_oligo_records(metrics: Mapping[str, Any]) -> list[dict[str, Any]]:
+    oligo = metrics.get("oligo_metrics")
+    if not isinstance(oligo, Mapping):
+        return []
+    gc_vals = [float(v) for v in oligo.get("gc_percentages", []) if isinstance(v, (int, float))]
+    hp_vals = [float(v) for v in oligo.get("max_homopolymers", []) if isinstance(v, (int, float))]
+    dropout_flags = [_parse_bool(v) for v in oligo.get("dropout_flags", [])]
+
+    ecc_map: dict[str, list[float]] = {}
+    ecc = oligo.get("ecc_success")
+    if isinstance(ecc, Mapping):
+        for name, values in ecc.items():
+            if isinstance(values, list):
+                filtered = [float(v) for v in values if isinstance(v, (int, float, bool))]
+                if filtered:
+                    ecc_map[str(name)] = [float(v) if not isinstance(v, bool) else (1.0 if v else 0.0) for v in filtered]
+
+    base_lengths = [len(gc_vals), len(hp_vals), len(dropout_flags)]
+    max_len = max(base_lengths + [len(v) for v in ecc_map.values()]) if (base_lengths or ecc_map) else 0
+    if max_len == 0:
+        return []
+
+    records: list[dict[str, Any]] = []
+    for idx in range(max_len):
+        record: dict[str, Any] = {"Index": idx + 1}
+        if idx < len(gc_vals):
+            record["GC%"] = gc_vals[idx]
+        if idx < len(hp_vals):
+            record["Max Homopolymer"] = hp_vals[idx]
+        if idx < len(dropout_flags):
+            record["Dropout"] = dropout_flags[idx]
+        for name, values in ecc_map.items():
+            if idx < len(values):
+                record[f"ECC:{name}"] = values[idx]
+        records.append(record)
+    return records

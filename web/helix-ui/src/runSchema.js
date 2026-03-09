@@ -86,3 +86,52 @@ export function toLegacyMetrics(input) {
   if (metrics.max_homopolymer === undefined) metrics.max_homopolymer = run.outcome?.homopolymer_stress;
   return metrics;
 }
+
+
+const parseBool = (value) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number(value) !== 0;
+  if (typeof value === 'string') return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+  return false;
+};
+
+export function presentationPayloadFromMetrics(metrics = {}) {
+  const violations = metrics?.constraint_violations;
+  const limits = (violations && typeof violations === 'object' && violations.limits && typeof violations.limits === 'object')
+    ? violations.limits
+    : {};
+  const constraint_limits = {
+    gc_min: Number.isFinite(Number(limits.gc_min)) ? Number(limits.gc_min) : 0.4,
+    gc_max: Number.isFinite(Number(limits.gc_max)) ? Number(limits.gc_max) : 0.6,
+    max_homopolymer: Number.isFinite(Number(limits.max_homopolymer)) ? Number(limits.max_homopolymer) : 8,
+  };
+
+  const oligo = metrics?.oligo_metrics && typeof metrics.oligo_metrics === 'object' ? metrics.oligo_metrics : {};
+  const gc = Array.isArray(oligo.gc_percentages) ? oligo.gc_percentages.filter((v) => typeof v === 'number').map(Number) : [];
+  const hp = Array.isArray(oligo.max_homopolymers) ? oligo.max_homopolymers.filter((v) => typeof v === 'number').map(Number) : [];
+  const dropout = Array.isArray(oligo.dropout_flags) ? oligo.dropout_flags.map(parseBool) : [];
+
+  const ecc = {};
+  if (oligo.ecc_success && typeof oligo.ecc_success === 'object') {
+    Object.entries(oligo.ecc_success).forEach(([name, values]) => {
+      if (Array.isArray(values)) {
+        const filtered = values.filter((v) => typeof v === 'number' || typeof v === 'boolean').map((v) => (typeof v === 'boolean' ? (v ? 1 : 0) : Number(v)));
+        if (filtered.length) ecc[name] = filtered;
+      }
+    });
+  }
+
+  const maxLen = Math.max(gc.length, hp.length, dropout.length, ...Object.values(ecc).map((vals) => vals.length), 0);
+  const oligo_records = Array.from({ length: maxLen }, (_, idx) => {
+    const row = { Index: idx + 1 };
+    if (idx < gc.length) row['GC%'] = gc[idx];
+    if (idx < hp.length) row['Max Homopolymer'] = hp[idx];
+    if (idx < dropout.length) row.Dropout = dropout[idx];
+    Object.entries(ecc).forEach(([name, vals]) => {
+      if (idx < vals.length) row[`ECC:${name}`] = vals[idx];
+    });
+    return row;
+  });
+
+  return { metrics, constraint_limits, oligo_records };
+}

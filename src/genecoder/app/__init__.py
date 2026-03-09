@@ -13,7 +13,13 @@ from .pipeline_use_case import (
     RunPipelineUseCase,
     SeedProfile,
 )
-from .ui_dto import UIMetricsSummary, UIRunRequest, UIRunResult
+from .ui_dto import (
+    UIConstraintLimits,
+    UIMetricsSummary,
+    UIPresentationPayload,
+    UIRunRequest,
+    UIRunResult,
+)
 
 __all__ = [
     "AnalyzeRequest",
@@ -35,4 +41,6 @@ __all__ = [
     "UIRunRequest",
     "UIRunResult",
     "UIMetricsSummary",
+    "UIConstraintLimits",
+    "UIPresentationPayload",
 ]
