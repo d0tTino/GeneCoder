@@ -7,7 +7,7 @@ from importlib.metadata import entry_points
 
 import genecoder.plugin_runtime as runtime
 from .plugin_runtime import discovery as discovery_mod
-from .plugin_runtime import installer as installer_mod
+from .plugin_supply_chain import service as installer_mod
 from .plugin_runtime.policy import validate_plugin_metadata as _validate_plugin_metadata
 from .plugin_runtime.policy import validate_spec as _validate_spec
 

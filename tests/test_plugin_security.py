@@ -167,7 +167,7 @@ def test_registry_missing_checksum_signature(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(plugins.urllib.request, "urlopen", fake_urlopen)
     monkeypatch.setattr(plugins.subprocess, "check_call", lambda cmd: None)
 
-    with pytest.raises(ValueError, match="Checksum or signature required"):
+    with pytest.raises(ValueError, match="Signed metadata and checksum are required"):
         plugins.install_registry_plugins()
 
 

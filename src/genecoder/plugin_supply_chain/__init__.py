@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from genecoder.plugin_supply_chain.service import (
+from .service import (
     PLUGIN_LOCK,
     PipPluginInstaller,
     PluginInstaller,

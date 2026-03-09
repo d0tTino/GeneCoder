@@ -78,10 +78,14 @@ def install_catalog_plugin(name: str) -> None:
     offline = bool(os.getenv("GENECODER_OFFLINE"))
     allow_network = bool(os.getenv("GENECODER_ALLOW_NETWORK"))
     network_ok = allow_network and not offline
+    checksum = meta.get("checksum")
+    signature = meta.get("signature")
+    if not isinstance(checksum, str) or not isinstance(signature, str):
+        raise ValueError("Signed metadata and checksum are required")
     install_plugin_spec(
         spec,
-        checksum=meta.get("checksum"),
-        signature=meta.get("signature"),
+        checksum=checksum,
+        signature=signature,
         allow_network=network_ok,
         installer=PipPluginInstaller(),
     )
