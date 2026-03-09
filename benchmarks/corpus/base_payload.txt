@@ -1,0 +1,8 @@
+GeneCoder benchmark corpus v1
+This corpus is intentionally frozen to provide reproducible benchmark input.
+It mixes natural language characters, punctuation, and repeated motifs used by
+codec and channel benchmark profiles. Do not edit in place; create a new corpus
+version file if benchmark workloads need to change.
+
+ATCGATCGTTAGGCTA
+0123456789

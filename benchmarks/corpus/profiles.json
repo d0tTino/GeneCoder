@@ -1,0 +1,34 @@
+{
+  "version": "1.0.0",
+  "description": "Frozen profile matrix for reproducible throughput and BER comparisons.",
+  "profiles": [
+    {
+      "id": "base4_clean_256kb",
+      "codec": "base4",
+      "bytes": 262144,
+      "substitution_prob": 0.0,
+      "seed": 1337
+    },
+    {
+      "id": "base4_noisy_256kb",
+      "codec": "base4",
+      "bytes": 262144,
+      "substitution_prob": 0.01,
+      "seed": 1337
+    },
+    {
+      "id": "huffman_clean_256kb",
+      "codec": "huffman",
+      "bytes": 262144,
+      "substitution_prob": 0.0,
+      "seed": 1337
+    },
+    {
+      "id": "gc_balanced_clean_256kb",
+      "codec": "gc_balanced",
+      "bytes": 262144,
+      "substitution_prob": 0.0,
+      "seed": 1337
+    }
+  ]
+}

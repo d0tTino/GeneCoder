@@ -1,77 +1,66 @@
 # Performance Benchmarks
 
-GeneCoder includes a small benchmark script measuring encoding and decoding throughput.
-Run the benchmark from the repository root:
+GeneCoder benchmark runs are reproducible and pinned to a frozen corpus + profile
+matrix under `benchmarks/corpus/`:
+
+- `benchmarks/corpus/base_payload.txt`: immutable workload payload.
+- `benchmarks/corpus/profiles.json`: benchmark profile matrix (codec, size,
+  seed, and mutation rate).
+
+## Reproducible benchmark workflow
+
+Run throughput and BER workloads from the repository root:
 
 ```bash
-PYTHONPATH=src python benchmarks/throughput.py
+PYTHONPATH=src python benchmarks/throughput.py > throughput.json
+PYTHONPATH=src python benchmarks/error_rate.py > error_rate.json
 ```
 
-Sample output on a GitHub Codespace instance:
+Each runner emits standardized JSON for every profile in the matrix. Every
+profile result contains the same primary metrics:
 
-```
-Base-4     encode: 2.6 MB/s  decode: 1.5 MB/s
-Huffman    encode: 1.3 MB/s  decode: 0.6 MB/s
-GC-balanced encode: 0.7 MB/s  decode: 1.1 MB/s
-```
+- `throughput` (MB/s over encode+decode runtime)
+- `BER` (bit error rate)
+- `decode_success` (exact payload equality)
+- `runtime_per_mb` (seconds per MiB)
 
-These numbers were produced using 1&nbsp;MB random inputs and will vary by hardware.
+The payload also includes corpus metadata (`corpus_version`, `corpus_sha256`) to
+prove parity across machines and CI jobs.
 
-The repository also includes `benchmarks/error_rate.py` which measures decoding accuracy.
-It encodes 1&nbsp;MB of random data, introduces 1% substitution errors,
-decodes the noisy sequence and reports encoding/decoding throughput along with the computed bit error rate (BER).
-Run it as:
+## Baseline snapshots and tolerance gates
+
+Baseline snapshots and allowed performance drift are centralized in
+`configs/benchmark_thresholds.json`.
+
+- `baseline_snapshot`: frozen per-profile reference values.
+- `tolerance_gates`: allowed regression windows (throughput %, BER delta,
+  runtime %, decode-success requirement).
+
+Evaluate benchmark outputs against gates:
 
 ```bash
-PYTHONPATH=src python benchmarks/error_rate.py
-```
-
-Sample output:
-
-```
-encode: 2.6 MB/s  decode: 1.5 MB/s  BER: 0.0098
-```
-
-Actual numbers will depend on your machine and Python version.
-
-## CI gate automation for phase transitions
-
-Benchmark gate thresholds are centralized in
-`configs/benchmark_thresholds.json` and evaluated by
-`scripts/evaluate_benchmark_gates.py` so updates are intentional and reviewed
-in one place. Alignment to roadmap/capability gate definitions is validated by
-`scripts/check_benchmark_gate_alignment.py`.
-
-The Python CI workflow runs both benchmark commands and evaluates them against
-the phase-gate thresholds defined in `docs/development_roadmap.md` and
-`docs/capabilities.yaml`:
-
-- Throughput gate (Phase 2 -> Phase 3):
-  `PYTHONPATH=src python benchmarks/throughput.py`
-- BER gate (Phase 3 -> Phase 4):
-  `PYTHONPATH=src python benchmarks/error_rate.py`
-
-Each run publishes artifacts for auditability:
-
-- Throughput job artifact `benchmark-throughput` with:
-  - `artifacts/benchmarks/throughput.stdout`
-  - `artifacts/benchmarks/throughput-gate.json`
-- BER job artifact `benchmark-error-rate` with:
-  - `artifacts/benchmarks/error_rate.stdout`
-  - `artifacts/benchmarks/error_rate-gate.json`
-
-You can run a local gate check with:
-
-```bash
-PYTHONPATH=src python benchmarks/throughput.py > throughput.stdout
 python scripts/evaluate_benchmark_gates.py \
   --benchmark throughput \
-  --stdout-file throughput.stdout \
+  --stdout-file throughput.json \
   --output-json throughput-gate.json
+
+python scripts/evaluate_benchmark_gates.py \
+  --benchmark error_rate \
+  --stdout-file error_rate.json \
+  --output-json error-rate-gate.json
 ```
 
-To verify thresholds and documentation stay in sync locally:
+## Competitor-comparable parity methodology
 
-```bash
-python scripts/check_benchmark_gate_alignment.py
-```
+To make external comparisons fair and repeatable:
+
+1. **Fix the workload**: use the exact frozen corpus payload hash and profile
+   matrix, including data size and mutation rate.
+2. **Normalize metrics**: compare only standardized metrics (`throughput`,
+   `BER`, `decode_success`, `runtime_per_mb`) from JSON outputs.
+3. **Match profile semantics**: ensure competitor runs use equivalent channel
+   noise settings and decoded payload checks.
+4. **Use tolerance bands, not single points**: evaluate relative regressions
+   versus snapshot baselines to account for machine variance.
+5. **Archive artifacts**: persist raw benchmark JSON and gate reports for audit
+   trails and reproducibility claims.

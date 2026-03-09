@@ -13,8 +13,15 @@ def test_evaluate_benchmark_gates_from_artifact_json(tmp_path: Path) -> None:
             {
                 "benchmark": "throughput",
                 "parsed_metrics": {
-                    "base4_encode_mb_s": 2.5,
-                    "base4_decode_mb_s": 5.0,
+                    "results": [
+                        {
+                            "profile": "base4_clean_256kb",
+                            "throughput": 1.9,
+                            "BER": 0.0,
+                            "decode_success": True,
+                            "runtime_per_mb": 1.0,
+                        }
+                    ]
                 },
             }
         ),
@@ -42,4 +49,4 @@ def test_evaluate_benchmark_gates_from_artifact_json(tmp_path: Path) -> None:
     report = json.loads(output.read_text(encoding="utf-8"))
     assert report["passed"] is True
     assert report["evidence_artifact"] == str(artifact)
-    assert report["parsed_metrics"]["base4_encode_mb_s"] == 2.5
+    assert report["parsed_metrics"]["results"][0]["throughput"] == 1.9
