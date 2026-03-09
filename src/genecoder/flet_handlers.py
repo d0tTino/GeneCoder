@@ -32,6 +32,7 @@ from .plotting import (
 )
 from .app_helpers import EncodeResult
 from .app.ui_service import UIService
+from .app.ui_dto import UIPresentationPayload
 from .flet_ws import ws_clients
 
 logger = logging.getLogger(__name__)
@@ -50,22 +51,6 @@ _LAST_CONSTRAINT_LIMITS: tuple[float, float, int] = (
 
 
 def _constraint_limits_from_payload(payload: object) -> tuple[float, float, int]:
-    gc_min = _DEFAULT_GC_MIN
-    gc_max = _DEFAULT_GC_MAX
-    max_hp = _DEFAULT_MAX_HOMOPOLYMER
-
-    def apply_limits(limits: dict[str, object]) -> None:
-        nonlocal gc_min, gc_max, max_hp
-        gc_min_val = limits.get("gc_min")
-        gc_max_val = limits.get("gc_max")
-        max_hp_val = limits.get("max_homopolymer")
-        if isinstance(gc_min_val, (int, float)) and not isinstance(gc_min_val, bool):
-            gc_min = float(gc_min_val)
-        if isinstance(gc_max_val, (int, float)) and not isinstance(gc_max_val, bool):
-            gc_max = float(gc_max_val)
-        if isinstance(max_hp_val, (int, float)) and not isinstance(max_hp_val, bool):
-            max_hp = int(max_hp_val)
-
     metrics: dict[str, object] | None = None
     if isinstance(payload, str):
         try:
@@ -79,13 +64,8 @@ def _constraint_limits_from_payload(payload: object) -> tuple[float, float, int]
             metrics = payload["metrics"]
         else:
             metrics = payload
-    if isinstance(metrics, dict):
-        violations = metrics.get("constraint_violations")
-        if isinstance(violations, dict):
-            limits = violations.get("limits")
-            if isinstance(limits, dict):
-                apply_limits(limits)
-    return gc_min, gc_max, max_hp
+    limits = UIPresentationPayload.from_metrics(metrics or {}).constraint_limits
+    return limits.gc_min, limits.gc_max, limits.max_homopolymer
 
 
 def make_encode_handler(

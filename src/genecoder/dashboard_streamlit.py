@@ -15,6 +15,7 @@ from typing import Any, Iterable, IO, cast
 from types import ModuleType
 
 from .results.schema import canonical_metrics_view, load_run_schema, require_canonical_run_fields
+from .app.ui_dto import UIPresentationPayload
 
 try:  # pragma: no cover - optional dependency
     import streamlit as _st
@@ -142,79 +143,12 @@ def _coverage_value(data: dict[str, Any]) -> float | None:
 
 
 def _constraint_limits(data: dict[str, Any]) -> tuple[float, float, int]:
-    gc_min = _DEFAULT_GC_MIN
-    gc_max = _DEFAULT_GC_MAX
-    max_hp = _DEFAULT_MAX_HOMOPOLYMER
-
-    violations = data.get("constraint_violations")
-    if isinstance(violations, dict):
-        limits = violations.get("limits")
-        if isinstance(limits, dict):
-            gc_min_val = limits.get("gc_min")
-            gc_max_val = limits.get("gc_max")
-            max_hp_val = limits.get("max_homopolymer")
-            if isinstance(gc_min_val, (int, float)) and not isinstance(gc_min_val, bool):
-                gc_min = float(gc_min_val)
-            if isinstance(gc_max_val, (int, float)) and not isinstance(gc_max_val, bool):
-                gc_max = float(gc_max_val)
-            if isinstance(max_hp_val, (int, float)) and not isinstance(max_hp_val, bool):
-                max_hp = int(max_hp_val)
-    return gc_min, gc_max, max_hp
+    limits = UIPresentationPayload.from_metrics(data).constraint_limits
+    return limits.gc_min, limits.gc_max, limits.max_homopolymer
 
 
 def _extract_oligo_records(data: dict[str, Any]) -> list[dict[str, Any]]:
-    oligo = data.get("oligo_metrics")
-    if not isinstance(oligo, dict):
-        return []
-    gc_vals = [
-        float(v) for v in oligo.get("gc_percentages", []) if isinstance(v, (int, float))
-    ]
-    hp_vals = [
-        float(v) for v in oligo.get("max_homopolymers", []) if isinstance(v, (int, float))
-    ]
-    dropout_flags = [
-        bool(v) if isinstance(v, bool) else bool(int(v))
-        for v in oligo.get("dropout_flags", [])
-    ]
-    ecc = oligo.get("ecc_success")
-    ecc_map: dict[str, list[float]] = {}
-    if isinstance(ecc, dict):
-        for name, values in ecc.items():
-            if isinstance(values, list):
-                filtered = [
-                    float(val)
-                    for val in values
-                    if isinstance(val, (int, float)) or isinstance(val, bool)
-                ]
-                if filtered:
-                    ecc_map[str(name)] = [
-                        float(val) if not isinstance(val, bool) else (1.0 if val else 0.0)
-                        for val in filtered
-                    ]
-
-    max_len = max(
-        [len(gc_vals), len(hp_vals), len(dropout_flags)]
-        + [len(values) for values in ecc_map.values()] 
-        if ecc_map
-        else [len(gc_vals), len(hp_vals), len(dropout_flags)]
-    )
-    if max_len == 0:
-        return []
-
-    records: list[dict[str, Any]] = []
-    for idx in range(max_len):
-        record: dict[str, Any] = {"Index": idx + 1}
-        if idx < len(gc_vals):
-            record["GC%"] = gc_vals[idx]
-        if idx < len(hp_vals):
-            record["Max Homopolymer"] = hp_vals[idx]
-        if idx < len(dropout_flags):
-            record["Dropout"] = dropout_flags[idx]
-        for name, values in ecc_map.items():
-            if idx < len(values):
-                record[f"ECC:{name}"] = values[idx]
-        records.append(record)
-    return records
+    return [dict(record) for record in UIPresentationPayload.from_metrics(data).oligo_records]
 
 
 def _plotting_status() -> tuple[bool, list[str]]:

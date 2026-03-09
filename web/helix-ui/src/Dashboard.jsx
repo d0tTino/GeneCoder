@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import HeatmapLoader from './HeatmapLoader.jsx';
-import { toLegacyMetrics, toRunSchema } from './runSchema.js';
+import { presentationPayloadFromMetrics, toLegacyMetrics, toRunSchema } from './runSchema.js';
 
 export default function Dashboard() {
   const [sequence, setSequence] = useState('ACGT');
@@ -59,38 +59,41 @@ export default function Dashboard() {
           <p>Max Homopolymer: {metrics.max_homopolymer ?? 'n/a'}</p>
           <p>Error Rate: {typeof metrics.error_rate === 'number' ? (metrics.error_rate * 100).toFixed(2) : 'n/a'}%</p>
           {metrics.plot && <img src={`data:image/png;base64,${metrics.plot}`} style={{ maxWidth: '100%' }} />}
-          {metrics.oligo_metrics && metrics.oligo_metrics.gc_percentages?.length > 0 && (
-            <div>
-              <h3>Per-oligo metrics</h3>
-              <ul>
-                {metrics.oligo_metrics.gc_percentages.map((gcVal, idx) => {
-                  const hp = metrics.oligo_metrics.max_homopolymers?.[idx];
-                  const drop = metrics.oligo_metrics.dropout_flags?.[idx];
-                  const ecc = metrics.oligo_metrics.ecc_success || {};
-                  const eccSummary = Object.entries(ecc)
-                    .map(([name, values]) => {
-                      const v = Array.isArray(values) ? values[idx] : undefined;
-                      return `${name}: ${v !== undefined ? (v * 100).toFixed(1) + '% success' : 'n/a'}`;
-                    })
-                    .join(' | ');
-                  const outOfBounds =
-                    (typeof gcVal === 'number' && (gcVal < 0.4 || gcVal > 0.6)) ||
-                    (typeof hp === 'number' && hp > 8) ||
-                    Boolean(drop);
-                  const tooltip = `HP=${hp ?? 'n/a'} | Dropout=${drop ? 'yes' : 'no'} | ${eccSummary}`;
-                  return (
-                    <li
-                      key={idx}
-                      title={tooltip}
-                      style={{ color: outOfBounds ? '#d32f2f' : 'inherit', fontWeight: outOfBounds ? '600' : '400' }}
-                    >
-                      Oligo {idx + 1}: {(gcVal * 100).toFixed(2)}%
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
+          {(() => {
+            const payload = presentationPayloadFromMetrics(metrics);
+            if (!payload.oligo_records.length) return null;
+            return (
+              <div>
+                <h3>Per-oligo metrics</h3>
+                <ul>
+                  {payload.oligo_records.map((record) => {
+                    const idx = record.Index - 1;
+                    const gcVal = record['GC%'];
+                    const hp = record['Max Homopolymer'];
+                    const drop = record.Dropout;
+                    const eccSummary = Object.entries(record)
+                      .filter(([k]) => k.startsWith('ECC:'))
+                      .map(([k, v]) => `${k.slice(4)}: ${typeof v === 'number' ? (v * 100).toFixed(1) + '% success' : 'n/a'}`)
+                      .join(' | ');
+                    const outOfBounds =
+                      (typeof gcVal === 'number' && (gcVal < payload.constraint_limits.gc_min || gcVal > payload.constraint_limits.gc_max)) ||
+                      (typeof hp === 'number' && hp > payload.constraint_limits.max_homopolymer) ||
+                      Boolean(drop);
+                    const tooltip = `HP=${hp ?? 'n/a'} | Dropout=${drop ? 'yes' : 'no'} | ${eccSummary}`;
+                    return (
+                      <li
+                        key={idx}
+                        title={tooltip}
+                        style={{ color: outOfBounds ? '#d32f2f' : 'inherit', fontWeight: outOfBounds ? '600' : '400' }}
+                      >
+                        Oligo {idx + 1}: {typeof gcVal === 'number' ? (gcVal * 100).toFixed(2) : 'n/a'}%
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })()}
           </>); })()}
           <HeatmapLoader sequence={sequence} />
           {deepdna && (

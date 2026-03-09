@@ -14,7 +14,7 @@ from genecoder.results.schema import compare_runs, load_run_schema, canonical_me
 from genecoder.profiles.registry import available_profiles
 
 from .pipeline_use_case import RunPipelineRequest, RunPipelineResponse, RunPipelineUseCase
-from .ui_dto import UIMetricsSummary, UIRunRequest, UIRunResult
+from .ui_dto import UIMetricsSummary, UIPresentationPayload, UIRunRequest, UIRunResult
 
 
 @dataclass(frozen=True)
@@ -39,6 +39,9 @@ class UIService:
 
     def summarize_metrics(self, metrics: Mapping[str, Any]) -> UIMetricsSummary:
         return UIMetricsSummary.from_metrics(metrics)
+
+    def build_presentation_payload(self, metrics: Mapping[str, Any]) -> UIPresentationPayload:
+        return UIPresentationPayload.from_metrics(metrics)
 
     def run_encode(self, input_data: bytes, options: EncodeOptions) -> EncodeResult:
         return perform_encoding(input_data, options)
