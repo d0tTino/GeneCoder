@@ -145,3 +145,30 @@ def test_schema_transition_1_0_to_1_2() -> None:
     migrated = migrate_run_schema({"schema_version": "1.0", "metrics": {"substitutions": 1}})
     assert migrated["schema_version"] == RUN_SCHEMA_VERSION
     assert "decode_outcomes" in migrated
+
+
+def test_canonical_metrics_view_includes_objective_tradeoffs() -> None:
+    run = load_run_schema(
+        {
+            "file": "sample.bin",
+            "encoding_parameters": {"method": "base4_direct"},
+            "metrics": {
+                "constraint_outcomes": {
+                    "stages": [
+                        {
+                            "objective_score": 0.42,
+                            "objective_tradeoff": {
+                                "gc": 0.01,
+                                "homopolymer": 0.0,
+                                "redundancy": 1.0,
+                                "recovery": 0.97,
+                            },
+                        }
+                    ]
+                }
+            },
+        }
+    )
+    metrics = canonical_metrics_view(run)
+    assert metrics["objective_score"] == 0.42
+    assert metrics["objective_tradeoff_report"]["recovery"] == 0.97

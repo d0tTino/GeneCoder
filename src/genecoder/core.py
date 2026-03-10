@@ -301,6 +301,8 @@ def _constraint_outcome_payload(result: object) -> dict[str, Any]:
         "repairs_applied": len(result.repair.changes) if result.repair is not None else 0,
         "repair_strategy": result.repair.strategy if result.repair is not None else None,
         "residual_risk": result.residual_risk,
+        "objective_score": result.objective_score,
+        "objective_tradeoff": dict(result.objective_tradeoff or {}),
     }
 
 
@@ -332,6 +334,8 @@ def _apply_constraint_stage_to_batch(
             "repair_strategy": outcome.repair.strategy if outcome.repair is not None else None,
             "repairs_applied": len(outcome.repair.changes) if outcome.repair is not None else 0,
             "residual_risk": outcome.residual_risk,
+            "objective_score": outcome.objective_score,
+            "objective_tradeoff": dict(outcome.objective_tradeoff or {}),
             "stage": outcome.stage,
         }
     return {
@@ -361,6 +365,17 @@ def _apply_constraint_stage_to_batch(
             if outcomes
             else 0.0
         ),
+        "objective_score": (
+            sum(float(item.objective_score or 0.0) for item in outcomes) / len(outcomes)
+            if outcomes
+            else None
+        ),
+        "objective_tradeoff": {
+            "gc": (sum(float((item.objective_tradeoff or {}).get("gc_deviation", 0.0)) for item in outcomes) / len(outcomes)) if outcomes else 0.0,
+            "homopolymer": (sum(float((item.objective_tradeoff or {}).get("homopolymer_excess", 0.0)) for item in outcomes) / len(outcomes)) if outcomes else 0.0,
+            "redundancy": (sum(float((item.objective_tradeoff or {}).get("redundancy", 0.0)) for item in outcomes) / len(outcomes)) if outcomes else 0.0,
+            "recovery": (sum(float((item.objective_tradeoff or {}).get("recovery_proxy", 0.0)) for item in outcomes) / len(outcomes)) if outcomes else 0.0,
+        },
         "by_oligo": by_oligo,
     }
 
@@ -1089,6 +1104,12 @@ def metrics(
         aggregate_after = sum(int(item.get("violations_after", 0)) for item in by_oligo_outcomes.values() if isinstance(item, Mapping))
 
     opportunities = max(0, sum(len(seq) for seq in sequences))
+    objective_stage = {}
+    if isinstance(constraint_outcomes, Mapping):
+        stages = constraint_outcomes.get("stages")
+        if isinstance(stages, list) and stages and isinstance(stages[0], Mapping):
+            objective_stage = dict(stages[0])
+
     result: Dict[str, Any] = {
         "gc_distribution": gc_dist,
         "gc_content": gc_content,
@@ -1109,6 +1130,8 @@ def metrics(
             "by_oligo": by_oligo_outcomes,
         },
         "constraint_outcomes": dict(constraint_outcomes) if isinstance(constraint_outcomes, Mapping) else {},
+        "objective_score": objective_stage.get("objective_score"),
+        "objective_tradeoff_report": objective_stage.get("objective_tradeoff", {}),
         "error_bases": opportunities,
         "substitution_rate": 0.0,
         "insertion_rate": 0.0,

@@ -186,6 +186,7 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
     hp_rows: list[dict[str, float | str]] = []
     error_rows: list[dict[str, float | str]] = []
     coverage_rows: list[dict[str, float | str]] = []
+    objective_rows: list[dict[str, float | str]] = []
     oligo_rows: list[dict[str, Any]] = []
     limits_by_run: dict[str, tuple[float, float, int]] = {}
     for name, data in datasets.items():
@@ -215,6 +216,13 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
         coverage = _coverage_value(data)
         if coverage is not None:
             coverage_rows.append({"Run": label, "Metric": "Coverage", "Value": coverage})
+
+        objective = data.get("objective_tradeoff_report")
+        if isinstance(objective, dict):
+            for key, metric in (("gc", "GC"), ("homopolymer", "Homopolymer"), ("redundancy", "Redundancy"), ("recovery", "Recovery")):
+                val = _to_float(objective.get(key))
+                if val is not None:
+                    objective_rows.append({"Run": label, "Metric": metric, "Value": val})
 
         for record in _extract_oligo_records(data):
             record = {**record}
@@ -305,6 +313,21 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
             st.table(coverage_rows)
     else:
         st.write("No coverage summary data.")
+
+    st.header("Constraint Objective Tradeoffs")
+    if objective_rows:
+        if can_plot:
+            df = pd.DataFrame(objective_rows)
+            chart = (
+                alt.Chart(df)
+                .mark_bar()
+                .encode(x="Run:N", y="Value:Q", color="Metric:N")
+            )
+            st.altair_chart(chart, use_container_width=True)
+        else:  # pragma: no cover - basic fallback
+            st.table(objective_rows)
+    else:
+        st.write("No objective tradeoff data.")
 
     st.header("Longest Homopolymer Runs")
     if hp_rows:

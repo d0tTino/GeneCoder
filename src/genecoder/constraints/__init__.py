@@ -1,6 +1,6 @@
 from .engine import ConstraintEngine
 from .report import ConstraintReport, ConstraintViolation, RepairResult
-from .policy import ConstraintPolicy, RepairPolicy, load_constraint_policy
+from .policy import ConstraintPolicy, ObjectivePolicy, ObjectiveTerm, RepairPolicy, load_constraint_policy
 from .repair_pipeline import ConstraintRepairPipeline, ConstraintStageGateError, RepairPipelineResult
 from .rules import (
     ConstraintRuleSet,
@@ -10,7 +10,7 @@ from .rules import (
     MotifAllowRule,
     MotifDenyRule,
 )
-from .solvers import DNAChiselSolverBackend
+from .solvers import DNAChiselSolverBackend, GreedyObjectiveSolver, resolve_solver
 from .strategies import (
     DeterministicRepairStrategy,
     ExternalSolverRepairStrategy,
@@ -23,6 +23,8 @@ __all__ = [
     "ConstraintViolation",
     "RepairResult",
     "ConstraintPolicy",
+    "ObjectivePolicy",
+    "ObjectiveTerm",
     "RepairPolicy",
     "load_constraint_policy",
     "ConstraintRepairPipeline",
@@ -38,4 +40,6 @@ __all__ = [
     "StochasticRepairStrategy",
     "ExternalSolverRepairStrategy",
     "DNAChiselSolverBackend",
+    "GreedyObjectiveSolver",
+    "resolve_solver",
 ]

@@ -24,6 +24,78 @@ class RepairPolicy:
 
 
 @dataclass(frozen=True)
+class ObjectiveTerm:
+    key: str
+    weight: float = 1.0
+    goal: str = "min"
+    target: float | None = None
+
+    def validate(self) -> None:
+        if self.goal not in {"min", "max", "target"}:
+            raise ValueError("objective term goal must be 'min', 'max', or 'target'")
+        if self.goal == "target" and self.target is None:
+            raise ValueError("target objective requires target value")
+
+
+@dataclass(frozen=True)
+class ObjectivePolicy:
+    hard_constraints: tuple[str, ...] = ("length", "gc", "homopolymer")
+    soft_objectives: tuple[ObjectiveTerm, ...] = field(
+        default_factory=lambda: (
+            ObjectiveTerm(key="gc_deviation", weight=1.0, goal="min", target=0.5),
+            ObjectiveTerm(key="homopolymer_excess", weight=1.0, goal="min", target=0.0),
+            ObjectiveTerm(key="redundancy", weight=0.2, goal="min", target=1.0),
+            ObjectiveTerm(key="recovery_proxy", weight=0.6, goal="max"),
+        )
+    )
+    solver: str = "deterministic"
+    replay_seed: int = 0
+
+    def validate(self) -> None:
+        if not self.hard_constraints:
+            raise ValueError("hard_constraints cannot be empty")
+        for term in self.soft_objectives:
+            term.validate()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "hard_constraints": list(self.hard_constraints),
+            "soft_objectives": [
+                {"key": term.key, "weight": term.weight, "goal": term.goal, "target": term.target}
+                for term in self.soft_objectives
+            ],
+            "solver": self.solver,
+            "replay_seed": self.replay_seed,
+        }
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any] | None) -> "ObjectivePolicy":
+        src = dict(data or {})
+        terms_raw = src.get("soft_objectives") if isinstance(src.get("soft_objectives"), list) else None
+        terms = []
+        if terms_raw is not None:
+            for item in terms_raw:
+                if not isinstance(item, Mapping):
+                    continue
+                terms.append(
+                    ObjectiveTerm(
+                        key=str(item.get("key", "")),
+                        weight=float(item.get("weight", 1.0)),
+                        goal=str(item.get("goal", "min")),
+                        target=(float(item["target"]) if item.get("target") is not None else None),
+                    )
+                )
+        objective = cls(
+            hard_constraints=tuple(str(v) for v in src.get("hard_constraints", ("length", "gc", "homopolymer"))),
+            soft_objectives=tuple(terms) if terms else cls().soft_objectives,
+            solver=str(src.get("solver", "deterministic")),
+            replay_seed=int(src.get("replay_seed", 0)),
+        )
+        objective.validate()
+        return objective
+
+
+@dataclass(frozen=True)
 class ConstraintPolicy:
     min_length: int = 25
     max_length: int = 300
@@ -34,6 +106,7 @@ class ConstraintPolicy:
     required_motifs: tuple[str, ...] = ()
     repair: RepairPolicy = field(default_factory=RepairPolicy)
     assumption_mode: str = "repair"
+    objectives: ObjectivePolicy = field(default_factory=ObjectivePolicy)
 
     def validate(self) -> None:
         if self.min_length <= 0 or self.max_length <= 0:
@@ -50,6 +123,7 @@ class ConstraintPolicy:
             raise ValueError("ecc_protected_prefix must be >=0")
         if self.assumption_mode not in {"fail_fast", "repair"}:
             raise ValueError("assumption_mode must be 'fail_fast' or 'repair'")
+        self.objectives.validate()
 
     def strategy_name(self) -> str:
         if self.repair.strategy:
@@ -91,6 +165,7 @@ class ConstraintPolicy:
                 "ecc_protected_prefix": self.repair.ecc_protected_prefix,
             },
             "assumption_mode": self.assumption_mode,
+            "objectives": self.objectives.to_dict(),
         }
 
     @classmethod
@@ -112,6 +187,9 @@ class ConstraintPolicy:
                 ecc_protected_prefix=int(repair_raw.get("ecc_protected_prefix", 0)),
             ),
             assumption_mode=str(src.get("assumption_mode", "repair")),
+            objectives=ObjectivePolicy.from_mapping(
+                src.get("objectives") if isinstance(src.get("objectives"), Mapping) else None
+            ),
         )
         policy.validate()
         return policy
