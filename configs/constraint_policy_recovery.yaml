@@ -1,33 +1,29 @@
 min_length: 80
 max_length: 180
-gc_min: 0.45
-gc_max: 0.55
-max_homopolymer: 3
-restriction_site_bans:
-  - GAATTC  # EcoRI
-  - AAGCTT  # HindIII
+gc_min: 0.42
+gc_max: 0.58
+max_homopolymer: 4
 repair:
   enabled: true
-  strategy: deterministic
-  ecc_protected_prefix: 16
-
+  profile: exploratory
+  strategy: stochastic
 objectives:
-  solver: deterministic
-  replay_seed: 13
+  solver: stochastic
+  replay_seed: 42
   hard_constraints: [length, gc, homopolymer]
   soft_objectives:
+    - key: recovery_proxy
+      weight: 2.0
+      goal: max
     - key: gc_deviation
-      weight: 1.0
+      weight: 0.7
       goal: min
       target: 0.5
     - key: homopolymer_excess
-      weight: 1.2
+      weight: 0.6
       goal: min
       target: 0.0
     - key: redundancy
       weight: 0.3
       goal: min
       target: 1.0
-    - key: recovery_proxy
-      weight: 0.9
-      goal: max

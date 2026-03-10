@@ -137,6 +137,12 @@ def canonical_metrics_view(run_data: Mapping[str, Any]) -> dict[str, Any]:
             "runtime_decode_seconds": runtime.get("decode_seconds"),
             "constraint_stage_outcomes": constraint_outcomes.get("stages", []),
             "simulate_stage_metrics": simulate_metrics.get("stage_metrics", []),
+            "objective_tradeoff_report": metrics.get("objective_tradeoff_report")
+            or _mapping(constraint_outcomes.get("summary")).get("objective_tradeoff")
+            or _mapping((constraint_outcomes.get("stages") or [{}])[0]).get("objective_tradeoff"),
+            "objective_score": metrics.get("objective_score")
+            if metrics.get("objective_score") is not None
+            else _mapping((constraint_outcomes.get("stages") or [{}])[0]).get("objective_score"),
         }
     )
     return metrics
@@ -185,6 +191,12 @@ def translate_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
         constraint_outcomes = {
             "summary": metrics.get("constraint_violations"),
             "by_oligo": {},
+        }
+    else:
+        constraint_outcomes = {
+            "summary": constraint_outcomes.get("summary", metrics.get("constraint_violations")),
+            "by_oligo": constraint_outcomes.get("by_oligo", {}),
+            "stages": constraint_outcomes.get("stages", []),
         }
 
     decode_outcomes = {
@@ -263,6 +275,7 @@ def translate_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
         "constraint_outcomes": {
             "summary": constraint_outcomes.get("summary"),
             "by_oligo": dict(_mapping(constraint_outcomes.get("by_oligo"))),
+            "stages": list(constraint_outcomes.get("stages") or []),
         },
         "decode_outcomes": decode_outcomes,
         "provenance": {

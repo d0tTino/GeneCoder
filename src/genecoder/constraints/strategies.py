@@ -6,6 +6,7 @@ from typing import Protocol
 
 from genecoder.random_utils import make_rng
 
+from .policy import ObjectivePolicy
 from .report import RepairResult, build_diff_changes
 from .rules import ConstraintRuleSet, GcRangeRule, HomopolymerMaxRule
 
@@ -66,14 +67,30 @@ class StochasticRepairStrategy:
 @dataclass
 class ExternalSolverRepairStrategy:
     solver_backend: "SolverBackend"
+    objective_policy: ObjectivePolicy | None = None
+    replay_seed: int | None = None
     name: str = "external_solver"
 
     def repair(self, sequence: str, rules: ConstraintRuleSet) -> RepairResult:
-        return self.solver_backend.solve(sequence, rules, strategy_name=self.name)
+        return self.solver_backend.solve(
+            sequence,
+            rules,
+            strategy_name=self.name,
+            objective_policy=self.objective_policy,
+            replay_seed=self.replay_seed,
+        )
 
 
 class SolverBackend(Protocol):
-    def solve(self, sequence: str, rules: ConstraintRuleSet, *, strategy_name: str) -> RepairResult:
+    def solve(
+        self,
+        sequence: str,
+        rules: ConstraintRuleSet,
+        *,
+        strategy_name: str,
+        objective_policy: ObjectivePolicy | None = None,
+        replay_seed: int | None = None,
+    ) -> RepairResult:
         ...
 
 

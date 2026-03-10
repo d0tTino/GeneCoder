@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from genecoder.constraints import ConstraintEngine, ConstraintPolicy, ConstraintRepairPipeline, RepairPolicy, load_constraint_policy
+from genecoder.constraints import (
+    ConstraintEngine,
+    ConstraintPolicy,
+    ConstraintRepairPipeline,
+    ObjectivePolicy,
+    RepairPolicy,
+    load_constraint_policy,
+)
 
 
 def test_constraint_policy_roundtrip() -> None:
@@ -65,3 +72,26 @@ def test_constraint_repair_pipeline_repair_batch() -> None:
     assert results[0].sequence.startswith("AA")
     assert results[0].report_after.count == 0
     assert results[1].report_before.count == 0
+
+
+def test_constraint_objectives_roundtrip() -> None:
+    policy = ConstraintPolicy(objectives=ObjectivePolicy(solver="deterministic", replay_seed=19))
+    clone = load_constraint_policy(policy.to_dict())
+    assert clone.objectives.solver == "deterministic"
+    assert clone.objectives.replay_seed == 19
+
+
+def test_constraint_repair_pipeline_objective_tradeoff_payload() -> None:
+    policy = ConstraintPolicy(
+        min_length=1,
+        max_length=20,
+        gc_min=0.0,
+        gc_max=1.0,
+        max_homopolymer=2,
+        repair=RepairPolicy(enabled=True, profile="balanced", strategy="external_solver"),
+        objectives=ObjectivePolicy(solver="deterministic", replay_seed=5),
+    )
+    result = ConstraintRepairPipeline(policy).run("AATTTT")
+    assert result.objective_score is not None
+    assert isinstance(result.objective_tradeoff, dict)
+    assert "gc_deviation" in (result.objective_tradeoff or {})
