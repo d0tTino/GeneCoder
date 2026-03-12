@@ -16,6 +16,7 @@ GeneCoder provides a CLI and GUI for encoding and decoding data into simulated D
 * **CSV export for synthesis** with length and [homopolymer](glossary.md#homopolymer) validation. The analysis command warns when sequences violate these constraints.
 * **Mirror encoding** via `--mirror` to output forward and reverse-complement sequences.
 * **Fix my sequence** button adjusts GC balance and homopolymers on the fly.
+* **Constraint policy search optimization** mode can evaluate weighted objectives (GC range, homopolymer cap, restriction-site avoidance, decode-success proxy) instead of only fixed pass/fail checks.
 
 
 ## Visualizer
@@ -75,3 +76,8 @@ decoded, _ = decode_data_deepdna(encoded, info)
 ## Sequence Design Interface
 
 Browse to `/design` on the running server to access a small tool for validating and fixing short DNA sequences. Enter a sequence and click **Validate** to call `/design/validate`; the response shows whether the sequence is within the GC and homopolymer limits. Press **Fix** to invoke `/design/fix`, which returns an adjusted sequence that satisfies the constraints. The updated sequence and metrics are displayed underneath the buttons.
+
+
+## Constraint Policy Search Examples
+
+Use `configs/constraint_policy_search_balanced.yaml` or `configs/constraint_policy_search_recovery.yaml` to run weighted policy search. The `optimization.mode: policy_search` section enables candidate generation, while `objectives.soft_objectives` controls weighting.

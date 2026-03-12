@@ -23,6 +23,11 @@ simulate:
     max_homopolymer: 3
     min_length: 25
     max_length: 300
+    optimization:
+      mode: policy_search
+      search_candidates: 10
+      search_mutations: 2
+      seed: 5
   pipeline:
     illumina_profile: miseq
     coverage_distribution:

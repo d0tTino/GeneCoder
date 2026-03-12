@@ -9,6 +9,15 @@ encode:
   method: base4_direct
   fec: hamming_7_4
 simulate:
+  synthesis:
+    gc_min: 0.45
+    gc_max: 0.55
+    max_homopolymer: 3
+    optimization:
+      mode: policy_search
+      search_candidates: 8
+      search_mutations: 1
+      seed: 11
   simulators:
     - name: indel
       profile: illumina_adapter  # Delegates to IlluminaChannel (MiSeq V3 preset)

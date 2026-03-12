@@ -105,6 +105,32 @@ def _render_oligo_section(metrics: dict[str, Any], html_lines: list[str]) -> Non
 
 
 
+
+
+def _render_optimization_section(metrics: dict[str, Any], html_lines: list[str]) -> None:
+    summary = metrics.get("optimization_summary")
+    if not isinstance(summary, dict):
+        return
+    html_lines.append("<h2>Constraint Policy Optimization</h2>")
+    html_lines.append("<ul>")
+    mode = summary.get("mode")
+    if mode is not None:
+        html_lines.append(f"<li><strong>Mode:</strong> {escape(str(mode))}</li>")
+    candidate_count = summary.get("candidate_count")
+    if isinstance(candidate_count, (int, float)):
+        html_lines.append(f"<li><strong>Candidates Evaluated:</strong> {int(candidate_count)}</li>")
+    score = summary.get("objective_score")
+    if isinstance(score, (int, float)):
+        html_lines.append(f"<li><strong>Weighted Objective Score:</strong> {float(score):.4f}</li>")
+    weighted = summary.get("weighted_objectives")
+    if isinstance(weighted, dict) and weighted:
+        html_lines.append("<li><strong>Objectives:</strong><ul>")
+        for key, val in weighted.items():
+            if isinstance(val, (int, float)):
+                html_lines.append(f"<li>{escape(str(key))}: {float(val):.4f}</li>")
+        html_lines.append("</ul></li>")
+    html_lines.append("</ul>")
+
 def _render_constraint_section(metrics: dict[str, Any], html_lines: list[str]) -> None:
     pressure = metrics.get("constraint_pressure")
     if not isinstance(pressure, dict):
@@ -207,6 +233,7 @@ def generate_html_report(manifest_path: str) -> str:
 
     _render_oligo_section(metrics, html_lines)
     _render_constraint_section(metrics, html_lines)
+    _render_optimization_section(metrics, html_lines)
 
     html_lines.extend(["</body>", "</html>"])
     return "\n".join(html_lines)

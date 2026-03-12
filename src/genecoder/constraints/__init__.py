@@ -1,5 +1,6 @@
 from .engine import ConstraintEngine
 from .report import ConstraintReport, ConstraintViolation, RepairResult
+from .optimizer import ConstraintOptimizer, OptimizationResult, OptimizationScore
 from .policy import ConstraintPolicy, ObjectivePolicy, ObjectiveTerm, RepairPolicy, load_constraint_policy
 from .repair_pipeline import ConstraintRepairPipeline, ConstraintStageGateError, RepairPipelineResult
 from .rules import (
@@ -22,6 +23,9 @@ __all__ = [
     "ConstraintReport",
     "ConstraintViolation",
     "RepairResult",
+    "ConstraintOptimizer",
+    "OptimizationScore",
+    "OptimizationResult",
     "ConstraintPolicy",
     "ObjectivePolicy",
     "ObjectiveTerm",

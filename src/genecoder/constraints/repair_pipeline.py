@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from .engine import ConstraintEngine
+from .optimizer import ConstraintOptimizer
 from .policy import ConstraintPolicy
 from .report import ConstraintReport, RepairResult
 from .solvers import resolve_solver
@@ -34,6 +35,7 @@ class ConstraintRepairPipeline:
     def __init__(self, policy: ConstraintPolicy):
         self.policy = policy
         self.engine = ConstraintEngine(policy.to_rule_set())
+        self.optimizer = ConstraintOptimizer(policy)
 
     def _build_strategy(self) -> DeterministicRepairStrategy | StochasticRepairStrategy | ExternalSolverRepairStrategy:
         strategy_name = self.policy.strategy_name()
@@ -56,38 +58,22 @@ class ConstraintRepairPipeline:
         return StochasticRepairStrategy()
 
     def _objective_score(self, sequence: str) -> tuple[float, dict[str, float]]:
-        length = len(sequence)
-        gc = (sum(1 for b in sequence if b in {"G", "C"}) / length) if length else 0.0
-        max_run = 1
-        run = 1
-        for i in range(1, len(sequence)):
-            if sequence[i] == sequence[i - 1]:
-                run += 1
-                max_run = max(max_run, run)
-            else:
-                run = 1
-        values = {
-            "gc_deviation": abs(gc - 0.5),
-            "homopolymer_excess": max(0.0, float(max_run - self.policy.max_homopolymer)),
-            "redundancy": 1.0,
-            "recovery_proxy": max(0.0, 1.0 - abs(gc - 0.5) - (max_run / max(1, length))),
-        }
-        score = 0.0
-        for term in self.policy.objectives.soft_objectives:
-            raw = values.get(term.key, 0.0)
-            if term.goal == "max":
-                contribution = -raw
-            elif term.goal == "target":
-                contribution = abs(raw - float(term.target or 0.0))
-            else:
-                contribution = raw
-            score += float(term.weight) * contribution
-        return score, values
+        scored = self.optimizer.score(sequence)
+        return scored.score, scored.objectives
 
     def run(self, sequence: str, *, stage: str = "encode") -> RepairPipelineResult:
         before_report = self.engine.validate(sequence)
+        optimized = self.optimizer.optimize(
+            sequence,
+            validate_candidate=lambda cand: self.engine.validate(cand).count == 0,
+        )
+        if optimized.mode == "policy_search" and optimized.sequence != sequence and before_report.count == 0:
+            sequence = optimized.sequence
+            before_report = self.engine.validate(sequence)
         if before_report.count == 0:
             score, values = self._objective_score(sequence)
+            values["optimization_mode"] = optimized.mode
+            values["candidate_count"] = float(optimized.candidate_count)
             return RepairPipelineResult(
                 sequence=sequence,
                 report_before=before_report,
@@ -105,6 +91,8 @@ class ConstraintRepairPipeline:
             )
         if not self.policy.repair.enabled:
             score, values = self._objective_score(sequence)
+            values["optimization_mode"] = optimized.mode
+            values["candidate_count"] = float(optimized.candidate_count)
             return RepairPipelineResult(
                 sequence=sequence,
                 report_before=before_report,
@@ -127,7 +115,16 @@ class ConstraintRepairPipeline:
             raise ConstraintStageGateError(
                 f"Constraint stage gate '{stage}' still has {after_report.count} residual violation(s) after repair"
             )
+        if optimized.mode == "policy_search":
+            post = self.optimizer.optimize(
+                repaired,
+                validate_candidate=lambda cand: self.engine.validate(cand).count == 0,
+            )
+            repaired = post.sequence
+            after_report = self.engine.validate(repaired)
         score, values = self._objective_score(repaired)
+        values["optimization_mode"] = optimized.mode
+        values["candidate_count"] = float(optimized.candidate_count)
         return RepairPipelineResult(
             sequence=repaired,
             report_before=before_report,

@@ -1,0 +1,30 @@
+min_length: 80
+max_length: 180
+gc_min: 0.42
+gc_max: 0.58
+max_homopolymer: 4
+repair:
+  enabled: true
+  profile: exploratory
+  strategy: stochastic
+optimization:
+  mode: policy_search
+  search_candidates: 24
+  search_mutations: 3
+  seed: 42
+objectives:
+  solver: stochastic
+  hard_constraints: [length, gc, homopolymer]
+  soft_objectives:
+    - key: decode_success_proxy
+      weight: 2.2
+      goal: max
+    - key: gc_range_penalty
+      weight: 0.8
+      goal: min
+    - key: homopolymer_cap_penalty
+      weight: 0.6
+      goal: min
+    - key: restriction_site_penalty
+      weight: 0.4
+      goal: min
