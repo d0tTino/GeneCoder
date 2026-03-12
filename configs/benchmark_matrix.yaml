@@ -1,0 +1,169 @@
+version: "1.0.0"
+description: "Benchmark scenario matrix covering codec x simulator x profile x payload-size combinations with fixed seeds."
+axes:
+  codec:
+    - base4
+    - huffman
+    - gc_balanced
+  simulator:
+    - identity
+    - substitution
+  profile:
+    - clean
+    - noisy
+  payload_size:
+    - 65536
+    - 262144
+fixed_seeds:
+  clean: 1337
+  noisy: 7331
+profiles:
+  clean:
+    substitution_prob: 0.0
+  noisy:
+    substitution_prob: 0.01
+scenarios:
+  - codec: base4
+    simulator: identity
+    profile: clean
+    payload_size: 65536
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: base4
+    simulator: identity
+    profile: clean
+    payload_size: 262144
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: base4
+    simulator: identity
+    profile: noisy
+    payload_size: 65536
+    substitution_prob: 0.01
+    seed: 7331
+  - codec: base4
+    simulator: identity
+    profile: noisy
+    payload_size: 262144
+    substitution_prob: 0.01
+    seed: 7331
+  - codec: base4
+    simulator: substitution
+    profile: clean
+    payload_size: 65536
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: base4
+    simulator: substitution
+    profile: clean
+    payload_size: 262144
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: base4
+    simulator: substitution
+    profile: noisy
+    payload_size: 65536
+    substitution_prob: 0.01
+    seed: 7331
+  - codec: base4
+    simulator: substitution
+    profile: noisy
+    payload_size: 262144
+    substitution_prob: 0.01
+    seed: 7331
+  - codec: huffman
+    simulator: identity
+    profile: clean
+    payload_size: 65536
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: huffman
+    simulator: identity
+    profile: clean
+    payload_size: 262144
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: huffman
+    simulator: identity
+    profile: noisy
+    payload_size: 65536
+    substitution_prob: 0.0
+    seed: 7331
+  - codec: huffman
+    simulator: identity
+    profile: noisy
+    payload_size: 262144
+    substitution_prob: 0.0
+    seed: 7331
+  - codec: huffman
+    simulator: substitution
+    profile: clean
+    payload_size: 65536
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: huffman
+    simulator: substitution
+    profile: clean
+    payload_size: 262144
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: huffman
+    simulator: substitution
+    profile: noisy
+    payload_size: 65536
+    substitution_prob: 0.0
+    seed: 7331
+  - codec: huffman
+    simulator: substitution
+    profile: noisy
+    payload_size: 262144
+    substitution_prob: 0.0
+    seed: 7331
+  - codec: gc_balanced
+    simulator: identity
+    profile: clean
+    payload_size: 65536
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: gc_balanced
+    simulator: identity
+    profile: clean
+    payload_size: 262144
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: gc_balanced
+    simulator: identity
+    profile: noisy
+    payload_size: 65536
+    substitution_prob: 0.0
+    seed: 7331
+  - codec: gc_balanced
+    simulator: identity
+    profile: noisy
+    payload_size: 262144
+    substitution_prob: 0.0
+    seed: 7331
+  - codec: gc_balanced
+    simulator: substitution
+    profile: clean
+    payload_size: 65536
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: gc_balanced
+    simulator: substitution
+    profile: clean
+    payload_size: 262144
+    substitution_prob: 0.0
+    seed: 1337
+  - codec: gc_balanced
+    simulator: substitution
+    profile: noisy
+    payload_size: 65536
+    substitution_prob: 0.0
+    seed: 7331
+  - codec: gc_balanced
+    simulator: substitution
+    profile: noisy
+    payload_size: 262144
+    substitution_prob: 0.0
+    seed: 7331
