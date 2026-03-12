@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import random
 from pathlib import Path
 from typing import Tuple
 
 import pytest
 
+from genecoder.simulators.calibration.workflow import evaluate_thresholds
 from genecoder.simulators.nanopore import NanoporeChannel, NANOPORE_PROFILES
 from genecoder.simulators.nanopore_batch import mutate_read, observe_error_rates
 
@@ -73,3 +75,35 @@ def test_nanopore_profile_error_rates(profile: str) -> None:
     for key in ("substitution_rate", "insertion_rate", "deletion_rate"):
         tolerance = max(0.005, 0.3 * float(expected[key]))
         assert abs(rates[key] - float(expected[key])) <= tolerance
+
+
+def test_calibration_threshold_evaluation_flags_violations(tmp_path: Path) -> None:
+    threshold_path = tmp_path / "thresholds.json"
+    threshold_path.write_text(
+        json.dumps(
+            {
+                "calibration": {
+                    "delta_thresholds": {
+                        "substitution_delta": 0.001,
+                        "insertion_delta": 0.001,
+                        "deletion_delta": 0.001,
+                        "dropout_delta": 0.001,
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    evaluation = evaluate_thresholds(
+        {
+            "substitution_delta": 0.002,
+            "insertion_delta": 0.0,
+            "deletion_delta": 0.0,
+            "dropout_delta": 0.0,
+        },
+        threshold_path=threshold_path,
+    )
+
+    assert evaluation.passed is False
+    assert "substitution_delta" in evaluation.violations
