@@ -62,5 +62,20 @@
       "runtime_per_mb_regression_pct": 0.2,
       "require_decode_success": false
     }
+  },
+  "calibration": {
+    "gate": "Channel profile calibration quality gate",
+    "delta_thresholds": {
+      "substitution_delta": 0.01,
+      "insertion_delta": 0.01,
+      "deletion_delta": 0.01,
+      "dropout_delta": 0.05
+    },
+    "artifact_contract": [
+      "dataset_manifest.json",
+      "baseline_metrics.json",
+      "calibrated_metrics.json",
+      "deviation_summary.json"
+    ]
   }
 }

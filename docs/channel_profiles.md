@@ -94,3 +94,42 @@ View the same fields in the generated manifest HTML report (via
 range and homopolymer panels alongside coverage gauges for Nanopore runs. See
 [`configs/nanopore.yml`](../configs/nanopore.yml) for the preset defaults that
 back each profile.
+
+## Calibration recipes
+
+The channel calibration workflow writes canonical artifacts under:
+
+`artifacts/calibration/<profile>/<date>/`
+
+Each run stores:
+
+- `dataset_manifest.json`
+- `baseline_metrics.json`
+- `calibrated_metrics.json`
+- `deviation_summary.json` (includes threshold evaluation and fitted profile)
+
+### Illumina calibration recipe (sample dataset)
+
+Use the sample dataset in `data/calibration/illumina_sample_dataset.json`:
+
+```bash
+genecli channel calibrate \
+  --dataset data/calibration/illumina_sample_dataset.json \
+  --profile illumina_hiseq \
+  --date 2026-01-15
+```
+
+This writes artifacts to `artifacts/calibration/illumina_hiseq/2026-01-15/` and enforces machine-readable delta thresholds from `configs/benchmark_thresholds.json`.
+
+### Nanopore calibration recipe (sample dataset)
+
+Use the sample dataset in `data/calibration/nanopore_sample_dataset.json`:
+
+```bash
+genecli channel calibrate \
+  --dataset data/calibration/nanopore_sample_dataset.json \
+  --profile nanopore_minion \
+  --date 2026-01-15
+```
+
+This writes artifacts to `artifacts/calibration/nanopore_minion/2026-01-15/` with the same threshold checks and deviation summary output.

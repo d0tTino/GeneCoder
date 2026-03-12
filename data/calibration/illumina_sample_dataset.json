@@ -1,0 +1,15 @@
+{
+  "profile": "illumina_hiseq",
+  "baseline": [
+    {"id": "i-b1", "original": "ACGTACGT", "observed": "ACGTTCGT"},
+    {"id": "i-b2", "original": "GGGCCC", "observed": "GGGCCC"},
+    {"id": "i-b3", "original": "TTTTAAAA", "observed": "TTTAAAA"},
+    {"id": "i-b4", "original": "AACCGGTT", "observed": "AACCGGTT", "dropped": true}
+  ],
+  "calibrated": [
+    {"id": "i-c1", "original": "ACGTACGT", "observed": "ACGTACGT"},
+    {"id": "i-c2", "original": "GGGCCC", "observed": "GGGCCC"},
+    {"id": "i-c3", "original": "TTTTAAAA", "observed": "TTTTAAAA"},
+    {"id": "i-c4", "original": "AACCGGTT", "observed": "AACCGGTT"}
+  ]
+}

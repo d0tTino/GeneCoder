@@ -28,6 +28,7 @@ from genecoder.simulators.channel_cli_adapter import (
 from genecoder.metrics import metrics
 from genecoder.simulators.illumina import ILLUMINA_PROFILES
 from genecoder.simulators.nanopore import NANOPORE_PROFILES, DNARSIM_RATE_TABLES
+from genecoder.simulators.calibration import run_calibration
 from genecoder.runtime import make_run_context
 from genecoder.config.loader import (
     load_channel_workflow_config,
@@ -629,6 +630,31 @@ def register_subcommand(
     )
     run_parser.set_defaults(func=_handle_run)
 
+    calibrate_parser = channel_sub.add_parser(
+        "calibrate", help="Calibrate channel profiles from observed datasets"
+    )
+    calibrate_parser.add_argument(
+        "--dataset",
+        required=True,
+        help="Path to a calibration dataset JSON file",
+    )
+    calibrate_parser.add_argument(
+        "--profile",
+        required=True,
+        help="Profile name used for artifact storage",
+    )
+    calibrate_parser.add_argument(
+        "--output-root",
+        default="artifacts/calibration",
+        help="Root directory for calibration artifacts",
+    )
+    calibrate_parser.add_argument(
+        "--date",
+        default=None,
+        help="Artifact date stamp (defaults to YYYY-MM-DD UTC)",
+    )
+    calibrate_parser.set_defaults(func=_handle_calibrate)
+
     apply_parser = channel_sub.add_parser(
         "apply", help="Apply simulators and synthesis constraints"
     )
@@ -768,6 +794,19 @@ def register_subcommand(
 
 def _handle_command(args: argparse.Namespace) -> None:
     run_channel(args)
+
+
+def _handle_calibrate(args: argparse.Namespace) -> None:
+    out_dir, report = run_calibration(
+        dataset_path=args.dataset,
+        profile=args.profile,
+        output_root=args.output_root,
+        run_date=args.date,
+    )
+    print(json.dumps({"artifact_dir": out_dir.as_posix(), **report}, indent=2))
+    if not report["threshold_evaluation"]["passed"]:
+        logger.error("Calibration threshold gates failed")
+        raise SystemExit(2)
 
 
 def run_channel(args: argparse.Namespace) -> None:

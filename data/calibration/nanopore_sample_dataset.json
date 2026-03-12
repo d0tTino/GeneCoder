@@ -1,0 +1,15 @@
+{
+  "profile": "nanopore_minion",
+  "baseline": [
+    {"id": "n-b1", "original": "ACGTACGT", "observed": "ACGTTACGT"},
+    {"id": "n-b2", "original": "GGGCCC", "observed": "GGCC"},
+    {"id": "n-b3", "original": "TTTTAAAA", "observed": "TTTTAATA"},
+    {"id": "n-b4", "original": "AACCGGTT", "observed": "AACCGGTT", "dropped": true}
+  ],
+  "calibrated": [
+    {"id": "n-c1", "original": "ACGTACGT", "observed": "ACGTACGT"},
+    {"id": "n-c2", "original": "GGGCCC", "observed": "GGGCCC"},
+    {"id": "n-c3", "original": "TTTTAAAA", "observed": "TTTTAAAT"},
+    {"id": "n-c4", "original": "AACCGGTT", "observed": "AACCGGTT"}
+  ]
+}

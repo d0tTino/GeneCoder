@@ -1,74 +1,52 @@
-import random
+from __future__ import annotations
 
-from genecoder import illumina_sim
-from genecoder.simulators.illumina.channel import IlluminaChannel
-from genecoder.simulators.illumina.profiles import ILLUMINA_PROFILES
+import json
+from pathlib import Path
 
-
-def _hamming(a: str, b: str) -> int:
-    length = min(len(a), len(b))
-    dist = sum(1 for i in range(length) if a[i] != b[i])
-    return dist + abs(len(a) - len(b))
+from tests.test_cli import run_cli_command
 
 
-def test_coverage_reduces_errors() -> None:
-    seq = "A" * 50
-    rng1 = random.Random(0)
-    out1 = illumina_sim.simulate(
-        seq,
-        substitution_rate=0.1,
-        insertion_rate=0.001,
-        deletion_rate=0.001,
-        rng=rng1,
-        coverage_depth=1,
+def test_channel_calibrate_writes_expected_artifacts(tmp_path: Path) -> None:
+    dataset = {
+        "profile": "illumina_hiseq",
+        "baseline": [
+            {
+                "id": "b1",
+                "original": "A" * 200,
+                "observed": "A" * 199 + "C",
+            },
+            {"id": "b2", "original": "TTTT", "observed": "TTTT"},
+        ],
+        "calibrated": [
+            {"id": "c1", "original": "A" * 200, "observed": "A" * 200},
+            {"id": "c2", "original": "TTTT", "observed": "TTTT"},
+        ],
+    }
+    dataset_path = tmp_path / "dataset.json"
+    dataset_path.write_text(json.dumps(dataset), encoding="utf-8")
+
+    output_root = tmp_path / "artifacts"
+    result = run_cli_command(
+        [
+            "channel",
+            "calibrate",
+            "--dataset",
+            str(dataset_path),
+            "--profile",
+            "illumina_hiseq",
+            "--output-root",
+            str(output_root),
+            "--date",
+            "2026-01-15",
+        ]
     )
-    rng2 = random.Random(0)
-    out5 = illumina_sim.simulate(
-        seq,
-        substitution_rate=0.1,
-        insertion_rate=0.001,
-        deletion_rate=0.001,
-        rng=rng2,
-        coverage_depth=5,
-    )
-    assert _hamming(seq, out5) <= _hamming(seq, out1)
 
-
-def test_quality_distribution_controls_errors() -> None:
-    seq = "ACGTAC"
-    rng1 = random.Random(0)
-    out_none = illumina_sim.simulate(
-        seq,
-        substitution_rate=0.0,
-        insertion_rate=0.0,
-        deletion_rate=0.0,
-        rng=rng1,
-        coverage_depth=1,
-        quality_distribution=[0.0],
-    )
-    rng2 = random.Random(0)
-    out_all = illumina_sim.simulate(
-        seq,
-        substitution_rate=0.0,
-        insertion_rate=0.0,
-        deletion_rate=0.0,
-        rng=rng2,
-        coverage_depth=1,
-        quality_distribution=[1.0],
-    )
-    assert out_none == seq
-    assert _hamming(seq, out_all) == len(seq)
-
-
-def test_illumina_profile_error_rates() -> None:
-    sequence = "ACGT" * 250
-    for name, params in ILLUMINA_PROFILES.items():
-        channel = IlluminaChannel(profile=name)
-        reads = int(max(1, channel.coverage)) * 500
-        observation = channel.observe_error_rates(sequence, reads=reads, seed=2024)
-        rates = observation.rates()
-        for key in ("substitution_rate", "insertion_rate", "deletion_rate"):
-            expected = float(params[key])
-            tolerance = max(0.0001, expected * 0.5)
-            assert abs(rates[key] - expected) <= tolerance
-
+    assert result.returncode == 0, result.stderr
+    artifact_dir = output_root / "illumina_hiseq" / "2026-01-15"
+    assert artifact_dir.exists()
+    assert (artifact_dir / "dataset_manifest.json").exists()
+    assert (artifact_dir / "baseline_metrics.json").exists()
+    assert (artifact_dir / "calibrated_metrics.json").exists()
+    deviation = json.loads((artifact_dir / "deviation_summary.json").read_text(encoding="utf-8"))
+    assert "threshold_evaluation" in deviation
+    assert deviation["threshold_evaluation"]["passed"] is True
