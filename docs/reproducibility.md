@@ -148,3 +148,49 @@ poetry run pytest -m integration_optional --test-tier=integration -rs -q
 
 Keeping these commands and dependency profiles pinned in automation makes test
 outcomes easier to compare across machines and over time.
+
+
+## Required reproducibility artifact set (strict)
+
+GeneCoder now defines the canonical reproducibility contract in
+`configs/reproducibility.yaml`.
+
+Required artifacts are validated by `scripts/validate_reproducibility_artifacts.py`.
+
+- **Bundle run (`bundle_run`)**
+  - `summary.json`
+  - `sequence_batches.json`
+  - `decoded/*.json`
+  - `decoded/*.kpi.json`
+- **Bundle sweep (`bundle_sweep`)**
+  - `manifest_index.json`
+  - `reproducibility_report.json`
+
+Generate reports during execution:
+
+```bash
+genecli pipeline input.bin decoded.bin --codec reverse --channel none --seed 42 --emit-repro-report
+genecli bundle run configs/gold.yaml --cache-dir runs --emit-repro-report
+genecli bundle sweep configs/*.yaml --cache-dir runs --emit-repro-report
+```
+
+Validate artifacts and tolerances in CI:
+
+```bash
+python scripts/validate_reproducibility_artifacts.py --artifact-root runs --mode bundle_sweep
+```
+
+## Reproducibility report interpretation
+
+The generated report (`*.repro.json` for pipeline, `reproducibility_report.json`
+for bundles) compares runs grouped by the same **simulation profile + global
+seed** and enforces deterministic/tolerance checks from
+`configs/reproducibility.yaml`.
+
+- `summary.pass=true`: all deterministic expectations and tolerance gates passed.
+- `summary.tolerance_violations>0`: one or more metrics drifted beyond configured
+  limits.
+- `summary.deterministic_violations>0`: one or more deterministic expectations
+  (for example `decode_success == true`) were violated.
+- `comparisons[].metric_checks[]`: per-metric baseline/candidate values and
+  whether each check stayed within tolerance.

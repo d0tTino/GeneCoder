@@ -1,0 +1,40 @@
+version: 1
+required_artifacts:
+  bundle_run:
+    - summary.json
+    - sequence_batches.json
+    - decoded/*.json
+    - decoded/*.kpi.json
+  bundle_sweep:
+    - manifest_index.json
+    - reproducibility_report.json
+comparison:
+  deterministic_expectations:
+    decode_success:
+      type: equals
+      value: true
+  tolerances:
+    ber:
+      mode: absolute
+      max_delta: 0.0
+    dropout_rate:
+      mode: absolute
+      max_delta: 0.0
+    gc_stress:
+      mode: absolute
+      max_delta: 0.0
+    homopolymer_stress:
+      mode: absolute
+      max_delta: 0.0
+    runtime_total_seconds:
+      mode: relative
+      max_delta: 0.25
+    runtime_encode_seconds:
+      mode: relative
+      max_delta: 0.25
+    runtime_simulate_seconds:
+      mode: relative
+      max_delta: 0.25
+    runtime_decode_seconds:
+      mode: relative
+      max_delta: 0.25

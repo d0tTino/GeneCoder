@@ -11,6 +11,7 @@ from .schema import (
     translate_decode_summary,
     translate_manifest,
 )
+from .repro_report import generate_reproducibility_report, load_reproducibility_config
 
 __all__ = [
     "RUN_SCHEMA_VERSION",
@@ -24,4 +25,6 @@ __all__ = [
     "translate_bundle_metrics",
     "translate_decode_summary",
     "translate_manifest",
+    "generate_reproducibility_report",
+    "load_reproducibility_config",
 ]

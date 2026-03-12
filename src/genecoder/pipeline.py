@@ -13,6 +13,7 @@ import warnings
 
 from .compat.v1.pipeline_adapter import SequencePipeline, core, init_plugins, run_pipeline
 from .results.schema import canonical_comparison_metrics, canonical_metrics_view, migrate_run_schema
+from .results.repro_report import generate_reproducibility_report
 
 KPI_BUNDLE_VERSION = "1.0"
 
@@ -47,6 +48,7 @@ __all__ = [
     "init_plugins",
     "KPI_BUNDLE_VERSION",
     "build_kpi_bundle",
+    "generate_reproducibility_report",
 ]
 
 warnings.warn(
