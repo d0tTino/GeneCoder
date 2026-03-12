@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from genecoder.constraints import (
     ConstraintEngine,
+    ConstraintOptimizer,
     ConstraintPolicy,
     ConstraintRepairPipeline,
     ObjectivePolicy,
@@ -95,3 +96,89 @@ def test_constraint_repair_pipeline_objective_tradeoff_payload() -> None:
     assert result.objective_score is not None
     assert isinstance(result.objective_tradeoff, dict)
     assert "gc_deviation" in (result.objective_tradeoff or {})
+
+
+def test_constraint_optimizer_policy_search_is_deterministic_with_seed() -> None:
+    policy = ConstraintPolicy(
+        min_length=1,
+        max_length=20,
+        gc_min=0.2,
+        gc_max=0.8,
+        max_homopolymer=3,
+        objectives=ObjectivePolicy(
+            optimization_mode="policy_search",
+            replay_seed=123,
+            search_candidates=10,
+            search_mutations=2,
+            soft_objectives=(
+                ObjectivePolicy().soft_objectives[0],
+                ObjectivePolicy().soft_objectives[1],
+            ),
+        ),
+    )
+    optimizer = ConstraintOptimizer(policy)
+    first = optimizer.optimize("AAAATTTTCCCCGGGG")
+    second = optimizer.optimize("AAAATTTTCCCCGGGG")
+    assert first.sequence == second.sequence
+    assert first.score == second.score
+
+
+def test_constraint_optimizer_respects_weighted_objective_priority() -> None:
+    policy_gc = ConstraintPolicy(
+        min_length=1,
+        max_length=20,
+        gc_min=0.45,
+        gc_max=0.55,
+        max_homopolymer=4,
+        restriction_site_bans=("GAATTC",),
+        objectives=ObjectivePolicy.from_mapping(
+            {
+                "soft_objectives": [
+                    {"key": "gc_range_penalty", "weight": 5.0, "goal": "min"},
+                    {"key": "restriction_site_penalty", "weight": 0.1, "goal": "min"},
+                ]
+            }
+        ),
+    )
+    policy_restriction = ConstraintPolicy(
+        min_length=1,
+        max_length=20,
+        gc_min=0.45,
+        gc_max=0.55,
+        max_homopolymer=4,
+        restriction_site_bans=("GAATTC",),
+        objectives=ObjectivePolicy.from_mapping(
+            {
+                "soft_objectives": [
+                    {"key": "gc_range_penalty", "weight": 0.1, "goal": "min"},
+                    {"key": "restriction_site_penalty", "weight": 5.0, "goal": "min"},
+                ]
+            }
+        ),
+    )
+    seq = "GAATTCGGGGGG"
+    gc_score = ConstraintOptimizer(policy_gc).score(seq).score
+    restriction_score = ConstraintOptimizer(policy_restriction).score(seq).score
+    assert gc_score != restriction_score
+
+
+def test_constraint_policy_parses_optimization_mode_from_alias_block() -> None:
+    policy = load_constraint_policy(
+        {
+            "min_length": 10,
+            "max_length": 20,
+            "gc_min": 0.4,
+            "gc_max": 0.6,
+            "max_homopolymer": 3,
+            "optimization": {
+                "mode": "policy_search",
+                "search_candidates": 6,
+                "search_mutations": 2,
+                "seed": 9,
+            },
+        }
+    )
+    assert policy.objectives.optimization_mode == "policy_search"
+    assert policy.objectives.search_candidates == 6
+    assert policy.objectives.search_mutations == 2
+    assert policy.objectives.replay_seed == 9

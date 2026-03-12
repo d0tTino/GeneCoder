@@ -25,6 +25,15 @@ def _make_manifest(path: Path) -> Path:
                 "aggregate": {"before": 3, "after": 1, "violations": 1, "pressure": 0.01},
                 "by_oligo": {"ol-1": {"violations_before": 2, "violations_after": 0}},
             },
+            "optimization_summary": {
+                "mode": "policy_search",
+                "candidate_count": 8,
+                "objective_score": 0.42,
+                "weighted_objectives": {
+                    "gc_range_penalty": 0.01,
+                    "homopolymer_cap_penalty": 0.0,
+                },
+            },
         },
     }
     path.write_text(json.dumps(data))
@@ -45,6 +54,8 @@ def test_generate_html_report(tmp_path: Path) -> None:
     assert "Coverage:</strong> 42" in html
     assert "Constraint Pressure" in html
     assert "before 3, after 1" in html
+    assert "Constraint Policy Optimization" in html
+    assert "Mode:</strong> policy_search" in html
 
 
 def test_cli_html_report_stdout(tmp_path: Path) -> None:

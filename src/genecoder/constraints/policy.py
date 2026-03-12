@@ -50,10 +50,19 @@ class ObjectivePolicy:
     )
     solver: str = "deterministic"
     replay_seed: int = 0
+    optimization_mode: str = "fixed_checks"
+    search_candidates: int = 12
+    search_mutations: int = 2
 
     def validate(self) -> None:
         if not self.hard_constraints:
             raise ValueError("hard_constraints cannot be empty")
+        if self.optimization_mode not in {"fixed_checks", "policy_search"}:
+            raise ValueError("optimization_mode must be 'fixed_checks' or 'policy_search'")
+        if self.search_candidates < 1:
+            raise ValueError("search_candidates must be >= 1")
+        if self.search_mutations < 1:
+            raise ValueError("search_mutations must be >= 1")
         for term in self.soft_objectives:
             term.validate()
 
@@ -66,6 +75,9 @@ class ObjectivePolicy:
             ],
             "solver": self.solver,
             "replay_seed": self.replay_seed,
+            "optimization_mode": self.optimization_mode,
+            "search_candidates": self.search_candidates,
+            "search_mutations": self.search_mutations,
         }
 
     @classmethod
@@ -90,6 +102,9 @@ class ObjectivePolicy:
             soft_objectives=tuple(terms) if terms else cls().soft_objectives,
             solver=str(src.get("solver", "deterministic")),
             replay_seed=int(src.get("replay_seed", 0)),
+            optimization_mode=str(src.get("optimization_mode", "fixed_checks")),
+            search_candidates=int(src.get("search_candidates", 12)),
+            search_mutations=int(src.get("search_mutations", 2)),
         )
         objective.validate()
         return objective
@@ -172,6 +187,18 @@ class ConstraintPolicy:
     def from_mapping(cls, data: Mapping[str, Any] | None) -> "ConstraintPolicy":
         src = dict(data or {})
         repair_raw = src.get("repair") if isinstance(src.get("repair"), Mapping) else {}
+        opt_raw = src.get("optimization") if isinstance(src.get("optimization"), Mapping) else {}
+        objective_raw = src.get("objectives") if isinstance(src.get("objectives"), Mapping) else {}
+        merged_objectives = dict(objective_raw)
+        if "mode" in opt_raw and "optimization_mode" not in merged_objectives:
+            merged_objectives["optimization_mode"] = opt_raw.get("mode")
+        if "search_candidates" in opt_raw and "search_candidates" not in merged_objectives:
+            merged_objectives["search_candidates"] = opt_raw.get("search_candidates")
+        if "search_mutations" in opt_raw and "search_mutations" not in merged_objectives:
+            merged_objectives["search_mutations"] = opt_raw.get("search_mutations")
+        if "seed" in opt_raw and "replay_seed" not in merged_objectives:
+            merged_objectives["replay_seed"] = opt_raw.get("seed")
+
         policy = cls(
             min_length=int(src.get("min_length", 25)),
             max_length=int(src.get("max_length", 300)),
@@ -187,9 +214,7 @@ class ConstraintPolicy:
                 ecc_protected_prefix=int(repair_raw.get("ecc_protected_prefix", 0)),
             ),
             assumption_mode=str(src.get("assumption_mode", "repair")),
-            objectives=ObjectivePolicy.from_mapping(
-                src.get("objectives") if isinstance(src.get("objectives"), Mapping) else None
-            ),
+            objectives=ObjectivePolicy.from_mapping(merged_objectives),
         )
         policy.validate()
         return policy

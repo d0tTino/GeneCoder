@@ -4,36 +4,31 @@ gc_min: 0.45
 gc_max: 0.55
 max_homopolymer: 3
 restriction_site_bans:
-  - GAATTC  # EcoRI
-  - AAGCTT  # HindIII
+  - GAATTC
+  - AAGCTT
 repair:
   enabled: true
-  strategy: deterministic
+  profile: balanced
+  strategy: external_solver
   ecc_protected_prefix: 16
-
 optimization:
   mode: policy_search
-  search_candidates: 12
+  search_candidates: 16
   search_mutations: 2
-  seed: 13
-
+  seed: 7
 objectives:
   solver: deterministic
-  replay_seed: 13
   hard_constraints: [length, gc, homopolymer]
   soft_objectives:
-    - key: gc_deviation
-      weight: 1.0
+    - key: gc_range_penalty
+      weight: 1.5
       goal: min
-      target: 0.5
-    - key: homopolymer_excess
+    - key: homopolymer_cap_penalty
+      weight: 1.3
+      goal: min
+    - key: restriction_site_penalty
+      weight: 2.0
+      goal: min
+    - key: decode_success_proxy
       weight: 1.2
-      goal: min
-      target: 0.0
-    - key: redundancy
-      weight: 0.3
-      goal: min
-      target: 1.0
-    - key: recovery_proxy
-      weight: 0.9
       goal: max

@@ -8,6 +8,8 @@ synthesis:
   min_length: 25
   max_length: 300
   max_homopolymer: 4
+  optimization:
+    mode: fixed_checks
 
 simulators:
   - name: illumina

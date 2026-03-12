@@ -240,6 +240,42 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        },
+        "optimization": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "fixed_checks",
+                "policy_search"
+              ]
+            },
+            "search_candidates": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "search_mutations": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "seed": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
         }
       }
     },
