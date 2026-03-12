@@ -16,7 +16,12 @@ from genecoder.config.loader import load_mapping_file, validate_bundle_document
 from genecoder.core import encode, decode, inspect_coding_plan
 from genecoder.formats import SequenceBatch
 from genecoder.parallel import parallel_map
-from genecoder.results.schema import canonical_comparison_metrics, canonical_metrics_view, migrate_run_schema
+from genecoder.results.schema import (
+    canonical_comparison_metrics,
+    canonical_metrics_view,
+    migrate_run_schema,
+)
+from genecoder.results.repro_report import generate_reproducibility_report
 from genecoder.plugin_manager import (
     CODEC_REGISTRY,
     FEC_REGISTRY,
@@ -53,7 +58,10 @@ from genecoder.app import (
 
 RUN_PROFILE_VERSION = "2026.02"
 
-def build_kpi_bundle(run_schema: Mapping[str, Any], *, artifact_path: str | None = None) -> dict[str, Any]:
+
+def build_kpi_bundle(
+    run_schema: Mapping[str, Any], *, artifact_path: str | None = None
+) -> dict[str, Any]:
     """Return the machine-readable KPI bundle for a canonical run artifact."""
 
     canonical_run = migrate_run_schema(run_schema)
@@ -110,12 +118,16 @@ def _is_truthy(value: object) -> bool:
     return bool(value)
 
 
-
 def _load_config(path: str) -> tuple[str, str | None, str | None, Dict[str, Any]]:
     """Parse pipeline settings from a YAML/JSON ``path``."""
 
     data = dict(load_mapping_file(path))
-    validate_bundle_document({"encode": {"input_files": ["placeholder"], "method": "base4_direct"}, "simulate": data})
+    validate_bundle_document(
+        {
+            "encode": {"input_files": ["placeholder"], "method": "base4_direct"},
+            "simulate": data,
+        }
+    )
 
     codec = data.get("codec")
     if not isinstance(codec, str):
@@ -141,7 +153,9 @@ def _load_config(path: str) -> tuple[str, str | None, str | None, Dict[str, Any]
     return codec, fec, channel, channel_params
 
 
-def _build_constraints_from_channel(channel_params: Mapping[str, Any]) -> SynthesisConstraints | None:
+def _build_constraints_from_channel(
+    channel_params: Mapping[str, Any],
+) -> SynthesisConstraints | None:
     """Return synthesis constraints defined in ``channel_params`` when present."""
 
     if not channel_params:
@@ -154,7 +168,9 @@ def _build_constraints_from_channel(channel_params: Mapping[str, Any]) -> Synthe
         return None
 
 
-def _constraints_limits(constraints: SynthesisConstraints | None) -> dict[str, float | int]:
+def _constraints_limits(
+    constraints: SynthesisConstraints | None,
+) -> dict[str, float | int]:
     if constraints is None:
         return {}
     return {
@@ -218,7 +234,9 @@ def _run_with_params(
         channel_config = ChannelConfig(
             parallel=_is_truthy(config_candidates.get("parallel", False)),
             workers=_parse_int(config_candidates.get("workers")),
-            use_process_pool=_is_truthy(config_candidates.get("use_process_pool", False)),
+            use_process_pool=_is_truthy(
+                config_candidates.get("use_process_pool", False)
+            ),
             use_mpi=_is_truthy(config_candidates.get("use_mpi", False)),
             illumina_profile=(
                 str(config_candidates.get("illumina_profile"))
@@ -244,9 +262,7 @@ def _run_with_params(
             try:
                 channel_instance = type(base_channel)(**channel_constructor_params)
             except Exception as exc:
-                logger.error(
-                    "Invalid channel parameters for %s: %s", channel, exc
-                )
+                logger.error("Invalid channel parameters for %s: %s", channel, exc)
                 raise SystemExit(1)
         else:
             channel_instance = base_channel
@@ -274,11 +290,12 @@ def _run_with_params(
     if isinstance(result, SequenceBatch):
         mutated_batch = result
     else:
-        header = simulation_batch.first_header() if simulation_batch.oligos else "pipeline"
+        header = (
+            simulation_batch.first_header() if simulation_batch.oligos else "pipeline"
+        )
         mutated_batch = SequenceBatch.build(
             [(header, str(result))],
             batch_id=simulation_batch.batch_id,
-
         )
 
     mutated_sequence = mutated_batch.primary_sequence()
@@ -308,9 +325,7 @@ def _run_with_params(
             mutated_oligo.metadata[RESULT_COVERAGE_KEY] = str(coverage_value)
         coverage_counts.append(int(coverage_value))
 
-        dropout_flag = _is_truthy(
-            mutated_oligo.metadata.get(RESULT_DROPOUT_FLAG_KEY)
-        )
+        dropout_flag = _is_truthy(mutated_oligo.metadata.get(RESULT_DROPOUT_FLAG_KEY))
         if RESULT_DROPOUT_FLAG_KEY not in mutated_oligo.metadata:
             dropout_flag = coverage_value <= 0 or mutated_oligo.sequence == ""
             mutated_oligo.metadata[RESULT_DROPOUT_FLAG_KEY] = (
@@ -345,9 +360,7 @@ def _run_with_params(
                 ins = int(totals_data["insertions"])
                 dele = int(totals_data["deletions"])
         if totals_data is None:
-            sub, ins, dele = mutation_counts(
-                original_sequence, mutated_oligo.sequence
-            )
+            sub, ins, dele = mutation_counts(original_sequence, mutated_oligo.sequence)
             mutated_oligo.metadata[RESULT_MUTATION_TOTALS_KEY] = json.dumps(
                 {
                     "substitutions": sub,
@@ -441,7 +454,9 @@ def _run_with_params(
         )
     )
     collector.record_decode(
-        DecodeStageEvent(output_path=output_path, decoded_data=decoded, constraints=constraints)
+        DecodeStageEvent(
+            output_path=output_path, decoded_data=decoded, constraints=constraints
+        )
     )
     artifact = collector.emit()
     artifact.setdefault("input_config", {}).update(
@@ -461,7 +476,9 @@ def _run_with_params(
             oligo = embedded.setdefault("oligo_metrics", {})
             if isinstance(oligo, dict):
                 oligo.setdefault("coverage_counts", coverage_counts)
-                oligo.setdefault("dropout_flags", [bool(flag) for flag in dropout_flags])
+                oligo.setdefault(
+                    "dropout_flags", [bool(flag) for flag in dropout_flags]
+                )
                 oligo.setdefault(
                     "mutation_totals",
                     [
@@ -483,7 +500,6 @@ def _run_with_params(
             )
 
     return artifact
-
 
 
 def register_subcommand(
@@ -576,6 +592,11 @@ def register_subcommand(
         help="Generate HTML reports for decoded manifests",
     )
     parser.add_argument(
+        "--emit-repro-report",
+        action="store_true",
+        help="Generate a reproducibility report for the run artifact.",
+    )
+    parser.add_argument(
         "--launch-dashboard",
         action="store_true",
         help="Launch the dashboard for the metrics file after the run",
@@ -645,16 +666,33 @@ def _handle_command(args: argparse.Namespace) -> None:
     if resolved_channel_config.nanopore_profile is not None:
         channel_params["nanopore_profile"] = resolved_channel_config.nanopore_profile
 
-    if channel in {"illumina", "illumina_builtin", "illumina_d2sim", "illumina_insilicoseq"}:
+    if channel in {
+        "illumina",
+        "illumina_builtin",
+        "illumina_d2sim",
+        "illumina_insilicoseq",
+    }:
         selected_illumina_profile = resolved_channel_config.illumina_profile
-        if selected_illumina_profile is None and channel_params.get("profile") is not None:
+        if (
+            selected_illumina_profile is None
+            and channel_params.get("profile") is not None
+        ):
             selected_illumina_profile = str(channel_params["profile"])
         if selected_illumina_profile is not None:
             channel_params["profile"] = selected_illumina_profile
 
-    if channel in {"nanopore", "nanopore_d2sim", "nanopore_desp", "nanopore_dnarsim", "dnarsim"}:
+    if channel in {
+        "nanopore",
+        "nanopore_d2sim",
+        "nanopore_desp",
+        "nanopore_dnarsim",
+        "dnarsim",
+    }:
         selected_nanopore_profile = resolved_channel_config.nanopore_profile
-        if selected_nanopore_profile is None and channel_params.get("profile") is not None:
+        if (
+            selected_nanopore_profile is None
+            and channel_params.get("profile") is not None
+        ):
             selected_nanopore_profile = str(channel_params["profile"])
         if selected_nanopore_profile is not None:
             channel_params["profile"] = selected_nanopore_profile
@@ -693,7 +731,9 @@ def _handle_command(args: argparse.Namespace) -> None:
                 "coding": {"channel_errors": ["substitution", "insertion", "deletion"]},
             }
         )
-        logger.info("Coding planner: %s", json.dumps(explanation, indent=2, sort_keys=True))
+        logger.info(
+            "Coding planner: %s", json.dumps(explanation, indent=2, sort_keys=True)
+        )
 
     def _execute() -> Dict[str, Any]:
         response = RunPipelineUseCase().execute(
@@ -703,7 +743,11 @@ def _handle_command(args: argparse.Namespace) -> None:
                 channel=channel,
                 input_path=args.input,
                 output_path=args.output,
-                profile=(ChannelProfile(name=channel, parameters=channel_params) if channel and channel != "none" else None),
+                profile=(
+                    ChannelProfile(name=channel, parameters=channel_params)
+                    if channel and channel != "none"
+                    else None
+                ),
                 seeds=SeedProfile(global_seed=args.seed),
                 artifacts=ArtifactOutputPolicy(
                     metrics_path=(str(metrics_override) if metrics_override else None),
@@ -733,7 +777,9 @@ def _handle_command(args: argparse.Namespace) -> None:
     else:
         artifact = _execute()
 
-    metrics_path = Path(str(metrics_override) if metrics_override else str(args.output) + ".json")
+    metrics_path = Path(
+        str(metrics_override) if metrics_override else str(args.output) + ".json"
+    )
     logger.info("Run artifact written to %s", metrics_path)
 
     kpi_bundle_path = metrics_path.with_suffix(".kpi.json")
@@ -743,6 +789,15 @@ def _handle_command(args: argparse.Namespace) -> None:
     kpi_bundle = build_kpi_bundle(source_artifact, artifact_path=str(metrics_path))
     kpi_bundle_path.write_text(json.dumps(kpi_bundle, indent=2), encoding="utf-8")
     logger.info("KPI bundle written to %s", kpi_bundle_path)
+
+    if args.emit_repro_report:
+        repro_path = metrics_path.with_suffix(".repro.json")
+        report = generate_reproducibility_report([metrics_path], output_path=repro_path)
+        logger.info(
+            "Reproducibility report written to %s (comparisons=%s)",
+            repro_path,
+            report.get("summary", {}).get("comparison_count", 0),
+        )
 
     manifest_path = metrics_path.with_suffix(".manifest.json")
     if manifest_path.exists():

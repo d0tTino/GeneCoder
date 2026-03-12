@@ -16,6 +16,7 @@ from typing import Any, Mapping, Sequence, cast
 
 import importlib.util
 
+
 def _has_jsonschema() -> bool:
     try:
         return importlib.util.find_spec("jsonschema") is not None
@@ -29,6 +30,7 @@ if _HAS_JSONSCHEMA:
     from jsonschema import Draft202012Validator, ValidationError
     from jsonschema.exceptions import best_match
 else:  # pragma: no cover - used when jsonschema is unavailable
+
     class ValidationError(Exception):
         """Fallback validation error when jsonschema is unavailable."""
 
@@ -44,6 +46,7 @@ else:  # pragma: no cover - used when jsonschema is unavailable
     def best_match(_errors: Sequence[ValidationError] | None) -> ValidationError | None:
         return None
 
+
 from . import cli as cli_module
 from genecoder.formats import SequenceBatch
 from genecoder.html_report import generate_html_report
@@ -57,6 +60,7 @@ from genecoder.synthesis import SynthesisConstraints
 from genecoder.constraints import load_constraint_policy
 from genecoder.profiles.registry import canonicalize_profile_name
 from genecoder.app import ArtifactOutputPolicy, RunPipelineRequest, RunPipelineUseCase
+from genecoder.results.repro_report import generate_reproducibility_report
 
 
 @dataclass
@@ -76,7 +80,9 @@ class ChannelArgs:
     threads: int | None = None
     processes: int | None = None
 
+
 logger = logging.getLogger(__name__)
+
 
 def _effective_fec(enc_cfg: Mapping[str, object] | None) -> str | None:
     if not isinstance(enc_cfg, Mapping):
@@ -94,6 +100,7 @@ def _effective_fec(enc_cfg: Mapping[str, object] | None) -> str | None:
             if layer_type == "fec" and isinstance(layer_name, str) and layer_name:
                 return layer_name
     return None
+
 
 def _parse_int(value: object) -> int | None:
     try:
@@ -130,7 +137,11 @@ def _augment_schema(schema: dict[str, Any]) -> dict[str, Any]:
     fec_choices = set(FEC_REGISTRY.keys()) | {"triple_repeat", "hamming_7_4"}
     fec_prop = defs.get("encode", {}).get("properties", {}).get("fec")
     if isinstance(fec_prop, dict):
-        existing = set(fec_prop.get("enum", [])) if isinstance(fec_prop.get("enum"), list) else set()
+        existing = (
+            set(fec_prop.get("enum", []))
+            if isinstance(fec_prop.get("enum"), list)
+            else set()
+        )
         values = sorted(existing | fec_choices)
         if values:
             fec_prop["enum"] = values
@@ -140,7 +151,11 @@ def _augment_schema(schema: dict[str, Any]) -> dict[str, Any]:
     simulator_choices = set(SIMULATOR_REGISTRY.keys())
     sim_name_def = defs.get("simulatorName")
     if isinstance(sim_name_def, dict):
-        existing = set(sim_name_def.get("enum", [])) if isinstance(sim_name_def.get("enum"), list) else set()
+        existing = (
+            set(sim_name_def.get("enum", []))
+            if isinstance(sim_name_def.get("enum"), list)
+            else set()
+        )
         values = sorted(existing | simulator_choices)
         if values:
             sim_name_def["enum"] = values
@@ -162,7 +177,11 @@ def _format_schema_error(error: ValidationError) -> str:
             schema_props = (
                 error.schema.get("properties") if isinstance(error.schema, dict) else {}
             )
-            allowed = {str(k) for k in schema_props} if isinstance(schema_props, Mapping) else set()
+            allowed = (
+                {str(k) for k in schema_props}
+                if isinstance(schema_props, Mapping)
+                else set()
+            )
             extras = sorted(instance_keys - allowed)
         if not extras and "'" in error.message:
             parts = [seg for seg in error.message.split("'") if seg.strip()]
@@ -191,10 +210,10 @@ def _validate_bundle_config(config: Mapping[str, object], config_path: Path) -> 
         raise ValueError(f"Invalid bundle config at {config_path} ({exc})") from exc
 
 
-def register_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    parser = subparsers.add_parser(
-        "bundle", help="Manage bundled workflows"
-    )
+def register_subcommand(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    parser = subparsers.add_parser("bundle", help="Manage bundled workflows")
     bundle_sub = parser.add_subparsers(dest="bundle_command", required=True)
     run_parser = bundle_sub.add_parser(
         "run", help="Run encode/decode steps from a YAML config"
@@ -230,6 +249,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--emit-manifest-report",
         action="store_true",
         help="Generate HTML reports for decoded manifests",
+    )
+    run_parser.add_argument(
+        "--emit-repro-report",
+        action="store_true",
+        help="Generate reproducibility report for run artifacts.",
     )
     run_parser.add_argument(
         "--allow-missing-fec",
@@ -291,6 +315,11 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
         "--emit-manifest-report",
         action="store_true",
         help="Generate HTML reports for decoded manifests",
+    )
+    sweep_parser.add_argument(
+        "--emit-repro-report",
+        action="store_true",
+        help="Generate a combined reproducibility report across sweep artifacts.",
     )
     sweep_parser.add_argument(
         "--allow-missing-fec",
@@ -360,12 +389,14 @@ def _simple_args(prefix: str, opts: dict[str, object], allowed: set[str]) -> lis
     return args
 
 
-
-
-
-
-def _backfill_manifest_metrics(manifest_path: Path, original_path: Path, encoded_path: Path) -> None:
-    if not manifest_path.exists() or not original_path.exists() or not encoded_path.exists():
+def _backfill_manifest_metrics(
+    manifest_path: Path, original_path: Path, encoded_path: Path
+) -> None:
+    if (
+        not manifest_path.exists()
+        or not original_path.exists()
+        or not encoded_path.exists()
+    ):
         return
     try:
         payload = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -395,6 +426,7 @@ def _backfill_manifest_metrics(manifest_path: Path, original_path: Path, encoded
     metrics_payload.setdefault("bits_per_nt", bits_per_nt)
     manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
+
 def _run_bundle_pipeline_use_case(
     *,
     codec: str,
@@ -417,6 +449,7 @@ def _run_bundle_pipeline_use_case(
             ),
         )
     )
+
 
 def _run_cli(args_list: list[str]) -> None:
     try:
@@ -510,7 +543,9 @@ def _derive_constraints(
         return None
 
 
-def _constraints_limits(constraints: SynthesisConstraints | None) -> dict[str, float | int]:
+def _constraints_limits(
+    constraints: SynthesisConstraints | None,
+) -> dict[str, float | int]:
     if constraints is None:
         return {}
     return {
@@ -533,9 +568,7 @@ def _write_decoded_metrics(
 ) -> None:
     constraints = _derive_constraints(enc_cfg, sim_cfg)
     try:
-        batch = SequenceBatch.from_fasta(
-            simulated_path.read_text(encoding="utf-8")
-        )
+        batch = SequenceBatch.from_fasta(simulated_path.read_text(encoding="utf-8"))
         sequences = [ol.sequence for ol in batch.oligos] or [batch.primary_sequence()]
     except Exception:
         sequences = [simulated_path.read_text(encoding="utf-8").strip()]
@@ -558,7 +591,9 @@ def _write_decoded_metrics(
                 if isinstance(params, Mapping):
                     normalized["parameters"] = dict(params)
                 opts = item.get("options")
-                if isinstance(opts, Sequence) and not isinstance(opts, (str, bytes, bytearray)):
+                if isinstance(opts, Sequence) and not isinstance(
+                    opts, (str, bytes, bytearray)
+                ):
                     normalized["options"] = [str(opt) for opt in opts if str(opt)]
                 elif isinstance(opts, str) and opts:
                     normalized["options"] = [opt for opt in opts.split() if opt]
@@ -566,9 +601,7 @@ def _write_decoded_metrics(
 
     coverage_info = manifest_data.get("coverage", {})
     histogram_raw = (
-        coverage_info.get("histogram", {})
-        if isinstance(coverage_info, Mapping)
-        else {}
+        coverage_info.get("histogram", {}) if isinstance(coverage_info, Mapping) else {}
     )
     histogram: dict[str, int] = {}
     if isinstance(histogram_raw, Mapping):
@@ -617,7 +650,9 @@ def _write_decoded_metrics(
         except (TypeError, ValueError):
             synthesis_fraction = 0.0
 
-    average_cov = coverage_info.get("average") if isinstance(coverage_info, Mapping) else None
+    average_cov = (
+        coverage_info.get("average") if isinstance(coverage_info, Mapping) else None
+    )
     if average_cov is None:
         average_cov = sum(coverage_counts) / max(1, len(coverage_counts))
     try:
@@ -625,9 +660,13 @@ def _write_decoded_metrics(
     except (TypeError, ValueError):
         average_cov_float = 0.0
 
-    total_reads = coverage_info.get("total_reads") if isinstance(coverage_info, Mapping) else None
+    total_reads = (
+        coverage_info.get("total_reads") if isinstance(coverage_info, Mapping) else None
+    )
     try:
-        total_reads_int = int(total_reads) if total_reads is not None else sum(coverage_counts)
+        total_reads_int = (
+            int(total_reads) if total_reads is not None else sum(coverage_counts)
+        )
     except (TypeError, ValueError):
         total_reads_int = sum(coverage_counts)
 
@@ -752,14 +791,15 @@ def _write_decoded_metrics(
         html = generate_html_report(str(manifest_output))
         html_report_path.write_text(html, encoding="utf-8")
 
-def _launch_dashboard_if_requested(launch_dashboard: bool, metrics_override: Path | None) -> None:
+
+def _launch_dashboard_if_requested(
+    launch_dashboard: bool, metrics_override: Path | None
+) -> None:
     if not launch_dashboard:
         return
     target = metrics_override or metrics.path
     if not target.exists():
-        logger.warning(
-            "Metrics file %s not found, skipping dashboard launch", target
-        )
+        logger.warning("Metrics file %s not found, skipping dashboard launch", target)
         return
     _run_cli(["dashboard", str(target)])
 
@@ -849,6 +889,7 @@ def _run_single_bundle(
     launch_dashboard: bool,
     dry_run: bool,
     allow_missing_fec: bool,
+    emit_repro_report: bool = False,
 ) -> BundleRunResult:
     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -908,7 +949,10 @@ def _run_single_bundle(
     fec_downgraded = False
     ecc_status = None
     ecc_warning = None
-    if _effective_fec(enc_cfg) == "reed_solomon" and importlib.util.find_spec("reedsolo") is None:
+    if (
+        _effective_fec(enc_cfg) == "reed_solomon"
+        and importlib.util.find_spec("reedsolo") is None
+    ):
         if not allow_missing_fec:
             raise RuntimeError(
                 "Reed-Solomon FEC requires the 'reedsolo' package. Install reedsolo "
@@ -957,7 +1001,9 @@ def _run_single_bundle(
                 batch_metadata=None,
                 config_name=config_name,
                 channel_profile=_extract_channel_profile(sim_cfg_raw),
-                ecc_type=str(_effective_fec(enc_cfg)) if _effective_fec(enc_cfg) else None,
+                ecc_type=str(_effective_fec(enc_cfg))
+                if _effective_fec(enc_cfg)
+                else None,
                 ecc_status=ecc_status,
                 ecc_warning=ecc_warning,
                 metrics_target=metrics_override or metrics.path,
@@ -973,7 +1019,9 @@ def _run_single_bundle(
             summary_path=summary_path,
         )
 
-    constraints = _derive_constraints(enc_cfg, sim_cfg_raw if isinstance(sim_cfg_raw, dict) else None)
+    constraints = _derive_constraints(
+        enc_cfg, sim_cfg_raw if isinstance(sim_cfg_raw, dict) else None
+    )
     if constraints is not None:
         enc_cfg["gc_min"] = constraints.gc_min
         enc_cfg["gc_max"] = constraints.gc_max
@@ -1042,8 +1090,12 @@ def _run_single_bundle(
     _run_cli(enc_args)
 
     original_inputs = [Path(p) for p in enc_cfg.get("input_files", [])]
-    input_files = [encoded_dir / (Path(p).name + ".fasta") for p in enc_cfg.get("input_files", [])]
-    encoded_to_original = {encoded: original for original, encoded in zip(original_inputs, input_files)}
+    input_files = [
+        encoded_dir / (Path(p).name + ".fasta") for p in enc_cfg.get("input_files", [])
+    ]
+    encoded_to_original = {
+        encoded: original for original, encoded in zip(original_inputs, input_files)
+    }
     batch_summary: dict[str, object] = {}
     for fasta_path in input_files:
         if not fasta_path.exists():
@@ -1120,11 +1172,15 @@ def _run_single_bundle(
         # pipeline definitions), serialize it to a temporary YAML file for each
         # input and invoke ``channel run`` using that config. This allows bundle
         # configs to reuse the richer channel pipeline syntax.
-        if isinstance(sim_cfg, dict) and "config" not in sim_cfg and {
-            key
-            for key in sim_cfg
-            if key not in {f.name for f in fields(ChannelArgs)}
-        }:
+        if (
+            isinstance(sim_cfg, dict)
+            and "config" not in sim_cfg
+            and {
+                key
+                for key in sim_cfg
+                if key not in {f.name for f in fields(ChannelArgs)}
+            }
+        ):
             try:  # Optional dependency – mirror channel CLI behaviour
                 import yaml  # type: ignore
             except Exception:  # pragma: no cover - optional dependency fallback
@@ -1229,6 +1285,18 @@ def _run_single_bundle(
                     emit_manifest_report=emit_manifest_report,
                 )
 
+    if emit_repro_report:
+        run_artifacts = sorted(run_dir.glob("decoded/*.json"))
+        run_artifacts = [
+            p
+            for p in run_artifacts
+            if not p.name.endswith(".kpi.json") and not p.name.endswith(".repro.json")
+        ]
+        if run_artifacts:
+            repro_path = run_dir / "reproducibility_report.json"
+            generate_reproducibility_report(run_artifacts, output_path=repro_path)
+            logger.info("Reproducibility report written to %s", repro_path)
+
     logger.info("Bundle output written to %s", run_dir)
     summary_path = _write_summary_file(
         run_dir,
@@ -1303,7 +1371,10 @@ def _collect_manifest_index(
             if isinstance(loaded, dict) and isinstance(loaded.get("runs"), list):
                 index_data = {"runs": list(loaded["runs"])}
         except json.JSONDecodeError:
-            logger.warning("Existing manifest index at %s is invalid; regenerating", manifest_index_path)
+            logger.warning(
+                "Existing manifest index at %s is invalid; regenerating",
+                manifest_index_path,
+            )
 
     new_entries = []
     for res in results:
@@ -1326,8 +1397,7 @@ def _collect_manifest_index(
     deduped = [
         entry
         for entry in index_data["runs"]
-        if entry.get("config_hash")
-        not in {e["config_hash"] for e in new_entries}
+        if entry.get("config_hash") not in {e["config_hash"] for e in new_entries}
     ]
     deduped.extend(new_entries)
     index_data["runs"] = deduped
@@ -1335,7 +1405,9 @@ def _collect_manifest_index(
 
 
 def _handle_run(args: argparse.Namespace) -> None:
-    metrics_override: Path | None = Path(args.metrics_path) if args.metrics_path else None
+    metrics_override: Path | None = (
+        Path(args.metrics_path) if args.metrics_path else None
+    )
     if metrics_override:
         set_metrics_path(metrics_override)
 
@@ -1350,11 +1422,14 @@ def _handle_run(args: argparse.Namespace) -> None:
         launch_dashboard=args.launch_dashboard,
         dry_run=args.dry_run,
         allow_missing_fec=args.allow_missing_fec,
+        emit_repro_report=bool(args.emit_repro_report),
     )
 
 
 def _handle_sweep(args: argparse.Namespace) -> None:
-    metrics_override: Path | None = Path(args.metrics_path) if args.metrics_path else None
+    metrics_override: Path | None = (
+        Path(args.metrics_path) if args.metrics_path else None
+    )
     if metrics_override:
         set_metrics_path(metrics_override)
 
@@ -1368,7 +1443,9 @@ def _handle_sweep(args: argparse.Namespace) -> None:
             _run_single_bundle(
                 cfg_path,
                 cache_dir=Path(args.cache_dir),
-                export_archive=Path(args.export_archive) if args.export_archive else None,
+                export_archive=Path(args.export_archive)
+                if args.export_archive
+                else None,
                 author=args.author,
                 description=args.description,
                 emit_manifest_report=args.emit_manifest_report,
@@ -1376,6 +1453,7 @@ def _handle_sweep(args: argparse.Namespace) -> None:
                 launch_dashboard=False,
                 dry_run=args.dry_run,
                 allow_missing_fec=args.allow_missing_fec,
+                emit_repro_report=False,
             )
         )
 
@@ -1387,5 +1465,21 @@ def _handle_sweep(args: argparse.Namespace) -> None:
             else Path(args.cache_dir) / "manifest_index.json"
         ),
     )
+
+    if args.emit_repro_report:
+        repro_artifacts: list[Path] = []
+        for res in results:
+            repro_artifacts.extend(
+                [
+                    p
+                    for p in sorted(res.run_dir.glob("decoded/*.json"))
+                    if not p.name.endswith(".kpi.json")
+                    and not p.name.endswith(".repro.json")
+                ]
+            )
+        if repro_artifacts:
+            repro_path = Path(args.cache_dir) / "reproducibility_report.json"
+            generate_reproducibility_report(repro_artifacts, output_path=repro_path)
+            logger.info("Sweep reproducibility report written to %s", repro_path)
 
     _launch_dashboard_if_requested(args.launch_dashboard, metrics_override)
