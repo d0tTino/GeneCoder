@@ -1,42 +1,59 @@
 # Performance Benchmarks
 
-GeneCoder benchmark runs are reproducible and pinned to a frozen corpus + profile
-matrix under `benchmarks/corpus/`:
+GeneCoder benchmark runs are reproducible and pinned to a frozen corpus payload plus
+an explicit scenario matrix in `configs/benchmark_matrix.yaml`.
 
-- `benchmarks/corpus/base_payload.txt`: immutable workload payload.
-- `benchmarks/corpus/profiles.json`: benchmark profile matrix (codec, size,
-  seed, and mutation rate).
+## Matrix-driven benchmark harness
 
-## Reproducible benchmark workflow
+Benchmark scenarios are defined by a full cross-product of dimensions:
 
-Run throughput and BER workloads from the repository root:
+- `codec`
+- `simulator`
+- `profile`
+- `payload_size`
+
+Each scenario in the matrix has a fixed seed to guarantee run-to-run reproducibility.
+The benchmark harness lives in `benchmarks/harness.py`, and both public runners now
+use that shared harness:
+
+- `benchmarks/throughput.py`
+- `benchmarks/error_rate.py`
+
+Run benchmarks from repository root:
 
 ```bash
-PYTHONPATH=src python benchmarks/throughput.py > throughput.json
-PYTHONPATH=src python benchmarks/error_rate.py > error_rate.json
+PYTHONPATH=src python benchmarks/throughput.py --format json > throughput.json
+PYTHONPATH=src python benchmarks/error_rate.py --format json > error_rate.json
 ```
 
-Each runner emits standardized JSON for every profile in the matrix. Every
-profile result contains the same primary metrics:
+## Normalized JSON output contract
 
-- `throughput` (MB/s over encode+decode runtime)
-- `BER` (bit error rate)
-- `decode_success` (exact payload equality)
-- `runtime_per_mb` (seconds per MiB)
+Both benchmark runners emit normalized JSON with deterministic schema metadata:
 
-The payload also includes corpus metadata (`corpus_version`, `corpus_sha256`) to
-prove parity across machines and CI jobs.
+- top-level keys: `benchmark`, `schema_version`, `matrix_version`, `corpus_sha256`, `results`
+- per-result keys:
+  - `profile`
+  - `codec`
+  - `simulator`
+  - `profile_descriptor`
+  - `payload_size`
+  - `seed`
+  - `substitution_prob`
+  - `throughput`
+  - `BER`
+  - `decode_success`
+  - `runtime_per_mb`
+  - `encode_mb_s`
+  - `decode_mb_s`
 
-## Baseline snapshots and tolerance gates
+This payload is consumed directly by `scripts/evaluate_benchmark_gates.py`.
 
-Baseline snapshots and allowed performance drift are centralized in
+## Gate evaluation
+
+Baseline snapshots and tolerance gates are centralized in
 `configs/benchmark_thresholds.json`.
 
-- `baseline_snapshot`: frozen per-profile reference values.
-- `tolerance_gates`: allowed regression windows (throughput %, BER delta,
-  runtime %, decode-success requirement).
-
-Evaluate benchmark outputs against gates:
+Evaluate outputs against gates:
 
 ```bash
 python scripts/evaluate_benchmark_gates.py \
@@ -50,17 +67,24 @@ python scripts/evaluate_benchmark_gates.py \
   --output-json error-rate-gate.json
 ```
 
-## Competitor-comparable parity methodology
+Gate reports include pass/fail, per-profile checks, and parsed metrics for audit.
 
-To make external comparisons fair and repeatable:
+## Benchmark interpretation guidance
 
-1. **Fix the workload**: use the exact frozen corpus payload hash and profile
-   matrix, including data size and mutation rate.
-2. **Normalize metrics**: compare only standardized metrics (`throughput`,
-   `BER`, `decode_success`, `runtime_per_mb`) from JSON outputs.
-3. **Match profile semantics**: ensure competitor runs use equivalent channel
-   noise settings and decoded payload checks.
-4. **Use tolerance bands, not single points**: evaluate relative regressions
-   versus snapshot baselines to account for machine variance.
-5. **Archive artifacts**: persist raw benchmark JSON and gate reports for audit
-   trails and reproducibility claims.
+When interpreting benchmark outcomes:
+
+1. **Prioritize profile-level comparisons** over aggregate averages.
+2. **Read throughput and BER together**; a throughput gain with BER degradation is
+   not a win for production quality.
+3. **Treat `decode_success` as a hard reliability signal** for clean-profile scenarios.
+4. **Use `runtime_per_mb` to detect regressions hidden by small payload runs**.
+
+## Historical trend guidance
+
+For trend tracking across releases:
+
+1. Persist each benchmark JSON and gate report artifact in CI.
+2. Compare new runs against the previous release and against threshold baselines.
+3. Plot time-series per stable profile id (not just global medians).
+4. Flag sustained drift (3+ runs) even if the gate still passes.
+5. Re-baseline thresholds only after documenting hardware/runtime deltas.

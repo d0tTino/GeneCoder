@@ -27,7 +27,9 @@ def _parse_stdout(benchmark: str, stdout_text: str) -> dict[str, Any]:
     try:
         payload = json.loads(stdout_text)
         if isinstance(payload, dict) and isinstance(payload.get("results"), list):
-            return payload
+            if "schema_version" in payload and "matrix_version" in payload:
+                return payload
+            return {"results": payload["results"]}
     except json.JSONDecodeError:
         pass
 
@@ -70,7 +72,9 @@ def _parse_stdout(benchmark: str, stdout_text: str) -> dict[str, Any]:
 def _parsed_from_artifact(artifact_data: dict[str, Any]) -> dict[str, Any]:
     parsed_metrics = artifact_data.get("parsed_metrics")
     if isinstance(parsed_metrics, dict) and isinstance(parsed_metrics.get("results"), list):
-        return parsed_metrics
+        if "schema_version" in parsed_metrics and "matrix_version" in parsed_metrics:
+            return parsed_metrics
+        return {"results": parsed_metrics["results"]}
     if isinstance(parsed_metrics, dict):
         return {"results": [parsed_metrics]}
     if isinstance(artifact_data.get("results"), list):
