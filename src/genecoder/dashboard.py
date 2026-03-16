@@ -57,6 +57,9 @@ _DEF_METRICS: dict[str, Any] = {
     "coverage_distribution": [],
     "constraint_violations": None,
     "oligo_metrics": {},
+    "cost_per_recovered_bit": None,
+    "reads_per_successful_decode": None,
+    "redundancy_cost_ratio": None,
 }
 
 
@@ -667,6 +670,21 @@ def main(results_paths: Iterable[str] | str | None = None) -> None:  # pragma: n
                 st.bar_chart({"Coverage": coverage})
             else:
                 st.write("No coverage data.")
+
+        subheader("Cost Model")
+        cost_per_bit = data.get("cost_per_recovered_bit")
+        reads_per_decode = data.get("reads_per_successful_decode")
+        redundancy_ratio = data.get("redundancy_cost_ratio")
+        if any(isinstance(val, (int, float)) for val in (cost_per_bit, reads_per_decode, redundancy_ratio)):
+            cost_cols = columns(3)
+            if isinstance(cost_per_bit, (int, float)):
+                cost_cols[0].metric("Cost / recovered bit", f"${float(cost_per_bit):.6f}")
+            if isinstance(reads_per_decode, (int, float)):
+                cost_cols[1].metric("Reads / successful decode", f"{float(reads_per_decode):.2f}")
+            if isinstance(redundancy_ratio, (int, float)):
+                cost_cols[2].metric("Redundancy cost ratio", f"{float(redundancy_ratio):.3f}")
+        else:
+            st.write("No cost model data.")
 
         subheader("Constraint Violations")
         summary = data.get("constraint_violation_summary")

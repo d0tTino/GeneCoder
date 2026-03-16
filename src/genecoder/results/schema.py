@@ -143,6 +143,9 @@ def canonical_metrics_view(run_data: Mapping[str, Any]) -> dict[str, Any]:
             "objective_score": metrics.get("objective_score")
             if metrics.get("objective_score") is not None
             else _mapping((constraint_outcomes.get("stages") or [{}])[0]).get("objective_score"),
+            "cost_per_recovered_bit": metrics.get("cost_per_recovered_bit"),
+            "reads_per_successful_decode": metrics.get("reads_per_successful_decode"),
+            "redundancy_cost_ratio": metrics.get("redundancy_cost_ratio"),
         }
     )
     return metrics

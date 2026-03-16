@@ -439,6 +439,45 @@
             "integer",
             "null"
           ]
+        },
+        "cost_model": {
+          "$ref": "#/$defs/costModelAssumptions"
+        }
+      }
+    },
+    "costModelAssumptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "synthesis": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "usd_per_nt": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "sequencing": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "usd_per_read": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "redundancy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "baseline_coverage": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
         }
       }
     }

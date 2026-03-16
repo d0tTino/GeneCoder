@@ -51,6 +51,9 @@ def aggregate_metrics(root: Path) -> dict[str, Any]:
     total_cov = 0
     total_viol = 0
     bpn_values: list[float] = []
+    cost_per_bit_values: list[float] = []
+    reads_per_success_values: list[float] = []
+    redundancy_ratio_values: list[float] = []
     for manifest in parse_manifests(root):
         total_files += 1
         metrics = manifest.get("metrics", {})
@@ -78,7 +81,31 @@ def aggregate_metrics(root: Path) -> dict[str, Any]:
                 total_cov += cov
             viol = metrics.get("constraint_violations")
             total_viol += _extract_violation_count(viol)
+            cost_per_bit = metrics.get("cost_per_recovered_bit")
+            if isinstance(cost_per_bit, (int, float)):
+                cost_per_bit_values.append(float(cost_per_bit))
+            reads_per_success = metrics.get("reads_per_successful_decode")
+            if isinstance(reads_per_success, (int, float)):
+                reads_per_success_values.append(float(reads_per_success))
+            redundancy_ratio = metrics.get("redundancy_cost_ratio")
+            if isinstance(redundancy_ratio, (int, float)):
+                redundancy_ratio_values.append(float(redundancy_ratio))
     avg_bpn = sum(bpn_values) / len(bpn_values) if bpn_values else 0.0
+    avg_cost_per_recovered_bit = (
+        sum(cost_per_bit_values) / len(cost_per_bit_values)
+        if cost_per_bit_values
+        else 0.0
+    )
+    avg_reads_per_successful_decode = (
+        sum(reads_per_success_values) / len(reads_per_success_values)
+        if reads_per_success_values
+        else 0.0
+    )
+    avg_redundancy_cost_ratio = (
+        sum(redundancy_ratio_values) / len(redundancy_ratio_values)
+        if redundancy_ratio_values
+        else 0.0
+    )
     return {
         "files": total_files,
         "total_original_size": total_bytes,
@@ -89,4 +116,7 @@ def aggregate_metrics(root: Path) -> dict[str, Any]:
         "total_deletions": total_dels,
         "total_coverage": total_cov,
         "total_constraint_violations": total_viol,
+        "avg_cost_per_recovered_bit": avg_cost_per_recovered_bit,
+        "avg_reads_per_successful_decode": avg_reads_per_successful_decode,
+        "avg_redundancy_cost_ratio": avg_redundancy_cost_ratio,
     }
