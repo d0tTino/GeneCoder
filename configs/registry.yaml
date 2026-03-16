@@ -4,9 +4,17 @@ packages:
     license: MIT
     checksum: "91b6d490..."
     signature: "MEUCIQDf..."
+    provenance_publisher: genecoder-labs
+    provenance_channel: stable
   - spec: myplugin==0.2.4
     license: Apache-2.0
     checksum: "5733a819..."
+    signature: "MEQCIAID..."
+    provenance_publisher: community-maintainers
+    provenance_channel: candidate
   - spec: https://example.com/vis-0.3.2-py3-none-any.whl
     license: BSD-3-Clause
+    checksum: "abc93f21..."
     signature: "MEQCIAID..."
+    provenance_publisher: viz-team
+    provenance_channel: stable

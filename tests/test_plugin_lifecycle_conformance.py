@@ -10,6 +10,7 @@ from genecoder.plugin_runtime.descriptors import (
 from genecoder.plugin_runtime.registry import (
     CODEC_REGISTRY,
     REGISTRATION_STATES,
+    latest_validation_results,
     register_plugin,
     transition_plugin_state,
 )
@@ -69,3 +70,15 @@ def test_lifecycle_install_upgrade_disable_rollback_are_deterministic() -> None:
 
     assert REGISTRATION_STATES["demo"] is PluginLifecycleState.LOADED
     assert CODEC_REGISTRY["demo"]["encode"](b"abc") == "cba"
+
+
+def test_runtime_registration_records_canonical_validation_result() -> None:
+    CODEC_REGISTRY.clear()
+    REGISTRATION_STATES.clear()
+
+    register_plugin(_descriptor("validated_demo", CodecV1))
+    results = latest_validation_results("validated_demo")
+
+    assert len(results) == 1
+    assert results[0].check == "runtime_descriptor"
+    assert results[0].success is True

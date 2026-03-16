@@ -8,8 +8,14 @@ from genecoder.plugin_api import Codec, FEC, Simulator, Visualizer
 from genecoder.simulators import SIMULATOR_REGISTRY, register_simulator as _register_simulator
 
 from .adapters import descriptor_from_legacy_callable, descriptor_from_legacy_mapping, mapping_to_bound_methods
-from .descriptors import PluginLifecycleState, RuntimePluginDescriptor
-from .policy import coerce_plugin, enforce_lifecycle_transition, validate_runtime_descriptor
+from .descriptors import PluginLifecycleState, RuntimePluginDescriptor, ValidationResult
+from .policy import (
+    coerce_plugin,
+    enforce_lifecycle_transition,
+    validate_runtime_descriptor,
+    validation_failure,
+    validation_success,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +24,7 @@ FEC_REGISTRY: dict[str, PluginLayerDescriptor] = {}
 VISUALIZER_REGISTRY: dict[str, Callable[..., Any]] = {}
 DEPRECATION_NOTICES: list[dict[str, str]] = []
 REGISTRATION_STATES: dict[str, PluginLifecycleState] = {}
+VALIDATION_RESULTS: dict[str, list[ValidationResult]] = {}
 
 
 class RuntimeRegistry:
@@ -211,7 +218,28 @@ def transition_plugin_state(name: str, new_state: PluginLifecycleState) -> Plugi
     return REGISTRATION_STATES[name]
 
 
+def evaluate_descriptor_policy(descriptor: RuntimePluginDescriptor) -> list[ValidationResult]:
+    results: list[ValidationResult] = []
+    try:
+        validate_runtime_descriptor(descriptor)
+    except Exception as exc:
+        results.append(validation_failure("runtime_descriptor", message=str(exc), details={"plugin": descriptor.name}))
+    else:
+        results.append(validation_success("runtime_descriptor", details={"plugin": descriptor.name, "kind": descriptor.kind}))
+    return results
+
+
+def latest_validation_results(name: str) -> list[ValidationResult]:
+    return list(VALIDATION_RESULTS.get(name, []))
+
+
 def register_plugin(descriptor: RuntimePluginDescriptor) -> None:
+    results = evaluate_descriptor_policy(descriptor)
+    VALIDATION_RESULTS[descriptor.name] = results
+    failures = [result for result in results if not result.success]
+    if failures:
+        _set_state(descriptor.name, PluginLifecycleState.FAILED)
+        raise ValueError(failures[0].message)
     descriptor = validate_runtime_descriptor(descriptor)
     _set_state(descriptor.name, PluginLifecycleState.VALIDATED)
 
@@ -263,6 +291,19 @@ def register_plugin(descriptor: RuntimePluginDescriptor) -> None:
 
     _set_state(descriptor.name, PluginLifecycleState.LOADED)
 
+
+
+
+def disable_plugin(name: str) -> PluginLifecycleState:
+    if name not in REGISTRATION_STATES:
+        raise KeyError(name)
+    return transition_plugin_state(name, PluginLifecycleState.DISABLED)
+
+
+def rollback_plugin(name: str) -> PluginLifecycleState:
+    if name not in REGISTRATION_STATES:
+        raise KeyError(name)
+    return transition_plugin_state(name, PluginLifecycleState.ROLLED_BACK)
 
 def register_codec(name: str, codec: Codec | type[Codec] | dict[str, Any]) -> None:
     _emit_legacy_notice(name, "codec")

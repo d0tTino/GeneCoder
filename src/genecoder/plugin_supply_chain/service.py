@@ -15,7 +15,11 @@ from urllib.parse import urlparse
 
 from genecoder import plugin_security
 from genecoder.plugin_runtime.descriptors import PluginDescriptor, PluginLifecycleState
-from genecoder.plugin_runtime.policy import validate_registry_license, validate_spec
+from genecoder.plugin_runtime.policy import (
+    validate_registry_license,
+    validate_registry_provenance,
+    validate_spec,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -202,7 +206,17 @@ def install_registry_plugins(
         if not checksum or not signature:
             raise ValueError("Signed metadata and checksum are required")
 
-        descriptor = PluginDescriptor(name=name, kind="package", source=spec, version=version, checksum=checksum, signature=signature)
+        provenance_publisher, provenance_channel = validate_registry_provenance(entry, spec=spec)
+        descriptor = PluginDescriptor(
+            name=name,
+            kind="package",
+            source=spec,
+            version=version,
+            checksum=checksum,
+            signature=signature,
+            provenance_publisher=provenance_publisher,
+            provenance_channel=provenance_channel,
+        )
         descriptors.append(descriptor)
         try:
             install_plugin_spec(spec, checksum=checksum, signature=signature, allow_network=network_ok, installer=impl)
