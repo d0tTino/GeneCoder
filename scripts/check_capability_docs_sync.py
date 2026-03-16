@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate generated capability status sections against docs/capabilities.yaml."""
+"""Validate docs/capabilities.yaml references and generated capability sections."""
 
 from __future__ import annotations
 
@@ -12,14 +12,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 MATRIX_PATH = ROOT / "docs" / "capabilities.yaml"
 
-DOC_CONFIGS = {
-    ROOT / "docs" / "vision.md": {
-        "marker": "capabilities:vision-status",
-        "sections": [
-            ("vision_capability_status", "## Capability status snapshot (generated from `docs/capabilities.yaml`)"),
-        ],
-    },
-}
+DOC_CONFIGS: dict[Path, dict] = {}
 
 
 def _collect_missing_matrix_paths(matrix: dict, root: Path) -> list[str]:

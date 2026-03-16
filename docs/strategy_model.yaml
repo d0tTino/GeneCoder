@@ -1,5 +1,4 @@
 version: 1
-last_validated_commit: "4eb89f0cde3b7d75fcaf8311634be19ec56b90f0"
 
 phases:
   - id: 1
