@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Render strategy markdown docs from docs/strategy_model.yaml."""
+"""Render strategy documentation sections from docs/strategy_model.yaml."""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import subprocess
 import sys
 
 import yaml
@@ -12,20 +13,47 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_PATH = ROOT / "docs" / "strategy_model.yaml"
 
-OUTPUT_DOCS = {
-    "product_strategy": ROOT / "docs" / "product_strategy.md",
-    "development_roadmap": ROOT / "docs" / "development_roadmap.md",
-    "roadmap_execution": ROOT / "docs" / "roadmap_execution.md",
-    "cloud": ROOT / "docs" / "cloud.md",
-    "cloud_worker": ROOT / "docs" / "cloud_worker.md",
+DOC_CONFIGS = {
+    ROOT / "docs" / "product_strategy.md": {
+        "marker": "strategy:product",
+    },
+    ROOT / "docs" / "vision.md": {
+        "marker": "strategy:vision",
+    },
+    ROOT / "docs" / "development_roadmap.md": {
+        "marker": "strategy:roadmap",
+    },
 }
 
 
+def _git_head_commit() -> str:
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Unable to resolve git commit: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def _replace_marker_block(content: str, marker: str, new_block: str) -> tuple[str, bool]:
+    start = f"<!-- {marker}:start -->"
+    end = f"<!-- {marker}:end -->"
+    if start not in content or end not in content:
+        raise ValueError(f"Missing marker block {start} ... {end}")
+
+    prefix, rest = content.split(start, 1)
+    middle, suffix = rest.split(end, 1)
+    replacement = f"{start}\n{new_block}\n{end}"
+    updated = f"{prefix}{replacement}{suffix}"
+    return updated, middle.strip() != new_block.strip()
+
+
 def _format_checks(checks: list[dict]) -> str:
-    lines = [
-        "| Metric | Threshold | Evidence |",
-        "| --- | --- | --- |",
-    ]
+    lines = ["| Metric | Threshold | Evidence |", "| --- | --- | --- |"]
     for check in checks:
         evidence = ", ".join(f"`{item}`" for item in check.get("evidence", [])) or "_None listed_"
         lines.append(f"| {check['metric']} | {check['threshold']} | {evidence} |")
@@ -33,10 +61,7 @@ def _format_checks(checks: list[dict]) -> str:
 
 
 def _render_capability_table(capabilities: list[dict]) -> str:
-    lines = [
-        "| Capability | Status | Phase | Owner modules |",
-        "| --- | --- | --- | --- |",
-    ]
+    lines = ["| Capability | Status | Phase | Owner modules |", "| --- | --- | --- | --- |"]
     for capability in capabilities:
         owners = "<br>".join(f"`{path}`" for path in capability.get("owner_modules", [])) or "_Unspecified_"
         lines.append(
@@ -45,126 +70,108 @@ def _render_capability_table(capabilities: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _render_product_strategy(model: dict) -> str:
-    capabilities = model["feature_capabilities"]
+def _render_product_strategy(model: dict, commit_sha: str) -> str:
     return "\n".join(
         [
-            "# Product Strategy",
+            "## Strategy model snapshot (generated)",
             "",
-            f"> last_validated_commit: `{model['last_validated_commit']}`",
+            "> Source of truth: `docs/strategy_model.yaml`",
+            f"> last_validated_commit: `{commit_sha}`",
             "",
-            "## Phase definitions",
+            "### Phase definitions",
             "",
-            "| Phase | Name | Objective |",
-            "| --- | --- | --- |",
+            "| Phase | Name | Objective | Execution focus |",
+            "| --- | --- | --- | --- |",
             *[
-                f"| {phase['id']} | {phase['name']} | {phase['objective']} |"
+                f"| {phase['id']} | {phase['name']} | {phase['objective']} | {phase['execution_focus']} |"
                 for phase in model["phases"]
             ],
             "",
-            "## Feature capability statuses",
+            "### Feature capability statuses",
             "",
-            _render_capability_table(capabilities),
+            _render_capability_table(model["feature_capabilities"]),
             "",
-            "## Deployment posture flags",
+            "### Deployment posture flags",
             "",
             "| Flag | Value |",
             "| --- | --- |",
-            *[
-                f"| `{flag}` | `{value}` |"
-                for flag, value in model["deployment_posture"].items()
-            ],
+            *[f"| `{flag}` | `{value}` |" for flag, value in model["deployment_posture"].items()],
         ]
-    ) + "\n"
+    )
 
 
-def _render_development_roadmap(model: dict) -> str:
-    blocks = [
-        "# Development Roadmap",
-        "",
-        f"> last_validated_commit: `{model['last_validated_commit']}`",
-        "",
-    ]
-    for gate in model["kpi_gates"]:
-        blocks.extend([f"## {gate['gate']}", "", _format_checks(gate["checks"]), ""])
-    return "\n".join(blocks).rstrip() + "\n"
-
-
-def _render_roadmap_execution(model: dict) -> str:
-    lines = [
-        "# Roadmap Execution",
-        "",
-        f"> last_validated_commit: `{model['last_validated_commit']}`",
-        "",
-        "## Execution summary",
-        "",
-    ]
-    for phase in model["phases"]:
-        lines.append(f"- **Phase {phase['id']} — {phase['name']}**: {phase['execution_focus']}")
-    lines.extend(["", "## KPI gate checklist", ""])
-    for gate in model["kpi_gates"]:
-        lines.append(f"### {gate['gate']}")
-        for check in gate["checks"]:
-            lines.append(f"- {check['metric']}: **{check['threshold']}**")
-        lines.append("")
-    return "\n".join(lines).rstrip() + "\n"
-
-
-def _render_cloud_doc(model: dict) -> str:
-    posture = model["deployment_posture"]
+def _render_vision(model: dict, commit_sha: str) -> str:
     return "\n".join(
         [
-            "# Cloud Status",
+            "## Strategy-aligned phase and capability narrative (generated)",
             "",
-            f"> last_validated_commit: `{model['last_validated_commit']}`",
+            "> Source of truth: `docs/strategy_model.yaml`",
+            f"> last_validated_commit: `{commit_sha}`",
             "",
-            "## Deployment posture",
+            "### Phase intent",
             "",
-            f"- `cloud_enabled`: `{posture['cloud_enabled']}`",
-            f"- `cloud_worker_enabled`: `{posture['cloud_worker_enabled']}`",
-            f"- `local_execution_only`: `{posture['local_execution_only']}`",
+            *[
+                f"- **Phase {phase['id']} — {phase['name']}**: {phase['objective']} "
+                f"(Execution focus: {phase['execution_focus']})"
+                for phase in model["phases"]
+            ],
+            "",
+            "### Capability status snapshot",
+            "",
+            _render_capability_table(model["feature_capabilities"]),
         ]
-    ) + "\n"
+    )
 
 
-def render_docs(model: dict) -> dict[Path, str]:
+def _render_development_roadmap(model: dict, commit_sha: str) -> str:
+    blocks = [
+        "## KPI gates and evidence (generated)",
+        "",
+        "> Source of truth: `docs/strategy_model.yaml`",
+        f"> last_validated_commit: `{commit_sha}`",
+        "",
+    ]
+    for gate in model["kpi_gates"]:
+        blocks.extend([f"### {gate['gate']}", "", _format_checks(gate["checks"]), ""])
+    return "\n".join(blocks).rstrip()
+
+
+def render_sections(model: dict, commit_sha: str) -> dict[Path, str]:
     return {
-        OUTPUT_DOCS["product_strategy"]: _render_product_strategy(model),
-        OUTPUT_DOCS["development_roadmap"]: _render_development_roadmap(model),
-        OUTPUT_DOCS["roadmap_execution"]: _render_roadmap_execution(model),
-        OUTPUT_DOCS["cloud"]: _render_cloud_doc(model),
-        OUTPUT_DOCS["cloud_worker"]: _render_cloud_doc(model).replace("# Cloud Status", "# Cloud Worker Status"),
+        ROOT / "docs" / "product_strategy.md": _render_product_strategy(model, commit_sha),
+        ROOT / "docs" / "vision.md": _render_vision(model, commit_sha),
+        ROOT / "docs" / "development_roadmap.md": _render_development_roadmap(model, commit_sha),
     }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--write", action="store_true", help="write docs to disk")
+    parser.add_argument("--write", action="store_true", help="rewrite docs with generated sections")
     args = parser.parse_args()
 
     model = yaml.safe_load(MODEL_PATH.read_text(encoding="utf-8"))
-    rendered = render_docs(model)
+    commit_sha = _git_head_commit()
+    rendered_by_doc = render_sections(model, commit_sha)
 
-    changed: list[Path] = []
-    for path, content in rendered.items():
-        current = path.read_text(encoding="utf-8") if path.exists() else ""
-        if current != content:
-            changed.append(path)
+    changed_files: list[Path] = []
+    for doc_path, rendered in rendered_by_doc.items():
+        marker = DOC_CONFIGS[doc_path]["marker"]
+        original = doc_path.read_text(encoding="utf-8")
+        updated, changed = _replace_marker_block(original, marker, rendered)
+        if changed:
             if args.write:
-                path.write_text(content, encoding="utf-8")
-
-    if changed and not args.write:
-        print("Generated strategy docs are out of sync:")
-        for path in changed:
-            print(f" - {path.relative_to(ROOT)}")
-        return 1
+                doc_path.write_text(updated, encoding="utf-8")
+                changed_files.append(doc_path)
+            else:
+                print(f"Out-of-sync generated strategy section in {doc_path.relative_to(ROOT)}")
+                return 1
 
     if args.write:
-        print("Updated strategy docs:" if changed else "Strategy docs already up to date.")
-        for path in changed:
+        print("Updated generated strategy sections:" if changed_files else "Generated strategy sections already up to date.")
+        for path in changed_files:
             print(f" - {path.relative_to(ROOT)}")
     else:
-        print("Strategy docs sync check passed.")
+        print("Strategy doc section sync check passed.")
 
     return 0
 

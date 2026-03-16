@@ -1,17 +1,23 @@
 # Product Strategy
 
-> last_validated_commit: `4eb89f0cde3b7d75fcaf8311634be19ec56b90f0`
+This document includes generated strategy metadata. Update `docs/strategy_model.yaml` and re-render generated sections instead of editing the generated block directly.
 
-## Phase definitions
+<!-- strategy:product:start -->
+## Strategy model snapshot (generated)
 
-| Phase | Name | Objective |
-| --- | --- | --- |
-| 1 | Foundation sustainment | Keep MVP workflows reliable and reproducible. |
-| 2 | Robust encoding pipeline | Expand profile/codec breadth while preserving determinism. |
-| 3 | Simulation and analysis | Scale benchmark quality and cross-suite confidence. |
-| 4 | Ecosystem and automation | Harden plugin governance and operational automation. |
+> Source of truth: `docs/strategy_model.yaml`
+> last_validated_commit: `8d48bb07887d5f6589bbe941546d7867a260600a`
 
-## Feature capability statuses
+### Phase definitions
+
+| Phase | Name | Objective | Execution focus |
+| --- | --- | --- | --- |
+| 1 | Foundation sustainment | Keep MVP workflows reliable and reproducible. | Stabilize shipped bundles, manifests, and dashboard compatibility. |
+| 2 | Robust encoding pipeline | Expand profile/codec breadth while preserving determinism. | Increase simulator profile coverage without violating runtime budgets. |
+| 3 | Simulation and analysis | Scale benchmark quality and cross-suite confidence. | Enforce BER, throughput, and category-level CI guardrails. |
+| 4 | Ecosystem and automation | Harden plugin governance and operational automation. | Keep registry publication and execution policy checks continuously green. |
+
+### Feature capability statuses
 
 | Capability | Status | Phase | Owner modules |
 | --- | --- | --- | --- |
@@ -23,10 +29,11 @@
 | Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`src/genecoder/plugin_runtime/registry.py` |
 | Cloud worker remote execution | `deprecated` | 4 | `src/genecoder/compat/legacy/cloud/worker.py` |
 
-## Deployment posture flags
+### Deployment posture flags
 
 | Flag | Value |
 | --- | --- |
 | `cloud_enabled` | `False` |
 | `cloud_worker_enabled` | `False` |
 | `local_execution_only` | `True` |
+<!-- strategy:product:end -->

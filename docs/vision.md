@@ -5,20 +5,33 @@ GeneCoder aims to make DNA data storage experimentation practical and reproducib
 ## Vision and Current State
 
 
-> Phase-gate criteria are canonically defined in [`docs/development_roadmap.md`](development_roadmap.md). This vision doc is a narrative summary only.
+> Phase, capability, and KPI gate definitions are canonically sourced from [`docs/strategy_model.yaml`](strategy_model.yaml).
 
-<!-- capabilities:vision-status:start -->
-## Capability status snapshot (generated from `docs/capabilities.yaml`)
+<!-- strategy:vision:start -->
+## Strategy-aligned phase and capability narrative (generated)
 
-| Capability | Status | Phase | Owner modules | Validation artifacts |
-| --- | --- | --- | --- | --- |
-| CLI bundle presets for end-to-end pipelines | `implemented` | 1 | `src/genecoder/cli/bundle.py`<br>`src/genecoder/pipeline.py` | `tests/test_bundle.py` |
-| Illumina simulation with profile-resolved errors | `implemented` | 1 | `src/genecoder/simulators/illumina/channel.py`<br>`src/genecoder/simulators/illumina/profiles.py` | `tests/test_illumina_coverage_quality.py` |
-| Nanopore simulation with context-aware profile controls | `implemented` | 1 | `src/genecoder/simulators/nanopore.py`<br>`src/genecoder/simulators/nanopore_profiles.py` | `tests/test_nanopore_context_profile.py` |
-| Deterministic seed/profile reproducibility governance | `partial` | 2 | `src/genecoder/pipeline.py`<br>`src/genecoder/cli/cli.py` | `tests/test_acceptance_deterministic_reproducibility_governance.py` |
-| Standardized benchmark depth and parity validation | `partial` | 3 | `benchmarks/throughput.py`<br>`benchmarks/error_rate.py` | `tests/test_acceptance_benchmark_depth_and_parity.py` |
-| Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`src/genecoder/plugin_runtime/registry.py` | `tests/test_acceptance_plugin_registry_policy_automation.py` |
-<!-- capabilities:vision-status:end -->
+> Source of truth: `docs/strategy_model.yaml`
+> last_validated_commit: `8d48bb07887d5f6589bbe941546d7867a260600a`
+
+### Phase intent
+
+- **Phase 1 — Foundation sustainment**: Keep MVP workflows reliable and reproducible. (Execution focus: Stabilize shipped bundles, manifests, and dashboard compatibility.)
+- **Phase 2 — Robust encoding pipeline**: Expand profile/codec breadth while preserving determinism. (Execution focus: Increase simulator profile coverage without violating runtime budgets.)
+- **Phase 3 — Simulation and analysis**: Scale benchmark quality and cross-suite confidence. (Execution focus: Enforce BER, throughput, and category-level CI guardrails.)
+- **Phase 4 — Ecosystem and automation**: Harden plugin governance and operational automation. (Execution focus: Keep registry publication and execution policy checks continuously green.)
+
+### Capability status snapshot
+
+| Capability | Status | Phase | Owner modules |
+| --- | --- | --- | --- |
+| CLI bundle presets for end-to-end pipelines | `implemented` | 1 | `src/genecoder/cli/bundle.py`<br>`src/genecoder/pipeline.py` |
+| Illumina simulation with profile-resolved errors | `implemented` | 1 | `src/genecoder/simulators/illumina/channel.py`<br>`src/genecoder/simulators/illumina/profiles.py` |
+| Nanopore simulation with context-aware profile controls | `implemented` | 1 | `src/genecoder/simulators/nanopore.py`<br>`src/genecoder/simulators/nanopore_profiles.py` |
+| Deterministic seed/profile reproducibility governance | `partial` | 2 | `src/genecoder/pipeline.py`<br>`src/genecoder/cli/cli.py` |
+| Standardized benchmark depth and parity validation | `partial` | 3 | `benchmarks/throughput.py`<br>`benchmarks/error_rate.py` |
+| Plugin registry policy/security automation | `partial` | 4 | `src/genecoder/plugin_manager.py`<br>`src/genecoder/plugin_runtime/registry.py` |
+| Cloud worker remote execution | `deprecated` | 4 | `src/genecoder/compat/legacy/cloud/worker.py` |
+<!-- strategy:vision:end -->
 
 GeneCoder already ships an end-to-end simulation path for common DNA storage experiments. The current implementation includes:
 
