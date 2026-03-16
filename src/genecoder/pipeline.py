@@ -11,14 +11,33 @@ from pathlib import Path
 from typing import Any, Mapping
 import warnings
 
-from .compat.v1.pipeline_adapter import SequencePipeline, core, init_plugins, run_pipeline
-from .results.schema import canonical_comparison_metrics, canonical_metrics_view, migrate_run_schema
+from .compat.v1.pipeline_adapter import (
+    SequencePipeline,
+    core,
+    init_plugins,
+    run_pipeline,
+)
+from .pipeline_service_contract import (
+    AsyncJobMetadata,
+    PipelineDryRunResponse,
+    PipelineJobRequest,
+    bundle_config_to_job_request,
+    make_async_job_metadata,
+    planned_execution_graph,
+)
+from .results.schema import (
+    canonical_comparison_metrics,
+    canonical_metrics_view,
+    migrate_run_schema,
+)
 from .results.repro_report import generate_reproducibility_report
 
 KPI_BUNDLE_VERSION = "1.0"
 
 
-def build_kpi_bundle(run_schema: Mapping[str, Any], *, artifact_path: str | None = None) -> dict[str, Any]:
+def build_kpi_bundle(
+    run_schema: Mapping[str, Any], *, artifact_path: str | None = None
+) -> dict[str, Any]:
     """Return the machine-readable KPI bundle for a canonical run artifact."""
 
     canonical_run = migrate_run_schema(run_schema)
@@ -49,6 +68,12 @@ __all__ = [
     "KPI_BUNDLE_VERSION",
     "build_kpi_bundle",
     "generate_reproducibility_report",
+    "PipelineJobRequest",
+    "PipelineDryRunResponse",
+    "AsyncJobMetadata",
+    "planned_execution_graph",
+    "make_async_job_metadata",
+    "bundle_config_to_job_request",
 ]
 
 warnings.warn(

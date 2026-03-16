@@ -47,10 +47,44 @@ def test_dashboard_metrics_with_token() -> None:
     r = client.post("/dashboard/metrics", headers=AUTH_HEADERS, json=payload)
     assert r.status_code == 200
     data = r.json()
-    assert set(data) >= {"gc_content", "max_homopolymer", "error_rate", "plot", "oligo_metrics", "substitution_rate", "insertion_rate", "deletion_rate"}
+    assert set(data) >= {
+        "gc_content",
+        "max_homopolymer",
+        "error_rate",
+        "plot",
+        "oligo_metrics",
+        "substitution_rate",
+        "insertion_rate",
+        "deletion_rate",
+    }
     assert data["oligo_metrics"]["gc_percentages"]
 
 
 def test_report_invalid_request() -> None:
     r = client.post("/report", json={"data": "bad", "type": "encode"})
     assert r.status_code == 422
+
+
+def test_pipeline_dry_run_endpoint_with_token() -> None:
+    payload = {
+        "codec": "base4_direct",
+        "input_path": "input.bin",
+        "output_path": "decoded.bin",
+        "channel": "illumina",
+    }
+    r = client.post("/pipeline/dry-run", headers=AUTH_HEADERS, json=payload)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["metadata"]["status"] == "validated"
+    assert data["request"]["codec"] == "base4_direct"
+    assert data["execution_graph"]["nodes"][0]["id"] == "encode"
+
+
+def test_pipeline_dry_run_requires_token() -> None:
+    payload = {
+        "codec": "base4_direct",
+        "input_path": "input.bin",
+        "output_path": "decoded.bin",
+    }
+    r = client.post("/pipeline/dry-run", json=payload)
+    assert r.status_code == 401
