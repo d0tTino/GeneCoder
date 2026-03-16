@@ -37,6 +37,18 @@ def register_subcommand(subparsers: argparse._SubParsersAction[argparse.Argument
     )
     reg_parser.set_defaults(func=_handle_install_registry)
 
+    disable_parser = plugin_sub.add_parser(
+        "disable", help="Disable a loaded plugin by name"
+    )
+    disable_parser.add_argument("name", help="Plugin name")
+    disable_parser.set_defaults(func=_handle_disable)
+
+    rollback_parser = plugin_sub.add_parser(
+        "rollback", help="Mark a plugin as rolled back by name"
+    )
+    rollback_parser.add_argument("name", help="Plugin name")
+    rollback_parser.set_defaults(func=_handle_rollback)
+
 
 def _handle_list(args: argparse.Namespace) -> None:
     plugin_catalog = UIService().list_plugins().get("plugins", {})
@@ -66,3 +78,21 @@ def _handle_install_registry(args: argparse.Namespace) -> None:
         raise SystemExit(1)
 
     plugins.install_registry_plugins(offline=args.offline)
+
+
+def _handle_disable(args: argparse.Namespace) -> None:
+    try:
+        state = plugins.disable_plugin(args.name)
+    except KeyError:
+        logger.error("Unknown plugin: %s", args.name)
+        raise SystemExit(1)
+    logger.info("Plugin %s transitioned to %s", args.name, state.value)
+
+
+def _handle_rollback(args: argparse.Namespace) -> None:
+    try:
+        state = plugins.rollback_plugin(args.name)
+    except KeyError:
+        logger.error("Unknown plugin: %s", args.name)
+        raise SystemExit(1)
+    logger.info("Plugin %s transitioned to %s", args.name, state.value)

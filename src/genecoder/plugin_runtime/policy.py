@@ -13,6 +13,7 @@ from .descriptors import (
     PLUGIN_DESCRIPTOR_VERSION,
     PluginLifecycleState,
     RuntimePluginDescriptor,
+    ValidationResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,36 @@ ALLOWED_LICENSES = {
 
 SAFE_PKG_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 SAFE_URL_RE = re.compile(r"^(?:https?|file)://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+$")
+
+def validation_success(
+    check: str,
+    *,
+    message: str = "",
+    details: dict[str, Any] | None = None,
+) -> ValidationResult:
+    return ValidationResult(check=check, success=True, message=message, details=details or {})
+
+
+def validation_failure(
+    check: str,
+    *,
+    message: str,
+    details: dict[str, Any] | None = None,
+) -> ValidationResult:
+    return ValidationResult(check=check, success=False, message=message, details=details or {})
+
+
+def _require_registry_str(entry: Mapping[str, Any], field: str, *, spec: str) -> str:
+    value = entry.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"Missing {field} for plugin entry {spec}")
+    return value.strip()
+
+
+def validate_registry_provenance(entry: Mapping[str, Any], *, spec: str) -> tuple[str, str]:
+    publisher = _require_registry_str(entry, "provenance_publisher", spec=spec)
+    channel = _require_registry_str(entry, "provenance_channel", spec=spec)
+    return publisher, channel
 
 
 def validate_spec(spec: str) -> None:

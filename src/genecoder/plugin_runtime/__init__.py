@@ -14,7 +14,7 @@ from genecoder import plugin_security
 from .discovery import ENTRY_POINT_METADATA, collect_installed_plugins, load_entry_point_plugins as _load_entry_point_plugins, load_local_plugins as _load_local_plugins
 from .entry_points import ENTRY_POINT_GROUPS, entry_point_registrars
 from .installer import PLUGIN_LOCK, PipPluginInstaller, fetch_catalog, install_plugin_spec, install_registry_plugins as _install_registry_plugins, load_registry_mapping, render_plugin_lock
-from .registry import CODEC_REGISTRY, FEC_REGISTRY, VISUALIZER_REGISTRY, register_codec, register_fec, register_plugin, register_simulator, register_visualizer
+from .registry import CODEC_REGISTRY, FEC_REGISTRY, VISUALIZER_REGISTRY, disable_plugin, register_codec, register_fec, register_plugin, register_simulator, register_visualizer, rollback_plugin
 from genecoder.simulators import SIMULATOR_REGISTRY
 
 logger = logging.getLogger(__name__)
@@ -252,6 +252,8 @@ __all__ = [
     "register_fec",
     "register_simulator",
     "register_visualizer",
+    "disable_plugin",
+    "rollback_plugin",
     "install_registry_plugins",
     "install_catalog_plugin",
     "load_plugins",

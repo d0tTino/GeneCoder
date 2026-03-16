@@ -5,9 +5,23 @@ from __future__ import annotations
 import base64
 from typing import Callable
 
+from .plugin_runtime.descriptors import ValidationResult
 from .security import compute_checksum
 
-__all__ = ["decode_signature", "verify_package"]
+__all__ = [
+    "decode_signature",
+    "verify_package",
+    "result_success",
+    "result_failure",
+]
+
+
+def result_success(check: str, *, message: str = "", details: dict[str, object] | None = None) -> ValidationResult:
+    return ValidationResult(check=check, success=True, message=message, details=details or {})
+
+
+def result_failure(check: str, *, message: str, details: dict[str, object] | None = None) -> ValidationResult:
+    return ValidationResult(check=check, success=False, message=message, details=details or {})
 
 
 def decode_signature(signature_b64: str) -> bytes:

@@ -37,6 +37,14 @@ class ValidationContract:
     decode_output: str = "bytes"
 
 
+@dataclass(slots=True, frozen=True)
+class ValidationResult:
+    check: str
+    success: bool
+    message: str = ""
+    details: dict[str, Any] = field(default_factory=dict)
+
+
 @dataclass(slots=True)
 class RuntimePluginDescriptor:
     api_version: str
@@ -60,6 +68,8 @@ class PluginDescriptor:
     license: str = ""
     checksum: str | None = None
     signature: str | None = None
+    provenance_publisher: str = ""
+    provenance_channel: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
     state: PluginLifecycleState = PluginLifecycleState.DISCOVERED
     error: str | None = None
@@ -71,4 +81,6 @@ class PluginDescriptor:
             "source": self.source,
             "checksum": self.checksum or "",
             "signature": self.signature or "",
+            "provenance_publisher": self.provenance_publisher,
+            "provenance_channel": self.provenance_channel,
         }

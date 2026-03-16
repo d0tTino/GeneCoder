@@ -229,3 +229,40 @@ packages:
 - If a plugin fails to import, start GeneCoder with `GENECODER_OFFLINE=1` to defer loading and inspect error messages when the plugin is first used.
 - Ensure entry point names match the registry key you expect to use in CLI options and configuration files.
 - Validate `PLUGIN_METADATA.interfaces` matches the helpers you provide so the catalog reflects the plugin accurately.
+
+
+## End-to-end secure install, verify, and rollback workflow
+
+### 1) Prepare signed registry metadata with provenance
+
+```yaml
+packages:
+  - spec: https://plugins.example.org/acme_codec-1.4.2-py3-none-any.whl
+    license: MIT
+    checksum: "<sha256>"
+    signature: "<base64-signature>"
+    provenance_publisher: acme-bio
+    provenance_channel: stable
+```
+
+### 2) Install from the registry with explicit network controls
+
+```bash
+export GENECODER_PLUGIN_REGISTRY_URL=file://$PWD/configs/registry.yaml
+export GENECODER_PLUGIN_PUBLIC_KEY=$PWD/keys/plugin_pub.pem
+genecli plugin install-registry --allow-registry --offline
+```
+
+### 3) Verify lifecycle and disable if policy requires quarantine
+
+```bash
+genecli plugin disable acme_codec
+```
+
+### 4) Roll back a previously loaded plugin
+
+```bash
+genecli plugin rollback acme_codec
+```
+
+Use disable when the package should remain installed but unavailable, and rollback when you are reverting to a prior trusted plugin release.

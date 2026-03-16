@@ -45,3 +45,21 @@ def test_install_registry_offline_flag(monkeypatch):
     assert result.returncode == 0
     assert calls == [(None, True)]
 
+
+
+def test_disable_command(monkeypatch):
+    calls = []
+    monkeypatch.setattr(plugins, "disable_plugin", lambda name: calls.append(name) or type("S", (), {"value": "disabled"})())
+
+    result = run_cli_command(["plugin", "disable", "demo"])
+    assert result.returncode == 0
+    assert calls == ["demo"]
+
+
+def test_rollback_command(monkeypatch):
+    calls = []
+    monkeypatch.setattr(plugins, "rollback_plugin", lambda name: calls.append(name) or type("S", (), {"value": "rolled_back"})())
+
+    result = run_cli_command(["plugin", "rollback", "demo"])
+    assert result.returncode == 0
+    assert calls == ["demo"]

@@ -158,7 +158,8 @@ phase_gates:
       - metric: Plugin policy compliance
         threshold: "100% pass on plugin spec/security checks before registry publication"
         tests_or_checks:
-          - pytest -q tests/test_acceptance_plugin_registry_policy_automation.py -k phase_four_release_gate
+          - pytest -q tests/test_acceptance_plugin_registry_policy_automation.py -k phase_four_release_gate_readiness_conditions
+          - pytest -q tests/test_plugin_supply_chain_policy.py tests/test_plugin_lifecycle_conformance.py tests/test_cli_plugin_registry.py
         docs_links:
           - docs/plugins.md
         evidence_artifacts:

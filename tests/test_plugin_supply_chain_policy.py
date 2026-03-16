@@ -40,6 +40,8 @@ def test_policy_requires_trust_root(monkeypatch: pytest.MonkeyPatch) -> None:
                     "    license: MIT\n"
                     f"    checksum: {checksum}\n"
                     f"    signature: {signature}\n"
+                    "    provenance_publisher: test-publisher\n"
+                    "    provenance_channel: stable\n"
                 ).encode()
             )
         return DummyResponse(b"PKG")
@@ -64,4 +66,22 @@ def test_policy_license_allowlist_failure(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(plugins.urllib.request, "urlopen", lambda url, timeout=30: DummyResponse(registry))
 
     with pytest.raises(ValueError, match="Disallowed license"):
+        plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)
+
+
+def test_policy_requires_provenance_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    checksum = compute_checksum(b"PKG")
+    signature = base64.b64encode(b"sig").decode()
+
+    registry = (
+        "packages:\n"
+        "  - spec: file:///tmp/pkg.whl\n"
+        "    license: MIT\n"
+        f"    checksum: {checksum}\n"
+        f"    signature: {signature}\n"
+    ).encode()
+
+    monkeypatch.setattr(plugins.urllib.request, "urlopen", lambda url, timeout=30: DummyResponse(registry))
+
+    with pytest.raises(ValueError, match="Missing provenance_publisher"):
         plugins.install_registry_plugins("https://example.com/plugins.yaml", allow_network=True)

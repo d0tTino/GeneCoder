@@ -34,13 +34,18 @@ def test_suite_category_health_gate_criterion():
     ]
 
 
-def test_phase_four_release_gate():
+def test_phase_four_release_gate_readiness_conditions():
     data = _load_capabilities()
     phase_four_gate = next(g for g in data["phase_gates"] if g["gate"] == "Phase 4 release gate")
-    plugin_policy_metric = next(
-        m for m in phase_four_gate["measurable_checks"] if m["metric"] == "Plugin policy compliance"
-    )
+    checks = {m["metric"]: m for m in phase_four_gate["measurable_checks"]}
 
-    assert plugin_policy_metric["tests_or_checks"] == [
-        "pytest -q tests/test_acceptance_plugin_registry_policy_automation.py -k phase_four_release_gate"
-    ]
+    expected_checks = {
+        "Plugin policy compliance": [
+            "pytest -q tests/test_acceptance_plugin_registry_policy_automation.py -k phase_four_release_gate_readiness_conditions",
+            "pytest -q tests/test_plugin_supply_chain_policy.py tests/test_plugin_lifecycle_conformance.py tests/test_cli_plugin_registry.py",
+        ],
+    }
+
+    assert set(checks) == set(expected_checks)
+    for metric, commands in expected_checks.items():
+        assert checks[metric]["tests_or_checks"] == commands
