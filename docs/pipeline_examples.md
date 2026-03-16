@@ -79,6 +79,33 @@ jq '.metrics.oligo_metrics.dropout_flags' decoded_fountain.txt.json
 
 ## Pipeline Configurations
 
+### Scenario cost modeling
+
+Add cost assumptions to the `simulate` section for what-if analysis:
+
+```yaml
+simulate:
+  simulators:
+    - illumina
+  cost_model:
+    synthesis:
+      usd_per_nt: 0.002
+    sequencing:
+      usd_per_read: 0.0004
+    redundancy:
+      baseline_coverage: 4
+```
+
+Then run and inspect cost metrics:
+
+```bash
+genecli bundle run configs/pipeline_metrics.yaml --metrics-path runs/cost_metrics.json
+jq '.metrics.cost_per_recovered_bit' runs/<timestamp>/decoded/*.json
+jq '.metrics.reads_per_successful_decode' runs/<timestamp>/decoded/*.json
+jq '.metrics.redundancy_cost_ratio' runs/<timestamp>/decoded/*.json
+```
+
+
 ### Reed–Solomon with Illumina
 
 ```yaml

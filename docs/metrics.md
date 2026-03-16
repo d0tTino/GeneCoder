@@ -53,3 +53,20 @@ Simulation outputs such as `metrics.json` also include per-window distribution
 data. The `gc_distribution` entry records the GC fraction of each 50 base pair
 window as a value between 0 and 1. Visual dashboards multiply these values by
 100 to present min/mean/max summaries and line charts in percentage units.
+
+
+## Scenario cost analysis
+
+Bundle manifests can include a `simulate.cost_model` block to estimate economics for each run:
+
+- `synthesis.usd_per_nt`
+- `sequencing.usd_per_read`
+- `redundancy.baseline_coverage`
+
+When present, GeneCoder emits these derived metrics into decoded metrics/manifests:
+
+- `cost_per_recovered_bit`
+- `reads_per_successful_decode`
+- `redundancy_cost_ratio`
+
+Use `genecli stats bundle --runs <cache_dir>` to aggregate scenario outputs across runs.

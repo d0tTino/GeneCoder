@@ -19,6 +19,13 @@ simulate:
     gc_min: 0.0
     gc_max: 1.0
     max_homopolymer: 8
+  cost_model:
+    synthesis:
+      usd_per_nt: 0.002
+    sequencing:
+      usd_per_read: 0.0004
+    redundancy:
+      baseline_coverage: 4
   pipeline:
     dropout_rate: 0.2
     coverage_distribution:

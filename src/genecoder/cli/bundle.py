@@ -60,6 +60,7 @@ from genecoder.synthesis import SynthesisConstraints
 from genecoder.constraints import load_constraint_policy
 from genecoder.profiles.registry import canonicalize_profile_name
 from genecoder.app import ArtifactOutputPolicy, RunPipelineRequest, RunPipelineUseCase
+from genecoder.cost_model import compute_cost_outputs, parse_cost_model_inputs
 from genecoder.results.repro_report import generate_reproducibility_report
 
 
@@ -698,10 +699,14 @@ def _write_decoded_metrics(
 
     channel_config = {}
     pipeline_cfg = {}
+    cost_model_cfg: dict[str, Any] = {}
     if isinstance(sim_cfg, Mapping):
         pipeline_obj = sim_cfg.get("pipeline")
         if isinstance(pipeline_obj, Mapping):
             pipeline_cfg = dict(pipeline_obj)
+        cost_model_obj = sim_cfg.get("cost_model")
+        if isinstance(cost_model_obj, Mapping):
+            cost_model_cfg = dict(cost_model_obj)
         known_fields = {
             key: value
             for key, value in sim_cfg.items()
@@ -767,6 +772,22 @@ def _write_decoded_metrics(
         "seed": sequence_seed,
         "metadata": sequence_metadata,
     }
+
+    if cost_model_cfg:
+        assumptions = parse_cost_model_inputs(cost_model_cfg)
+        cost_outputs = compute_cost_outputs(
+            inputs=assumptions,
+            total_nt=sum(len(seq) for seq in sequences),
+            total_reads=total_reads_int,
+            recovered_bytes=len(decoded_bytes),
+            decode_success_rate=float(metrics_data.get("decode_success_rate") or 0.0),
+        )
+        metrics_data["cost_assumptions"] = cost_model_cfg
+        metrics_data["cost_per_recovered_bit"] = cost_outputs.cost_per_recovered_bit
+        metrics_data["reads_per_successful_decode"] = (
+            cost_outputs.reads_per_successful_decode
+        )
+        metrics_data["redundancy_cost_ratio"] = cost_outputs.redundancy_cost_ratio
 
     metrics_data["channel"] = channel_metrics
     metrics_data["dropout_count"] = dropout_count

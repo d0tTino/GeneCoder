@@ -20,8 +20,12 @@ export default function MetricsCharts() {
     canvasRef.current.height = height;
     ctx.clearRect(0, 0, width, height);
     const metrics = data.outcome?.metrics || {};
-    const vals = [metrics.total_original_size || 0, metrics.total_dna_length || 0];
-    const labels = ['Bytes', 'Bases'];
+    const vals = [
+      metrics.total_original_size || 0,
+      metrics.total_dna_length || 0,
+      metrics.avg_reads_per_successful_decode || 0,
+    ];
+    const labels = ['Bytes', 'Bases', 'Reads/Decode'];
     const maxVal = Math.max(...vals, 1);
     const barWidth = width / vals.length;
     vals.forEach((v, i) => {
@@ -44,6 +48,8 @@ export default function MetricsCharts() {
       <canvas ref={canvasRef} />
       <p>Files: {data.outcome?.metrics?.files ?? 0}</p>
       <p>Avg bits/nt: {Number(data.outcome?.metrics?.avg_bits_per_nt ?? 0).toFixed(2)}</p>
+      <p>Avg cost/recovered bit: ${Number(data.outcome?.metrics?.avg_cost_per_recovered_bit ?? 0).toFixed(6)}</p>
+      <p>Avg redundancy cost ratio: {Number(data.outcome?.metrics?.avg_redundancy_cost_ratio ?? 0).toFixed(3)}</p>
     </div>
   );
 }

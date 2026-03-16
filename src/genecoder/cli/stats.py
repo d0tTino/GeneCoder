@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import TypeAlias, cast
 
@@ -44,6 +45,19 @@ def _handle_bundle_command(args: argparse.Namespace) -> None:
     if args.output:
         args.output.write_text(output + "\n", encoding="utf-8")
     print(output)
+    print(
+        f"cost_per_recovered_bit (avg): {float(metrics.get('avg_cost_per_recovered_bit', 0.0)):.6f}",
+        file=sys.stderr,
+    )
+    print(
+        "reads_per_successful_decode (avg): "
+        f"{float(metrics.get('avg_reads_per_successful_decode', 0.0)):.2f}",
+        file=sys.stderr,
+    )
+    print(
+        f"redundancy_cost_ratio (avg): {float(metrics.get('avg_redundancy_cost_ratio', 0.0)):.4f}",
+        file=sys.stderr,
+    )
 
 
 StatsData: TypeAlias = dict[str, int | list[str] | dict[str, int]]

@@ -48,6 +48,9 @@ def test_bundle_metrics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
                     ],
                     "type_counts": {"gc_low": 1},
                 },
+                "cost_per_recovered_bit": 0.0025,
+                "reads_per_successful_decode": 12.0,
+                "redundancy_cost_ratio": 1.8,
             },
         })
     )
@@ -64,3 +67,8 @@ def test_bundle_metrics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     assert data["total_coverage"] == 5
     assert data["total_constraint_violations"] == 1
 
+
+
+    assert abs(data["avg_cost_per_recovered_bit"] - 0.0025) < 1e-9
+    assert abs(data["avg_reads_per_successful_decode"] - 12.0) < 1e-9
+    assert abs(data["avg_redundancy_cost_ratio"] - 1.8) < 1e-9
