@@ -40,3 +40,10 @@ GeneCoder now maintains a single **primary UI track** for deployments:
 All UI adapters must call the same headless application contract (`genecoder.app.ui_service.UIService`) for pipeline runs, run comparison, plugin/profile discovery, and artifact load/export. This keeps behavior consistent across transport layers.
 
 For production deployments, use CLI automation and/or the React dashboard as the default operator surface. Optional adapters may lag behind in feature parity and are not part of the strict deployment compatibility guarantee.
+
+## Current constraints and explicit non-goals
+
+- **Local-only guarantee:** the FastAPI deployment model is single-node and local execution only.
+- **No queue backend yet:** async metadata in API responses is preparatory and does not indicate background worker processing.
+- **No hosted orchestration:** this repository does not ship managed job scheduling, tenancy, or remote artifact storage.
+- **Dry-run mode is validation-only:** `/pipeline/dry-run` checks payload compatibility and returns a planned graph without running encode/simulate/decode workloads.

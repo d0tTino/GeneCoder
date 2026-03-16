@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from dataclasses import asdict
 import asyncio
 import base64
@@ -39,6 +39,13 @@ from genecoder.report import (
 )
 from genecoder.metrics import get_metrics, oligos_per_week
 from genecoder.bundle_metrics import aggregate_metrics
+from genecoder.pipeline_service_contract import (
+    AsyncJobMetadata as ContractAsyncJobMetadata,
+    PipelineJobRequest,
+    PipelineDryRunResponse,
+    make_async_job_metadata,
+    planned_execution_graph,
+)
 from typing import Any, cast
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
@@ -64,13 +71,12 @@ PYODIDE_SRC = os.getenv(
 )
 
 
-
-
 def verify_token(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> None:
     if credentials is None or credentials.credentials != API_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid or missing token")
+
 
 app = FastAPI(title="GeneCoder Web")
 origins = [origin.strip() for origin in CORS_ORIGINS.split(",") if origin.strip()]
@@ -86,9 +92,7 @@ async def _startup() -> None:
         API_TOKEN = secrets.token_urlsafe(16)
         print(f"Generated API token: {API_TOKEN}")
     if REDIS_URL:
-        r = redis.from_url(
-            REDIS_URL, encoding="utf-8", decode_responses=True
-        )
+        r = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
         await FastAPILimiter.init(r)
 
 
@@ -102,6 +106,8 @@ async def rate_limit(request: Request, response: Response) -> None:
     if FastAPILimiter.redis:
         limiter = RateLimiter(times=5, seconds=1)
         await limiter(request, response)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -134,14 +140,13 @@ design_index_path = helix_ui_dir / "dist" / "design.html"
 if not design_index_path.is_file():
     design_index_path = helix_ui_dir / "design.html"
 
+
 @app.get("/", response_class=HTMLResponse)
 async def index() -> str:
     html = index_path.read_text(encoding="utf-8")
-    return (
-        html.replace(
-            "__GENECODER_OFFLINE__", "true" if GENECODER_OFFLINE else "false"
-        ).replace("__PYODIDE_SRC__", PYODIDE_SRC)
-    )
+    return html.replace(
+        "__GENECODER_OFFLINE__", "true" if GENECODER_OFFLINE else "false"
+    ).replace("__PYODIDE_SRC__", PYODIDE_SRC)
 
 
 @app.get("/helix", response_class=HTMLResponse)
@@ -156,12 +161,38 @@ async def dashboard() -> str:
     return dashboard_index_path.read_text(encoding="utf-8")
 
 
-
-
 @app.get("/design", response_class=HTMLResponse)
 async def design_page() -> str:
     """Return the React-based sequence design interface."""
     return design_index_path.read_text(encoding="utf-8")
+
+
+class PipelineJobRequestModel(BaseModel):
+    codec: str
+    input_path: str
+    output_path: str
+    fec: str | None = None
+    channel: str | None = None
+    filter_mutated: bool = False
+    profile_name: str | None = None
+    profile_parameters: dict[str, object] = Field(default_factory=dict)
+    seeds: dict[str, int | None] = Field(default_factory=dict)
+    matrix_axes: dict[str, list[object]] = Field(default_factory=dict)
+    constraints: dict[str, object] = Field(default_factory=dict)
+    artifacts: dict[str, object] = Field(default_factory=dict)
+
+
+class AsyncJobMetadataModel(BaseModel):
+    job_id: str
+    status: str
+    submitted_at: str
+    mode: str
+
+
+class PipelineDryRunResponseModel(BaseModel):
+    metadata: AsyncJobMetadataModel
+    request: PipelineJobRequestModel
+    execution_graph: dict[str, object]
 
 
 class EncodeOptionsModel(BaseModel):
@@ -220,6 +251,7 @@ class DeepDNADecodeRequest(BaseModel):
     encoded: str
     info: dict[str, object]
 
+
 @app.post("/encode")
 async def encode(
     req: EncodeRequest,
@@ -236,9 +268,7 @@ async def decode(
     req: DecodeRequest,
     _: None = Depends(verify_token),
 ) -> dict[str, object]:
-    result = await asyncio.to_thread(
-        perform_decoding, req.fasta_data, req.alphabet
-    )
+    result = await asyncio.to_thread(perform_decoding, req.fasta_data, req.alphabet)
     return {
         "decoded_bytes": base64.b64encode(result.decoded_bytes).decode("utf-8"),
         "status_message": result.status_message,
@@ -281,9 +311,7 @@ async def dashboard_deepdna(
         raise HTTPException(status_code=503, detail="DeepDNA not available") from exc
 
     encoded = base64.b64decode(req.encoded, validate=True)
-    decoded, corrected = await asyncio.to_thread(
-        decode_data_deepdna, encoded, req.info
-    )
+    decoded, corrected = await asyncio.to_thread(decode_data_deepdna, encoded, req.info)
     return {
         "decoded_bytes": base64.b64encode(decoded).decode("utf-8"),
         "corrected": corrected,
@@ -332,16 +360,13 @@ async def dashboard_metrics(
     gc_data = calculate_windowed_gc_content(seq, req.window_size, req.step_size)
     _, gc_values = gc_data
     gc_var = (
-        sum((v - gc) ** 2 for v in gc_values) / len(gc_values)
-        if gc_values
-        else 0.0
+        sum((v - gc) ** 2 for v in gc_values) / len(gc_values) if gc_values else 0.0
     )
     hp_regions = identify_homopolymer_regions(seq, req.min_homopolymer_len)
     buf = generate_sequence_analysis_plot(gc_data, hp_regions, len(seq))
     plot_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
     buf.close()
     try:
-
         orig_bytes, orig_indices = cast(
             tuple[bytes, list[int]], decode_base4_direct(seq)
         )
@@ -525,9 +550,7 @@ async def report(req: ReportRequest) -> dict[str, str]:
     else:
         data = req.data.copy()
         if isinstance(data.get("decoded_bytes"), str):
-            data["decoded_bytes"] = base64.b64decode(
-                cast(str, data["decoded_bytes"])
-            )
+            data["decoded_bytes"] = base64.b64decode(cast(str, data["decoded_bytes"]))
         result = DecodeResult(**cast(dict[str, Any], data))
         if req.format == "markdown":
             text = decode_to_markdown(result)
@@ -559,6 +582,7 @@ async def upload_chunk(
     await asyncio.to_thread(chunk_path.write_bytes, chunk_bytes)
     manifest_path = base_dir / "upload.manifest"
     h = hashlib.sha256(chunk_bytes).hexdigest()
+
     def _append() -> None:
         with open(manifest_path, "a", encoding="utf-8") as mf:
             mf.write(json.dumps({"offset": req.offset, "hash": h}) + "\n")
@@ -600,6 +624,61 @@ class ExportArtifactsRequest(BaseModel):
     run_id: str
 
 
+def _to_contract_async_metadata(
+    meta: ContractAsyncJobMetadata,
+) -> AsyncJobMetadataModel:
+    return AsyncJobMetadataModel(
+        job_id=meta.job_id,
+        status=meta.status,
+        submitted_at=meta.submitted_at,
+        mode=meta.mode,
+    )
+
+
+def _to_pipeline_job_request(req: PipelineJobRequestModel) -> PipelineJobRequest:
+    return PipelineJobRequest.from_mapping(req.model_dump())
+
+
+def _to_dry_run_model(response: PipelineDryRunResponse) -> PipelineDryRunResponseModel:
+    request_dict = {
+        "codec": response.request.codec,
+        "input_path": response.request.input_path,
+        "output_path": response.request.output_path,
+        "fec": response.request.fec,
+        "channel": response.request.channel,
+        "filter_mutated": response.request.filter_mutated,
+        "profile_name": response.request.profile_name,
+        "profile_parameters": dict(response.request.profile_parameters),
+        "seeds": dict(response.request.seeds),
+        "matrix_axes": {k: list(v) for k, v in response.request.matrix_axes.items()},
+        "constraints": dict(response.request.constraints),
+        "artifacts": dict(response.request.artifacts),
+    }
+    return PipelineDryRunResponseModel(
+        metadata=_to_contract_async_metadata(response.metadata),
+        request=PipelineJobRequestModel(**request_dict),
+        execution_graph=dict(response.execution_graph),
+    )
+
+
+@app.post("/pipeline/dry-run", response_model=PipelineDryRunResponseModel)
+async def pipeline_dry_run(
+    req: PipelineJobRequestModel,
+    _: None = Depends(verify_token),
+) -> PipelineDryRunResponseModel:
+    try:
+        contract_req = _to_pipeline_job_request(req)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    response = PipelineDryRunResponse(
+        metadata=make_async_job_metadata("validated"),
+        request=contract_req,
+        execution_graph=planned_execution_graph(contract_req),
+    )
+    return _to_dry_run_model(response)
+
+
 @app.get("/profiles")
 async def list_profiles() -> dict[str, object]:
     return _ui_service.list_profiles()
@@ -611,7 +690,9 @@ async def compare_runs_endpoint(
     _: None = Depends(verify_token),
 ) -> dict[str, object]:
     if not req.candidates:
-        raise HTTPException(status_code=400, detail="At least one candidate run is required")
+        raise HTTPException(
+            status_code=400, detail="At least one candidate run is required"
+        )
     baseline = req.baseline
     first = req.candidates[0]
     others = req.candidates[1:]
@@ -656,8 +737,6 @@ async def install_plugin(
     except SystemExit as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"status": "ok"}
-
-
 
 
 @app.get("/metrics")
