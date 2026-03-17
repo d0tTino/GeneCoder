@@ -46,6 +46,8 @@ def main() -> int:
     failures: list[str] = []
 
     for benchmark_name, benchmark_cfg in thresholds.items():
+        if "metric" not in benchmark_cfg or "benchmark_command" not in benchmark_cfg:
+            continue
         gate = str(benchmark_cfg["gate"])
         metric = str(benchmark_cfg["metric"])
         benchmark_command = str(benchmark_cfg["benchmark_command"])

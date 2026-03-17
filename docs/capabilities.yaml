@@ -120,7 +120,7 @@ phase_gates:
         evidence_artifacts:
           - CI pytest logs
       - metric: Throughput median floor
-        threshold: ">= 2.0 MB/s Base-4 encode throughput"
+        threshold: ">= 2.0 MB/s Base-4 encode throughput with BER observed at baseline 0.0"
         tests_or_checks:
           - PYTHONPATH=src python benchmarks/throughput.py
           - pytest -q tests/test_acceptance_benchmark_depth_and_parity.py -k throughput_gate_definition

@@ -258,6 +258,51 @@ jobs:
     - name: Run plugin policy capability acceptance gate
       run: pytest -q tests/test_acceptance_plugin_registry_policy_automation.py
 
+
+
+  capability-completion-evidence:
+    needs: [changes, check-comments, lint]
+    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install package dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Generate capability evidence artifacts
+      shell: bash
+      run: |
+        mkdir -p artifacts/acceptance artifacts/benchmarks
+        pytest -q tests/test_bundle.py::test_bundle_run tests/test_bundle.py::test_bundle_unknown_section --junitxml artifacts/acceptance/junit-bundle-cli.xml
+        pytest -q tests/test_illumina_coverage_quality.py::test_channel_calibrate_writes_expected_artifacts --junitxml artifacts/acceptance/junit-illumina-profile.xml
+        pytest -q tests/test_nanopore_context_profile.py::test_calibration_threshold_evaluation_flags_violations tests/test_nanopore_context_profile.py::test_builtin_profile_context_bias --junitxml artifacts/acceptance/junit-nanopore-context.xml
+        pytest -q tests/test_acceptance_deterministic_reproducibility_governance.py --junitxml artifacts/acceptance/junit-deterministic-reproducibility.xml
+        pytest -q tests/test_acceptance_benchmark_depth_and_parity.py -k "throughput_gate_definition or error_rate_gate_definition" --junitxml artifacts/acceptance/junit-benchmark-depth-and-parity.xml
+        pytest -q tests/test_acceptance_plugin_registry_policy_automation.py tests/test_plugin_supply_chain_policy.py tests/test_plugin_lifecycle_conformance.py tests/test_cli_plugin_registry.py --junitxml artifacts/acceptance/junit-plugin-policy.xml
+        PYTHONPATH=src python benchmarks/throughput.py --format json > artifacts/benchmarks/throughput.json
+        PYTHONPATH=src python benchmarks/error_rate.py --format json > artifacts/benchmarks/error_rate.json
+
+    - name: Validate implemented capability completion criteria
+      run: python scripts/validate_capability_completion.py --artifacts-dir artifacts
+
+    - name: Upload capability evidence artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: capability-completion-evidence
+        path: |
+          artifacts/acceptance/*.xml
+          artifacts/benchmarks/*.json
   benchmark-throughput:
     needs: [changes, check-comments, lint]
     if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'

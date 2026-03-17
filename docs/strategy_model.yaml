@@ -26,6 +26,16 @@ feature_capabilities:
     owner_modules:
       - src/genecoder/cli/bundle.py
       - src/genecoder/pipeline.py
+    completion_criteria:
+      - id: bundle_cli_acceptance
+        description: Bundle CLI integration and preset validation tests pass.
+        artifacts:
+          - type: junit_xml
+            path: artifacts/acceptance/junit-bundle-cli.xml
+            checks:
+              - tests.test_bundle::test_bundle_run
+              - tests.test_bundle::test_bundle_unknown_section
+        pass_threshold: 100% listed JUnit test cases passed
   - id: illumina_simulation_profiles
     name: Illumina simulation with profile-resolved errors
     status: implemented
@@ -33,6 +43,15 @@ feature_capabilities:
     owner_modules:
       - src/genecoder/simulators/illumina/channel.py
       - src/genecoder/simulators/illumina/profiles.py
+    completion_criteria:
+      - id: illumina_profile_quality_acceptance
+        description: Illumina profile quality and validation checks pass.
+        artifacts:
+          - type: junit_xml
+            path: artifacts/acceptance/junit-illumina-profile.xml
+            checks:
+              - tests.test_illumina_coverage_quality::test_channel_calibrate_writes_expected_artifacts
+        pass_threshold: 100% listed JUnit test cases passed
   - id: nanopore_simulation_profiles
     name: Nanopore simulation with context-aware profile controls
     status: implemented
@@ -40,6 +59,16 @@ feature_capabilities:
     owner_modules:
       - src/genecoder/simulators/nanopore.py
       - src/genecoder/simulators/nanopore_profiles.py
+    completion_criteria:
+      - id: nanopore_context_acceptance
+        description: Nanopore context profile behavior is verified by acceptance tests.
+        artifacts:
+          - type: junit_xml
+            path: artifacts/acceptance/junit-nanopore-context.xml
+            checks:
+              - tests.test_nanopore_context_profile::test_calibration_threshold_evaluation_flags_violations
+              - tests.test_nanopore_context_profile::test_builtin_profile_context_bias
+        pass_threshold: 100% listed JUnit test cases passed
   - id: deterministic_reproducibility_governance
     name: Deterministic seed/profile reproducibility governance
     status: partial
@@ -47,6 +76,16 @@ feature_capabilities:
     owner_modules:
       - src/genecoder/pipeline.py
       - src/genecoder/cli/cli.py
+    completion_criteria:
+      - id: deterministic_repro_acceptance
+        description: Deterministic reproducibility governance acceptance checks pass.
+        artifacts:
+          - type: junit_xml
+            path: artifacts/acceptance/junit-deterministic-reproducibility.xml
+            checks:
+              - tests.test_acceptance_deterministic_reproducibility_governance::test_validation_artifact_targets_dedicated_acceptance_module
+              - tests.test_acceptance_deterministic_reproducibility_governance::test_phase_two_gate_reproducibility_criterion_uses_deterministic_command
+        pass_threshold: 100% listed JUnit test cases passed
   - id: benchmark_depth_and_parity
     name: Standardized benchmark depth and parity validation
     status: partial
@@ -54,6 +93,43 @@ feature_capabilities:
     owner_modules:
       - benchmarks/throughput.py
       - benchmarks/error_rate.py
+    completion_criteria:
+      - id: throughput_gate_floor
+        description: Throughput benchmark meets the minimum encode-speed floor.
+        artifacts:
+          - type: benchmark_json
+            path: artifacts/benchmarks/throughput.json
+            benchmark: throughput
+            aggregate:
+              metric: encode_mb_s
+              op: min
+              threshold: 2.0
+              where:
+                codec: base4
+                simulator: identity
+        pass_threshold: "min(encode_mb_s | codec=base4, simulator=identity) >= 2.0"
+      - id: ber_parity_gate
+        description: Error-rate benchmark BER is within the baseline quality threshold.
+        artifacts:
+          - type: benchmark_json
+            path: artifacts/benchmarks/error_rate.json
+            benchmark: error_rate
+            aggregate:
+              metric: BER
+              op: max
+              threshold: 0.01
+              where:
+                simulator: substitution
+        pass_threshold: "max(BER | simulator=substitution) <= 0.01"
+      - id: benchmark_acceptance_contract
+        description: Benchmark acceptance tests assert depth/parity contract wiring.
+        artifacts:
+          - type: junit_xml
+            path: artifacts/acceptance/junit-benchmark-depth-and-parity.xml
+            checks:
+              - tests.test_acceptance_benchmark_depth_and_parity::test_throughput_gate_definition
+              - tests.test_acceptance_benchmark_depth_and_parity::test_error_rate_gate_definition
+        pass_threshold: 100% listed JUnit test cases passed
   - id: plugin_registry_policy_automation
     name: Plugin registry policy/security automation
     status: partial
@@ -61,6 +137,19 @@ feature_capabilities:
     owner_modules:
       - src/genecoder/plugin_manager.py
       - src/genecoder/plugin_runtime/registry.py
+    completion_criteria:
+      - id: plugin_policy_acceptance
+        description: Plugin registry policy acceptance tests and policy suites pass.
+        artifacts:
+          - type: junit_xml
+            path: artifacts/acceptance/junit-plugin-policy.xml
+            checks:
+              - tests.test_acceptance_plugin_registry_policy_automation::test_suite_category_health_gate_criterion
+              - tests.test_acceptance_plugin_registry_policy_automation::test_phase_four_release_gate_readiness_conditions
+              - tests.test_plugin_supply_chain_policy::test_policy_requires_trust_root
+              - tests.test_plugin_lifecycle_conformance::test_lifecycle_install_upgrade_disable_rollback_are_deterministic
+              - tests.test_cli_plugin_registry::test_install_registry_with_flag
+        pass_threshold: 100% listed JUnit test cases passed
   - id: cloud_worker_remote_execution
     name: Cloud worker remote execution
     status: deprecated
@@ -85,9 +174,10 @@ kpi_gates:
           - tests/test_illumina_coverage_quality.py
           - tests/test_nanopore_context_profile.py
       - metric: Throughput floor
-        threshold: ">= 2.0 MB/s Base-4 encode throughput"
+        threshold: ">= 2.0 MB/s Base-4 encode throughput with BER observed at baseline 0.0"
         evidence:
           - benchmarks/throughput.py
+          - PYTHONPATH=src python benchmarks/throughput.py
           - docs/performance.md
   - gate: Phase 3 -> Phase 4
     checks:
@@ -95,6 +185,7 @@ kpi_gates:
         threshold: "<= 0.01 BER on baseline profile/seed"
         evidence:
           - benchmarks/error_rate.py
+          - PYTHONPATH=src python benchmarks/error_rate.py
           - docs/performance.md
       - metric: Suite category health
         threshold: Green CI across CLI/API, pipeline/simulation, and plugins/security suites
