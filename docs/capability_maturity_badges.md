@@ -1,6 +1,8 @@
+<!-- GENERATED FILE: derived from docs/strategy_model.yaml via docs/capabilities.yaml; edit docs/strategy_model.yaml and rerun `python scripts/generate_strategy_artifacts.py --write`. -->
+
 # Capability maturity badges
 
-Generated from `docs/capabilities.yaml` and `.github/workflows/python-ci.yml`.
+Generated from `docs/strategy_model.yaml`, `docs/capabilities.yaml`, and `.github/workflows/python-ci.yml`.
 
 | Capability ID | Status | CI checks present | Maturity badge |
 | --- | --- | --- | --- |

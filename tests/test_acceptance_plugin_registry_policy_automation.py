@@ -3,16 +3,16 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-CAPABILITIES_PATH = ROOT / "docs" / "capabilities.yaml"
+MODEL_PATH = ROOT / "docs" / "strategy_model.yaml"
 
 
 def _load_capabilities() -> dict:
-    return yaml.safe_load(CAPABILITIES_PATH.read_text(encoding="utf-8"))
+    return yaml.safe_load(MODEL_PATH.read_text(encoding="utf-8"))
 
 
 def test_validation_artifact_targets_dedicated_acceptance_module():
     data = _load_capabilities()
-    capability = next(c for c in data["capabilities"] if c["id"] == "plugin_registry_policy_automation")
+    capability = next(c for c in data["feature_capabilities"] if c["id"] == "plugin_registry_policy_automation")
 
     assert capability["validation_artifacts"] == [
         {

@@ -47,12 +47,10 @@ jobs:
         run: pip install pre-commit
       - name: Check Markdown links
         run: pre-commit run markdown-link-check --files README.md $(git ls-files "docs/**/*.md")
-      - name: Fail on missing capability metadata paths or stale generated sections
-        run: python scripts/check_capability_docs_sync.py
-      - name: Fail on stale generated strategy sections
-        run: python scripts/check_strategy_docs_sync.py
-      - name: Fail on stale capability maturity badges
-        run: python scripts/render_capability_maturity_badges.py
+      - name: Regenerate strategy-derived docs
+        run: python scripts/generate_strategy_artifacts.py --write
+      - name: Fail on generated-doc drift
+        run: git diff --exit-code -- docs/capabilities.yaml docs/product_strategy.md docs/vision.md docs/development_roadmap.md docs/capability_maturity_badges.md
       - name: Build docs
         run: mkdocs build --strict
       - name: Upload PDF

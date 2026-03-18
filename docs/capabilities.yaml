@@ -1,6 +1,8 @@
+# GENERATED FILE - DO NOT EDIT DIRECTLY.
+# Canonical source: docs/strategy_model.yaml
+# Regenerate with: python scripts/generate_strategy_artifacts.py --write
 version: 1
-last_updated: "2026-03-06"
-
+last_updated: generated-from-strategy-model
 capabilities:
   - id: cli_bundle_presets
     name: CLI bundle presets for end-to-end pipelines
@@ -12,7 +14,6 @@ capabilities:
     validation_artifacts:
       - type: test
         path: tests/test_bundle.py
-
   - id: illumina_simulation_profiles
     name: Illumina simulation with profile-resolved errors
     status: implemented
@@ -23,7 +24,6 @@ capabilities:
     validation_artifacts:
       - type: test
         path: tests/test_illumina_coverage_quality.py
-
   - id: nanopore_simulation_profiles
     name: Nanopore simulation with context-aware profile controls
     status: implemented
@@ -34,7 +34,6 @@ capabilities:
     validation_artifacts:
       - type: test
         path: tests/test_nanopore_context_profile.py
-
   - id: deterministic_reproducibility_governance
     name: Deterministic seed/profile reproducibility governance
     status: partial
@@ -47,7 +46,6 @@ capabilities:
         path: tests/test_acceptance_deterministic_reproducibility_governance.py
     ci_status_checks:
       - capability-deterministic-reproducibility
-
   - id: benchmark_depth_and_parity
     name: Standardized benchmark depth and parity validation
     status: partial
@@ -60,7 +58,6 @@ capabilities:
         path: tests/test_acceptance_benchmark_depth_and_parity.py
     ci_status_checks:
       - capability-benchmark-depth-and-parity
-
   - id: plugin_registry_policy_automation
     name: Plugin registry policy/security automation
     status: partial
@@ -73,7 +70,6 @@ capabilities:
         path: tests/test_acceptance_plugin_registry_policy_automation.py
     ci_status_checks:
       - capability-plugin-registry-policy
-
 strategy_sections:
   product_strategy_current_capabilities:
     include_ids:
@@ -93,13 +89,12 @@ strategy_sections:
       - deterministic_reproducibility_governance
       - benchmark_depth_and_parity
       - plugin_registry_policy_automation
-
 phase_gates:
-  - gate: "Phase 1 -> Phase 2"
-    canonical_source: docs/development_roadmap.md
+  - gate: Phase 1 -> Phase 2
+    canonical_source: docs/strategy_model.yaml
     measurable_checks:
       - metric: Weekly usage (oligos_per_week)
-        threshold: ">= 1,000 simulated oligos/week for 4 consecutive ISO weeks"
+        threshold: '>= 1,000 simulated oligos/week for 4 consecutive ISO weeks'
         tests_or_checks:
           - genecli stats
           - /metrics endpoint export
@@ -108,12 +103,11 @@ phase_gates:
         evidence_artifacts:
           - artifacts/runs/<run-id>/metrics.json
           - artifacts/runs/<run-id>/metrics.kpi.json
-
-  - gate: "Phase 2 -> Phase 3"
-    canonical_source: docs/development_roadmap.md
+  - gate: Phase 2 -> Phase 3
+    canonical_source: docs/strategy_model.yaml
     measurable_checks:
       - metric: Reproducibility pass rate
-        threshold: "100% deterministic seed/profile checks for 2 consecutive weeks"
+        threshold: 100% deterministic seed/profile checks for 2 consecutive weeks
         tests_or_checks:
           - pytest -q tests/test_acceptance_deterministic_reproducibility_governance.py
         docs_links:
@@ -121,7 +115,8 @@ phase_gates:
         evidence_artifacts:
           - CI pytest logs
       - metric: Throughput median floor
-        threshold: ">= 2.0 MB/s Base-4 encode throughput with BER observed at baseline 0.0"
+        threshold: '>= 2.0 MB/s Base-4 encode throughput with BER observed at baseline
+          0.0'
         tests_or_checks:
           - PYTHONPATH=src python benchmarks/throughput.py
           - pytest -q tests/test_acceptance_benchmark_depth_and_parity.py -k throughput_gate_definition
@@ -130,12 +125,11 @@ phase_gates:
         evidence_artifacts:
           - benchmark stdout artifact
           - benchmark gate JSON artifact
-
-  - gate: "Phase 3 -> Phase 4"
-    canonical_source: docs/development_roadmap.md
+  - gate: Phase 3 -> Phase 4
+    canonical_source: docs/strategy_model.yaml
     measurable_checks:
       - metric: BER baseline quality
-        threshold: "<= 0.01 BER on documented baseline profile/seed"
+        threshold: <= 0.01 BER on documented baseline profile/seed
         tests_or_checks:
           - PYTHONPATH=src python benchmarks/error_rate.py
           - pytest -q tests/test_acceptance_benchmark_depth_and_parity.py -k error_rate_gate_definition
@@ -145,22 +139,24 @@ phase_gates:
           - benchmark stdout artifact
           - benchmark gate JSON artifact
       - metric: Suite category health
-        threshold: "Green CI across CLI/API, pipeline/simulation, plugins/security categories"
+        threshold: Green CI across CLI/API, pipeline/simulation, plugins/security
+          categories
         tests_or_checks:
           - pytest -q tests/test_acceptance_plugin_registry_policy_automation.py
         docs_links:
           - docs/development_roadmap.md
         evidence_artifacts:
           - CI pytest summaries
-
-  - gate: "Phase 4 release gate"
-    canonical_source: docs/development_roadmap.md
+  - gate: Phase 4 release gate
+    canonical_source: docs/strategy_model.yaml
     measurable_checks:
       - metric: Plugin policy compliance
-        threshold: "100% pass on plugin spec/security checks before registry publication"
+        threshold: 100% pass on plugin spec/security checks before registry publication
         tests_or_checks:
-          - pytest -q tests/test_acceptance_plugin_registry_policy_automation.py -k phase_four_release_gate_readiness_conditions
-          - pytest -q tests/test_plugin_supply_chain_policy.py tests/test_plugin_lifecycle_conformance.py tests/test_cli_plugin_registry.py
+          - pytest -q tests/test_acceptance_plugin_registry_policy_automation.py -k
+            phase_four_release_gate_readiness_conditions
+          - pytest -q tests/test_plugin_supply_chain_policy.py tests/test_plugin_lifecycle_conformance.py
+            tests/test_cli_plugin_registry.py
         docs_links:
           - docs/plugins.md
         evidence_artifacts:

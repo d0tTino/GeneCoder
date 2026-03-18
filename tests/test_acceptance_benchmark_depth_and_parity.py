@@ -11,13 +11,13 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-CAPABILITIES_PATH = ROOT / "docs" / "capabilities.yaml"
+MODEL_PATH = ROOT / "docs" / "strategy_model.yaml"
 MATRIX_PATH = ROOT / "configs" / "benchmark_matrix.yaml"
 MUTATION_KEYS = ("substitution_prob", "insertion_prob", "deletion_prob", "dropout_prob")
 
 
 def _load_capabilities() -> dict:
-    return yaml.safe_load(CAPABILITIES_PATH.read_text(encoding="utf-8"))
+    return yaml.safe_load(MODEL_PATH.read_text(encoding="utf-8"))
 
 
 def _phase_gate(data: dict, gate_name: str) -> dict:
@@ -26,7 +26,7 @@ def _phase_gate(data: dict, gate_name: str) -> dict:
 
 def test_validation_artifact_targets_dedicated_acceptance_module() -> None:
     data = _load_capabilities()
-    capability = next(c for c in data["capabilities"] if c["id"] == "benchmark_depth_and_parity")
+    capability = next(c for c in data["feature_capabilities"] if c["id"] == "benchmark_depth_and_parity")
 
     assert capability["validation_artifacts"] == [
         {

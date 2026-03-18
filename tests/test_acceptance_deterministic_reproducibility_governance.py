@@ -3,15 +3,15 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-CAPABILITIES_PATH = ROOT / "docs" / "capabilities.yaml"
+MODEL_PATH = ROOT / "docs" / "strategy_model.yaml"
 
 
 def _load_capabilities() -> dict:
-    return yaml.safe_load(CAPABILITIES_PATH.read_text(encoding="utf-8"))
+    return yaml.safe_load(MODEL_PATH.read_text(encoding="utf-8"))
 
 
 def _partial_capability(data: dict, capability_id: str) -> dict:
-    for capability in data["capabilities"]:
+    for capability in data["feature_capabilities"]:
         if capability["id"] == capability_id:
             return capability
     raise AssertionError(f"Missing capability {capability_id!r}")

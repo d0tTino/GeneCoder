@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: derived from docs/strategy_model.yaml; edit docs/strategy_model.yaml and rerun `python scripts/generate_strategy_artifacts.py --write`. -->
+
 # Vision & Core Concept
 
 GeneCoder aims to make DNA data storage experimentation practical and reproducible by combining encoding, channel simulation, and decoding workflows in one toolkit.
@@ -11,7 +13,7 @@ GeneCoder aims to make DNA data storage experimentation practical and reproducib
 ## Strategy-aligned phase and capability narrative (generated)
 
 > Source of truth: `docs/strategy_model.yaml`
-> last_validated_commit: `ace9f6cbe53fdbbf78a7bef0e628afce31cca5cf`
+> last_validated_commit: `f62498d40dd487eca4eff0cd1f41a42cc056eaed`
 
 ### Phase intent
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render capability maturity badges from capabilities metadata and CI job coverage."""
+"""Render capability maturity badges from strategy-derived capabilities metadata and CI job coverage."""
 
 from __future__ import annotations
 
@@ -13,6 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 CAPABILITIES_PATH = ROOT / "docs" / "capabilities.yaml"
 CI_WORKFLOW_PATH = ROOT / ".github" / "workflows" / "python-ci.yml"
 OUTPUT_PATH = ROOT / "docs" / "capability_maturity_badges.md"
+GENERATED_HEADER = (
+    "<!-- GENERATED FILE: derived from docs/strategy_model.yaml via docs/capabilities.yaml; "
+    "edit docs/strategy_model.yaml and rerun "
+    "`python scripts/generate_strategy_artifacts.py --write`. -->"
+)
 
 
 def _badge_url(label: str, message: str, color: str) -> str:
@@ -32,9 +37,11 @@ def _maturity_message(status: str, ci_covered: bool) -> tuple[str, str]:
 def render_markdown(capabilities_data: dict, workflow_data: dict) -> str:
     jobs = workflow_data.get("jobs", {})
     lines = [
+        GENERATED_HEADER,
+        "",
         "# Capability maturity badges",
         "",
-        "Generated from `docs/capabilities.yaml` and `.github/workflows/python-ci.yml`.",
+        "Generated from `docs/strategy_model.yaml`, `docs/capabilities.yaml`, and `.github/workflows/python-ci.yml`.",
         "",
         "| Capability ID | Status | CI checks present | Maturity badge |",
         "| --- | --- | --- | --- |",
