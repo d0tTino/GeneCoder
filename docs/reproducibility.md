@@ -50,7 +50,8 @@ The CLI also exposes `--seed` wherever randomness is involved. Passing
 of the command, so you can either export it globally or set it per invocation:
 
 ```bash
-genecli pipeline input.txt decoded.txt --channel illumina --illumina-profile miseq --seed 12345
+genecli pipeline input.txt decoded.txt --channel illumina --illumina-profile miseq --seed 12345 \
+  --metrics-path artifacts/runs/repro-seed/metrics.json
 ```
 
 Any sub-process launched by the CLI (including bundled simulators) inherits the
@@ -69,12 +70,14 @@ select the desired profile in your CLI commands or bundle configuration.
 # MiSeq-style short reads
 GENECODER_SIM_SEED=12345 genecli pipeline \
   examples/pipeline_demo_input.txt decoded_miseq.txt \
-  --channel illumina --illumina-profile miseq
+  --channel illumina --illumina-profile miseq \
+  --metrics-path artifacts/runs/repro-miseq/metrics.json
 
 # NovaSeq high-throughput profile
 GENECODER_SIM_SEED=12345 genecli pipeline \
   examples/pipeline_demo_input.txt decoded_novaseq.txt \
-  --channel illumina --illumina-profile novaseq
+  --channel illumina --illumina-profile novaseq \
+  --metrics-path artifacts/runs/repro-novaseq/metrics.json
 ```
 
 ### Bundle and pipeline configurations
@@ -169,9 +172,12 @@ Required artifacts are validated by `scripts/validate_reproducibility_artifacts.
 Generate reports during execution:
 
 ```bash
-genecli pipeline input.bin decoded.bin --codec reverse --channel none --seed 42 --emit-repro-report
-genecli bundle run configs/gold.yaml --cache-dir runs --emit-repro-report
-genecli bundle sweep configs/*.yaml --cache-dir runs --emit-repro-report
+genecli pipeline input.bin decoded.bin --codec reverse --channel none --seed 42 --emit-repro-report \
+  --metrics-path artifacts/runs/repro-report/metrics.json
+genecli bundle run configs/gold.yaml --cache-dir artifacts/runs/repro-bundle --emit-repro-report \
+  --metrics-path artifacts/runs/repro-bundle/metrics.json
+genecli bundle sweep configs/*.yaml --cache-dir artifacts/runs/repro-sweep --emit-repro-report \
+  --metrics-path artifacts/runs/repro-sweep/metrics.json
 ```
 
 Validate artifacts and tolerances in CI:

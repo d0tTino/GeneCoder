@@ -1,7 +1,8 @@
 # Pipeline demonstration configuration that performs encoding, simulated sequencing,
 # decoding and metrics export. Provide --metrics-path when invoking the bundle command
 # to capture metrics:
-#   genecli bundle run configs/pipeline_demo.yaml --metrics-path examples/pipeline_metrics.json \
+#   genecli bundle run configs/pipeline_demo.yaml --cache-dir artifacts/runs/pipeline-demo \
+#     --metrics-path artifacts/runs/pipeline-demo/metrics.json \
 #     --emit-manifest-report
 encode:
   input_files:

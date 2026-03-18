@@ -35,6 +35,31 @@ from .results.repro_report import generate_reproducibility_report
 KPI_BUNDLE_VERSION = "1.0"
 
 
+def _require_run_scoped_artifact_path(artifact_path: str) -> str:
+    """Return a normalized metrics artifact path and reject home-scoped defaults."""
+
+    raw_path = Path(artifact_path).expanduser()
+    home = Path.home()
+    try:
+        if raw_path.is_absolute() and raw_path.is_relative_to(home):
+            raise ValueError(
+                "KPI artifacts must use run-scoped paths, not home-directory state."
+            )
+    except AttributeError:
+        raw_parts = raw_path.parts
+        home_parts = home.parts
+        if len(raw_parts) >= len(home_parts) and raw_parts[: len(home_parts)] == home_parts:
+            raise ValueError(
+                "KPI artifacts must use run-scoped paths, not home-directory state."
+            )
+
+    if raw_path.name != "metrics.json":
+        raise ValueError(
+            "KPI bundle artifact_path must point to a run-scoped metrics.json file."
+        )
+    return str(raw_path)
+
+
 def build_kpi_bundle(
     run_schema: Mapping[str, Any], *, artifact_path: str | None = None
 ) -> dict[str, Any]:
@@ -56,7 +81,9 @@ def build_kpi_bundle(
         },
     }
     if artifact_path:
-        bundle["artifacts"] = {"run_schema": str(Path(artifact_path))}
+        bundle["artifacts"] = {
+            "run_schema": _require_run_scoped_artifact_path(artifact_path)
+        }
     return bundle
 
 

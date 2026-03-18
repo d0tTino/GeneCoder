@@ -106,7 +106,8 @@ phase_gates:
         docs_links:
           - docs/metrics.md
         evidence_artifacts:
-          - ~/.genecoder/metrics.json
+          - artifacts/runs/<run-id>/metrics.json
+          - artifacts/runs/<run-id>/metrics.kpi.json
 
   - gate: "Phase 2 -> Phase 3"
     canonical_source: docs/development_roadmap.md

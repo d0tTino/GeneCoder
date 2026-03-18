@@ -11,7 +11,7 @@ GeneCoder aims to make DNA data storage experimentation practical and reproducib
 ## Strategy-aligned phase and capability narrative (generated)
 
 > Source of truth: `docs/strategy_model.yaml`
-> last_validated_commit: `94185d38d705181caa43ae5f31bb952131805687`
+> last_validated_commit: `ace9f6cbe53fdbbf78a7bef0e628afce31cca5cf`
 
 ### Phase intent
 
