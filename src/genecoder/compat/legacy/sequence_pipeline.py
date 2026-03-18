@@ -2,14 +2,14 @@ from __future__ import annotations
 
 """Compatibility shim for deprecated ``SequencePipeline`` import path."""
 
-import warnings
+from genecoder._deprecation import warn_with_telemetry
 
 from genecoder.app.sequence_pipeline import SequencePipeline
 
 __all__ = ["SequencePipeline"]
 
-warnings.warn(
-    "genecoder.compat.legacy.sequence_pipeline is deprecated; import SequencePipeline from genecoder.app.sequence_pipeline.",
-    DeprecationWarning,
+warn_with_telemetry(
+    module_name="genecoder.compat.legacy.sequence_pipeline",
+    message="genecoder.compat.legacy.sequence_pipeline is deprecated; import SequencePipeline from genecoder.app.sequence_pipeline.",
     stacklevel=2,
 )

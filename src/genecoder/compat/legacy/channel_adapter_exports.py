@@ -5,6 +5,8 @@ Compatibility-only module: no new feature work.
 
 from __future__ import annotations
 
+from genecoder._deprecation import warn_with_telemetry
+
 from genecoder.channel_engine.legacy_adapter import (
     ADAPTER_PROFILES,
     DEFAULT_ADAPTER_PROFILE,
@@ -30,3 +32,9 @@ __all__ = [
     "ADAPTER_PROFILES",
     "DEFAULT_ADAPTER_PROFILE",
 ]
+
+warn_with_telemetry(
+    module_name="genecoder.compat.legacy.channel_adapter_exports",
+    message="genecoder.compat.legacy.channel_adapter_exports is deprecated; use supported channel_engine or app/sdk interfaces instead.",
+    stacklevel=2,
+)

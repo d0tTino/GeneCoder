@@ -24,7 +24,6 @@ from .plugin_manager import (
 )
 from .simulators import SIMULATOR_REGISTRY, simulate_reads
 from .channel_config import ChannelConfig
-from .app.pipeline_runtime import SequencePipeline
 
 
 __all__ = [
@@ -40,7 +39,6 @@ __all__ = [
     "load_plugins",
     "install_registry_plugins",
     "ChannelConfig",
-    "SequencePipeline",
     "encrypt_data",
     "decrypt_data",
     "compute_checksum",

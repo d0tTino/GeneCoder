@@ -9,7 +9,7 @@ wrappers and CI gate checks.
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
-import warnings
+from ._deprecation import warn_with_telemetry
 
 from .compat.v1.pipeline_adapter import (
     SequencePipeline,
@@ -103,9 +103,11 @@ __all__ = [
     "bundle_config_to_job_request",
 ]
 
-warnings.warn(
-    "genecoder.pipeline is deprecated and will be removed in v0.16.0; "
-    "import genecoder.app.RunPipelineUseCase for orchestration.",
-    DeprecationWarning,
+warn_with_telemetry(
+    module_name="genecoder.pipeline",
+    message=(
+        "genecoder.pipeline is deprecated and will be removed in v0.16.0; "
+        "import genecoder.app.RunPipelineUseCase for orchestration."
+    ),
     stacklevel=2,
 )
