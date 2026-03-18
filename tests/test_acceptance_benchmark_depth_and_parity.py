@@ -7,11 +7,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 CAPABILITIES_PATH = ROOT / "docs" / "capabilities.yaml"
 MATRIX_PATH = ROOT / "configs" / "benchmark_matrix.yaml"
+MUTATION_KEYS = ("substitution_prob", "insertion_prob", "deletion_prob", "dropout_prob")
 
 
 def _load_capabilities() -> dict:
@@ -112,6 +114,9 @@ def test_deterministic_benchmark_schema() -> None:
         "payload_size",
         "seed",
         "substitution_prob",
+        "insertion_prob",
+        "deletion_prob",
+        "dropout_prob",
         "throughput",
         "BER",
         "decode_success",
@@ -124,6 +129,49 @@ def test_deterministic_benchmark_schema() -> None:
         assert set(result.keys()) == expected_keys
 
 
+def test_noisy_scenarios_inject_measurable_noise() -> None:
+    matrix = yaml.safe_load(MATRIX_PATH.read_text(encoding="utf-8"))
+    noisy_scenarios = [scenario for scenario in matrix["scenarios"] if scenario["profile"] == "noisy"]
+
+    assert noisy_scenarios
+    for scenario in noisy_scenarios:
+        mutation_sum = sum(float(scenario.get(key, 0.0)) for key in MUTATION_KEYS)
+        assert mutation_sum > 0.0
+
+    payload = _run_benchmark("error_rate")
+    substitution_noisy = [
+        result
+        for result in payload["results"]
+        if result["profile_descriptor"] == "noisy" and result["simulator"] == "substitution"
+    ]
+    assert substitution_noisy
+    assert all(result["BER"] > 0.0 for result in substitution_noisy)
+
+
+
+def test_noisy_scenarios_require_non_zero_mutation_parameters() -> None:
+    from benchmarks.harness import _validated_scenarios
+
+    matrix = {
+        "profiles": {"noisy": {"substitution_prob": 0.0}},
+        "scenarios": [
+            {
+                "codec": "base4",
+                "simulator": "substitution",
+                "profile": "noisy",
+                "payload_size": 65536,
+                "seed": 7331,
+                "substitution_prob": 0.0,
+                "insertion_prob": 0.0,
+                "deletion_prob": 0.0,
+                "dropout_prob": 0.0,
+            }
+        ],
+    }
+
+    with pytest.raises(ValueError, match="profile=noisy requires at least one non-zero mutation parameter"):
+        _validated_scenarios(matrix)
+
 def test_gate_enforcement() -> None:
     payload = {
         "benchmark": "throughput",
@@ -131,7 +179,7 @@ def test_gate_enforcement() -> None:
         "matrix_version": "1.0.0",
         "results": [
             {
-                "profile": "base4_clean_256kb",
+                "profile": "base4_identity_clean_256kb_seed1337",
                 "throughput": 0.1,
                 "BER": 0.5,
                 "decode_success": False,

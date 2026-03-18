@@ -39,6 +39,9 @@ Both benchmark runners emit normalized JSON with deterministic schema metadata:
   - `payload_size`
   - `seed`
   - `substitution_prob`
+  - `insertion_prob`
+  - `deletion_prob`
+  - `dropout_prob`
   - `throughput`
   - `BER`
   - `decode_success`
@@ -78,6 +81,36 @@ When interpreting benchmark outcomes:
    not a win for production quality.
 3. **Treat `decode_success` as a hard reliability signal** for clean-profile scenarios.
 4. **Use `runtime_per_mb` to detect regressions hidden by small payload runs**.
+
+## Baseline regeneration procedure
+
+When the benchmark matrix or harness logic changes, regenerate threshold baselines:
+
+```bash
+PYTHONPATH=src python benchmarks/throughput.py --format json > /tmp/throughput.json
+PYTHONPATH=src python benchmarks/error_rate.py --format json > /tmp/error_rate.json
+python - <<'PY'
+import json
+from pathlib import Path
+
+threshold_path = Path("configs/benchmark_thresholds.json")
+thresholds = json.loads(threshold_path.read_text(encoding="utf-8"))
+
+for benchmark, artifact in (("throughput", "/tmp/throughput.json"), ("error_rate", "/tmp/error_rate.json")):
+    payload = json.loads(Path(artifact).read_text(encoding="utf-8"))
+    thresholds[benchmark]["baseline_snapshot"] = {
+        result["profile"]: {
+            "throughput": round(float(result["throughput"]), 4),
+            "BER": round(float(result["BER"]), 6),
+            "decode_success": bool(result["decode_success"]),
+            "runtime_per_mb": round(float(result["runtime_per_mb"]), 4),
+        }
+        for result in payload["results"]
+    }
+
+threshold_path.write_text(json.dumps(thresholds, indent=2) + "\n", encoding="utf-8")
+PY
+```
 
 ## Historical trend guidance
 
