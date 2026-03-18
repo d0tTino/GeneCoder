@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: derived from docs/strategy_model.yaml; edit docs/strategy_model.yaml and rerun `python scripts/generate_strategy_artifacts.py --write`. -->
+
 # Development Roadmap
 
 This roadmap tracks KPI gates from the canonical strategy model.
@@ -6,7 +8,7 @@ This roadmap tracks KPI gates from the canonical strategy model.
 ## KPI gates and evidence (generated)
 
 > Source of truth: `docs/strategy_model.yaml`
-> last_validated_commit: `ace9f6cbe53fdbbf78a7bef0e628afce31cca5cf`
+> last_validated_commit: `f62498d40dd487eca4eff0cd1f41a42cc056eaed`
 
 ### Phase 1 -> Phase 2
 

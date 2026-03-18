@@ -1,5 +1,14 @@
 version: 1
 
+metadata:
+  canonical_file: docs/strategy_model.yaml
+  generated_files:
+    - docs/capabilities.yaml
+    - docs/product_strategy.md
+    - docs/vision.md
+    - docs/development_roadmap.md
+    - docs/capability_maturity_badges.md
+
 phases:
   - id: 1
     name: Foundation sustainment
@@ -26,6 +35,9 @@ feature_capabilities:
     owner_modules:
       - src/genecoder/cli/bundle.py
       - src/genecoder/pipeline.py
+    validation_artifacts:
+      - type: test
+        path: tests/test_bundle.py
     completion_criteria:
       - id: bundle_cli_acceptance
         description: Bundle CLI integration and preset validation tests pass.
@@ -43,6 +55,9 @@ feature_capabilities:
     owner_modules:
       - src/genecoder/simulators/illumina/channel.py
       - src/genecoder/simulators/illumina/profiles.py
+    validation_artifacts:
+      - type: test
+        path: tests/test_illumina_coverage_quality.py
     completion_criteria:
       - id: illumina_profile_quality_acceptance
         description: Illumina profile quality and validation checks pass.
@@ -59,6 +74,9 @@ feature_capabilities:
     owner_modules:
       - src/genecoder/simulators/nanopore.py
       - src/genecoder/simulators/nanopore_profiles.py
+    validation_artifacts:
+      - type: test
+        path: tests/test_nanopore_context_profile.py
     completion_criteria:
       - id: nanopore_context_acceptance
         description: Nanopore context profile behavior is verified by acceptance tests.
@@ -76,6 +94,11 @@ feature_capabilities:
     owner_modules:
       - src/genecoder/pipeline.py
       - src/genecoder/cli/cli.py
+    validation_artifacts:
+      - type: acceptance_test
+        path: tests/test_acceptance_deterministic_reproducibility_governance.py
+    ci_status_checks:
+      - capability-deterministic-reproducibility
     completion_criteria:
       - id: deterministic_repro_acceptance
         description: Deterministic reproducibility governance acceptance checks pass.
@@ -93,6 +116,11 @@ feature_capabilities:
     owner_modules:
       - benchmarks/throughput.py
       - benchmarks/error_rate.py
+    validation_artifacts:
+      - type: acceptance_test
+        path: tests/test_acceptance_benchmark_depth_and_parity.py
+    ci_status_checks:
+      - capability-benchmark-depth-and-parity
     completion_criteria:
       - id: throughput_gate_floor
         description: Throughput benchmark meets the minimum encode-speed floor.
@@ -137,6 +165,11 @@ feature_capabilities:
     owner_modules:
       - src/genecoder/plugin_manager.py
       - src/genecoder/plugin_runtime/registry.py
+    validation_artifacts:
+      - type: acceptance_test
+        path: tests/test_acceptance_plugin_registry_policy_automation.py
+    ci_status_checks:
+      - capability-plugin-registry-policy
     completion_criteria:
       - id: plugin_policy_acceptance
         description: Plugin registry policy acceptance tests and policy suites pass.
@@ -213,3 +246,95 @@ support_policy:
     - src/genecoder/cloud/
   deprecated_module_prefixes:
     - src/genecoder/compat/legacy/
+
+strategy_sections:
+  product_strategy_current_capabilities:
+    include_ids:
+      - cli_bundle_presets
+      - illumina_simulation_profiles
+      - nanopore_simulation_profiles
+  product_strategy_priority_gaps:
+    include_ids:
+      - deterministic_reproducibility_governance
+      - benchmark_depth_and_parity
+      - plugin_registry_policy_automation
+  vision_capability_status:
+    include_ids:
+      - cli_bundle_presets
+      - illumina_simulation_profiles
+      - nanopore_simulation_profiles
+      - deterministic_reproducibility_governance
+      - benchmark_depth_and_parity
+      - plugin_registry_policy_automation
+
+phase_gates:
+  - gate: "Phase 1 -> Phase 2"
+    canonical_source: docs/strategy_model.yaml
+    measurable_checks:
+      - metric: Weekly usage (oligos_per_week)
+        threshold: ">= 1,000 simulated oligos/week for 4 consecutive ISO weeks"
+        tests_or_checks:
+          - genecli stats
+          - /metrics endpoint export
+        docs_links:
+          - docs/metrics.md
+        evidence_artifacts:
+          - artifacts/runs/<run-id>/metrics.json
+          - artifacts/runs/<run-id>/metrics.kpi.json
+
+  - gate: "Phase 2 -> Phase 3"
+    canonical_source: docs/strategy_model.yaml
+    measurable_checks:
+      - metric: Reproducibility pass rate
+        threshold: "100% deterministic seed/profile checks for 2 consecutive weeks"
+        tests_or_checks:
+          - pytest -q tests/test_acceptance_deterministic_reproducibility_governance.py
+        docs_links:
+          - docs/reproducibility.md
+        evidence_artifacts:
+          - CI pytest logs
+      - metric: Throughput median floor
+        threshold: ">= 2.0 MB/s Base-4 encode throughput with BER observed at baseline 0.0"
+        tests_or_checks:
+          - PYTHONPATH=src python benchmarks/throughput.py
+          - pytest -q tests/test_acceptance_benchmark_depth_and_parity.py -k throughput_gate_definition
+        docs_links:
+          - docs/performance.md
+        evidence_artifacts:
+          - benchmark stdout artifact
+          - benchmark gate JSON artifact
+
+  - gate: "Phase 3 -> Phase 4"
+    canonical_source: docs/strategy_model.yaml
+    measurable_checks:
+      - metric: BER baseline quality
+        threshold: "<= 0.01 BER on documented baseline profile/seed"
+        tests_or_checks:
+          - PYTHONPATH=src python benchmarks/error_rate.py
+          - pytest -q tests/test_acceptance_benchmark_depth_and_parity.py -k error_rate_gate_definition
+        docs_links:
+          - docs/performance.md
+        evidence_artifacts:
+          - benchmark stdout artifact
+          - benchmark gate JSON artifact
+      - metric: Suite category health
+        threshold: "Green CI across CLI/API, pipeline/simulation, plugins/security categories"
+        tests_or_checks:
+          - pytest -q tests/test_acceptance_plugin_registry_policy_automation.py
+        docs_links:
+          - docs/development_roadmap.md
+        evidence_artifacts:
+          - CI pytest summaries
+
+  - gate: "Phase 4 release gate"
+    canonical_source: docs/strategy_model.yaml
+    measurable_checks:
+      - metric: Plugin policy compliance
+        threshold: "100% pass on plugin spec/security checks before registry publication"
+        tests_or_checks:
+          - pytest -q tests/test_acceptance_plugin_registry_policy_automation.py -k phase_four_release_gate_readiness_conditions
+          - pytest -q tests/test_plugin_supply_chain_policy.py tests/test_plugin_lifecycle_conformance.py tests/test_cli_plugin_registry.py
+        docs_links:
+          - docs/plugins.md
+        evidence_artifacts:
+          - CI logs and registry validation output

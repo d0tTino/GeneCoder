@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: derived from docs/strategy_model.yaml; edit docs/strategy_model.yaml and rerun `python scripts/generate_strategy_artifacts.py --write`. -->
+
 # Product Strategy
 
 This document includes generated strategy metadata. Update `docs/strategy_model.yaml` and re-render generated sections instead of editing the generated block directly.
@@ -6,7 +8,7 @@ This document includes generated strategy metadata. Update `docs/strategy_model.
 ## Strategy model snapshot (generated)
 
 > Source of truth: `docs/strategy_model.yaml`
-> last_validated_commit: `ace9f6cbe53fdbbf78a7bef0e628afce31cca5cf`
+> last_validated_commit: `f62498d40dd487eca4eff0cd1f41a42cc056eaed`
 
 ### Phase definitions
 

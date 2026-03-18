@@ -25,6 +25,12 @@ DOC_CONFIGS = {
     },
 }
 
+GENERATED_HEADER = (
+    "<!-- GENERATED FILE: derived from docs/strategy_model.yaml; "
+    "edit docs/strategy_model.yaml and rerun "
+    "`python scripts/generate_strategy_artifacts.py --write`. -->"
+)
+
 
 def git_head_commit() -> str:
     result = subprocess.run(
@@ -50,6 +56,12 @@ def _replace_marker_block(content: str, marker: str, new_block: str) -> tuple[st
     replacement = f"{start}\n{new_block}\n{end}"
     updated = f"{prefix}{replacement}{suffix}"
     return updated, middle.strip() != new_block.strip()
+
+
+def ensure_generated_header(content: str) -> tuple[str, bool]:
+    if content.startswith(GENERATED_HEADER):
+        return content, False
+    return f"{GENERATED_HEADER}\n\n{content.lstrip()}", True
 
 
 def _format_checks(checks: list[dict]) -> str:
@@ -158,6 +170,8 @@ def main() -> int:
         marker = DOC_CONFIGS[doc_path]["marker"]
         original = doc_path.read_text(encoding="utf-8")
         updated, changed = _replace_marker_block(original, marker, rendered)
+        updated, header_changed = ensure_generated_header(updated)
+        changed = changed or header_changed
         if changed:
             if args.write:
                 doc_path.write_text(updated, encoding="utf-8")

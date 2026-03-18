@@ -15,6 +15,10 @@ on:
       - 'configs/**'
       - 'benchmarks/**'
       - 'docs/mvp_checklist.md'
+      - 'docs/strategy_model.yaml'
+      - 'docs/capabilities.yaml'
+      - 'docs/vision.md'
+      - 'docs/capability_maturity_badges.md'
 
   push:
     paths:
@@ -34,6 +38,10 @@ on:
       - 'docs/roadmap_execution.md'
       - 'docs/cloud.md'
       - 'docs/cloud_worker.md'
+      - 'docs/strategy_model.yaml'
+      - 'docs/capabilities.yaml'
+      - 'docs/vision.md'
+      - 'docs/capability_maturity_badges.md'
 
 # Ensure only a single workflow run per PR or branch
 concurrency:
@@ -198,6 +206,12 @@ jobs:
 
     - name: Validate benchmark gate alignment
       run: python scripts/check_benchmark_gate_alignment.py
+
+    - name: Regenerate strategy-derived docs
+      run: python scripts/generate_strategy_artifacts.py --write
+
+    - name: Fail on generated-doc drift
+      run: git diff --exit-code -- docs/capabilities.yaml docs/product_strategy.md docs/vision.md docs/development_roadmap.md docs/capability_maturity_badges.md
 
   glossary:
     needs: [changes, check-comments, lint]
