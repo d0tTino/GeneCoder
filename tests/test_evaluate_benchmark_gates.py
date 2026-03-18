@@ -50,3 +50,33 @@ def test_evaluate_benchmark_gates_from_artifact_json(tmp_path: Path) -> None:
     assert report["passed"] is True
     assert report["evidence_artifact"] == str(artifact)
     assert report["parsed_metrics"]["results"][0]["throughput"] == 1.9
+
+
+def test_evaluate_benchmark_gates_rejects_home_scoped_artifact(
+    monkeypatch, tmp_path: Path
+) -> None:
+    artifact = tmp_path / "home" / ".genecoder" / "throughput.kpi.json"
+    artifact.parent.mkdir(parents=True, exist_ok=True)
+    artifact.write_text(json.dumps({"parsed_metrics": {"results": []}}), encoding="utf-8")
+    output = tmp_path / "gate.json"
+
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "scripts/evaluate_benchmark_gates.py",
+            "--benchmark",
+            "throughput",
+            "--artifact-json",
+            str(artifact),
+            "--output-json",
+            str(output),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode != 0
+    assert "run-scoped artifacts" in proc.stderr or "run-scoped artifacts" in proc.stdout
+    assert not output.exists()

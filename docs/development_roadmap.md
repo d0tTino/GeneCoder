@@ -6,13 +6,13 @@ This roadmap tracks KPI gates from the canonical strategy model.
 ## KPI gates and evidence (generated)
 
 > Source of truth: `docs/strategy_model.yaml`
-> last_validated_commit: `94185d38d705181caa43ae5f31bb952131805687`
+> last_validated_commit: `ace9f6cbe53fdbbf78a7bef0e628afce31cca5cf`
 
 ### Phase 1 -> Phase 2
 
 | Metric | Threshold | Evidence |
 | --- | --- | --- |
-| Weekly usage (oligos_per_week) | >= 1,000 simulated oligos/week for 4 consecutive ISO weeks | `~/.genecoder/metrics.json`, `docs/metrics.md` |
+| Weekly usage (oligos_per_week) | >= 1,000 simulated oligos/week for 4 consecutive ISO weeks | `artifacts/runs/<run-id>/metrics.json`, `artifacts/runs/<run-id>/metrics.kpi.json`, `docs/metrics.md` |
 
 ### Phase 2 -> Phase 3
 

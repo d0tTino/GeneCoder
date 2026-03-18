@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+from jsonschema import Draft202012Validator
+
 from genecoder.pipeline import build_kpi_bundle
 from tests.test_cli import run_cli_command
 
@@ -58,3 +61,36 @@ def test_cli_pipeline_emits_kpi_bundle_artifact(tmp_path: Path) -> None:
     payload = json.loads(kpi_path.read_text(encoding="utf-8"))
     assert payload["run_id"] == output_file.stem
     assert payload["artifacts"]["run_schema"] == str(metrics_path)
+
+
+def test_build_kpi_bundle_rejects_home_scoped_metrics_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    home_dir = tmp_path / "home"
+    monkeypatch.setattr(Path, "home", lambda: home_dir)
+
+    with pytest.raises(ValueError, match="run-scoped paths"):
+        build_kpi_bundle(
+            {
+                "run_id": "example-run",
+                "stages": {"decode": {"metrics": {"decode_success": True}}},
+                "outcome": {},
+            },
+            artifact_path=str(home_dir / ".genecoder" / "metrics.json"),
+        )
+
+
+def test_metrics_kpi_schema_accepts_run_scoped_artifact() -> None:
+    schema = json.loads(
+        Path("configs/schema/metrics.kpi.schema.json").read_text(encoding="utf-8")
+    )
+    payload = build_kpi_bundle(
+        {
+            "run_id": "schema-run",
+            "stages": {"decode": {"metrics": {"decode_success": True}}},
+            "outcome": {"throughput": 1.0, "ber": 0.0},
+        },
+        artifact_path="artifacts/runs/schema-run/metrics.json",
+    )
+
+    assert list(Draft202012Validator(schema).iter_errors(payload)) == []

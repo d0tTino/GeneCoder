@@ -207,8 +207,10 @@ produces byte‑identical results.
 
 ```bash
 export GENECODER_SIM_SEED=123
-genecli pipeline input.bin out1.bin --codec base4_direct --channel illumina --profile miseq
-genecli pipeline input.bin out2.bin --codec base4_direct --channel illumina --profile miseq
+genecli pipeline input.bin out1.bin --codec base4_direct --channel illumina --profile miseq \
+  --metrics-path artifacts/runs/repro-illumina-1/metrics.json
+genecli pipeline input.bin out2.bin --codec base4_direct --channel illumina --profile miseq \
+  --metrics-path artifacts/runs/repro-illumina-2/metrics.json
 cmp out1.bin out2.bin   # files match
 ```
 
@@ -216,8 +218,10 @@ The same seed works across other profiles, for example Nanopore's `minion`:
 
 ```bash
 export GENECODER_SIM_SEED=123
-genecli pipeline input.bin out1.bin --codec base4_direct --channel nanopore --profile minion
-genecli pipeline input.bin out2.bin --codec base4_direct --channel nanopore --profile minion
+genecli pipeline input.bin out1.bin --codec base4_direct --channel nanopore --profile minion \
+  --metrics-path artifacts/runs/repro-nanopore-1/metrics.json
+genecli pipeline input.bin out2.bin --codec base4_direct --channel nanopore --profile minion \
+  --metrics-path artifacts/runs/repro-nanopore-2/metrics.json
 cmp out1.bin out2.bin   # files match
 ```
 
@@ -556,7 +560,8 @@ Install the optional dependency and execute with `mpiexec`:
 
 ```bash
 pip install mpi4py
-mpiexec -n 4 genecli pipeline run pipeline.yml --use-mpi
+mpiexec -n 4 genecli pipeline run pipeline.yml --use-mpi \
+  --metrics-path artifacts/runs/mpi-config/metrics.json
 ```
 
 ### Manifest files
@@ -707,15 +712,15 @@ configuration and then launch the Streamlit interface:
 ```bash
 poetry install --with gui --no-interaction
 genecli bundle run configs/pipeline_demo.yaml \
-    --metrics-path examples/pipeline_metrics.json \
+    --metrics-path artifacts/runs/dashboard-demo/metrics.json \
     --emit-manifest-report \
     --launch-dashboard
 ```
 
 This encodes and decodes `examples/pipeline_demo_input.txt`, stores metrics in
-`examples/pipeline_metrics.json` and opens the dashboard with the results. Drop
+`artifacts/runs/dashboard-demo/metrics.json` and opens the dashboard with the results. Drop
 `--launch-dashboard` if you prefer to open the file later via
-`genecli dashboard examples/pipeline_metrics.json`.
+`genecli dashboard artifacts/runs/dashboard-demo/metrics.json`.
 
 The interface visualizes key metrics:
 
@@ -747,7 +752,7 @@ If you prefer to analyze bundles without running the FastAPI service, export the
 aggregated manifest metrics directly from the cache directory:
 
 ```bash
-genecli stats bundle --runs runs/desp --output runs/desp/bundle_metrics.json
+genecli stats bundle --runs artifacts/runs/desp-demo --output artifacts/runs/desp-demo/bundle_metrics.json
 ```
 
 The resulting JSON mirrors the `/bundle-metrics` endpoint output and can be

@@ -163,7 +163,8 @@ kpi_gates:
       - metric: Weekly usage (oligos_per_week)
         threshold: ">= 1,000 simulated oligos/week for 4 consecutive ISO weeks"
         evidence:
-          - ~/.genecoder/metrics.json
+          - artifacts/runs/<run-id>/metrics.json
+          - artifacts/runs/<run-id>/metrics.kpi.json
           - docs/metrics.md
   - gate: Phase 2 -> Phase 3
     checks:

@@ -74,8 +74,10 @@ genecli channel --simulator nanopore --nanopore-profile r10 --nanopore-coverage 
 Use matching profiles in `genecli pipeline` with the same explicit flags:
 
 ```bash
-genecli pipeline input.bin decoded.bin --codec reverse --channel illumina --illumina-profile hiseq --seed 12345
-genecli pipeline input.bin decoded.bin --codec reverse --channel nanopore --nanopore-profile r10 --seed 12345
+genecli pipeline input.bin decoded.bin --codec reverse --channel illumina --illumina-profile hiseq --seed 12345 \
+  --metrics-path artifacts/runs/channel-profile-illumina/metrics.json
+genecli pipeline input.bin decoded.bin --codec reverse --channel nanopore --nanopore-profile r10 --seed 12345 \
+  --metrics-path artifacts/runs/channel-profile-nanopore/metrics.json
 ```
 
 ### What Nanopore presets record in manifests and dashboards

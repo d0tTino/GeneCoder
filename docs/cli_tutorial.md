@@ -33,10 +33,11 @@ decode:
 Execute the bundle:
 
 ```bash
-genecli bundle run bundle.yaml --cache-dir runs/
+genecli bundle run bundle.yaml --cache-dir artifacts/runs/cli-tutorial \
+  --metrics-path artifacts/runs/cli-tutorial/metrics.json
 ```
 
-Results are written to `runs/<hash>/<timestamp>/` and skipped when the same
+Results are written to `artifacts/runs/cli-tutorial/<hash>/<timestamp>/` and skipped when the same
 configuration is executed again.
 
 ## Simulating channel errors
@@ -46,7 +47,8 @@ decoding. Pass per-channel rates directly on the command line:
 
 ```bash
 genecli pipeline input.bin output.bin --codec base4_direct --channel indel \
-    --sub-rate 0.1 --ins-rate 0.02 --del-rate 0.05
+    --sub-rate 0.1 --ins-rate 0.02 --del-rate 0.05 \
+    --metrics-path artifacts/runs/cli-tutorial/metrics.json
 ```
 
 The same parameters work with the `channel` command when applying simulators to

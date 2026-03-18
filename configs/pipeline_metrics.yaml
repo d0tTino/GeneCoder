@@ -1,6 +1,7 @@
 # Sample pipeline configuration demonstrating metric collection.
 # Pass --metrics-path to specify the metrics file before running:
-#   genecli bundle run configs/pipeline_metrics.yaml --metrics-path metrics.json \
+#   genecli bundle run configs/pipeline_metrics.yaml --cache-dir artifacts/runs/pipeline-metrics \
+#     --metrics-path artifacts/runs/pipeline-metrics/metrics.json \
 #     --emit-manifest-report
 # Inspect the dropout-aware outputs afterwards with commands such as:
 #   jq '.metrics.channel.dropout' decoded.txt.json

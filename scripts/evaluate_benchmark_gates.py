@@ -82,6 +82,24 @@ def _parsed_from_artifact(artifact_data: dict[str, Any]) -> dict[str, Any]:
     raise ValueError("Artifact payload missing benchmark results.")
 
 
+def _require_run_scoped_artifact_path(path: Path) -> str:
+    resolved = path.expanduser()
+    home = Path.home()
+    try:
+        if resolved.is_absolute() and resolved.is_relative_to(home):
+            raise ValueError(
+                f"Benchmark gate evaluators require run-scoped artifacts, got home path: {resolved}"
+            )
+    except AttributeError:
+        resolved_parts = resolved.parts
+        home_parts = home.parts
+        if len(resolved_parts) >= len(home_parts) and resolved_parts[: len(home_parts)] == home_parts:
+            raise ValueError(
+                f"Benchmark gate evaluators require run-scoped artifacts, got home path: {resolved}"
+            )
+    return str(resolved)
+
+
 def _evaluate(benchmark: str, parsed: dict[str, Any], config: dict[str, Any]) -> tuple[bool, list[str]]:
     baselines = config.get("baseline_snapshot", {})
     tolerances = config.get("tolerance_gates", {})
@@ -136,12 +154,12 @@ def main() -> int:
     if args.artifact_json:
         artifact_payload = json.loads(args.artifact_json.read_text(encoding="utf-8"))
         parsed = _parsed_from_artifact(artifact_payload)
-        evidence = str(args.artifact_json)
+        evidence = _require_run_scoped_artifact_path(args.artifact_json)
     else:
         if not args.stdout_file:
             raise SystemExit("Either --stdout-file or --artifact-json is required.")
         parsed = _parse_stdout(args.benchmark, args.stdout_file.read_text(encoding="utf-8"))
-        evidence = str(args.stdout_file)
+        evidence = _require_run_scoped_artifact_path(args.stdout_file)
 
     passed, checks = _evaluate(args.benchmark, parsed, benchmark_config)
 

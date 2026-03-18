@@ -36,7 +36,7 @@ The commands below also write metrics for later inspection.
 genecli pipeline examples/pipeline_demo_input.txt decoded_raptorq.txt \
   --codec base4_direct --fec raptorq \
   --channel illumina --profile hiseq \
-  --metrics-path examples/raptorq_metrics.json \
+  --metrics-path artifacts/runs/raptorq-demo/metrics.json \
   --emit-manifest-report
 ```
 
@@ -56,7 +56,7 @@ jq '.metrics.sequence_batch.metadata.sim_dropout_total' decoded_raptorq.txt.json
 genecli pipeline examples/pipeline_demo_input.txt decoded_fountain.txt \
   --codec base4_direct --fec fountain \
   --channel nanopore --profile r10 \
-  --metrics-path examples/fountain_metrics.json \
+  --metrics-path artifacts/runs/fountain-demo/metrics.json \
   --emit-manifest-report
 ```
 
@@ -99,10 +99,12 @@ simulate:
 Then run and inspect cost metrics:
 
 ```bash
-genecli bundle run configs/pipeline_metrics.yaml --metrics-path runs/cost_metrics.json
-jq '.metrics.cost_per_recovered_bit' runs/<timestamp>/decoded/*.json
-jq '.metrics.reads_per_successful_decode' runs/<timestamp>/decoded/*.json
-jq '.metrics.redundancy_cost_ratio' runs/<timestamp>/decoded/*.json
+genecli bundle run configs/pipeline_metrics.yaml \
+  --cache-dir artifacts/runs/cost-model-demo \
+  --metrics-path artifacts/runs/cost-model-demo/metrics.json
+jq '.metrics.cost_per_recovered_bit' artifacts/runs/cost-model-demo/<config-hash>/<timestamp>/decoded/*.json
+jq '.metrics.reads_per_successful_decode' artifacts/runs/cost-model-demo/<config-hash>/<timestamp>/decoded/*.json
+jq '.metrics.redundancy_cost_ratio' artifacts/runs/cost-model-demo/<config-hash>/<timestamp>/decoded/*.json
 ```
 
 
@@ -136,7 +138,7 @@ Run the pipeline while capturing metrics:
 
 ```bash
 genecli bundle run configs/rs_illumina_pipeline.yaml \
-  --metrics-path examples/illumina_metrics.json \
+  --metrics-path artifacts/runs/illumina-demo/metrics.json \
   --emit-manifest-report
 ```
 Set `GENECODER_SIM_SEED` (as described in the
@@ -179,7 +181,7 @@ read defaults highlighted in the channel walkthrough:
 
 ```bash
 genecli bundle run configs/gold.yaml \
-  --metrics-path examples/gold_metrics.json \
+  --metrics-path artifacts/runs/gold-demo/metrics.json \
   --emit-manifest-report
 ```
 
@@ -222,7 +224,7 @@ Execute with metrics enabled:
 
 ```bash
 genecli bundle run configs/fountain_nanopore_pipeline.yaml \
-  --metrics-path examples/nanopore_metrics.json \
+  --metrics-path artifacts/runs/nanopore-demo/metrics.json \
   --emit-manifest-report
 ```
 
@@ -234,9 +236,9 @@ directly:
 
 ```bash
 genecli bundle sweep configs/rs_illumina_pipeline.yaml configs/fountain_nanopore_pipeline.yaml \
-  --cache-dir runs/pipeline_sweep \
-  --metrics-path runs/pipeline_sweep/metrics.json \
-  --manifest-index runs/pipeline_sweep/manifest_index.json \
+  --cache-dir artifacts/runs/pipeline-sweep \
+  --metrics-path artifacts/runs/pipeline-sweep/metrics.json \
+  --manifest-index artifacts/runs/pipeline-sweep/manifest_index.json \
   --emit-manifest-report
 ```
 
@@ -290,8 +292,8 @@ Run the preset while capturing metrics and writing artefacts to a temporary
 bundle cache:
 
 ```bash
-genecli bundle run configs/desp_pipeline.yaml --cache-dir runs/desp \
-  --metrics-path examples/desp_metrics.json \
+genecli bundle run configs/desp_pipeline.yaml --cache-dir artifacts/runs/desp-demo \
+  --metrics-path artifacts/runs/desp-demo/metrics.json \
   --emit-manifest-report
 ```
 
@@ -299,7 +301,7 @@ Summaries for dashboard plots can be generated offline by pointing
 `genecli stats bundle` at the cache directory:
 
 ```bash
-genecli stats bundle --runs runs/desp --output runs/desp/bundle_metrics.json
+genecli stats bundle --runs artifacts/runs/desp-demo --output artifacts/runs/desp-demo/bundle_metrics.json
 ```
 
 If the `desp` executable is missing the adapter falls back to the deterministic

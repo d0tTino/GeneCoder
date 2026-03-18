@@ -110,7 +110,9 @@ using a simulator and Hamming FEC. The `pipeline` section selects the built-in
 `hiseq` profile for the Illumina simulator. Run the bundle with:
 
 ```bash
-genecli bundle run configs/vertical_slice_demo.yaml --cache-dir runs
+genecli bundle run configs/vertical_slice_demo.yaml \
+  --cache-dir artifacts/runs/vertical-slice \
+  --metrics-path artifacts/runs/vertical-slice/metrics.json
 ```
 
 To experiment with the Chamaeleo codecs inside any bundle, change the

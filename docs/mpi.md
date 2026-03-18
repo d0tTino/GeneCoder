@@ -61,7 +61,8 @@ results = parallel_map(task, items, workers=4, use_mpi=True)
 The high-level `pipeline` CLI exposes the same capability via `--mpi-workers`:
 
 ```bash
-mpiexec -n 4 genecli pipeline input.bin output.bin --codec base4_direct --mpi-workers 4
+mpiexec -n 4 genecli pipeline input.bin output.bin --codec base4_direct --mpi-workers 4 \
+  --metrics-path artifacts/runs/mpi-pipeline/metrics.json
 ```
 
 Specify a worker count that matches the `-n` argument passed to `mpiexec`.

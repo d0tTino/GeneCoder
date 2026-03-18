@@ -16,8 +16,8 @@ The configuration at `configs/pipeline_metrics.yaml` shows how to run the pipeli
 
 ```bash
 genecli bundle run configs/pipeline_metrics.yaml \
-  --cache-dir pipeline_runs \
-  --metrics-path examples/pipeline_metrics.json \
+  --cache-dir artifacts/runs/pipeline-metrics \
+  --metrics-path artifacts/runs/pipeline-metrics/metrics.json \
   --emit-manifest-report
 ```
 
@@ -30,9 +30,9 @@ side-by-side dashboards using the new sweep helper:
 
 ```bash
 genecli bundle sweep configs/rs_illumina_pipeline.yaml configs/fountain_nanopore_pipeline.yaml \
-  --cache-dir pipeline_runs \
-  --metrics-path examples/pipeline_metrics.json \
-  --manifest-index pipeline_runs/manifest_index.json \
+  --cache-dir artifacts/runs/pipeline-sweep \
+  --metrics-path artifacts/runs/pipeline-sweep/metrics.json \
+  --manifest-index artifacts/runs/pipeline-sweep/manifest_index.json \
   --emit-manifest-report
 ```
 
@@ -41,10 +41,12 @@ genecli bundle sweep configs/rs_illumina_pipeline.yaml configs/fountain_nanopore
 Run the entire encode → simulate → decode loop with a single command using the gold-standard preset:
 
 ```bash
-genecli bundle run configs/gold.yaml --cache-dir gold_runs
+genecli bundle run configs/gold.yaml \
+  --cache-dir artifacts/runs/gold-demo \
+  --metrics-path artifacts/runs/gold-demo/metrics.json
 ```
 
-The preset performs GC-balanced encoding with Reed–Solomon protection, drives the MiSeq-style InSilicoSeq simulator (or the built-in Illumina fallback when `insilicoseq` is absent) and restores the payload in one pass. GeneCoder stores every artifact inside `gold_runs/<config-hash>/<timestamp>/`:
+The preset performs GC-balanced encoding with Reed–Solomon protection, drives the MiSeq-style InSilicoSeq simulator (or the built-in Illumina fallback when `insilicoseq` is absent) and restores the payload in one pass. GeneCoder stores every artifact inside `artifacts/runs/gold-demo/<config-hash>/<timestamp>/`:
 
 - `encoded/vertical_slice.txt.fasta` plus the automatically generated `encoded/vertical_slice.txt.manifest.json` and `.batch.json` files capture each oligo and its metadata.
 - `sequence_batches.json` at the run root aggregates every emitted `SequenceBatch`, making it easy to diff runs or hand the cache to collaborators.
@@ -81,16 +83,20 @@ The manifest view highlights GC balance, droplet survival and homopolymer limits
 Recreate the second MVP path without editing YAML by running the Nanopore bundle directly (or via the sweep helper shown above):
 
 ```bash
-genecli bundle run configs/fountain_nanopore_pipeline.yaml --cache-dir nanopore_runs
+genecli bundle run configs/fountain_nanopore_pipeline.yaml \
+  --cache-dir artifacts/runs/nanopore-demo \
+  --metrics-path artifacts/runs/nanopore-demo/metrics.json
 ```
 
 You can also run the documented sweep command to keep runs side-by-side:
 
 ```bash
-genecli bundle sweep configs/rs_illumina_pipeline.yaml configs/fountain_nanopore_pipeline.yaml --cache-dir bundle_runs
+genecli bundle sweep configs/rs_illumina_pipeline.yaml configs/fountain_nanopore_pipeline.yaml \
+  --cache-dir artifacts/runs/bundle-sweep \
+  --metrics-path artifacts/runs/bundle-sweep/metrics.json
 ```
 
-This preset uses GC-balanced encoding with **Fountain** forward error correction (`encode.fec: fountain`) and drives the Nanopore simulator with the **R10.4** channel profile (`pipeline.nanopore_profile: r10.4`). GeneCoder writes the artifacts to `nanopore_runs/<config-hash>/<timestamp>/` (or the `bundle_runs/` cache if sweeping):
+This preset uses GC-balanced encoding with **Fountain** forward error correction (`encode.fec: fountain`) and drives the Nanopore simulator with the **R10.4** channel profile (`pipeline.nanopore_profile: r10.4`). GeneCoder writes the artifacts to `artifacts/runs/nanopore-demo/<config-hash>/<timestamp>/` (or the `artifacts/runs/bundle-sweep/` cache if sweeping):
 
 - `encoded/` contains the GC-balanced oligo payloads and manifest metadata so you can compare Fountain versus the gold preset FEC side-by-side.
 - `simulated/` includes the Nanopore **R10.4** reads plus `simulated.manifest.json` for the run-level stats (substitution/indel rates, channel parameters, and read summaries).
