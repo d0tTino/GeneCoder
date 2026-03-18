@@ -26,7 +26,7 @@ DOC_CONFIGS = {
 }
 
 
-def _git_head_commit() -> str:
+def git_head_commit() -> str:
     result = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=ROOT,
@@ -150,7 +150,7 @@ def main() -> int:
     args = parser.parse_args()
 
     model = yaml.safe_load(MODEL_PATH.read_text(encoding="utf-8"))
-    commit_sha = _git_head_commit()
+    commit_sha = git_head_commit()
     rendered_by_doc = render_sections(model, commit_sha)
 
     changed_files: list[Path] = []

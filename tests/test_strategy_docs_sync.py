@@ -17,13 +17,14 @@ def test_rendered_docs_include_last_validated_commit_and_posture_flags():
     renderer = _load_renderer_module()
     model_path = Path(__file__).resolve().parents[1] / "docs" / "strategy_model.yaml"
     model = yaml.safe_load(model_path.read_text(encoding="utf-8"))
+    commit_sha = "1234567890abcdef1234567890abcdef12345678"
 
-    rendered = renderer.render_docs(model)
+    rendered = renderer.render_sections(model, commit_sha)
 
     for content in rendered.values():
-        assert f"last_validated_commit: `{model['last_validated_commit']}`" in content
+        assert f"last_validated_commit: `{commit_sha}`" in content
 
-    cloud_doc = rendered[renderer.OUTPUT_DOCS["cloud"]]
-    assert "`cloud_enabled`: `False`" in cloud_doc
-    assert "`cloud_worker_enabled`: `False`" in cloud_doc
-    assert "`local_execution_only`: `True`" in cloud_doc
+    cloud_doc = rendered[renderer.ROOT / "docs" / "product_strategy.md"]
+    assert "`cloud_enabled` | `False`" in cloud_doc
+    assert "`cloud_worker_enabled` | `False`" in cloud_doc
+    assert "`local_execution_only` | `True`" in cloud_doc

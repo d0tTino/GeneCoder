@@ -24,3 +24,24 @@ When maintainers need to update strategy data:
 4. Include the regenerated changes in the same commit as the model update.
 
 `last_validated_commit` is injected automatically from Git metadata during generation and should not be manually edited in generated blocks.
+
+## Release validation stamp workflow
+
+The strategy and roadmap snapshots in the following docs are release stamps that must point at the exact commit being promoted:
+
+- `docs/product_strategy.md`
+- `docs/development_roadmap.md`
+- `docs/roadmap_execution.md`
+- `docs/cloud.md`
+- `docs/cloud_worker.md`
+
+Use the workflow below when preparing a protected-branch release or release-candidate update:
+
+1. Let the required QA jobs finish successfully in CI for the branch head you intend to release.
+2. After those jobs are green, stamp the docs with the exact branch head:
+   - `python scripts/stamp_validated_commits.py --write`
+3. Review the doc-only diff to confirm every `last_validated_commit` value matches `git rev-parse HEAD`.
+4. Commit the stamped docs and push them to the protected branch.
+5. Confirm the protected-branch CI check passes; it will fail if any stamped document points at a different commit.
+
+The protected-branch validation job intentionally runs this check only after the required QA jobs complete so the docs reflect a fully validated commit instead of an intermediate revision.
