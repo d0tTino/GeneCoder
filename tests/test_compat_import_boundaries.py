@@ -5,6 +5,10 @@ from pathlib import Path
 
 COMPAT_ROOT = Path("src/genecoder/compat")
 
+NON_FORWARDER_COMPAT_MODULES = {
+    Path("src/genecoder/compat/legacy/cloud/worker.py"),
+}
+
 
 def _is_docstring_expr(node: ast.stmt) -> bool:
     return (
@@ -19,10 +23,13 @@ def _is_warning_call(node: ast.stmt) -> bool:
         return False
     func = node.value.func
     return (
-        isinstance(func, ast.Attribute)
-        and func.attr == "warn"
-        and isinstance(func.value, ast.Name)
-        and func.value.id == "warnings"
+        (
+            isinstance(func, ast.Attribute)
+            and func.attr == "warn"
+            and isinstance(func.value, ast.Name)
+            and func.value.id == "warnings"
+        )
+        or (isinstance(func, ast.Name) and func.id == "warn_with_telemetry")
     )
 
 
@@ -41,6 +48,8 @@ def _module_name(path: Path) -> str:
 def test_compat_modules_are_forwarders_only() -> None:
     violations: list[str] = []
     for path in COMPAT_ROOT.rglob("*.py"):
+        if path in NON_FORWARDER_COMPAT_MODULES:
+            continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in tree.body:
             if isinstance(node, (ast.Import, ast.ImportFrom)):

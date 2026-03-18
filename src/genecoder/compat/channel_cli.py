@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Compatibility adapter for legacy channel CLI helpers."""
 
-import warnings
+from genecoder._deprecation import warn_with_telemetry
 
 from genecoder.core import (
     LEGACY_DEFAULT_INDEL_PROFILE,
@@ -20,8 +20,8 @@ __all__ = [
     "resolve_indel_profile",
 ]
 
-warnings.warn(
-    "genecoder.compat.channel_cli is deprecated; import indel profile helpers from genecoder.core.",
-    DeprecationWarning,
+warn_with_telemetry(
+    module_name="genecoder.compat.channel_cli",
+    message="genecoder.compat.channel_cli is deprecated; import indel profile helpers from genecoder.core.",
     stacklevel=2,
 )

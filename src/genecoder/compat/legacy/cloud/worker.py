@@ -9,6 +9,8 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from genecoder._deprecation import warn_with_telemetry
+
 from fastapi import FastAPI, HTTPException, Header
 
 from genecoder.cli import bundle as bundle_cli
@@ -68,3 +70,9 @@ def create_job(job: dict[str, Any], authorization: str | None = Header(None)) ->
 
 # Expose bundle_cli for monkeypatching in tests
 __all__ = ["app", "API_TOKEN", "bundle_cli", "create_job"]
+
+warn_with_telemetry(
+    module_name="genecoder.compat.legacy.cloud.worker",
+    message="genecoder.compat.legacy.cloud.worker is deprecated and retained only for compatibility tests.",
+    stacklevel=2,
+)
