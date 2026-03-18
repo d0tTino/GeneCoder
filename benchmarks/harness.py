@@ -21,10 +21,47 @@ from benchmarks.corpus_utils import corpus_sha256, load_frozen_bytes, substitute
 
 MATRIX_PATH = Path(__file__).resolve().parents[1] / "configs" / "benchmark_matrix.yaml"
 SCHEMA_VERSION = "1.0.0"
+MUTATION_PARAMETER_KEYS = ("substitution_prob", "insertion_prob", "deletion_prob", "dropout_prob")
+
+
+def _mutation_parameters(scenario: dict[str, Any]) -> dict[str, float]:
+    return {key: float(scenario.get(key, 0.0)) for key in MUTATION_PARAMETER_KEYS}
+
+
+def _normalize_scenario(scenario: dict[str, Any], profile_defaults: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(scenario)
+    for key in MUTATION_PARAMETER_KEYS:
+        if key not in normalized and key in profile_defaults:
+            normalized[key] = profile_defaults[key]
+    for key in MUTATION_PARAMETER_KEYS:
+        normalized.setdefault(key, 0.0)
+    return normalized
+
+
+def _validated_scenarios(matrix: dict[str, Any]) -> list[dict[str, Any]]:
+    profiles = matrix.get("profiles", {})
+    scenarios = matrix.get("scenarios", [])
+    validated: list[dict[str, Any]] = []
+
+    for index, raw_scenario in enumerate(scenarios):
+        profile = str(raw_scenario.get("profile", ""))
+        defaults = profiles.get(profile, {})
+        scenario = _normalize_scenario(raw_scenario, defaults)
+        mutation_params = _mutation_parameters(scenario)
+        if profile == "noisy" and all(value == 0.0 for value in mutation_params.values()):
+            raise ValueError(
+                "Invalid benchmark scenario at index "
+                f"{index}: profile=noisy requires at least one non-zero mutation parameter"
+            )
+        validated.append(scenario)
+
+    return validated
 
 
 def load_benchmark_matrix() -> dict[str, Any]:
-    return yaml.safe_load(MATRIX_PATH.read_text(encoding="utf-8"))
+    matrix = yaml.safe_load(MATRIX_PATH.read_text(encoding="utf-8"))
+    matrix["scenarios"] = _validated_scenarios(matrix)
+    return matrix
 
 
 def bit_error_rate(original: bytes, recovered: bytes) -> float:
@@ -111,6 +148,9 @@ def _result_from_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
         "payload_size": payload_size,
         "seed": int(scenario["seed"]),
         "substitution_prob": float(scenario["substitution_prob"]),
+        "insertion_prob": float(scenario.get("insertion_prob", 0.0)),
+        "deletion_prob": float(scenario.get("deletion_prob", 0.0)),
+        "dropout_prob": float(scenario.get("dropout_prob", 0.0)),
         "throughput": throughput,
         "BER": bit_error_rate(data, decoded),
         "decode_success": decoded == data,
@@ -121,7 +161,7 @@ def _result_from_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
 
 
 def _scenario_matches(benchmark: str, scenario: dict[str, Any]) -> bool:
-    noisy = float(scenario["substitution_prob"]) > 0.0 and str(scenario["simulator"]) != "identity"
+    noisy = any(value > 0.0 for value in _mutation_parameters(scenario).values()) and str(scenario["simulator"]) != "identity"
     if benchmark == "throughput":
         return not noisy
     if benchmark == "error_rate":

@@ -8,23 +8,113 @@
       "docs/capabilities.yaml"
     ],
     "baseline_snapshot": {
-      "base4_clean_256kb": {
-        "throughput": 1.8,
+      "base4_identity_clean_256kb_seed1337": {
+        "throughput": 0.5304,
         "BER": 0.0,
         "decode_success": true,
-        "runtime_per_mb": 1.1
+        "runtime_per_mb": 1.8853
       },
-      "huffman_clean_256kb": {
-        "throughput": 0.8,
+      "base4_identity_clean_64kb_seed1337": {
+        "throughput": 0.5506,
         "BER": 0.0,
         "decode_success": true,
-        "runtime_per_mb": 2.5
+        "runtime_per_mb": 1.8161
       },
-      "gc_balanced_clean_256kb": {
-        "throughput": 0.6,
+      "base4_identity_noisy_256kb_seed7331": {
+        "throughput": 0.6712,
         "BER": 0.0,
         "decode_success": true,
-        "runtime_per_mb": 3.2
+        "runtime_per_mb": 1.49
+      },
+      "base4_identity_noisy_64kb_seed7331": {
+        "throughput": 0.7176,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 1.3936
+      },
+      "base4_substitution_clean_256kb_seed1337": {
+        "throughput": 0.7284,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 1.3729
+      },
+      "base4_substitution_clean_64kb_seed1337": {
+        "throughput": 0.7271,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 1.3753
+      },
+      "gc_balanced_identity_clean_256kb_seed1337": {
+        "throughput": 0.0427,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 23.4218
+      },
+      "gc_balanced_identity_clean_64kb_seed1337": {
+        "throughput": 0.039,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 25.6654
+      },
+      "gc_balanced_identity_noisy_256kb_seed7331": {
+        "throughput": 0.0444,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 22.5306
+      },
+      "gc_balanced_identity_noisy_64kb_seed7331": {
+        "throughput": 0.0457,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 21.8838
+      },
+      "gc_balanced_substitution_clean_256kb_seed1337": {
+        "throughput": 0.0422,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 23.6749
+      },
+      "gc_balanced_substitution_clean_64kb_seed1337": {
+        "throughput": 0.0423,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 23.6181
+      },
+      "huffman_identity_clean_256kb_seed1337": {
+        "throughput": 0.4101,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 2.4384
+      },
+      "huffman_identity_clean_64kb_seed1337": {
+        "throughput": 0.4599,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 2.1744
+      },
+      "huffman_identity_noisy_256kb_seed7331": {
+        "throughput": 0.4152,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 2.4084
+      },
+      "huffman_identity_noisy_64kb_seed7331": {
+        "throughput": 0.4614,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 2.1672
+      },
+      "huffman_substitution_clean_256kb_seed1337": {
+        "throughput": 0.3991,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 2.5057
+      },
+      "huffman_substitution_clean_64kb_seed1337": {
+        "throughput": 0.4617,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 2.1658
       }
     },
     "tolerance_gates": {
@@ -43,17 +133,53 @@
       "docs/capabilities.yaml"
     ],
     "baseline_snapshot": {
-      "base4_clean_256kb": {
-        "throughput": 1.8,
+      "base4_identity_clean_256kb_seed1337": {
+        "throughput": 0.5982,
         "BER": 0.0,
         "decode_success": true,
-        "runtime_per_mb": 1.1
+        "runtime_per_mb": 1.6716
       },
-      "base4_noisy_256kb": {
-        "throughput": 1.6,
-        "BER": 0.01,
+      "base4_identity_clean_64kb_seed1337": {
+        "throughput": 0.5847,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 1.7103
+      },
+      "base4_identity_noisy_256kb_seed7331": {
+        "throughput": 0.6094,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 1.6409
+      },
+      "base4_identity_noisy_64kb_seed7331": {
+        "throughput": 0.6075,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 1.6461
+      },
+      "base4_substitution_clean_256kb_seed1337": {
+        "throughput": 0.6936,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 1.4418
+      },
+      "base4_substitution_clean_64kb_seed1337": {
+        "throughput": 0.7017,
+        "BER": 0.0,
+        "decode_success": true,
+        "runtime_per_mb": 1.4251
+      },
+      "base4_substitution_noisy_256kb_seed7331": {
+        "throughput": 0.6995,
+        "BER": 0.006556,
         "decode_success": false,
-        "runtime_per_mb": 1.2
+        "runtime_per_mb": 1.4297
+      },
+      "base4_substitution_noisy_64kb_seed7331": {
+        "throughput": 0.6613,
+        "BER": 0.006475,
+        "decode_success": false,
+        "runtime_per_mb": 1.5122
       }
     },
     "tolerance_gates": {
