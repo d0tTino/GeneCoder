@@ -29,3 +29,8 @@ repos:
         entry: python scripts/check_glossary_terms.py
         language: python
         pass_filenames: false
+      - id: check-init-export-duplicates
+        name: check init export duplicates
+        entry: python scripts/check_init_export_duplicates.py
+        language: python
+        pass_filenames: false
