@@ -1,0 +1,11 @@
+{
+  "normalized_outputs": {
+    "tool": "BaselineDNA",
+    "throughput_mb_s": 2.08,
+    "bit_error_rate": 0.0,
+    "decode_success": true,
+    "latency_ms": 118.9,
+    "peak_memory_mb": 82.0,
+    "notes": "Fixture fallback derived from published clean round-trip results."
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "normalized_outputs": {
+    "tool": "BaselineDNA",
+    "throughput_mb_s": 1.52,
+    "bit_error_rate": 0.0184,
+    "decode_success": false,
+    "latency_ms": 55.1,
+    "peak_memory_mb": 63.0,
+    "notes": "Fixture fallback derived from published noisy-channel results."
+  }
+}
