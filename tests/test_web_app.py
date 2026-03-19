@@ -38,7 +38,7 @@ def test_index_offline_mode_disables_pyodide(monkeypatch: pytest.MonkeyPatch) ->
     response = client.get("/")
     assert response.status_code == 200
     assert 'const GENECODER_OFFLINE = "true" === "true";' in response.text
-    assert "Pyodide disabled (offline mode)" in response.text
+    assert "Pyodide disabled (local-only)" in response.text
 
 
 def test_index_injects_custom_pyodide_src(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -147,3 +147,30 @@ def test_design_fix_endpoint() -> None:
     data = r.json()
     assert "sequence" in data
     assert get_max_homopolymer_length(data["sequence"]) <= 2
+
+
+def test_capabilities_endpoint_reports_local_only_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GENECODER_EXECUTION_MODE", "local-only")
+    monkeypatch.delenv("GENECODER_QUEUE_BACKEND", raising=False)
+    monkeypatch.delenv("GENECODER_REMOTE_WORKER", raising=False)
+    response = client.get("/capabilities")
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {
+        "execution_mode": "local-only",
+        "queue_backend": "none",
+        "remote_worker": False,
+        "supports_async_jobs": False,
+        "local_only": True,
+        "async_job_mode": "local-inline",
+    }
+
+
+def test_health_embeds_capabilities(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GENECODER_EXECUTION_MODE", "local-only")
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["capabilities"]["execution_mode"] == "local-only"
+    assert data["capabilities"]["supports_async_jobs"] is False

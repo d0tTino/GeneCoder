@@ -1,7 +1,7 @@
 # Deployment Guide
 
 This guide summarizes how to build the React dashboard and run the web server locally.
-Remote job submission via the old cloud worker has been removed.
+GeneCoder currently reports a **local-only** runtime capability manifest: `execution_mode=local-only`, `queue_backend=none`, and `remote_worker=false`.
 
 ## Build the Dashboard
 
@@ -27,6 +27,8 @@ uvicorn web.main:app --reload
 Set `GENECODER_API_TOKEN` to your desired bearer token. When the server is
 running it serves the dashboard from `web/helix-ui/dist` at the root URL.
 
+The runtime capability manifest is available from `GET /capabilities` and is also embedded in `GET /health`. Use these responses as the source of truth for operators, CLI automation, and UI affordance gating.
+
 See [mpi.md](mpi.md) for instructions on running channel simulations across multiple nodes using MPI.
 
 
@@ -43,7 +45,8 @@ For production deployments, use CLI automation and/or the React dashboard as the
 
 ## Current constraints and explicit non-goals
 
-- **Local-only guarantee:** the FastAPI deployment model is single-node and local execution only.
-- **No queue backend yet:** async metadata in API responses is preparatory and does not indicate background worker processing.
+- **Local-only guarantee:** the shipped manifest defaults to `execution_mode=local-only`.
+- **No queue backend:** the shipped manifest defaults to `queue_backend=none`, so async submission controls stay hidden and dry-run metadata reports `mode=local-inline`.
+- **No remote workers:** the shipped manifest defaults to `remote_worker=false`; this repository does not ship managed remote execution.
 - **No hosted orchestration:** this repository does not ship managed job scheduling, tenancy, or remote artifact storage.
 - **Dry-run mode is validation-only:** `/pipeline/dry-run` checks payload compatibility and returns a planned graph without running encode/simulate/decode workloads.

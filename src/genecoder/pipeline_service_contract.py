@@ -17,10 +17,12 @@ from genecoder.app import (
     SeedProfile,
 )
 
+from genecoder.config import get_runtime_capabilities
+
 
 @dataclass(frozen=True)
 class AsyncJobMetadata:
-    """Async metadata envelope for future queue-backed execution."""
+    """Async metadata envelope aligned with the runtime capability manifest."""
 
     job_id: str
     status: str
@@ -138,10 +140,12 @@ class PipelineDryRunResponse:
 
 
 def make_async_job_metadata(status: str) -> AsyncJobMetadata:
+    capabilities = get_runtime_capabilities()
     return AsyncJobMetadata(
         job_id=uuid.uuid4().hex,
         status=status,
         submitted_at=datetime.now(timezone.utc).isoformat(),
+        mode=capabilities.async_job_mode,
     )
 
 

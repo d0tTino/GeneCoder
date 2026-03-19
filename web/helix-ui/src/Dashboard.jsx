@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import HeatmapLoader from './HeatmapLoader.jsx';
 import { presentationPayloadFromMetrics, toLegacyMetrics, toRunSchema } from './runSchema.js';
 
@@ -6,6 +6,16 @@ export default function Dashboard() {
   const [sequence, setSequence] = useState('ACGT');
   const [data, setData] = useState(null);
   const [deepdna, setDeepdna] = useState(null);
+  const [capabilities, setCapabilities] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/capabilities')
+      .then((resp) => resp.json())
+      .then((json) => { if (active) setCapabilities(json); })
+      .catch(() => { if (active) setCapabilities({ execution_mode: 'local-only', queue_backend: 'none', remote_worker: false, supports_async_jobs: false, local_only: true }); });
+    return () => { active = false; };
+  }, []);
 
   const loadFile = async (e) => {
     const f = e.target.files[0];
@@ -51,6 +61,14 @@ export default function Dashboard() {
       </div>
       <button onClick={analyze}>Analyze</button>
       <button onClick={decodeDeepdna}>DeepDNA Decode</button>
+      {capabilities && (
+        <section aria-label="runtime-capabilities" style={{ margin: '12px 0', padding: 12, border: '1px solid #ddd', borderRadius: 6 }}>
+          <strong>Execution mode:</strong> {capabilities.execution_mode}
+          <div>Queue backend: {capabilities.queue_backend}</div>
+          {capabilities.remote_worker ? <div>Remote worker execution enabled.</div> : null}
+          {capabilities.supports_async_jobs ? <button type="button" style={{ marginTop: 8 }}>Submit async job</button> : null}
+        </section>
+      )}
       {data && (
         <div>
           {(() => { const metrics = toLegacyMetrics(data); return (<>
