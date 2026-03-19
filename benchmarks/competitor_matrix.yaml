@@ -1,0 +1,68 @@
+schema_version: "1.0.0"
+matrix_version: "2026-03-19"
+normalized_outputs:
+  - throughput_mb_s
+  - bit_error_rate
+  - decode_success
+  - latency_ms
+  - peak_memory_mb
+  - notes
+scenarios:
+  - scenario: "clean_roundtrip_256kb"
+    assumptions: "Single-threaded local run, identical 256 KiB payload, wall-clock timing, and decoder success judged by byte-for-byte equality."
+    data_source: "GeneCoder frozen benchmark corpus; external tools may use an equivalent byte corpus when direct replay is unavailable."
+    reproducibility_notes: "Prefer internal reruns from artifacts/benchmarks/external/. If unavailable, import the curated published fixture baseline and preserve the original citation in the notes field."
+    execution_mode: "internal_run"
+    normalized_result_file: "external/genecoder_clean_roundtrip_256kb.json"
+    normalized_outputs:
+      tool: "GeneCoder"
+      throughput_mb_s: 2.410
+      bit_error_rate: 0.0
+      decode_success: true
+      latency_ms: 106.2
+      peak_memory_mb: 74.0
+      notes: "Reference local baseline for clean round-trip runs."
+    external_baselines:
+      - tool: "BaselineDNA"
+        assumptions: "Imported from a published supplementary benchmark using equivalent clean payload size and single-run throughput reporting."
+        data_source: "Published supplementary benchmark table normalized into GeneCoder fixture format."
+        reproducibility_notes: "Use artifacts/benchmarks/external/baseline_dna_clean_roundtrip_256kb.json when available; otherwise fall back to the checked-in fixture."
+        import_mode: "published_result"
+        result_file: "external/baseline_dna_clean_roundtrip_256kb.json"
+        fixture_file: "tests/data/benchmark_fixtures/baseline_dna_clean_roundtrip_256kb.json"
+      - tool: "HelixRuntime"
+        assumptions: "Internal comparison run under the same payload shape and single-threaded host constraints."
+        data_source: "Internal benchmark export normalized to the competitor schema."
+        reproducibility_notes: "If the external run is unavailable in CI, the fixture keeps the report generator deterministic."
+        import_mode: "internal_run"
+        result_file: "external/helix_runtime_clean_roundtrip_256kb.json"
+        fixture_file: "tests/data/benchmark_fixtures/helix_runtime_clean_roundtrip_256kb.json"
+  - scenario: "substitution_noise_64kb"
+    assumptions: "64 KiB payload with substitution-only perturbation applied before decode; no insertion/deletion correction is assumed."
+    data_source: "GeneCoder substitution benchmark harness profile with normalized external results mapped into BER and throughput fields."
+    reproducibility_notes: "Published results must declare their corruption rate explicitly; values are rejected during review if the noise process differs materially."
+    execution_mode: "published_result"
+    normalized_result_file: "external/genecoder_substitution_noise_64kb.json"
+    normalized_outputs:
+      tool: "GeneCoder"
+      throughput_mb_s: 1.730
+      bit_error_rate: 0.012400
+      decode_success: false
+      latency_ms: 48.5
+      peak_memory_mb: 61.0
+      notes: "Reference baseline under substitution noise."
+    external_baselines:
+      - tool: "BaselineDNA"
+        assumptions: "Published noisy-channel result normalized to GeneCoder's BER and success definitions."
+        data_source: "Published noisy decode benchmark table."
+        reproducibility_notes: "Prefer a fresh import artifact when available; otherwise use the pinned fixture baseline."
+        import_mode: "published_result"
+        result_file: "external/baseline_dna_substitution_noise_64kb.json"
+        fixture_file: "tests/data/benchmark_fixtures/baseline_dna_substitution_noise_64kb.json"
+      - tool: "ArchiveCodec"
+        assumptions: "External archive result on an equivalent payload size with documented substitution-only corruption."
+        data_source: "Archived result table curated into the benchmark fixture set."
+        reproducibility_notes: "Fixture remains the fallback source in CI where external reruns are unavailable."
+        import_mode: "published_result"
+        result_file: "external/archive_codec_substitution_noise_64kb.json"
+        fixture_file: "tests/data/benchmark_fixtures/archive_codec_substitution_noise_64kb.json"

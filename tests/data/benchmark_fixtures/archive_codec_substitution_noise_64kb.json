@@ -1,0 +1,11 @@
+{
+  "normalized_outputs": {
+    "tool": "ArchiveCodec",
+    "throughput_mb_s": 1.11,
+    "bit_error_rate": 0.0217,
+    "decode_success": false,
+    "latency_ms": 68.0,
+    "peak_memory_mb": 58.0,
+    "notes": "Fixture fallback for imported archive comparison results."
+  }
+}

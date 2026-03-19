@@ -518,6 +518,43 @@ jobs:
         name: benchmark-gates-from-artifacts
         path: artifacts/benchmarks/*-gate-from-artifact.json
 
+  benchmark-competitor-report:
+    needs: [changes, check-comments, lint]
+    if: needs.changes.outputs.src == 'true' && needs['check-comments'].outputs.only_comments != 'true'
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install package dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Validate competitor matrix and fixture-backed report generation
+      run: |
+        pytest -q tests/test_competitor_report.py
+        python scripts/generate_competitor_report.py \
+          --matrix benchmarks/competitor_matrix.yaml \
+          --results-root artifacts/benchmarks \
+          --output artifacts/benchmarks/competitor_report.md \
+          --chart artifacts/benchmarks/competitor_report.svg
+
+    - name: Upload competitor report artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-competitor-report
+        path: |
+          artifacts/benchmarks/competitor_report.md
+          artifacts/benchmarks/competitor_report.svg
+
   mvp-checklist:
     needs: [changes, check-comments]
     if: needs.changes.outputs.mvp_checklist == 'true' && needs['check-comments'].outputs.only_comments != 'true'

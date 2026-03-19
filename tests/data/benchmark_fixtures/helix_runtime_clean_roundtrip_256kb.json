@@ -1,0 +1,11 @@
+{
+  "normalized_outputs": {
+    "tool": "HelixRuntime",
+    "throughput_mb_s": 2.24,
+    "bit_error_rate": 0.0,
+    "decode_success": true,
+    "latency_ms": 111.4,
+    "peak_memory_mb": 79.0,
+    "notes": "Fixture fallback for internal side-by-side comparison."
+  }
+}
