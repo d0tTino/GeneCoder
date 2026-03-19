@@ -10,6 +10,17 @@ the MIT License and that any third-party code you introduce is compatible
 with this license. Include appropriate attribution and ensure that licenses
 for external dependencies are documented in `NOTICE`.
 
+## Public API export conventions
+
+Package-level `__init__.py` modules that expose public APIs should treat `__all__` as the canonical export list. When updating those modules:
+
+- add each public symbol to `__all__` exactly once; duplicate entries are considered a bug,
+- prefer simple, statically-checkable export definitions so automated checks can validate them,
+- keep re-exported symbols and `__all__` in sync in the same change, and
+- run `python scripts/check_init_export_duplicates.py` after touching package exports.
+
+The repository also includes tests that assert top-level package exports remain unique at runtime.
+
 ## Updating strategy model fields and generated docs
 
 `docs/strategy_model.yaml` is the authoritative source for strategy phases, feature capabilities, KPI gates, deployment posture fields, capability validation artifacts, and strategy-derived documentation metadata.
