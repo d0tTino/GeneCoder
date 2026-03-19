@@ -25,6 +25,7 @@ stats: Any | None = None
 data: Any | None = None
 dashboard: Any | None = None
 pipeline: Any | None = None
+capabilities: Any | None = None
 
 
 logger = logging.getLogger(__name__)
@@ -75,9 +76,10 @@ def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
         data as _data,
         dashboard as _dashboard,
         pipeline as _pipeline,
+        capabilities as _capabilities,
     )
 
-    global encode, decode, analyze, report, channel, bundle, plugin, benchmark, decode_ai, stats, data, dashboard, pipeline
+    global encode, decode, analyze, report, channel, bundle, plugin, benchmark, decode_ai, stats, data, dashboard, pipeline, capabilities
 
     encode = _encode
     decode = _decode
@@ -92,6 +94,7 @@ def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
     data = _data
     dashboard = _dashboard
     pipeline = _pipeline
+    capabilities = _capabilities
 
 
     # Load plugins here so that dynamically registered codecs, FEC backends and
@@ -128,6 +131,7 @@ def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
     data.register_subcommand(subparsers)
     dashboard.register_subcommand(subparsers)
     pipeline.register_subcommand(subparsers)
+    capabilities.register_subcommand(subparsers)
 
     return parser
 

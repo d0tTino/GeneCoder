@@ -27,6 +27,7 @@ from genecoder.plotting import (
 )
 from genecoder.app import AnalyzeRequest as AnalyzeUseCaseRequest, AnalyzeUseCase
 from genecoder.app.ui_service import ArtifactExportRequest, UIService
+from genecoder.config import get_capability_manifest
 from genecoder.error_simulation import introduce_errors
 from genecoder.simulators.batch_utils import mutation_counts
 from genecoder import constraint_fixer
@@ -69,6 +70,14 @@ PYODIDE_SRC = os.getenv(
     "GENECODER_PYODIDE_SRC",
     "/static/pyodide/pyodide.js",
 )
+
+
+def _capabilities_manifest() -> dict[str, object]:
+    return get_capability_manifest()
+
+
+def _capabilities_script() -> str:
+    return json.dumps(_capabilities_manifest(), sort_keys=True)
 
 
 def verify_token(
@@ -146,7 +155,9 @@ async def index() -> str:
     html = index_path.read_text(encoding="utf-8")
     return html.replace(
         "__GENECODER_OFFLINE__", "true" if GENECODER_OFFLINE else "false"
-    ).replace("__PYODIDE_SRC__", PYODIDE_SRC)
+    ).replace("__PYODIDE_SRC__", PYODIDE_SRC).replace(
+        "__GENECODER_CAPABILITIES__", _capabilities_script()
+    )
 
 
 @app.get("/helix", response_class=HTMLResponse)
@@ -677,6 +688,16 @@ async def pipeline_dry_run(
         execution_graph=planned_execution_graph(contract_req),
     )
     return _to_dry_run_model(response)
+
+
+@app.get("/capabilities")
+async def capabilities() -> dict[str, object]:
+    return _capabilities_manifest()
+
+
+@app.get("/health")
+async def health() -> dict[str, object]:
+    return {"status": "ok", "capabilities": _capabilities_manifest()}
 
 
 @app.get("/profiles")

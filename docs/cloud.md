@@ -2,15 +2,21 @@
 
 > last_validated_commit: `4eb89f0cde3b7d75fcaf8311634be19ec56b90f0`
 
-## Deployment posture
+## Runtime-reported deployment posture
 
-- `cloud_enabled`: `False`
-- `cloud_worker_enabled`: `False`
-- `local_execution_only`: `True`
+The current shipped runtime capability manifest reports:
+
+- `execution_mode`: `local-only`
+- `queue_backend`: `none`
+- `remote_worker`: `false`
+- `supports_async_jobs`: `false`
+
+You can verify these values directly from `GET /capabilities` or `GET /health`.
 
 ## Non-goals and current constraints
 
 - No managed cloud control plane is provided in the current release.
-- No remote queue workers are supported; all jobs execute in-process on the local host.
+- No remote queue workers are supported because the runtime manifest reports `remote_worker=false`.
+- No queue-backed async job submission is supported because the runtime manifest reports `queue_backend=none`.
 - No SLA for distributed retries, preemption, or cross-node artifact durability.
-- New service contract endpoints (for example dry-run planning) validate requests only and do not imply remote execution guarantees.
+- Service contract endpoints such as dry-run planning validate requests only and currently return local inline execution metadata.
