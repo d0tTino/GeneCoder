@@ -1,51 +1,121 @@
+from __future__ import annotations
+
+import json
 from pathlib import Path
 
+import pytest
 import yaml
 
+from genecoder.plugin_runtime.descriptors import PluginLifecycleState
+from genecoder.plugin_supply_chain import service as supply_chain
+
 ROOT = Path(__file__).resolve().parents[1]
-MODEL_PATH = ROOT / "docs" / "strategy_model.yaml"
+FIXTURE_DIR = ROOT / "tests" / "data" / "acceptance"
+ACCEPTANCE_ARTIFACT_PATH = ROOT / "artifacts" / "acceptance" / "plugin-registry-policy-runtime.json"
 
 
-def _load_capabilities() -> dict:
-    return yaml.safe_load(MODEL_PATH.read_text(encoding="utf-8"))
+class RecordingInstaller:
+    def __init__(self) -> None:
+        self.installed_targets: list[str] = []
+
+    def install(self, target: str) -> None:
+        self.installed_targets.append(target)
 
 
-def test_validation_artifact_targets_dedicated_acceptance_module():
-    data = _load_capabilities()
-    capability = next(c for c in data["feature_capabilities"] if c["id"] == "plugin_registry_policy_automation")
-
-    assert capability["validation_artifacts"] == [
-        {
-            "type": "acceptance_test",
-            "path": "tests/test_acceptance_plugin_registry_policy_automation.py",
-        }
-    ]
+def _emit_acceptance_artifact(payload: dict) -> None:
+    ACCEPTANCE_ARTIFACT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ACCEPTANCE_ARTIFACT_PATH.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
-def test_suite_category_health_gate_criterion():
-    data = _load_capabilities()
-    phase_three_gate = next(g for g in data["phase_gates"] if g["gate"] == "Phase 3 -> Phase 4")
-    suite_health_metric = next(
-        m for m in phase_three_gate["measurable_checks"] if m["metric"] == "Suite category health"
+def test_signed_and_unsigned_registry_policy_runtime_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    package_path = tmp_path / "fixture-plugin.whl"
+    package_path.write_bytes(b"fixture-wheel-payload")
+
+    unsigned_registry = yaml.safe_load((FIXTURE_DIR / "plugin_registry_unsigned.yaml").read_text(encoding="utf-8"))
+    unsigned_registry["packages"][0]["spec"] = package_path.as_uri()
+
+    signed_registry = yaml.safe_load((FIXTURE_DIR / "plugin_registry_signed.yaml").read_text(encoding="utf-8"))
+    signed_registry["packages"][0]["spec"] = package_path.as_uri()
+
+    unsigned_registry_path = tmp_path / "unsigned-registry.yaml"
+    signed_registry_path = tmp_path / "signed-registry.yaml"
+    unsigned_registry_path.write_text(yaml.safe_dump(unsigned_registry), encoding="utf-8")
+    signed_registry_path.write_text(yaml.safe_dump(signed_registry), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Signed metadata and checksum are required"):
+        supply_chain.install_registry_plugins(
+            unsigned_registry_path,
+            offline=False,
+            allow_network=False,
+            yaml_module=yaml,
+            installer=RecordingInstaller(),
+        )
+
+    monkeypatch.setattr(supply_chain, "_verify_payload", lambda *_args, **_kwargs: None)
+    installer = RecordingInstaller()
+    descriptors = supply_chain.install_registry_plugins(
+        signed_registry_path,
+        offline=False,
+        allow_network=False,
+        yaml_module=yaml,
+        installer=installer,
     )
 
-    assert suite_health_metric["tests_or_checks"] == [
-        "pytest -q tests/test_acceptance_plugin_registry_policy_automation.py"
-    ]
+    assert len(descriptors) == 1
+    assert descriptors[0].state == PluginLifecycleState.LOADED
+    assert descriptors[0].signature is not None
+    assert installer.installed_targets
 
+    policy_registry = yaml.safe_load((FIXTURE_DIR / "plugin_registry_policy_reject.yaml").read_text(encoding="utf-8"))
+    policy_registry["packages"][0]["spec"] = package_path.as_uri()
+    policy_registry_path = tmp_path / "policy-registry.yaml"
+    policy_registry_path.write_text(yaml.safe_dump(policy_registry), encoding="utf-8")
 
-def test_phase_four_release_gate_readiness_conditions():
-    data = _load_capabilities()
-    phase_four_gate = next(g for g in data["phase_gates"] if g["gate"] == "Phase 4 release gate")
-    checks = {m["metric"]: m for m in phase_four_gate["measurable_checks"]}
+    with pytest.raises(ValueError, match="Disallowed license"):
+        supply_chain.install_registry_plugins(
+            policy_registry_path,
+            offline=False,
+            allow_network=False,
+            yaml_module=yaml,
+            installer=RecordingInstaller(),
+        )
 
-    expected_checks = {
-        "Plugin policy compliance": [
-            "pytest -q tests/test_acceptance_plugin_registry_policy_automation.py -k phase_four_release_gate_readiness_conditions",
-            "pytest -q tests/test_plugin_supply_chain_policy.py tests/test_plugin_lifecycle_conformance.py tests/test_cli_plugin_registry.py",
-        ],
+    missing_provenance = {
+        "packages": [
+            {
+                "spec": package_path.as_uri(),
+                "package": "fixture-plugin",
+                "version": "1.0.0",
+                "license": "MIT",
+                "checksum": "deadbeef",
+                "signature": "ZHVtbXk=",
+                "provenance_channel": "stable",
+            }
+        ]
     }
+    missing_provenance_path = tmp_path / "missing-provenance.yaml"
+    missing_provenance_path.write_text(yaml.safe_dump(missing_provenance), encoding="utf-8")
 
-    assert set(checks) == set(expected_checks)
-    for metric, commands in expected_checks.items():
-        assert checks[metric]["tests_or_checks"] == commands
+    with pytest.raises(ValueError, match="Missing provenance_publisher"):
+        supply_chain.install_registry_plugins(
+            missing_provenance_path,
+            offline=False,
+            allow_network=False,
+            yaml_module=yaml,
+            installer=RecordingInstaller(),
+        )
+
+    _emit_acceptance_artifact(
+        {
+            "suite": "plugin_registry_policy_automation",
+            "passed": True,
+            "evidence": {
+                "unsigned_entries_hard_fail": True,
+                "signed_entries_install_and_load": True,
+                "policy_rejection_reason_disallowed_license": True,
+                "policy_rejection_reason_missing_provenance": True,
+            },
+            "installed_specs": [d.source for d in descriptors],
+            "lifecycle_states": [d.state.value for d in descriptors],
+        }
+    )
