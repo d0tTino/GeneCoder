@@ -113,7 +113,7 @@ phase_gates:
         docs_links:
           - docs/reproducibility.md
         evidence_artifacts:
-          - CI pytest logs
+          - artifacts/acceptance/deterministic-reproducibility-runtime.json
       - metric: Throughput median floor
         threshold: '>= 2.0 MB/s Base-4 encode throughput with BER observed at baseline
           0.0'
@@ -146,7 +146,7 @@ phase_gates:
         docs_links:
           - docs/development_roadmap.md
         evidence_artifacts:
-          - CI pytest summaries
+          - artifacts/acceptance/plugin-registry-policy-runtime.json
   - gate: Phase 4 release gate
     canonical_source: docs/strategy_model.yaml
     measurable_checks:
@@ -160,4 +160,4 @@ phase_gates:
         docs_links:
           - docs/plugins.md
         evidence_artifacts:
-          - CI logs and registry validation output
+          - artifacts/acceptance/plugin-registry-policy-runtime.json

@@ -106,8 +106,7 @@ feature_capabilities:
           - type: junit_xml
             path: artifacts/acceptance/junit-deterministic-reproducibility.xml
             checks:
-              - tests.test_acceptance_deterministic_reproducibility_governance::test_validation_artifact_targets_dedicated_acceptance_module
-              - tests.test_acceptance_deterministic_reproducibility_governance::test_phase_two_gate_reproducibility_criterion_uses_deterministic_command
+              - tests.test_acceptance_deterministic_reproducibility_governance::test_deterministic_pipeline_run_is_byte_identical_and_preserves_seed_provenance
         pass_threshold: 100% listed JUnit test cases passed
   - id: benchmark_depth_and_parity
     name: Standardized benchmark depth and parity validation
@@ -177,8 +176,7 @@ feature_capabilities:
           - type: junit_xml
             path: artifacts/acceptance/junit-plugin-policy.xml
             checks:
-              - tests.test_acceptance_plugin_registry_policy_automation::test_suite_category_health_gate_criterion
-              - tests.test_acceptance_plugin_registry_policy_automation::test_phase_four_release_gate_readiness_conditions
+              - tests.test_acceptance_plugin_registry_policy_automation::test_signed_and_unsigned_registry_policy_runtime_paths
               - tests.test_plugin_supply_chain_policy::test_policy_requires_trust_root
               - tests.test_plugin_lifecycle_conformance::test_lifecycle_install_upgrade_disable_rollback_are_deterministic
               - tests.test_cli_plugin_registry::test_install_registry_with_flag
@@ -292,7 +290,7 @@ phase_gates:
         docs_links:
           - docs/reproducibility.md
         evidence_artifacts:
-          - CI pytest logs
+          - artifacts/acceptance/deterministic-reproducibility-runtime.json
       - metric: Throughput median floor
         threshold: ">= 2.0 MB/s Base-4 encode throughput with BER observed at baseline 0.0"
         tests_or_checks:
@@ -324,7 +322,7 @@ phase_gates:
         docs_links:
           - docs/development_roadmap.md
         evidence_artifacts:
-          - CI pytest summaries
+          - artifacts/acceptance/plugin-registry-policy-runtime.json
 
   - gate: "Phase 4 release gate"
     canonical_source: docs/strategy_model.yaml
@@ -337,4 +335,4 @@ phase_gates:
         docs_links:
           - docs/plugins.md
         evidence_artifacts:
-          - CI logs and registry validation output
+          - artifacts/acceptance/plugin-registry-policy-runtime.json

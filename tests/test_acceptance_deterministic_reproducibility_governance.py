@@ -1,41 +1,80 @@
+from __future__ import annotations
+
+import json
 from pathlib import Path
 
-import yaml
+from genecoder.app.pipeline_use_case import (
+    ArtifactOutputPolicy,
+    ChannelProfile,
+    RunPipelineRequest,
+    RunPipelineUseCase,
+    SeedProfile,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
-MODEL_PATH = ROOT / "docs" / "strategy_model.yaml"
+ACCEPTANCE_ARTIFACT_PATH = ROOT / "artifacts" / "acceptance" / "deterministic-reproducibility-runtime.json"
 
 
-def _load_capabilities() -> dict:
-    return yaml.safe_load(MODEL_PATH.read_text(encoding="utf-8"))
+def _emit_acceptance_artifact(payload: dict) -> None:
+    ACCEPTANCE_ARTIFACT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ACCEPTANCE_ARTIFACT_PATH.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
-def _partial_capability(data: dict, capability_id: str) -> dict:
-    for capability in data["feature_capabilities"]:
-        if capability["id"] == capability_id:
-            return capability
-    raise AssertionError(f"Missing capability {capability_id!r}")
+def _run_pipeline(use_case: RunPipelineUseCase, *, input_path: Path, output_path: Path, metrics_path: Path) -> tuple[bytes, dict]:
+    request = RunPipelineRequest(
+        codec="reverse",
+        input_path=str(input_path),
+        output_path=str(output_path),
+        channel="simple",
+        profile=ChannelProfile(
+            name="simple",
+            parameters={
+                "substitution_prob": 0.0,
+                "insertion_prob": 0.0,
+                "deletion_prob": 0.0,
+                "dropout_prob": 0.0,
+            },
+        ),
+        seeds=SeedProfile(global_seed=2026, encode_seed=2201, simulate_seed=2202, decode_seed=2203),
+        artifacts=ArtifactOutputPolicy(metrics_path=str(metrics_path), emit_manifest=False, emit_html_report=False),
+    )
+    response = use_case.execute(request)
+    return response.decoded, dict(response.run_schema)
 
 
-def test_validation_artifact_targets_dedicated_acceptance_module():
-    data = _load_capabilities()
-    capability = _partial_capability(data, "deterministic_reproducibility_governance")
+def test_deterministic_pipeline_run_is_byte_identical_and_preserves_seed_provenance(tmp_path: Path) -> None:
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(b"acceptance-deterministic-workflow")
 
-    assert capability["validation_artifacts"] == [
-        {
-            "type": "acceptance_test",
-            "path": "tests/test_acceptance_deterministic_reproducibility_governance.py",
-        }
-    ]
-
-
-def test_phase_two_gate_reproducibility_criterion_uses_deterministic_command():
-    data = _load_capabilities()
-    phase_two_gate = next(g for g in data["phase_gates"] if g["gate"] == "Phase 2 -> Phase 3")
-    reproducibility_metric = next(
-        m for m in phase_two_gate["measurable_checks"] if m["metric"] == "Reproducibility pass rate"
+    use_case = RunPipelineUseCase()
+    decoded_first, run_schema_first = _run_pipeline(
+        use_case,
+        input_path=input_path,
+        output_path=tmp_path / "decoded-first.bin",
+        metrics_path=tmp_path / "metrics-first.json",
+    )
+    decoded_second, run_schema_second = _run_pipeline(
+        use_case,
+        input_path=input_path,
+        output_path=tmp_path / "decoded-second.bin",
+        metrics_path=tmp_path / "metrics-second.json",
     )
 
-    assert reproducibility_metric["tests_or_checks"] == [
-        "pytest -q tests/test_acceptance_deterministic_reproducibility_governance.py"
-    ]
+    assert decoded_first == decoded_second
+    assert run_schema_first["seeds"]["provenance"] == run_schema_second["seeds"]["provenance"]
+    assert run_schema_first["stages"]["simulate"]["metrics"] == run_schema_second["stages"]["simulate"]["metrics"]
+
+    _emit_acceptance_artifact(
+        {
+            "suite": "deterministic_reproducibility_governance",
+            "passed": True,
+            "evidence": {
+                "decoded_sha256_equal": True,
+                "seed_provenance_equal": True,
+                "simulate_stage_metrics_equal": True,
+            },
+            "run_ids": [run_schema_first["run_id"], run_schema_second["run_id"]],
+            "seed_provenance": run_schema_first["seeds"]["provenance"],
+            "simulate_stage_metrics": run_schema_first["stages"]["simulate"]["metrics"],
+        }
+    )

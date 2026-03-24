@@ -146,6 +146,7 @@ def main() -> int:
     parser.add_argument("--stdout-file", type=Path)
     parser.add_argument("--artifact-json", type=Path)
     parser.add_argument("--output-json", required=True, type=Path)
+    parser.add_argument("--acceptance-output", type=Path)
     args = parser.parse_args()
 
     threshold_config = _load_threshold_config()
@@ -176,6 +177,20 @@ def main() -> int:
         "evidence_artifact": evidence,
         "passed": passed,
     }
+
+
+    acceptance_output = args.acceptance_output or Path("artifacts") / "acceptance" / f"benchmark-gate-{args.benchmark}.json"
+    acceptance_report = {
+        "suite": "benchmark_gate_evaluation",
+        "benchmark": args.benchmark,
+        "passed": passed,
+        "gate": benchmark_config["gate"],
+        "metric": benchmark_config["metric"],
+        "evidence_artifact": evidence,
+        "checks": checks,
+    }
+    acceptance_output.parent.mkdir(parents=True, exist_ok=True)
+    acceptance_output.write_text(json.dumps(acceptance_report, indent=2, sort_keys=True), encoding="utf-8")
 
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
     args.output_json.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")

@@ -1,0 +1,9 @@
+packages:
+  - spec: file:///tmp/placeholder.whl
+    package: fixture-plugin
+    version: 1.0.0
+    license: MIT
+    checksum: deadbeef
+    signature: ZHVtbXk=
+    provenance_publisher: fixture-lab
+    provenance_channel: stable
