@@ -7,6 +7,7 @@ COMPAT_ROOT = Path("src/genecoder/compat")
 
 NON_FORWARDER_COMPAT_MODULES = {
     Path("src/genecoder/compat/legacy/cloud/worker.py"),
+    Path("src/genecoder/compat/v1/pipeline_adapter.py"),
 }
 
 

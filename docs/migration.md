@@ -57,3 +57,13 @@ Simulators must return `SequenceBatch` objects from `simulate`. When porting an 
 ## Channel CLI legacy boundary
 
 `genecoder.cli.channel` now resolves profiles and mutation behavior from `genecoder.simulators.*` modules and the typed channel option adapter in `genecoder.simulators.channel_cli_adapter`. Legacy `channel_engine.legacy_adapter` usage is restricted to compatibility shims under `genecoder.compat.*` and deprecated top-level re-export modules. If you still use legacy flags such as `--indel-profile` with adapter-era aliases, the CLI emits migration warnings and maps them onto modern profile names (`illumina`, `nanopore`).
+
+## Enforced compatibility boundary
+
+Compatibility rules are now machine-enforced from `configs/compat_boundary.yaml`:
+
+- Allowed legacy referencers are explicitly allowlisted per deprecated module.
+- Each legacy module has a hard sunset release (`sunset_version`).
+- Release reduction caps are enforced by `scripts/check_deprecated_references.py --release <version>`.
+
+Use `python scripts/check_deprecated_references.py --release v0.17.0 --write-matrix` to regenerate `docs/legacy_deprecation_matrix.md` from current code scanning output.

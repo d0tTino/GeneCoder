@@ -320,7 +320,7 @@ def test_cli_indel_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     called: list[tuple[float, float, float]] = []
 
     from genecoder.error_simulation import Channel as IndelChannel
-    from genecoder.compat.channel_cli import MODERN_INDEL_PROFILES
+    from genecoder.core import MODERN_INDEL_PROFILES
 
     def fake_simulate(self: IndelChannel, seq: str) -> str:
         called.append((self.substitution_prob, self.insertion_prob, self.deletion_prob))

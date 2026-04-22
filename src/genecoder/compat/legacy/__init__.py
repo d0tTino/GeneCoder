@@ -6,9 +6,7 @@ features here; only forwarding logic and deprecation bridges are allowed.
 
 from genecoder._deprecation import warn_with_telemetry
 
-from .sequence_pipeline import SequencePipeline
-
-__all__ = ["SequencePipeline"]
+__all__: list[str] = []
 
 warn_with_telemetry(
     module_name="genecoder.compat.legacy",
