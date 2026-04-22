@@ -4,14 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
-import subprocess
 import sys
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_PATH = ROOT / "docs" / "strategy_model.yaml"
+VALIDATION_PATH = ROOT / "docs" / "strategy_validation.json"
 
 DOC_CONFIGS = {
     ROOT / "docs" / "product_strategy.md": {
@@ -23,6 +24,9 @@ DOC_CONFIGS = {
     ROOT / "docs" / "development_roadmap.md": {
         "marker": "strategy:roadmap",
     },
+    ROOT / "docs" / "roadmap_execution.md": {
+        "marker": "strategy:execution",
+    },
 }
 
 GENERATED_HEADER = (
@@ -32,17 +36,23 @@ GENERATED_HEADER = (
 )
 
 
-def git_head_commit() -> str:
-    result = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Unable to resolve git commit: {result.stderr.strip()}")
-    return result.stdout.strip()
+def load_strategy_validation() -> dict[str, str]:
+    if not VALIDATION_PATH.exists():
+        raise FileNotFoundError(
+            "Missing docs/strategy_validation.json. "
+            "Run `python scripts/generate_strategy_artifacts.py --write`."
+        )
+
+    payload = json.loads(VALIDATION_PATH.read_text(encoding="utf-8"))
+    required_keys = {"last_validated_commit", "generated_at", "generator_version"}
+    missing = sorted(required_keys - payload.keys())
+    if missing:
+        missing_text = ", ".join(missing)
+        raise ValueError(
+            f"docs/strategy_validation.json is missing required keys: {missing_text}. "
+            "Run `python scripts/generate_strategy_artifacts.py --write`."
+        )
+    return payload
 
 
 def _replace_marker_block(content: str, marker: str, new_block: str) -> tuple[str, bool]:
@@ -82,13 +92,22 @@ def _render_capability_table(capabilities: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _render_product_strategy(model: dict, commit_sha: str) -> str:
+def _provenance_lines(validation: dict[str, str]) -> list[str]:
+    return [
+        "> Source of truth: `docs/strategy_model.yaml`",
+        "> Validation provenance: `docs/strategy_validation.json`",
+        f"> last_validated_commit: `{validation['last_validated_commit']}`",
+        f"> generated_at: `{validation['generated_at']}`",
+        f"> generator_version: `{validation['generator_version']}`",
+    ]
+
+
+def _render_product_strategy(model: dict, validation: dict[str, str]) -> str:
     return "\n".join(
         [
             "## Strategy model snapshot (generated)",
             "",
-            "> Source of truth: `docs/strategy_model.yaml`",
-            f"> last_validated_commit: `{commit_sha}`",
+            *_provenance_lines(validation),
             "",
             "### Phase definitions",
             "",
@@ -112,13 +131,12 @@ def _render_product_strategy(model: dict, commit_sha: str) -> str:
     )
 
 
-def _render_vision(model: dict, commit_sha: str) -> str:
+def _render_vision(model: dict, validation: dict[str, str]) -> str:
     return "\n".join(
         [
             "## Strategy-aligned phase and capability narrative (generated)",
             "",
-            "> Source of truth: `docs/strategy_model.yaml`",
-            f"> last_validated_commit: `{commit_sha}`",
+            *_provenance_lines(validation),
             "",
             "### Phase intent",
             "",
@@ -135,12 +153,11 @@ def _render_vision(model: dict, commit_sha: str) -> str:
     )
 
 
-def _render_development_roadmap(model: dict, commit_sha: str) -> str:
+def _render_development_roadmap(model: dict, validation: dict[str, str]) -> str:
     blocks = [
         "## KPI gates and evidence (generated)",
         "",
-        "> Source of truth: `docs/strategy_model.yaml`",
-        f"> last_validated_commit: `{commit_sha}`",
+        *_provenance_lines(validation),
         "",
     ]
     for gate in model["kpi_gates"]:
@@ -148,11 +165,36 @@ def _render_development_roadmap(model: dict, commit_sha: str) -> str:
     return "\n".join(blocks).rstrip()
 
 
-def render_sections(model: dict, commit_sha: str) -> dict[Path, str]:
+def _render_roadmap_execution(model: dict, validation: dict[str, str]) -> str:
+    blocks = [
+        "## Execution summary (generated)",
+        "",
+        *_provenance_lines(validation),
+        "",
+        "### Phase execution focus",
+        "",
+        *[
+            f"- **Phase {phase['id']} — {phase['name']}**: {phase['execution_focus']}"
+            for phase in model["phases"]
+        ],
+        "",
+        "### KPI gate checklist",
+        "",
+    ]
+    for gate in model["kpi_gates"]:
+        blocks.append(f"#### {gate['gate']}")
+        for check in gate["checks"]:
+            blocks.append(f"- {check['metric']}: **{check['threshold']}**")
+        blocks.append("")
+    return "\n".join(blocks).rstrip()
+
+
+def render_sections(model: dict, validation: dict[str, str]) -> dict[Path, str]:
     return {
-        ROOT / "docs" / "product_strategy.md": _render_product_strategy(model, commit_sha),
-        ROOT / "docs" / "vision.md": _render_vision(model, commit_sha),
-        ROOT / "docs" / "development_roadmap.md": _render_development_roadmap(model, commit_sha),
+        ROOT / "docs" / "product_strategy.md": _render_product_strategy(model, validation),
+        ROOT / "docs" / "vision.md": _render_vision(model, validation),
+        ROOT / "docs" / "development_roadmap.md": _render_development_roadmap(model, validation),
+        ROOT / "docs" / "roadmap_execution.md": _render_roadmap_execution(model, validation),
     }
 
 
@@ -162,8 +204,8 @@ def main() -> int:
     args = parser.parse_args()
 
     model = yaml.safe_load(MODEL_PATH.read_text(encoding="utf-8"))
-    commit_sha = git_head_commit()
-    rendered_by_doc = render_sections(model, commit_sha)
+    validation = load_strategy_validation()
+    rendered_by_doc = render_sections(model, validation)
 
     changed_files: list[Path] = []
     for doc_path, rendered in rendered_by_doc.items():

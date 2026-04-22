@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -13,6 +15,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_PATH = ROOT / "docs" / "strategy_model.yaml"
 CAPABILITIES_PATH = ROOT / "docs" / "capabilities.yaml"
+VALIDATION_PATH = ROOT / "docs" / "strategy_validation.json"
+GENERATOR_VERSION = "1.0.0"
 CI_WORKFLOW_PATH = ROOT / ".github" / "workflows" / "python-ci.yml"
 BADGES_PATH = ROOT / "docs" / "capability_maturity_badges.md"
 
@@ -64,6 +68,27 @@ def render_capabilities_yaml(model: dict) -> str:
     return _render_generated_yaml(payload)
 
 
+def git_head_commit() -> str:
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Unable to resolve git commit: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def build_strategy_validation(commit_sha: str) -> dict[str, str]:
+    return {
+        "last_validated_commit": commit_sha,
+        "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "generator_version": GENERATOR_VERSION,
+    }
+
+
 def _run(cmd: list[str]) -> None:
     result = subprocess.run(cmd, cwd=ROOT, check=False, text=True, capture_output=True)
     if result.returncode != 0:
@@ -85,6 +110,17 @@ def main() -> int:
             print("  python scripts/generate_strategy_artifacts.py --write")
             return 1
         CAPABILITIES_PATH.write_text(rendered_capabilities, encoding="utf-8")
+
+    if args.write:
+        strategy_validation = build_strategy_validation(git_head_commit())
+        rendered_validation = json.dumps(strategy_validation, indent=2) + "\n"
+        existing_validation = VALIDATION_PATH.read_text(encoding="utf-8") if VALIDATION_PATH.exists() else ""
+        if existing_validation != rendered_validation:
+            VALIDATION_PATH.write_text(rendered_validation, encoding="utf-8")
+    elif not VALIDATION_PATH.exists():
+        print("Missing docs/strategy_validation.json. Run:")
+        print("  python scripts/generate_strategy_artifacts.py --write")
+        return 1
 
     try:
         if args.write:

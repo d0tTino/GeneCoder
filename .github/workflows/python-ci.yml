@@ -214,7 +214,7 @@ jobs:
       run: python scripts/generate_strategy_artifacts.py --write
 
     - name: Fail on generated-doc drift
-      run: git diff --exit-code -- docs/capabilities.yaml docs/product_strategy.md docs/vision.md docs/development_roadmap.md docs/capability_maturity_badges.md
+      run: git diff --exit-code -- docs/capabilities.yaml docs/strategy_validation.json docs/product_strategy.md docs/vision.md docs/development_roadmap.md docs/roadmap_execution.md docs/capability_maturity_badges.md
 
   glossary:
     needs: [changes, check-comments, lint]
