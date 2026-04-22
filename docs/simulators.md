@@ -4,9 +4,11 @@ GeneCoder supports both built-in error models and adapters to external nanopore 
 
 ## Built-in simulators
 
-- **simple** — random substitutions. Use `genecli channel --sub-prob`
-  (and optionally `--ins-prob`/`--del-prob`) or `--simulator simple`.
-- **indel** — introduces insertions and deletions in addition to substitutions.
+- **simple** — random substitutions (entry point: `genecoder.simulators.simple`).
+  Use `genecli channel --sub-prob` (and optionally `--ins-prob`/`--del-prob`)
+  or `--simulator simple`.
+- **indel** — introduces insertions and deletions in addition to substitutions
+  (entry point: `genecoder.simulators.indel`).
 - **none** — disable simulation (the default).
 - **illumina** — simple Illumina read errors. Customize rates with
   `--illumina-sub-rate`, `--illumina-ins-rate` and `--illumina-del-rate`. Depth

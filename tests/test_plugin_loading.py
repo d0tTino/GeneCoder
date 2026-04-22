@@ -1,3 +1,6 @@
+import tomllib
+from pathlib import Path
+
 import pytest
 from genecoder import (
     CODEC_REGISTRY,
@@ -88,3 +91,22 @@ def test_load_plugins_idempotent() -> None:
     assert set(FEC_REGISTRY) == fec_keys
     assert set(SIMULATOR_REGISTRY) == sim_keys
 
+
+
+
+def test_simulator_entry_points_avoid_deprecated_shims() -> None:
+    pyproject_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+    simulators = data["tool"]["poetry"]["plugins"]["genecoder.simulators"]
+
+    deprecated_modules = {
+        "genecoder.error_simulation",
+        "genecoder.channel_sim",
+        "genecoder.compat.error_simulation",
+        "genecoder.compat.channel_sim",
+    }
+    for module_path in simulators.values():
+        assert module_path not in deprecated_modules
+
+    assert simulators["simple"] == "genecoder.simulators.simple"
+    assert simulators["indel"] == "genecoder.simulators.indel"

@@ -111,8 +111,8 @@ nanopore = "genecoder.simulators.nanopore"
 d2sim = "genecoder.d2sim_adapter"
 dnarsim = "genecoder.dnarsim_adapter"
 squigulator = "genecoder.squigulator_adapter"
-simple = "genecoder.error_simulation"
-indel = "genecoder.error_simulation"
+simple = "genecoder.simulators.simple"
+indel = "genecoder.simulators.indel"
 illumina = "genecoder.simulators.illumina"
 
 [tool.poetry.extras]
