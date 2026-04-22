@@ -3,7 +3,6 @@ from __future__ import annotations
 """Simple encode/ECC/channel/decode pipeline utilities."""
 
 import json
-import inspect
 import time
 import warnings
 from collections import Counter
@@ -16,18 +15,23 @@ from .utils import get_max_homopolymer_length
 
 from .plugin_manager import init_plugins
 from .runtime import RunContext, make_run_context
-from .simulators import SIMULATOR_REGISTRY
-from .channel_engine import ChannelPipeline
-from .coding.stack import (
-    CodingContext,
-    build_layer_metric,
-    compile_legacy_stack,
-    compile_stack_from_config,
-    normalize_stack_metrics,
-    plan_stack_from_config,
+from .coding.stack import normalize_stack_metrics
+from .compat.coding_stack import (
+    compile_coding_stack_from_config,
+    plan_coding_stack,
 )
-from .formats import SequenceBatch, SequenceOligo
-from .constraints import ConstraintPolicy, ConstraintRepairPipeline, load_constraint_policy
+from .formats import SequenceBatch
+from .constraints import ConstraintPolicy
+from .runtime.models import DecodeStageInput, EncodeStageInput, SimulateStageInput
+from .runtime.stages import (
+    DecodeStageService,
+    EncodeStageService,
+    SimulateStageService,
+    batch_for_decode,
+    estimate_coverage,
+    parse_bool,
+    wrap_single_sequence,
+)
 from .simulators.batch_utils import (
     RESULT_COVERAGE_KEY,
     RESULT_DROPOUT_FLAG_KEY,
@@ -260,124 +264,7 @@ def _wrap_single_sequence(
     batch_id: str = "sequence",
     codec: str | None = None,
 ) -> SequenceBatch:
-    """Return a :class:`SequenceBatch` for a legacy string ``sequence``."""
-
-    tokens = [f"batch_id={batch_id}", "oligo_index=1"]
-    if codec:
-        tokens.append(f"codec={codec}")
-    header = " ".join(tokens)
-    batch = SequenceBatch.build([(header, sequence)], batch_id=batch_id)
-    if codec:
-        batch.metadata.setdefault("codec", codec)
-    return batch
-
-
-def _resolve_constraint_policy(raw: Mapping[str, Any] | None) -> ConstraintPolicy | None:
-    if not raw:
-        return None
-    policy_raw = raw.get("constraint_policy")
-    if policy_raw is None:
-        return None
-    if isinstance(policy_raw, ConstraintPolicy):
-        return policy_raw
-    if isinstance(policy_raw, Mapping):
-        return load_constraint_policy(policy_raw)
-    return None
-
-
-def _constraint_outcome_payload(result: object) -> dict[str, Any]:
-    from genecoder.constraints.repair_pipeline import RepairPipelineResult
-
-    if not isinstance(result, RepairPipelineResult):
-        return {}
-    return {
-        "stage": result.stage,
-        "violations": {
-            "before": result.report_before.count,
-            "after": result.report_after.count,
-            "pressure_before": result.report_before.pressure,
-            "pressure_after": result.report_after.pressure,
-        },
-        "repairs_applied": len(result.repair.changes) if result.repair is not None else 0,
-        "repair_strategy": result.repair.strategy if result.repair is not None else None,
-        "residual_risk": result.residual_risk,
-        "objective_score": result.objective_score,
-        "objective_tradeoff": dict(result.objective_tradeoff or {}),
-    }
-
-
-def _apply_constraint_stage_to_batch(
-    batch: SequenceBatch,
-    *,
-    policy: ConstraintPolicy,
-    stage: str,
-) -> dict[str, Any]:
-    pipeline = ConstraintRepairPipeline(policy)
-    primaries = batch.primary_oligos() or batch.oligos
-    outcomes = pipeline.repair_batch([ol.sequence for ol in primaries], stage=stage)
-    by_oligo: dict[str, dict[str, Any]] = {}
-    for idx, (oligo, outcome) in enumerate(zip(primaries, outcomes), start=1):
-        if outcome.sequence != oligo.sequence:
-            oligo.sequence = outcome.sequence
-        key = str(
-            oligo.metadata.get("oligo_id")
-            or oligo.oligo_id
-            or oligo.metadata.get("oligo_index")
-            or idx
-        )
-        by_oligo[key] = {
-            "oligo_index": idx,
-            "violations_before": outcome.report_before.count,
-            "violations_after": outcome.report_after.count,
-            "pressure_before": outcome.report_before.pressure,
-            "pressure_after": outcome.report_after.pressure,
-            "repair_strategy": outcome.repair.strategy if outcome.repair is not None else None,
-            "repairs_applied": len(outcome.repair.changes) if outcome.repair is not None else 0,
-            "residual_risk": outcome.residual_risk,
-            "objective_score": outcome.objective_score,
-            "objective_tradeoff": dict(outcome.objective_tradeoff or {}),
-            "stage": outcome.stage,
-        }
-    return {
-        "stage": stage,
-        "violations": {
-            "before": sum(item.report_before.count for item in outcomes),
-            "after": sum(item.report_after.count for item in outcomes),
-            "pressure_before": (
-                sum(item.report_before.pressure for item in outcomes) / len(outcomes)
-                if outcomes
-                else 0.0
-            ),
-            "pressure_after": (
-                sum(item.report_after.pressure for item in outcomes) / len(outcomes)
-                if outcomes
-                else 0.0
-            ),
-        },
-        "repairs_applied": sum(len(item.repair.changes) if item.repair is not None else 0 for item in outcomes),
-        "repair_strategy": (
-            outcomes[0].repair.strategy
-            if outcomes and outcomes[0].repair is not None
-            else None
-        ),
-        "residual_risk": (
-            sum(item.residual_risk for item in outcomes) / len(outcomes)
-            if outcomes
-            else 0.0
-        ),
-        "objective_score": (
-            sum(float(item.objective_score or 0.0) for item in outcomes) / len(outcomes)
-            if outcomes
-            else None
-        ),
-        "objective_tradeoff": {
-            "gc": (sum(float((item.objective_tradeoff or {}).get("gc_deviation", 0.0)) for item in outcomes) / len(outcomes)) if outcomes else 0.0,
-            "homopolymer": (sum(float((item.objective_tradeoff or {}).get("homopolymer_excess", 0.0)) for item in outcomes) / len(outcomes)) if outcomes else 0.0,
-            "redundancy": (sum(float((item.objective_tradeoff or {}).get("redundancy", 0.0)) for item in outcomes) / len(outcomes)) if outcomes else 0.0,
-            "recovery": (sum(float((item.objective_tradeoff or {}).get("recovery_proxy", 0.0)) for item in outcomes) / len(outcomes)) if outcomes else 0.0,
-        },
-        "by_oligo": by_oligo,
-    }
+    return wrap_single_sequence(sequence, batch_id=batch_id, codec=codec)
 
 
 def encode(
@@ -389,153 +276,24 @@ def encode(
     run_context: RunContext | None = None,
 ) -> Tuple[SequenceBatch, Mapping[str, Any] | None]:
     """Return encoded :class:`SequenceBatch` for ``data`` and optional FEC info."""
-
-    stack = compile_legacy_stack(codec, fec, constraint_policy=constraint_policy)
-    runtime_context = run_context or make_run_context()
-    context = CodingContext(
-        block_id="encode-0",
-        constraint_policy=constraint_policy,
-        metadata={"run_context": runtime_context},
+    output = EncodeStageService().run(
+        EncodeStageInput(
+            codec=codec,
+            fec=fec,
+            data=data,
+            constraint_policy=constraint_policy,
+            run_context=run_context,
+        )
     )
-    current: bytes | str | SequenceBatch = data
-    layer_info: dict[str, Mapping[str, Any]] = {}
-    layer_metrics: list[dict[str, Any]] = []
-    for layer in stack:
-        before_size = (
-            len(current)
-            if isinstance(current, (bytes, bytearray, str))
-            else len(current.combined_sequence())
-        )
-        started_at = time.perf_counter()
-        layer_out = layer.encode_block(current, context)
-        current = layer_out.payload
-        info_value = layer_out.metadata.get("fec_info")
-        if isinstance(info_value, Mapping):
-            layer_info[layer.name] = dict(info_value)
-        after_size = (
-            len(current)
-            if isinstance(current, (bytes, bytearray, str))
-            else len(current.combined_sequence())
-        )
-        layer_metrics.append(
-            build_layer_metric(
-                layer_name=layer.name,
-                layer_type="codec" if layer.name == codec else "fec",
-                stage="encode",
-                before_size=before_size,
-                after_size=after_size,
-                started_at=started_at,
-            )
-        )
-
-    encoded = current
-    if isinstance(encoded, SequenceBatch):
-        batch = encoded
-    elif isinstance(encoded, str):
-        batch = _wrap_single_sequence(encoded, batch_id=f"{codec}-batch", codec=codec)
-    else:
-        raise TypeError(
-            "Codec implementations must return a string or SequenceBatch"
-        )
-
-    constraint_outcomes: list[dict[str, Any]] = []
-    if constraint_policy is not None:
-        stage_outcome = _apply_constraint_stage_to_batch(
-            batch,
-            policy=constraint_policy,
-            stage="encode",
-        )
-        constraint_outcomes.append({k: v for k, v in stage_outcome.items() if k != "by_oligo"})
-
-    normalized_stack = normalize_stack_metrics(layer_metrics, "".join(ol.sequence for ol in batch.oligos))
-    batch.metadata.setdefault("coding_stack", normalized_stack)
-    if constraint_policy is not None:
-        batch.metadata["constraint_policy"] = constraint_policy.to_dict()
-        existing = batch.metadata.get("constraint_outcomes")
-        if isinstance(existing, Mapping):
-            merged = dict(existing)
-        else:
-            merged = {}
-        merged["by_oligo"] = stage_outcome.get("by_oligo", {})
-        merged["stages"] = constraint_outcomes
-        batch.metadata["constraint_outcomes"] = merged
-
-    fec_info: Mapping[str, Any] | None = None
-    if layer_info:
-        info_dict: dict[str, Any] = {
-            "layer_info": layer_info,
-            "coding_stack": normalized_stack,
-        }
-        if fec and fec in layer_info:
-            info_dict.update(dict(layer_info[fec]))
-        if constraint_policy is not None:
-            info_dict["constraint_policy"] = constraint_policy.to_dict()
-            info_dict["constraint_outcomes"] = dict(batch.metadata.get("constraint_outcomes", {}))
-        info_dict.setdefault("batch_id", batch.batch_id)
-        info_dict.setdefault("batch_metadata", dict(batch.metadata))
-        fec_info = info_dict
-
-    return batch, fec_info
+    return output.encoded_batch, output.fec_info
 
 
 def _parse_bool(value: object) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.strip().lower() in {"1", "true", "yes", "y"}
-    return bool(value)
+    return parse_bool(value)
 
 
 def _batch_for_decode(batch: SequenceBatch, *, filter_mutated: bool) -> SequenceBatch:
-    filtered: list[SequenceOligo] = []
-    for oligo in batch.oligos:
-        dropout_flag = _parse_bool(oligo.metadata.get(RESULT_DROPOUT_FLAG_KEY, False))
-        coverage_raw = oligo.metadata.get(RESULT_COVERAGE_KEY)
-        try:
-            coverage_int = int(coverage_raw) if coverage_raw is not None else None
-        except (TypeError, ValueError):
-            coverage_int = None
-
-        mutation_raw = oligo.metadata.get(RESULT_MUTATION_TOTALS_KEY)
-        mutation_flag = False
-        if mutation_raw not in (None, ""):
-            mutation_data: Mapping[str, Any] | None
-            if isinstance(mutation_raw, Mapping):
-                mutation_data = mutation_raw
-            elif isinstance(mutation_raw, str):
-                try:
-                    parsed = json.loads(mutation_raw)
-                except json.JSONDecodeError:
-                    mutation_data = None
-                else:
-                    mutation_data = parsed if isinstance(parsed, Mapping) else None
-            else:
-                mutation_data = None
-            if mutation_data is not None:
-                for key in ("substitutions", "insertions", "deletions"):
-                    try:
-                        if int(mutation_data.get(key, 0)) > 0:
-                            mutation_flag = True
-                            break
-                    except (TypeError, ValueError):
-                        continue
-
-        if dropout_flag:
-            continue
-        if coverage_int is not None and coverage_int <= 0:
-            continue
-        if filter_mutated and mutation_flag:
-            continue
-        filtered.append(oligo)
-
-    if len(filtered) == len(batch.oligos):
-        return batch
-    return SequenceBatch(
-        batch_id=batch.batch_id,
-        metadata=dict(batch.metadata),
-        seed=batch.seed,
-        oligos=list(filtered),
-    )
+    return batch_for_decode(batch, filter_mutated=filter_mutated)
 
 
 def run_canonical_pipeline(
@@ -557,67 +315,59 @@ def run_canonical_pipeline(
 
     total_started_at = time.perf_counter()
 
+    encode_service = EncodeStageService()
+    simulate_service = SimulateStageService()
+    decode_service = DecodeStageService()
+
     encode_started_at = time.perf_counter()
-    encoded_batch, fec_info = encode(codec, fec, original_data, run_context=runtime_context)
+    encode_result = encode_service.run(
+        EncodeStageInput(codec=codec, fec=fec, data=original_data, run_context=runtime_context)
+    )
+    encoded_batch = encode_result.encoded_batch
+    fec_info = encode_result.fec_info
     encode_seconds = time.perf_counter() - encode_started_at
 
     simulate_started_at = time.perf_counter()
-    try:
-        simulated, subs, ins, dels, coverage = simulate(
-            channel,
-            encoded_batch,
+    simulate_result = simulate_service.run(
+        SimulateStageInput(
+            channel=channel,
+            dna=encoded_batch,
             channel_parameters=channel_parameters,
             run_context=runtime_context,
         )
-    except TypeError as exc:
-        message = str(exc)
-        if "channel_parameters" in message:
-            try:
-                simulated, subs, ins, dels, coverage = simulate(
-                    channel,
-                    encoded_batch,
-                    run_context=runtime_context,
-                )
-            except TypeError as nested_exc:
-                if "run_context" not in str(nested_exc):
-                    raise
-                simulated, subs, ins, dels, coverage = simulate(channel, encoded_batch)
-        elif "run_context" in message:
-            simulated, subs, ins, dels, coverage = simulate(
-                channel,
-                encoded_batch,
-                channel_parameters=channel_parameters,
-            )
-        else:
-            raise
+    )
     simulate_seconds = time.perf_counter() - simulate_started_at
 
     simulated_batch = (
-        simulated if isinstance(simulated, SequenceBatch) else _wrap_single_sequence(str(simulated))
+        simulate_result.dna
+        if isinstance(simulate_result.dna, SequenceBatch)
+        else _wrap_single_sequence(str(simulate_result.dna))
     )
     decode_input = _batch_for_decode(simulated_batch, filter_mutated=filter_mutated)
 
     decode_started_at = time.perf_counter()
-    decoded = decode(
-        codec,
-        fec,
-        decode_input,
-        fec_info,
-        filter_mutated=filter_mutated,
-        survivor_batch=decode_input,
-        run_context=runtime_context,
+    decode_result = decode_service.run(
+        DecodeStageInput(
+            codec=codec,
+            fec=fec,
+            dna=decode_input,
+            fec_info=fec_info,
+            filter_mutated=filter_mutated,
+            survivor_batch=decode_input,
+            run_context=runtime_context,
+        )
     )
     decode_seconds = time.perf_counter() - decode_started_at
 
     metrics_dict = metrics(
         simulated_batch,
         original_data,
-        decoded,
+        decode_result.decoded,
         fec,
-        subs,
-        ins,
-        dels,
-        coverage,
+        simulate_result.substitutions,
+        simulate_result.insertions,
+        simulate_result.deletions,
+        simulate_result.coverage,
         stack_metrics=(dict(fec_info).get("coding_stack") if isinstance(fec_info, Mapping) else None),
         constraint_outcomes=(
             dict(fec_info).get("constraint_outcomes") if isinstance(fec_info, Mapping) else None
@@ -631,13 +381,13 @@ def run_canonical_pipeline(
         simulated_batch=simulated_batch,
         decode_input=decode_input,
         survivor_batch=decode_input,
-        decoded=decoded,
+        decoded=decode_result.decoded,
         metrics=metrics_dict,
         fec_info=fec_info,
-        substitutions=subs,
-        insertions=ins,
-        deletions=dels,
-        coverage=coverage,
+        substitutions=simulate_result.substitutions,
+        insertions=simulate_result.insertions,
+        deletions=simulate_result.deletions,
+        coverage=simulate_result.coverage,
         runtime={
             "total_seconds": total_seconds,
             "encode_seconds": encode_seconds,
@@ -648,46 +398,7 @@ def run_canonical_pipeline(
 
 
 def _estimate_coverage(batch: SequenceBatch) -> int | None:
-    meta_value = batch.metadata.get("sim_average_coverage")
-    if meta_value is not None:
-        try:
-            return int(round(float(meta_value)))
-        except (TypeError, ValueError):
-            pass
-
-    coverages: list[int] = []
-    for oligo in batch.primary_oligos():
-        cov_val = oligo.metadata.get(RESULT_COVERAGE_KEY)
-        if cov_val is None:
-            continue
-        try:
-            coverages.append(int(cov_val))
-        except (TypeError, ValueError):
-            continue
-    if coverages:
-        return int(round(sum(coverages) / len(coverages)))
-    return None
-
-
-def _apply_channel_constructor_parameters(simulator: object, parameters: Mapping[str, Any] | None) -> object:
-    if not parameters:
-        return simulator
-    signature = inspect.signature(type(simulator).__init__)
-    accepted = {
-        name
-        for name, param in signature.parameters.items()
-        if name != "self" and param.kind in (param.POSITIONAL_OR_KEYWORD, param.KEYWORD_ONLY)
-    }
-    kwargs = {key: value for key, value in parameters.items() if key in accepted}
-    if not kwargs:
-        return simulator
-    current_profile = getattr(simulator, "profile", None)
-    if "profile" in accepted and "profile" not in kwargs and current_profile is not None:
-        kwargs["profile"] = current_profile
-    try:
-        return type(simulator)(**kwargs)
-    except Exception:
-        return simulator
+    return estimate_coverage(batch)
 
 
 def simulate(
@@ -698,47 +409,21 @@ def simulate(
     run_context: RunContext | None = None,
 ) -> Tuple[SequenceBatch | str, int | None, int | None, int | None, int | None]:
     """Return ``dna`` possibly mutated by ``channel`` and error counts."""
-
-    runtime_context = run_context or make_run_context()
-    is_batch = isinstance(dna, SequenceBatch)
-    original_batch = dna if is_batch else _wrap_single_sequence(str(dna), batch_id="channel")
-
-    if channel and channel != "none":
-        if channel not in SIMULATOR_REGISTRY:
-            raise ValueError(f"Unknown channel: {channel}")
-        sim = _apply_channel_constructor_parameters(SIMULATOR_REGISTRY[channel], channel_parameters)
-        pipeline = ChannelPipeline.from_simulators([(channel, sim)])
-        mutated_batch, provenance = pipeline.run(
-            original_batch,
-            run_context=runtime_context,
+    output = SimulateStageService().run(
+        SimulateStageInput(
+            channel=channel,
+            dna=dna,
+            channel_parameters=channel_parameters,
+            run_context=run_context,
         )
-
-        mutated_batch.metadata["sim_stage_provenance"] = json.dumps(provenance)
-        if channel_parameters:
-            mutated_batch.metadata["sim_channel_parameters"] = json.dumps(dict(channel_parameters))
-
-        original_sequence = original_batch.combined_sequence()
-        mutated_sequence = mutated_batch.combined_sequence()
-        subs, ins, dels = _count_errors(original_sequence, mutated_sequence)
-
-        coverage = _estimate_coverage(mutated_batch)
-        if coverage is None:
-            cov_func = getattr(sim, "get_coverage", None)
-            if callable(cov_func):
-                try:
-                    coverage = int(cov_func(original_sequence))
-                except Exception:  # pragma: no cover - simulator failed
-                    coverage = None
-
-        return (
-            mutated_batch if is_batch else mutated_sequence,
-            subs,
-            ins,
-            dels,
-            coverage,
-        )
-
-    return (dna if is_batch else str(dna)), None, None, None, None
+    )
+    return (
+        output.dna,
+        output.substitutions,
+        output.insertions,
+        output.deletions,
+        output.coverage,
+    )
 
 
 def decode(
@@ -760,135 +445,19 @@ def decode(
             zero-coverage oligos. Set to ``False`` to retain mutated oligos.
     """
 
-    runtime_context = run_context or make_run_context()
-    policy = constraint_policy or _resolve_constraint_policy(fec_info)
-    stack = compile_legacy_stack(codec, fec, constraint_policy=policy)
-
-    batch = dna if isinstance(dna, SequenceBatch) else _wrap_single_sequence(str(dna))
-    if isinstance(dna, SequenceBatch):
-        filtered: list[SequenceOligo] = []
-        for oligo in dna.oligos:
-            dropout_flag = _parse_bool(oligo.metadata.get(RESULT_DROPOUT_FLAG_KEY, False))
-            coverage_raw = oligo.metadata.get(RESULT_COVERAGE_KEY)
-            try:
-                coverage_int = int(coverage_raw) if coverage_raw is not None else None
-            except (TypeError, ValueError):
-                coverage_int = None
-            mutation_raw = oligo.metadata.get(RESULT_MUTATION_TOTALS_KEY)
-            mutation_flag = False
-            if mutation_raw not in (None, ""):
-                mutation_data: Mapping[str, Any] | None
-                if isinstance(mutation_raw, Mapping):
-                    mutation_data = mutation_raw
-                elif isinstance(mutation_raw, str):
-                    try:
-                        parsed = json.loads(mutation_raw)
-                    except json.JSONDecodeError:
-                        mutation_data = None
-                    else:
-                        mutation_data = parsed if isinstance(parsed, Mapping) else None
-                else:
-                    mutation_data = None
-                if mutation_data is not None:
-                    for key in ("substitutions", "insertions", "deletions"):
-                        try:
-                            if int(mutation_data.get(key, 0)) > 0:
-                                mutation_flag = True
-                                break
-                        except (TypeError, ValueError):
-                            continue
-            if dropout_flag or (coverage_int is not None and coverage_int <= 0) or (
-                filter_mutated and mutation_flag
-            ):
-                continue
-            filtered.append(oligo)
-        if len(filtered) != len(dna.oligos):
-            if not filtered:
-                raise ValueError(
-                    "No survivor oligos available after filtering; "
-                    "adjust channel conditions or disable --filter-mutated."
-                )
-            batch = SequenceBatch(
-                batch_id=dna.batch_id,
-                metadata=dict(dna.metadata),
-                seed=dna.seed,
-                oligos=list(filtered),
-            )
-    if survivor_batch is None and isinstance(dna, SequenceBatch):
-        survivor_batch = batch
-    if isinstance(batch, SequenceBatch) and not batch.oligos:
-        raise ValueError(
-            "No survivor oligos available after filtering; "
-            "adjust channel conditions or disable --filter-mutated."
+    output = DecodeStageService().run(
+        DecodeStageInput(
+            codec=codec,
+            fec=fec,
+            dna=dna,
+            fec_info=fec_info,
+            filter_mutated=filter_mutated,
+            survivor_batch=survivor_batch,
+            constraint_policy=constraint_policy,
+            run_context=run_context,
         )
-    constraint_outcomes: dict[str, Any] = {}
-    if policy is not None:
-        stage_outcome = _apply_constraint_stage_to_batch(
-            batch,
-            policy=policy,
-            stage="pre_decode",
-        )
-        constraint_outcomes = {
-            "by_oligo": stage_outcome.get("by_oligo", {}),
-            "stages": [{k: v for k, v in stage_outcome.items() if k != "by_oligo"}],
-        }
-    context_meta: dict[str, Any] = {"batch_id": batch.batch_id, **batch.metadata}
-    if fec_info:
-        context_meta.update(dict(fec_info))
-    if survivor_batch is not None:
-        context_meta["survivor_batch"] = survivor_batch
-    context = CodingContext(
-        block_id="decode-0",
-        metadata={**context_meta, "run_context": runtime_context},
-        constraint_policy=policy,
     )
-
-    current: bytes | str | SequenceBatch = batch
-    decode_metrics: list[dict[str, Any]] = []
-    codec_decoded = False
-    for layer in reversed(stack):
-        before_size = (
-            len(current)
-            if isinstance(current, (bytes, bytearray, str))
-            else len(current.combined_sequence())
-        )
-        if not codec_decoded and layer.name == codec:
-            layer_input: bytes | str | SequenceBatch = current
-            if isinstance(layer_input, bytes):
-                layer_input = layer_input.decode("utf-8")
-            started_at = time.perf_counter()
-            layer_out = layer.decode_block(layer_input, context)
-            codec_decoded = True
-        else:
-            if isinstance(current, str):
-                current = current.encode("utf-8")
-            started_at = time.perf_counter()
-            layer_out = layer.decode_block(current, context)
-        current = layer_out.payload
-        after_size = (
-            len(current)
-            if isinstance(current, (bytes, bytearray, str))
-            else len(current.combined_sequence())
-        )
-        decode_metrics.append(
-            build_layer_metric(
-                layer_name=layer.name,
-                layer_type="codec" if layer.name == codec else "fec",
-                stage="decode",
-                before_size=before_size,
-                after_size=after_size,
-                started_at=started_at,
-                corrections=int(layer_out.metadata.get("corrections", 0) or 0),
-            )
-        )
-
-    if not isinstance(current, (bytes, bytearray)):
-        raise TypeError("Decoded payload must be bytes")
-    if isinstance(fec_info, dict):
-        fec_info["coding_stack"] = normalize_stack_metrics(decode_metrics)
-        if constraint_outcomes:
-            fec_info["constraint_outcomes"] = dict(constraint_outcomes)
-    return bytes(current)
+    return output.decoded
 
 
 def metrics(
@@ -1177,7 +746,7 @@ def inspect_coding_plan(config: Mapping[str, Any]) -> dict[str, Any]:
     """Return planner diagnostics for why stack candidates were selected/rejected."""
 
     init_plugins()
-    plan = plan_stack_from_config(config)
+    plan = plan_coding_stack(config)
     return plan.summary()
 
 
@@ -1185,7 +754,7 @@ def compile_coding_stack(config: Mapping[str, Any]) -> list[object]:
     """Validate and compile a declarative coding stack from config."""
 
     init_plugins()
-    return list(compile_stack_from_config(config))
+    return list(compile_coding_stack_from_config(config))
 
 def run_pipeline(
     codec: str,
