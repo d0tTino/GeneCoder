@@ -1,0 +1,131 @@
+sunset_version: v0.18.0
+search_roots:
+- src
+- tests
+- plugins-examples
+- scripts
+legacy_modules:
+  genecoder.api:
+    sunset_version: v0.16.0
+    allowed_referencers:
+    - plugins-examples/starter_plugin/starter_plugin/__init__.py
+    - scripts/check_deprecated_references.py
+    - src/genecoder/api.py
+    - src/genecoder/compat/v1/api_adapter.py
+    - src/genecoder/pipeline.py
+    - tests/test_architecture_boundaries.py
+    - tests/test_deprecated_module_telemetry.py
+    - tests/test_pipeline_legacy.py
+    - tests/test_sdk.py
+  genecoder.pipeline:
+    sunset_version: v0.16.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/compat/v1/pipeline_adapter.py
+    - src/genecoder/pipeline.py
+    - tests/test_architecture_boundaries.py
+    - tests/test_deprecated_module_telemetry.py
+    - tests/test_pipeline_kpi_bundle.py
+    - tests/test_pipeline_legacy.py
+  genecoder.compat.channel_cli:
+    sunset_version: v0.17.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/compat/channel_cli.py
+    - tests/test_deprecated_module_telemetry.py
+  genecoder.compat.channel_sim:
+    sunset_version: v0.17.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/channel_sim.py
+    - src/genecoder/compat/__init__.py
+    - src/genecoder/compat/channel_sim.py
+    - tests/test_architecture_boundaries.py
+    - tests/test_deprecated_import_boundaries.py
+    - tests/test_deprecated_module_telemetry.py
+  genecoder.compat.error_simulation:
+    sunset_version: v0.17.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/compat/__init__.py
+    - src/genecoder/compat/error_simulation.py
+    - src/genecoder/error_simulation.py
+    - tests/test_architecture_boundaries.py
+    - tests/test_deprecated_import_boundaries.py
+    - tests/test_deprecated_module_telemetry.py
+  genecoder.compat.legacy:
+    sunset_version: v0.17.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/compat/legacy/__init__.py
+    - src/genecoder/compat/legacy/channel_adapter_exports.py
+    - src/genecoder/compat/legacy/cloud/__init__.py
+    - src/genecoder/compat/legacy/cloud/worker.py
+    - src/genecoder/compat/legacy/sequence_pipeline.py
+    - tests/test_deprecated_import_boundaries.py
+  genecoder.compat.legacy.sequence_pipeline:
+    sunset_version: v0.17.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/compat/legacy/sequence_pipeline.py
+    - tests/test_deprecated_import_boundaries.py
+  genecoder.compat.legacy.channel_adapter_exports:
+    sunset_version: v0.17.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/compat/channel_sim.py
+    - src/genecoder/compat/error_simulation.py
+    - src/genecoder/compat/legacy/channel_adapter_exports.py
+    - tests/test_deprecated_import_boundaries.py
+  genecoder.compat.legacy.cloud:
+    sunset_version: v0.17.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/compat/legacy/cloud/__init__.py
+    - src/genecoder/compat/legacy/cloud/worker.py
+    - tests/test_cloud_worker_offline.py
+    - tests/test_deprecated_import_boundaries.py
+    - tests/test_worker_metrics.py
+    - tests/test_worker_security.py
+  genecoder.compat.legacy.cloud.worker:
+    sunset_version: v0.17.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/compat/legacy/cloud/worker.py
+    - tests/test_cloud_worker_offline.py
+    - tests/test_deprecated_import_boundaries.py
+    - tests/test_worker_metrics.py
+    - tests/test_worker_security.py
+  genecoder.compat.v1:
+    sunset_version: v0.16.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/compat/v1/__init__.py
+    - src/genecoder/compat/v1/api_adapter.py
+    - src/genecoder/compat/v1/pipeline_adapter.py
+    - src/genecoder/pipeline.py
+    - tests/test_deprecated_import_boundaries.py
+  genecoder.compat.v1.api_adapter:
+    sunset_version: v0.16.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/compat/v1/api_adapter.py
+  genecoder.compat.v1.pipeline_adapter:
+    sunset_version: v0.16.0
+    allowed_referencers:
+    - scripts/check_deprecated_references.py
+    - src/genecoder/compat/v1/pipeline_adapter.py
+    - src/genecoder/pipeline.py
+reduction_targets:
+  v0.16.0:
+    max_import_references: 12
+    module_max_import_references:
+      genecoder.compat.channel_cli: 1
+      genecoder.compat.legacy.sequence_pipeline: 1
+  v0.17.0:
+    max_import_references: 10
+    module_max_import_references:
+      genecoder.compat.channel_cli: 0
+      genecoder.compat.legacy.sequence_pipeline: 0
+  v0.18.0:
+    max_import_references: 0
