@@ -130,6 +130,16 @@ def _request_from_mapping(raw: Mapping[str, Any]) -> ExperimentRequest:
             metrics_path=(str(artifacts_raw["metrics_path"]) if artifacts_raw.get("metrics_path") else None),
             emit_manifest=bool(artifacts_raw.get("emit_manifest", True)),
             emit_html_report=bool(artifacts_raw.get("emit_html_report", False)),
+            attestation_private_key_path=(
+                str(artifacts_raw["attestation_private_key_path"])
+                if artifacts_raw.get("attestation_private_key_path")
+                else None
+            ),
+            attestation_signature_path=(
+                str(artifacts_raw["attestation_signature_path"])
+                if artifacts_raw.get("attestation_signature_path")
+                else None
+            ),
         ),
     )
 

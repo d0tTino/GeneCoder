@@ -200,3 +200,161 @@ seed** and enforces deterministic/tolerance checks from
   (for example `decode_success == true`) were violated.
 - `comparisons[].metric_checks[]`: per-metric baseline/candidate values and
   whether each check stayed within tolerance.
+
+## Runtime reproducibility attestation
+
+Every `RunPipelineUseCase` execution now emits a first-class attestation in the
+canonical run schema and, when manifest output is enabled, in the generated
+manifest. The top-level `run_fingerprint` is a SHA-256 digest of the canonical
+attestation payload, not of wall-clock runtime fields. Re-running the same input
+content, resolved configuration, profile parameters, seed provenance, package
+versions and plugin lock state in the same environment produces the same
+fingerprint even if artifact file names differ.
+
+### Expected attestation schema
+
+The run schema contains these top-level fields:
+
+```json
+{
+  "run_fingerprint": "<64 lowercase hex sha256>",
+  "attestation": {
+    "schema_version": "genecoder.reproducibility.attestation.v1",
+    "canonicalization": "json-sort-keys-separators-comma-colon-utf8",
+    "hash_algorithm": "sha256",
+    "payload": {
+      "schema_version": "genecoder.reproducibility.attestation.v1",
+      "config": {
+        "codec": "reverse",
+        "fec": null,
+        "channel": "simple",
+        "resolved_channel": "simple",
+        "filter_mutated": false,
+        "constraints": {},
+        "sweep": {},
+        "input": {
+          "basename": "input.bin",
+          "sha256": "<input content sha256>"
+        }
+      },
+      "resolved_profiles": {
+        "encoding": "reverse",
+        "simulation": "simple",
+        "decode": "reverse",
+        "channel_profile": {
+          "requested_name": "simple",
+          "resolved_name": "simple",
+          "parameters": {"substitution_prob": 0.0}
+        }
+      },
+      "seed_provenance": {},
+      "package_versions": {},
+      "plugin_lock_state": []
+    },
+    "run_fingerprint": "<64 lowercase hex sha256>",
+    "signature": {
+      "algorithm": "RSASSA-PKCS1v15-SHA256",
+      "padding_scheme": "pkcs1",
+      "signature": "<base64 signature over canonical payload bytes>",
+      "public_key_sha256": "<sha256 of signer public key pem>",
+      "path": "artifacts/run.attestation.sig.json"
+    }
+  }
+}
+```
+
+The same `run_fingerprint` and `attestation` object are copied into the manifest
+JSON when `emit_manifest` is enabled.
+
+### Verify a fingerprint
+
+Use the canonicalization string recorded in the attestation: JSON with sorted
+keys, compact comma/colon separators and UTF-8 bytes.
+
+```bash
+python - <<'PY'
+import hashlib
+import json
+from pathlib import Path
+
+run = json.loads(Path("artifacts/runs/example/metrics.json").read_text())
+payload = run["attestation"]["payload"]
+canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+fingerprint = hashlib.sha256(canonical).hexdigest()
+assert fingerprint == run["run_fingerprint"] == run["attestation"]["run_fingerprint"]
+print(fingerprint)
+PY
+```
+
+If a manifest was emitted, verify that it carries the identical attestation:
+
+```bash
+python - <<'PY'
+import json
+from pathlib import Path
+
+run = json.loads(Path("artifacts/runs/example/metrics.json").read_text())
+manifest = json.loads(Path("artifacts/runs/example/metrics.manifest.json").read_text())
+assert manifest["run_fingerprint"] == run["run_fingerprint"]
+assert manifest["attestation"] == run["attestation"]
+print("manifest attestation matches run schema")
+PY
+```
+
+### Sign and verify an attestation payload
+
+When `ArtifactOutputPolicy.attestation_private_key_path` is set, GeneCoder signs
+the canonical attestation payload with the existing SHA-256 security primitives.
+RSA private keys use PKCS#1 v1.5 signatures; ECDSA private keys use ECDSA with
+SHA-256. If `ArtifactOutputPolicy.attestation_signature_path` is also set, a
+copy of the detached signature metadata is written to that path.
+
+Generate a local test key and run through the SDK/YAML path:
+
+```bash
+openssl genrsa -out artifacts/repro-attest-private.pem 2048
+openssl rsa -in artifacts/repro-attest-private.pem -pubout -out artifacts/repro-attest-public.pem
+cat > artifacts/repro-attest-request.yaml <<'YAML'
+codec: reverse
+input_path: examples/pipeline_demo_input.txt
+output_path: artifacts/runs/repro-attest/decoded.txt
+channel: none
+seeds:
+  global_seed: 42
+artifacts:
+  metrics_path: artifacts/runs/repro-attest/metrics.json
+  emit_manifest: true
+  attestation_private_key_path: artifacts/repro-attest-private.pem
+  attestation_signature_path: artifacts/runs/repro-attest/attestation.sig.json
+YAML
+python - <<'PY'
+from genecoder.sdk import run_experiment
+run_experiment("artifacts/repro-attest-request.yaml")
+PY
+```
+
+Verify the signature with `genecoder.plugin_security.verify_signature`, which is
+the same verification helper used by plugin supply-chain checks:
+
+```bash
+python - <<'PY'
+import base64
+import json
+from pathlib import Path
+from genecoder.plugin_security import verify_signature
+
+run = json.loads(Path("artifacts/runs/repro-attest/metrics.json").read_text())
+attestation = run["attestation"]
+canonical = json.dumps(attestation["payload"], sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+signature = base64.b64decode(attestation["signature"]["signature"])
+public_key = Path("artifacts/repro-attest-public.pem").read_bytes()
+verified_digest = verify_signature(
+    canonical,
+    signature,
+    public_key,
+    padding_scheme=attestation["signature"].get("padding_scheme", "pkcs1"),
+    expected_checksum=run["run_fingerprint"],
+)
+print(verified_digest)
+PY
+```

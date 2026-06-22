@@ -9,9 +9,12 @@ from the canonical runtime model (`genecoder.core.CanonicalRuntimeResult`).
 """
 
 from dataclasses import dataclass, field
+import base64
+import hashlib
+from importlib import metadata
 import json
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, cast
 
 from genecoder.manifest import generate_manifest
 from .pipeline_runtime import ProfileParameterOverrides, run_pipeline
@@ -54,6 +57,8 @@ class ArtifactOutputPolicy:
     metrics_path: str | None = None
     emit_manifest: bool = True
     emit_html_report: bool = False
+    attestation_private_key_path: str | None = None
+    attestation_signature_path: str | None = None
 
 
 @dataclass(frozen=True)
@@ -80,6 +85,155 @@ class RunPipelineResponse:
     metrics_path: str
     manifest_path: str | None
     html_report_path: str | None
+
+
+_PACKAGE_VERSION_NAMES: tuple[str, ...] = (
+    "GeneCoder",
+    "cryptography",
+    "reedsolo",
+    "PyYAML",
+    "portalocker",
+    "httpx",
+    "jsonschema",
+    "numpy",
+    "pandas",
+    "dnachisel",
+    "chamaeleo",
+    "bchlib",
+    "raptorq",
+)
+
+
+def _normalize_for_attestation(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {str(key): _normalize_for_attestation(value[key]) for key in sorted(value, key=str)}
+    if isinstance(value, (list, tuple)):
+        return [_normalize_for_attestation(item) for item in value]
+    if isinstance(value, Path):
+        return value.as_posix()
+    return value
+
+
+def _canonical_attestation_bytes(payload: Mapping[str, Any]) -> bytes:
+    return json.dumps(
+        _normalize_for_attestation(payload),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+
+
+def _package_versions() -> dict[str, str | None]:
+    versions: dict[str, str | None] = {}
+    for name in _PACKAGE_VERSION_NAMES:
+        try:
+            versions[name] = metadata.version(name)
+        except metadata.PackageNotFoundError:
+            versions[name] = None
+    return versions
+
+
+def _plugin_lock_state() -> list[dict[str, Any]]:
+    try:
+        from genecoder.plugin_supply_chain.service import PLUGIN_LOCK
+    except Exception:  # pragma: no cover - defensive import isolation
+        return []
+    return [dict(entry) for entry in PLUGIN_LOCK]
+
+
+def _file_sha256(path: str) -> str | None:
+    file_path = Path(path)
+    if not file_path.exists() or not file_path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with file_path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sign_attestation(payload_bytes: bytes, private_key_path: str) -> dict[str, Any]:
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
+
+    key_bytes = Path(private_key_path).read_bytes()
+    private_key = serialization.load_pem_private_key(key_bytes, password=None)
+    if isinstance(private_key, rsa.RSAPrivateKey):
+        signature = private_key.sign(payload_bytes, padding.PKCS1v15(), hashes.SHA256())
+        algorithm = "RSASSA-PKCS1v15-SHA256"
+        padding_scheme = "pkcs1"
+    elif isinstance(private_key, ec.EllipticCurvePrivateKey):
+        signature = private_key.sign(payload_bytes, ec.ECDSA(hashes.SHA256()))
+        algorithm = "ECDSA-SHA256"
+        padding_scheme = "ecdsa"
+    else:  # pragma: no cover - unsupported key type
+        raise ValueError("Unsupported attestation private key type")
+
+    public_key_bytes = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    return {
+        "algorithm": algorithm,
+        "padding_scheme": padding_scheme,
+        "signature": base64.b64encode(signature).decode("ascii"),
+        "public_key_sha256": hashlib.sha256(public_key_bytes).hexdigest(),
+    }
+
+
+def _build_attestation_payload(
+    *,
+    request: RunPipelineRequest,
+    resolved_channel_name: str | None,
+    resolved_profile_name: str | None,
+    applied_channel_parameters: object,
+    seed_provenance: Mapping[str, Any],
+) -> dict[str, object]:
+    constraints = (
+        {
+            "min_length": request.constraints.min_length,
+            "max_length": request.constraints.max_length,
+            "gc_min": request.constraints.gc_min,
+            "gc_max": request.constraints.gc_max,
+            "max_homopolymer": request.constraints.max_homopolymer,
+        }
+        if request.constraints
+        else {}
+    )
+    payload: dict[str, object] = {
+        "schema_version": "genecoder.reproducibility.attestation.v1",
+        "config": {
+            "codec": request.codec,
+            "fec": request.fec,
+            "channel": request.channel,
+            "resolved_channel": resolved_channel_name,
+            "filter_mutated": request.filter_mutated,
+            "constraints": constraints,
+            "sweep": dict(request.matrix.axes) if request.matrix else {},
+            "input": {
+                "basename": Path(request.input_path).name,
+                "sha256": _file_sha256(request.input_path),
+            },
+        },
+        "resolved_profiles": {
+            "encoding": request.codec,
+            "simulation": resolved_profile_name if resolved_profile_name else resolved_channel_name,
+            "decode": request.codec,
+            "channel_profile": (
+                {
+                    "requested_name": request.profile.name,
+                    "resolved_name": resolved_profile_name or request.profile.name,
+                    "parameters": dict(applied_channel_parameters) if isinstance(applied_channel_parameters, Mapping) else {},
+                }
+                if request.profile
+                else None
+            ),
+        },
+        "seed_provenance": dict(seed_provenance),
+        "package_versions": _package_versions(),
+        "plugin_lock_state": _plugin_lock_state(),
+    }
+    return cast(dict[str, object], _normalize_for_attestation(payload))
 
 
 class RunPipelineUseCase:
@@ -113,15 +267,54 @@ class RunPipelineUseCase:
         runtime_metrics = metrics.pop("_runtime", {})
         applied_channel_parameters = metrics.pop("_applied_channel_parameters", dict(request.profile.parameters) if request.profile else {})
 
-        constraint_outcomes_payload = metrics.get("constraint_outcomes") if isinstance(metrics.get("constraint_outcomes"), Mapping) else {}
-        constraint_by_oligo = constraint_outcomes_payload.get("by_oligo") if isinstance(constraint_outcomes_payload.get("by_oligo"), Mapping) else {}
-        constraint_stage_breakdown = constraint_outcomes_payload.get("stages") if isinstance(constraint_outcomes_payload.get("stages"), list) else []
+        constraint_outcomes_raw = metrics.get("constraint_outcomes")
+        constraint_outcomes_payload = (
+            constraint_outcomes_raw if isinstance(constraint_outcomes_raw, Mapping) else {}
+        )
+        constraint_by_oligo_raw = constraint_outcomes_payload.get("by_oligo")
+        constraint_by_oligo = (
+            constraint_by_oligo_raw if isinstance(constraint_by_oligo_raw, Mapping) else {}
+        )
+        constraint_stage_breakdown_raw = constraint_outcomes_payload.get("stages")
+        constraint_stage_breakdown = (
+            constraint_stage_breakdown_raw
+            if isinstance(constraint_stage_breakdown_raw, list)
+            else []
+        )
+
+        seed_provenance = run_context.seed_provenance()
+        attestation_payload = _build_attestation_payload(
+            request=request,
+            resolved_channel_name=resolved_channel_name,
+            resolved_profile_name=resolved_profile_name,
+            applied_channel_parameters=applied_channel_parameters,
+            seed_provenance=seed_provenance,
+        )
+        attestation_bytes = _canonical_attestation_bytes(attestation_payload)
+        run_fingerprint = hashlib.sha256(attestation_bytes).hexdigest()
+        attestation: dict[str, Any] = {
+            "schema_version": "genecoder.reproducibility.attestation.v1",
+            "canonicalization": "json-sort-keys-separators-comma-colon-utf8",
+            "hash_algorithm": "sha256",
+            "payload": attestation_payload,
+            "run_fingerprint": run_fingerprint,
+        }
+        if request.artifacts.attestation_private_key_path:
+            signature = _sign_attestation(attestation_bytes, request.artifacts.attestation_private_key_path)
+            attestation["signature"] = signature
+            if request.artifacts.attestation_signature_path:
+                signature_path = Path(request.artifacts.attestation_signature_path)
+                signature_path.parent.mkdir(parents=True, exist_ok=True)
+                signature_path.write_text(json.dumps(signature, indent=2, sort_keys=True), encoding="utf-8")
+                attestation["signature"]["path"] = str(signature_path)
 
         metrics_path = Path(request.artifacts.metrics_path or str(request.output_path) + ".json")
         run_schema: dict[str, Any] = {
             "schema_version": RUN_SCHEMA_VERSION,
             "source_format": "pipeline_use_case",
             "run_id": Path(request.output_path).stem,
+            "run_fingerprint": run_fingerprint,
+            "attestation": attestation,
             "profiles": {
                 "encoding": request.codec,
                 "simulation": resolved_profile_name if resolved_profile_name else resolved_channel_name,
@@ -132,7 +325,7 @@ class RunPipelineUseCase:
                 "encode": run_context.encode_seed,
                 "simulate": run_context.simulate_seed,
                 "decode": run_context.decode_seed,
-                "provenance": run_context.seed_provenance(),
+                "provenance": seed_provenance,
             },
             "runtime": {
                 "total_seconds": runtime_metrics.get("total_seconds"),
@@ -225,9 +418,11 @@ class RunPipelineUseCase:
         if request.artifacts.emit_manifest:
             manifest = generate_manifest(
                 request.input_path,
-                {"method": request.codec, "fec": request.fec, "channel": resolved_channel_name, "seeds": run_context.seed_provenance()},
+                {"method": request.codec, "fec": request.fec, "channel": resolved_channel_name, "seeds": seed_provenance},
                 dashboard_metrics,
             )
+            manifest["run_fingerprint"] = run_fingerprint
+            manifest["attestation"] = attestation
             manifest_file = metrics_path.with_suffix(".manifest.json")
             manifest_file.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
             manifest_path = str(manifest_file)
