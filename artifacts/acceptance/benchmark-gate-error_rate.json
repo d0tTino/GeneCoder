@@ -1,0 +1,11 @@
+{
+  "benchmark": "error_rate",
+  "checks": [
+    "base4_noisy_256kb: throughput>=1.3500 actual=1.5000; BER<=0.012000 actual=0.010000; runtime_per_mb<=1.4400 actual=1.2000; decode_success=False"
+  ],
+  "evidence_artifact": "artifacts/benchmarks/error_rate.kpi.json",
+  "gate": "Phase 3 -> Phase 4",
+  "metric": "BER baseline quality",
+  "passed": true,
+  "suite": "benchmark_gate_evaluation"
+}

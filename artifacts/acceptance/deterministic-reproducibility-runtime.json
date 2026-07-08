@@ -1,0 +1,31 @@
+{
+  "evidence": {
+    "decoded_sha256_equal": true,
+    "seed_provenance_equal": true,
+    "simulate_stage_metrics_equal": true
+  },
+  "passed": true,
+  "run_ids": [
+    "decoded-first",
+    "decoded-second"
+  ],
+  "seed_provenance": {
+    "global_seed": 2026,
+    "source": "explicit",
+    "stage_seeds": {
+      "decode": 2203,
+      "encode": 2201,
+      "simulate": 2202
+    }
+  },
+  "simulate_stage_metrics": {
+    "coverage": 1,
+    "deletions": 0,
+    "dropout_count": null,
+    "dropout_fraction": null,
+    "insertions": 0,
+    "stage_metrics": [],
+    "substitutions": 0
+  },
+  "suite": "deterministic_reproducibility_governance"
+}

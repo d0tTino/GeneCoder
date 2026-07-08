@@ -1,0 +1,4 @@
+<testsuite name="nanopore-context" tests="2" failures="0" errors="0" skipped="0">
+  <testcase classname="tests.test_nanopore_context_profile" name="test_calibration_threshold_evaluation_flags_violations" />
+  <testcase classname="tests.test_nanopore_context_profile" name="test_builtin_profile_context_bias" />
+</testsuite>

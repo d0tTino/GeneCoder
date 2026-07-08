@@ -1,0 +1,4 @@
+<testsuite name="bundle-cli" tests="2" failures="0" errors="0" skipped="0">
+  <testcase classname="tests.test_bundle" name="test_bundle_run" />
+  <testcase classname="tests.test_bundle" name="test_bundle_unknown_section" />
+</testsuite>

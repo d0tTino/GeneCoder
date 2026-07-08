@@ -1,0 +1,11 @@
+{
+  "benchmark": "throughput",
+  "checks": [
+    "base4_clean_256kb: throughput>=1.8000 actual=1.9000; BER<=0.001000 actual=0.000000; runtime_per_mb<=1.2000 actual=1.0000; decode_success=True"
+  ],
+  "evidence_artifact": "artifacts/benchmarks/throughput.kpi.json",
+  "gate": "Phase 2 -> Phase 3",
+  "metric": "Throughput median floor",
+  "passed": true,
+  "suite": "benchmark_gate_evaluation"
+}
