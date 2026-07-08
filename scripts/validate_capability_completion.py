@@ -47,6 +47,18 @@ def _matches_where(item: dict, where: dict[str, object]) -> bool:
     return True
 
 
+def _all_true(payload: dict, dotted_paths: list[str]) -> tuple[bool, str]:
+    for dotted_path in dotted_paths:
+        value = payload
+        for part in dotted_path.split("."):
+            if not isinstance(value, dict) or part not in value:
+                return False, f"missing required true field {dotted_path}"
+            value = value[part]
+        if value is not True:
+            return False, f"required field {dotted_path} is {value!r}, expected True"
+    return True, "all required boolean checks are true"
+
+
 def _evaluate_benchmark_aggregate(payload: dict, aggregate: dict) -> tuple[bool, str]:
     metric = aggregate["metric"]
     op = aggregate["op"]
@@ -123,6 +135,35 @@ def validate(model: dict, artifacts_dir: Path) -> tuple[bool, list[str]]:
                     passed, detail = _evaluate_benchmark_aggregate(payload, artifact["aggregate"])
                     if not passed:
                         failures.append(f"{capability['id']}::{criterion_id}: {detail}")
+                elif artifact_type in {"runtime_report_json", "benchmark_gate_json", "plugin_policy_report_json"}:
+                    payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+                    if payload.get("passed") is not True:
+                        failures.append(
+                            f"{capability['id']}::{criterion_id}: report passed={payload.get('passed')!r}"
+                        )
+                        continue
+                    expected_suite = artifact.get("suite")
+                    if expected_suite is not None and payload.get("suite") != expected_suite:
+                        failures.append(
+                            f"{capability['id']}::{criterion_id}: suite mismatch expected={expected_suite} got={payload.get('suite')}"
+                        )
+                        continue
+                    expected_benchmark = artifact.get("benchmark")
+                    if expected_benchmark is not None and payload.get("benchmark") != expected_benchmark:
+                        failures.append(
+                            f"{capability['id']}::{criterion_id}: benchmark mismatch expected={expected_benchmark} got={payload.get('benchmark')}"
+                        )
+                        continue
+                    required_true = artifact.get("required_true") or []
+                    passed, detail = _all_true(payload, required_true)
+                    if not passed:
+                        failures.append(f"{capability['id']}::{criterion_id}: {detail}")
+                    if artifact_type == "benchmark_gate_json":
+                        checks = payload.get("checks") or []
+                        if not checks:
+                            failures.append(f"{capability['id']}::{criterion_id}: benchmark gate report has no checks")
+                        elif any("skipped" in str(check).lower() for check in checks):
+                            failures.append(f"{capability['id']}::{criterion_id}: benchmark gate report contains skipped checks")
                 else:
                     failures.append(
                         f"{capability['id']}::{criterion_id}: unsupported artifact type {artifact_type!r}"

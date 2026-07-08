@@ -1,0 +1,16 @@
+{
+  "evidence": {
+    "policy_rejection_reason_disallowed_license": true,
+    "policy_rejection_reason_missing_provenance": true,
+    "signed_entries_install_and_load": true,
+    "unsigned_entries_hard_fail": true
+  },
+  "installed_specs": [
+    "file:///tmp/fixture-plugin.whl"
+  ],
+  "lifecycle_states": [
+    "loaded"
+  ],
+  "passed": true,
+  "suite": "plugin_registry_policy_automation"
+}

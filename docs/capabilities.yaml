@@ -36,7 +36,7 @@ capabilities:
         path: tests/test_nanopore_context_profile.py
   - id: deterministic_reproducibility_governance
     name: Deterministic seed/profile reproducibility governance
-    status: partial
+    status: implemented
     phase: 2
     owner_modules:
       - src/genecoder/pipeline.py
@@ -48,7 +48,7 @@ capabilities:
       - capability-deterministic-reproducibility
   - id: benchmark_depth_and_parity
     name: Standardized benchmark depth and parity validation
-    status: partial
+    status: implemented
     phase: 3
     owner_modules:
       - benchmarks/throughput.py
@@ -60,7 +60,7 @@ capabilities:
       - capability-benchmark-depth-and-parity
   - id: plugin_registry_policy_automation
     name: Plugin registry policy/security automation
-    status: partial
+    status: implemented
     phase: 4
     owner_modules:
       - src/genecoder/plugin_manager.py

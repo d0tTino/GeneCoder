@@ -9,8 +9,8 @@ This roadmap tracks KPI gates from the canonical strategy model.
 
 > Source of truth: `docs/strategy_model.yaml`
 > Validation provenance: `docs/strategy_validation.json`
-> last_validated_commit: `cf5265a1d80442ce761d9f8a9218181c8acde3f7`
-> generated_at: `2026-03-24T15:29:37Z`
+> last_validated_commit: `c2012a38e21c5bca35e50b842b675800985a9ebc`
+> generated_at: `2026-06-22T15:26:26Z`
 > generator_version: `1.0.0`
 
 ### Phase 1 -> Phase 2

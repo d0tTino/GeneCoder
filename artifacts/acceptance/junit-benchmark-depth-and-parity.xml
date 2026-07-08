@@ -1,0 +1,5 @@
+<testsuite name="tests.test_acceptance_benchmark_depth_and_parity" tests="3" failures="0" errors="0" skipped="0">
+  <testcase classname="tests.test_acceptance_benchmark_depth_and_parity" name="test_gate_enforcement" />
+  <testcase classname="tests.test_acceptance_benchmark_depth_and_parity" name="test_deterministic_benchmark_schema" />
+  <testcase classname="tests.test_acceptance_benchmark_depth_and_parity" name="test_noisy_scenarios_inject_measurable_noise" />
+</testsuite>

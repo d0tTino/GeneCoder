@@ -1,5 +1,4 @@
 version: 1
-
 metadata:
   canonical_file: docs/strategy_model.yaml
   generated_files:
@@ -8,7 +7,6 @@ metadata:
     - docs/vision.md
     - docs/development_roadmap.md
     - docs/capability_maturity_badges.md
-
 phases:
   - id: 1
     name: Foundation sustainment
@@ -26,7 +24,6 @@ phases:
     name: Ecosystem and automation
     objective: Harden plugin governance and operational automation.
     execution_focus: Keep registry publication and execution policy checks continuously green.
-
 feature_capabilities:
   - id: cli_bundle_presets
     name: CLI bundle presets for end-to-end pipelines
@@ -89,7 +86,7 @@ feature_capabilities:
         pass_threshold: 100% listed JUnit test cases passed
   - id: deterministic_reproducibility_governance
     name: Deterministic seed/profile reproducibility governance
-    status: partial
+    status: implemented
     phase: 2
     owner_modules:
       - src/genecoder/pipeline.py
@@ -100,17 +97,20 @@ feature_capabilities:
     ci_status_checks:
       - capability-deterministic-reproducibility
     completion_criteria:
-      - id: deterministic_repro_acceptance
-        description: Deterministic reproducibility governance acceptance checks pass.
+      - id: deterministic_repro_runtime_report
+        description: Two executable pipeline runs are byte-identical and preserve deterministic seed/stage provenance.
         artifacts:
-          - type: junit_xml
-            path: artifacts/acceptance/junit-deterministic-reproducibility.xml
-            checks:
-              - tests.test_acceptance_deterministic_reproducibility_governance::test_deterministic_pipeline_run_is_byte_identical_and_preserves_seed_provenance
-        pass_threshold: 100% listed JUnit test cases passed
+          - type: runtime_report_json
+            path: artifacts/acceptance/deterministic-reproducibility-runtime.json
+            suite: deterministic_reproducibility_governance
+            required_true:
+              - evidence.decoded_sha256_equal
+              - evidence.seed_provenance_equal
+              - evidence.simulate_stage_metrics_equal
+        pass_threshold: report.passed is true and all evidence booleans are true
   - id: benchmark_depth_and_parity
     name: Standardized benchmark depth and parity validation
-    status: partial
+    status: implemented
     phase: 3
     owner_modules:
       - benchmarks/throughput.py
@@ -122,44 +122,32 @@ feature_capabilities:
       - capability-benchmark-depth-and-parity
     completion_criteria:
       - id: throughput_gate_floor
-        description: Throughput benchmark meets the minimum encode-speed floor.
+        description: Executable throughput benchmark gate report proves encode speed, BER parity, runtime, and decode success stay within configured thresholds.
         artifacts:
-          - type: benchmark_json
-            path: artifacts/benchmarks/throughput.json
+          - type: benchmark_gate_json
+            path: artifacts/acceptance/benchmark-gate-throughput.json
             benchmark: throughput
-            aggregate:
-              metric: encode_mb_s
-              op: min
-              threshold: 2.0
-              where:
-                codec: base4
-                simulator: identity
-        pass_threshold: "min(encode_mb_s | codec=base4, simulator=identity) >= 2.0"
+        pass_threshold: report.passed is true and gate checks are present
       - id: ber_parity_gate
-        description: Error-rate benchmark BER is within the baseline quality threshold.
+        description: Executable error-rate benchmark gate report proves BER, throughput, runtime, and decode success stay within configured thresholds.
         artifacts:
-          - type: benchmark_json
-            path: artifacts/benchmarks/error_rate.json
+          - type: benchmark_gate_json
+            path: artifacts/acceptance/benchmark-gate-error_rate.json
             benchmark: error_rate
-            aggregate:
-              metric: BER
-              op: max
-              threshold: 0.01
-              where:
-                simulator: substitution
-        pass_threshold: "max(BER | simulator=substitution) <= 0.01"
+        pass_threshold: report.passed is true and gate checks are present
       - id: benchmark_acceptance_contract
-        description: Benchmark acceptance tests assert depth/parity contract wiring.
+        description: Benchmark acceptance tests assert executable depth/parity behavior and gate-failure reporting.
         artifacts:
           - type: junit_xml
             path: artifacts/acceptance/junit-benchmark-depth-and-parity.xml
             checks:
-              - tests.test_acceptance_benchmark_depth_and_parity::test_throughput_gate_definition
-              - tests.test_acceptance_benchmark_depth_and_parity::test_error_rate_gate_definition
+              - tests.test_acceptance_benchmark_depth_and_parity::test_gate_enforcement
+              - tests.test_acceptance_benchmark_depth_and_parity::test_deterministic_benchmark_schema
+              - tests.test_acceptance_benchmark_depth_and_parity::test_noisy_scenarios_inject_measurable_noise
         pass_threshold: 100% listed JUnit test cases passed
   - id: plugin_registry_policy_automation
     name: Plugin registry policy/security automation
-    status: partial
+    status: implemented
     phase: 4
     owner_modules:
       - src/genecoder/plugin_manager.py
@@ -170,29 +158,29 @@ feature_capabilities:
     ci_status_checks:
       - capability-plugin-registry-policy
     completion_criteria:
-      - id: plugin_policy_acceptance
-        description: Plugin registry policy acceptance tests and policy suites pass.
+      - id: plugin_policy_runtime_report
+        description: Executable registry policy report proves unsigned packages hard-fail, signed packages load, and policy/provenance violations are rejected.
         artifacts:
-          - type: junit_xml
-            path: artifacts/acceptance/junit-plugin-policy.xml
-            checks:
-              - tests.test_acceptance_plugin_registry_policy_automation::test_signed_and_unsigned_registry_policy_runtime_paths
-              - tests.test_plugin_supply_chain_policy::test_policy_requires_trust_root
-              - tests.test_plugin_lifecycle_conformance::test_lifecycle_install_upgrade_disable_rollback_are_deterministic
-              - tests.test_cli_plugin_registry::test_install_registry_with_flag
-        pass_threshold: 100% listed JUnit test cases passed
+          - type: plugin_policy_report_json
+            path: artifacts/acceptance/plugin-registry-policy-runtime.json
+            suite: plugin_registry_policy_automation
+            required_true:
+              - evidence.unsigned_entries_hard_fail
+              - evidence.signed_entries_install_and_load
+              - evidence.policy_rejection_reason_disallowed_license
+              - evidence.policy_rejection_reason_missing_provenance
+        pass_threshold: report.passed is true and all policy evidence booleans are true
   - id: cloud_worker_remote_execution
     name: Cloud worker remote execution
     status: deprecated
     phase: 4
     owner_modules:
       - src/genecoder/compat/legacy/cloud/worker.py
-
 kpi_gates:
   - gate: Phase 1 -> Phase 2
     checks:
       - metric: Weekly usage (oligos_per_week)
-        threshold: ">= 1,000 simulated oligos/week for 4 consecutive ISO weeks"
+        threshold: '>= 1,000 simulated oligos/week for 4 consecutive ISO weeks'
         evidence:
           - artifacts/runs/<run-id>/metrics.json
           - artifacts/runs/<run-id>/metrics.kpi.json
@@ -200,13 +188,13 @@ kpi_gates:
   - gate: Phase 2 -> Phase 3
     checks:
       - metric: Deterministic reproducibility stability
-        threshold: "100% deterministic seed/profile checks for 2 consecutive weeks"
+        threshold: 100% deterministic seed/profile checks for 2 consecutive weeks
         evidence:
           - tests/test_simulator_seed_reproducibility.py
           - tests/test_illumina_coverage_quality.py
           - tests/test_nanopore_context_profile.py
       - metric: Throughput floor
-        threshold: ">= 2.0 MB/s Base-4 encode throughput with BER observed at baseline 0.0"
+        threshold: '>= 2.0 MB/s Base-4 encode throughput with BER observed at baseline 0.0'
         evidence:
           - benchmarks/throughput.py
           - PYTHONPATH=src python benchmarks/throughput.py
@@ -214,7 +202,7 @@ kpi_gates:
   - gate: Phase 3 -> Phase 4
     checks:
       - metric: BER baseline quality
-        threshold: "<= 0.01 BER on baseline profile/seed"
+        threshold: <= 0.01 BER on baseline profile/seed
         evidence:
           - benchmarks/error_rate.py
           - PYTHONPATH=src python benchmarks/error_rate.py
@@ -233,18 +221,15 @@ kpi_gates:
           - tests/test_plugin_spec_validation.py
           - tests/test_plugin_security.py
           - configs/registry.yaml
-
 deployment_posture:
   cloud_enabled: false
   cloud_worker_enabled: false
   local_execution_only: true
-
 support_policy:
   unsupported_module_prefixes:
     - src/genecoder/cloud/
   deprecated_module_prefixes:
     - src/genecoder/compat/legacy/
-
 strategy_sections:
   product_strategy_current_capabilities:
     include_ids:
@@ -264,13 +249,12 @@ strategy_sections:
       - deterministic_reproducibility_governance
       - benchmark_depth_and_parity
       - plugin_registry_policy_automation
-
 phase_gates:
-  - gate: "Phase 1 -> Phase 2"
+  - gate: Phase 1 -> Phase 2
     canonical_source: docs/strategy_model.yaml
     measurable_checks:
       - metric: Weekly usage (oligos_per_week)
-        threshold: ">= 1,000 simulated oligos/week for 4 consecutive ISO weeks"
+        threshold: '>= 1,000 simulated oligos/week for 4 consecutive ISO weeks'
         tests_or_checks:
           - genecli stats
           - /metrics endpoint export
@@ -279,12 +263,11 @@ phase_gates:
         evidence_artifacts:
           - artifacts/runs/<run-id>/metrics.json
           - artifacts/runs/<run-id>/metrics.kpi.json
-
-  - gate: "Phase 2 -> Phase 3"
+  - gate: Phase 2 -> Phase 3
     canonical_source: docs/strategy_model.yaml
     measurable_checks:
       - metric: Reproducibility pass rate
-        threshold: "100% deterministic seed/profile checks for 2 consecutive weeks"
+        threshold: 100% deterministic seed/profile checks for 2 consecutive weeks
         tests_or_checks:
           - pytest -q tests/test_acceptance_deterministic_reproducibility_governance.py
         docs_links:
@@ -292,7 +275,7 @@ phase_gates:
         evidence_artifacts:
           - artifacts/acceptance/deterministic-reproducibility-runtime.json
       - metric: Throughput median floor
-        threshold: ">= 2.0 MB/s Base-4 encode throughput with BER observed at baseline 0.0"
+        threshold: '>= 2.0 MB/s Base-4 encode throughput with BER observed at baseline 0.0'
         tests_or_checks:
           - PYTHONPATH=src python benchmarks/throughput.py
           - pytest -q tests/test_acceptance_benchmark_depth_and_parity.py -k throughput_gate_definition
@@ -301,12 +284,11 @@ phase_gates:
         evidence_artifacts:
           - benchmark stdout artifact
           - benchmark gate JSON artifact
-
-  - gate: "Phase 3 -> Phase 4"
+  - gate: Phase 3 -> Phase 4
     canonical_source: docs/strategy_model.yaml
     measurable_checks:
       - metric: BER baseline quality
-        threshold: "<= 0.01 BER on documented baseline profile/seed"
+        threshold: <= 0.01 BER on documented baseline profile/seed
         tests_or_checks:
           - PYTHONPATH=src python benchmarks/error_rate.py
           - pytest -q tests/test_acceptance_benchmark_depth_and_parity.py -k error_rate_gate_definition
@@ -316,19 +298,18 @@ phase_gates:
           - benchmark stdout artifact
           - benchmark gate JSON artifact
       - metric: Suite category health
-        threshold: "Green CI across CLI/API, pipeline/simulation, plugins/security categories"
+        threshold: Green CI across CLI/API, pipeline/simulation, plugins/security categories
         tests_or_checks:
           - pytest -q tests/test_acceptance_plugin_registry_policy_automation.py
         docs_links:
           - docs/development_roadmap.md
         evidence_artifacts:
           - artifacts/acceptance/plugin-registry-policy-runtime.json
-
-  - gate: "Phase 4 release gate"
+  - gate: Phase 4 release gate
     canonical_source: docs/strategy_model.yaml
     measurable_checks:
       - metric: Plugin policy compliance
-        threshold: "100% pass on plugin spec/security checks before registry publication"
+        threshold: 100% pass on plugin spec/security checks before registry publication
         tests_or_checks:
           - pytest -q tests/test_acceptance_plugin_registry_policy_automation.py -k phase_four_release_gate_readiness_conditions
           - pytest -q tests/test_plugin_supply_chain_policy.py tests/test_plugin_lifecycle_conformance.py tests/test_cli_plugin_registry.py

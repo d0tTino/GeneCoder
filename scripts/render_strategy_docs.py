@@ -189,7 +189,13 @@ def _render_roadmap_execution(model: dict, validation: dict[str, str]) -> str:
     return "\n".join(blocks).rstrip()
 
 
-def render_sections(model: dict, validation: dict[str, str]) -> dict[Path, str]:
+def render_sections(model: dict, validation: dict[str, str] | str) -> dict[Path, str]:
+    if isinstance(validation, str):
+        validation = {
+            "last_validated_commit": validation,
+            "generated_at": "test-render",
+            "generator_version": "test-render",
+        }
     return {
         ROOT / "docs" / "product_strategy.md": _render_product_strategy(model, validation),
         ROOT / "docs" / "vision.md": _render_vision(model, validation),

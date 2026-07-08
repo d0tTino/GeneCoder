@@ -1,0 +1,3 @@
+<testsuite name="illumina-profile" tests="1" failures="0" errors="0" skipped="0">
+  <testcase classname="tests.test_illumina_coverage_quality" name="test_channel_calibrate_writes_expected_artifacts" />
+</testsuite>
